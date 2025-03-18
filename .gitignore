@@ -10,7 +10,7 @@ npm-debug.*
 *.orig.*
 web-build/
 
-
+nativewind-env.d.ts
 # firebase/supabase/vexo
 .env
 

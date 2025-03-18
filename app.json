@@ -2,7 +2,7 @@
   "expo": {
     "name": "skanida-apps-mobile",
     "slug": "skanida-apps-mobile",
-    "version": "1.0.0",
+    "version": "0.0.0",
 
     "web": {
       "favicon": "./assets/favicon.png"
