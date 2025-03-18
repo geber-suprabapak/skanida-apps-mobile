@@ -9,10 +9,8 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
-# expo router
-expo-env.d.ts
-# tamagui
-.tamagui/
+
+
 # firebase/supabase/vexo
 .env
 

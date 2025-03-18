@@ -3,19 +3,15 @@
   "projectName": "skanida-apps-mobile",
   "packages": [
     {
-      "name": "expo-router",
+      "name": "react-navigation",
       "type": "navigation",
       "options": {
         "type": "stack"
       }
     },
     {
-      "name": "tamagui",
+      "name": "nativewind",
       "type": "styling"
-    },
-    {
-      "name": "zustand",
-      "type": "state-management"
     },
     {
       "name": "supabase",
@@ -28,7 +24,7 @@
     "overwrite": false,
     "importAlias": true,
     "packageManager": "pnpm",
-    "eas": true,
+    "eas": false,
     "publish": false
   },
   "packageManager": {

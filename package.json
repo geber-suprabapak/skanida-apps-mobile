@@ -1,74 +1,48 @@
 {
   "name": "skanida-apps-mobile",
   "version": "1.0.0",
-  "main": "expo-router/entry",
   "scripts": {
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "start": "expo start",
-    "ios": "expo run:ios",
-    "android": "expo run:android",
-    "build:dev": "eas build --profile development",
-    "build:preview": "eas build --profile preview",
-    "build:prod": "eas build --profile production",
     "prebuild": "expo prebuild",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
-    "web": "expo start --web",
-     "prettier:format": "prettier --write \"**/*.{ts,tsx,js,md,mdx,css,yaml}\"",
-    "prettier:check": "prettier --check \"**/*.{ts,tsx,js,md,mdx,css,yaml}\""
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-navigation/native": "^7.0.3",
+    "@react-navigation/stack": "^7.0.4",
     "@supabase/supabase-js": "^2.38.4",
-    "@tamagui/animations-react-native": "^1.125.8",
-    "@tamagui/font-inter": "^1.125.8",
-    "@tamagui/react-native-media-driver": "^1.125.8",
-    "@tamagui/shorthands": "^1.125.8",
-    "@tamagui/themes": "^1.125.8",
-    "dotenv": "^16.4.7",
     "expo": "^52.0.39",
-    "expo-constants": "~17.0.8",
-    "expo-dev-client": "~5.0.4",
-    "expo-dev-launcher": "^5.0.17",
-    "expo-font": "~13.0.3",
-    "expo-linking": "~7.0.5",
-    "expo-router": "~4.0.19",
     "expo-status-bar": "~2.0.1",
-    "expo-system-ui": "~4.0.8",
-    "expo-web-browser": "~14.0.2",
+    "nativewind": "latest",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
     "react-native": "0.76.7",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-reanimated": "3.16.2",
     "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.4.0",
-    "react-native-web": "~0.19.10",
-    "tamagui": "^1.125.8",
-    "zustand": "^4.5.1"
+    "react-native-screens": "~4.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
-    "@tamagui/babel-plugin": "^1.125.26",
     "@types/react": "~18.3.12",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
     "eslint": "^8.57.0",
     "eslint-config-universe": "^12.0.1",
     "prettier": "^3.2.5",
+    "prettier-plugin-tailwindcss": "^0.5.11",
+    "tailwindcss": "^3.4.0",
     "typescript": "~5.3.3"
   },
   "eslintConfig": {
     "extends": "universe/native",
     "root": true
   },
+  "main": "node_modules/expo/AppEntry.js",
   "private": true,
-  "packageManager": "pnpm@10.6.3+sha512.bb45e34d50a9a76e858a95837301bfb6bd6d35aea2c5d52094fa497a467c43f5c440103ce2511e9e0a2f89c3d6071baac3358fc68ac6fb75e2ceb3d2736065e6",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@swc/core",
-      "esbuild"
-    ]
-  }
+  "packageManager": "pnpm@10.6.3+sha512.bb45e34d50a9a76e858a95837301bfb6bd6d35aea2c5d52094fa497a467c43f5c440103ce2511e9e0a2f89c3d6071baac3358fc68ac6fb75e2ceb3d2736065e6"
 }
