@@ -5,6 +5,7 @@ import { BackButton } from '../components/BackButton';
 import Details from '../screens/details';
 import Overview from '../screens/login';
 
+
 export type RootStackParamList = {
   Overview: undefined;
   Details: { name: string };
