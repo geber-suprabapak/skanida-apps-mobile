@@ -12,7 +12,7 @@ web-build/
 nativewind-env.d.ts
 # firebase/supabase/vexo
 .env
-
+.idea
 ios
 android
 
