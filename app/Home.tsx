@@ -24,11 +24,12 @@ export default function HomeScreen() {
     <>
       <Stack.Screen
         options={{
-          headerShown: false, // Jika Anda ingin menghilangkan seluruh header, bisa pakai ini
+          headerShown: false, // If you want to hide the entire header, use this
         }}
       />
       <YStack flex={1} jc="center" ai="center" space="$3">
         <Text fontSize="$5">Selamat datang, {user?.email || "User"}!</Text>
+        <Button onPress={() => router.push("/AbsenceReport")}>Lapor Kehadiran</Button>
         <Button onPress={handleLogout}>Logout</Button>
       </YStack>
     </>
