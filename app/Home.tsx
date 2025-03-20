@@ -1,11 +1,9 @@
 // app/home.tsx
-import { Stack, useRouter } from "expo-router";
-import React from "react";
-import { Alert } from "react-native";
-import { YStack, Text, Button } from "tamagui";
+import { Stack, useRouter } from 'expo-router';
+import { Alert, View, Text, TouchableOpacity } from 'react-native';
 
-import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
+import useAuthStore from '~/store/authStore';
+import { supabase } from '~/utils/supabase';
 
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
@@ -15,8 +13,8 @@ export default function HomeScreen() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    Alert.alert("Logout", "Berhasil Logout", [
-      { text: "OK", onPress: () => router.replace("/AuthSelector") },
+    Alert.alert('Logout', 'Berhasil Logout', [
+      { text: 'OK', onPress: () => router.replace('/AuthSelector') },
     ]);
   };
 
@@ -24,14 +22,20 @@ export default function HomeScreen() {
     <>
       <Stack.Screen
         options={{
-          headerShown: false, // If you want to hide the entire header, use this
+          headerShown: false,
         }}
       />
-      <YStack flex={1} jc="center" ai="center" space="$3">
-        <Text fontSize="$5">Selamat datang, {user?.email || "User"}!</Text>
-        <Button onPress={() => router.push("/AbsenceReport")}>Lapor Kehadiran</Button>
-        <Button onPress={handleLogout}>Logout</Button>
-      </YStack>
+      <View className="flex-1 items-center justify-center space-y-3">
+        <Text className="text-xl">Selamat datang, {user?.email || 'User'}!</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/AbsenceReport')}
+          className="rounded bg-blue-500 px-4 py-2">
+          <Text className="font-medium text-white">Abasen</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleLogout} className="rounded bg-blue-500 px-4 py-2">
+          <Text className="font-medium text-white">Logout</Text>
+        </TouchableOpacity>
+      </View>
     </>
   );
 }

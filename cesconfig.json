@@ -1,6 +1,6 @@
 {
   "cesVersion": "2.14.1",
-  "projectName": "skanida-apps-mobile",
+  "projectName": "skanida-apps-mobile-rebuild",
   "packages": [
     {
       "name": "expo-router",
@@ -10,7 +10,7 @@
       }
     },
     {
-      "name": "tamagui",
+      "name": "nativewind",
       "type": "styling"
     },
     {
@@ -24,11 +24,11 @@
   ],
   "flags": {
     "noGit": false,
-    "noInstall": false,
+    "noInstall": true,
     "overwrite": false,
     "importAlias": true,
     "packageManager": "pnpm",
-    "eas": true,
+    "eas": false,
     "publish": false
   },
   "packageManager": {

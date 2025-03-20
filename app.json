@@ -1,22 +1,16 @@
 {
   "expo": {
-    "name": "skanida-apps-mobile",
-    "slug": "skanida-apps-mobile",
+    "name": "skanida-apps-mobile-rebuild",
+    "slug": "skanida-apps-mobile-rebuild",
     "version": "1.0.0",
-    "scheme": "skanida-apps-mobile",
+    "scheme": "skanida-apps-mobile-rebuild",
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-dev-launcher",
-        {
-          "launchMode": "most-recent"
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -41,16 +35,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hfzrk.skanidaappsmobile"
-    },
-    "extra": {
-      "router": {
-        "origin": false
-      },
-      "eas": {
-        "projectId": "a423f8e9-23fd-472b-b405-f5ef8f726bf9"
-      }
-    },
-    "newArchEnabled": true
+      "package": "com.hfzrk.skanidaappsmobilerebuild"
+    }
   }
 }
