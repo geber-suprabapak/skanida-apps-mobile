@@ -6,7 +6,7 @@ on:
     types: [opened]
 jobs:
   run:
-    runs-on: self-hosted
+    runs-on: herta
     permissions:
       issues: write
       pull-requests: write

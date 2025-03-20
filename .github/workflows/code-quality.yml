@@ -2,13 +2,15 @@ name: Code Quality Check
 
 # This action works with pull requests and pushes on the main branch
 on:
+  issues:
+    types: [opened]
   pull_request:
-    branches: [master]
+    types: [opened]
 
 jobs:
   prettier:
     name: Prettier Check
-    runs-on: self-hosted
+    runs-on: herta
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
