@@ -14,7 +14,7 @@ export default function HomeScreen() {
     await supabase.auth.signOut();
     setUser(null);
     Alert.alert('Logout', 'Berhasil Logout', [
-      { text: 'OK', onPress: () => router.replace('/AuthSelector') },
+      { text: 'OK', onPress: () => router.replace('/auth/AuthSelector') },
     ]);
   };
 
@@ -26,10 +26,10 @@ export default function HomeScreen() {
         }}
       />
       <View className="flex-1 items-center justify-center space-y-3">
-        <Text className="text-xl">Selamat datang, {user?.email || 'User'}!</Text>
+        <Text className="gap-5 text-xl">Selamat datang, {user?.email || 'User'}!</Text>
         <TouchableOpacity
-          onPress={() => router.push('/AbsenceReport')}
-          className="rounded bg-blue-500 px-4 py-2">
+          onPress={() => router.push('/attendance/AbsenceReport')}
+          className="gap-3 rounded bg-blue-500 px-4 py-2">
           <Text className="font-medium text-white">Abasen</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleLogout} className="rounded bg-blue-500 px-4 py-2">

@@ -46,7 +46,7 @@ export default function Home() {
         } else {
           // Jika tidak ada session
           setLoadingMessage('No session found, redirecting...');
-          router.replace('/AuthSelector');
+          router.replace('/auth/AuthSelector');
           console.log('welcome to auth selector');
         }
       } catch (err) {
