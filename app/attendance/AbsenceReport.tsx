@@ -20,7 +20,7 @@ const AbsenceReport = () => {
         if (userError || !userData?.user) {
           console.error('User auth error:', userError?.message);
           Alert.alert('Error', 'Failed to retrieve user. Please log in again.');
-          router.push('/Login');
+          router.push('../Login');
           return;
         }
 

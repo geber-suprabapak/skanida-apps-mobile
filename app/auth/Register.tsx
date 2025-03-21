@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 
-import useAuthStore from '../store/authStore';
+import useAuthStore from '../../store/authStore';
 
 import { supabase } from '~/utils/supabase';
 
@@ -38,14 +38,11 @@ export default function RegisterScreen() {
       if (data.user.email_confirmed_at) {
         // Jika email sudah terverifikasi (mungkin user sudah pernah daftar, dll.)
         setUser(data.user);
-        router.replace('/AuthSelector');
+        router.replace('/auth/AuthSelector');
       } else {
-        // Email belum terverifikasi
         alert(
           'Pendaftaran berhasil, namun email Anda belum terverifikasi. Silakan cek inbox untuk memverifikasi email.'
         );
-        // Opsional: Anda bisa mengarahkan ke screen lain, misalnya '/please-verify'
-        // router.replace('/please-verify')
       }
     }
   };
@@ -73,7 +70,7 @@ export default function RegisterScreen() {
         className="mt-3 rounded bg-blue-500 px-4 py-2">
         <Text className="font-medium text-white">{loading ? 'Loading...' : 'Register'}</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/Login')} className="mt-2">
+      <TouchableOpacity onPress={() => router.push('/auth/Login')} className="mt-2">
         <Text className="text-blue-500">Sudah punya akun? Login</Text>
       </TouchableOpacity>
     </View>

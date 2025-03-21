@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 
-import useAuthStore from '../store/authStore';
-import { supabase } from '../utils/supabase';
+import useAuthStore from '../../store/authStore';
+import { supabase } from '../../utils/supabase';
 
 export default function Login() {
   const router = useRouter();

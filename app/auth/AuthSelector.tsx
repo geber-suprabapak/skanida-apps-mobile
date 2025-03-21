@@ -17,17 +17,17 @@ export default function LoginScreen() {
         <Text className="mb-3 text-xl font-medium">Silahkan Login atau Register</Text>
         <TouchableOpacity
           className="w-40 items-center rounded-md bg-blue-500 px-4 py-2"
-          onPress={() => router.push('/Login')}>
+          onPress={() => router.push('../Login')}>
           <Text className="font-medium text-white">Login</Text>
         </TouchableOpacity>
         <TouchableOpacity
           className="w-40 items-center rounded-md bg-blue-500 px-4 py-2"
-          onPress={() => router.push('/Register')}>
+          onPress={() => router.push('../Register')}>
           <Text className="font-medium text-white">Register</Text>
         </TouchableOpacity>
         <TouchableOpacity
           className="w-40 items-center rounded-md bg-blue-500 px-4 py-2"
-          onPress={() => router.push('/AbsenceReport')}>
+          onPress={() => router.push('/attendance/AbsenceReport')}>
           <Text className="font-medium text-white">TO REPORT</Text>
         </TouchableOpacity>
       </View>
