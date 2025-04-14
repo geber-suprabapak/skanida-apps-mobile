@@ -30,7 +30,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() => router.push('/attendance/AbsenceReport')}
           className="gap-3 rounded bg-blue-500 px-4 py-2">
-          <Text className="font-medium text-white">Abasen</Text>
+          <Text className="font-medium text-white">Absen</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleLogout} className="rounded bg-blue-500 px-4 py-2">
           <Text className="font-medium text-white">Logout</Text>

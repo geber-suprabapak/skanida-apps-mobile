@@ -55,6 +55,9 @@ export default function Login() {
           className="mt-3 rounded bg-blue-500 px-4 py-2">
           <Text className="font-medium text-white">{loading ? 'Loading...' : 'Login'}</Text>
         </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/auth/Register')} className="mt-2">
+                <Text className="text-blue-500">Belum punya akun? Register</Text>
+              </TouchableOpacity>
       </View>
     </>
   );
