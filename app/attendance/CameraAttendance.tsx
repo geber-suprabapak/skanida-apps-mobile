@@ -1,3 +1,7 @@
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState, useEffect } from "react";
 import {
   View,
@@ -7,11 +11,8 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { useRouter, useLocalSearchParams } from "expo-router";
+
 import { supabase } from "~/utils/supabase";
-import * as FileSystem from "expo-file-system";
-import * as ImageManipulator from "expo-image-manipulator";
 
 const CameraAttendance = () => {
   const cameraRef = useRef<CameraView>(null);
@@ -52,6 +53,19 @@ const CameraAttendance = () => {
     }
   }, [permission, requestPermission]);
 
+  // Utility: convert base64 string to Uint8Array
+  function base64ToUint8Array(base64: string) {
+    const binaryString = globalThis.atob
+      ? atob(base64)
+      : Buffer.from(base64, "base64").toString("binary");
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+
   const saveAttendanceToSupabase = async (base64Data: string) => {
     try {
       console.log("Saving attendance data to Supabase...");
@@ -73,18 +87,24 @@ const CameraAttendance = () => {
       }
       console.log(`Base64 data received, length: ${base64Data.length}`);
 
-      // Upload the base64 string directly to Supabase storage
+      // Convert base64 to Uint8Array (buffer)
+      const fileBuffer = base64ToUint8Array(base64Data);
+
+      // Upload the buffer to Supabase storage
       const { data: storageData, error: storageError } = await supabase.storage
         .from("attendance-photos")
-        .upload(fileName, base64Data, { // Upload base64 string directly
-          contentType: "image/png", // Ensure correct content type
+        .upload(fileName, fileBuffer, {
+          contentType: "image/png",
           upsert: true,
         });
 
       if (storageError) {
         console.error("Error uploading photo:", storageError);
         if (storageError.message) {
-          console.error("Supabase storage error message:", storageError.message);
+          console.error(
+            "Supabase storage error message:",
+            storageError.message,
+          );
         }
         throw new Error("Failed to upload photo");
       }
@@ -104,7 +124,7 @@ const CameraAttendance = () => {
           {
             user_id: locationData.userId,
             date: currentDate,
-            reason: reason,
+            reason,
             created_at: new Date().toISOString(),
             photo_url: photoUrl,
             latitude: locationData.latitude,
@@ -119,7 +139,6 @@ const CameraAttendance = () => {
       }
 
       return data;
-
     } catch (error) {
       console.error("Error in saveAttendanceToSupabase:", error);
       throw error; // Re-throw the error to be caught by takePicture
@@ -141,7 +160,11 @@ const CameraAttendance = () => {
           const manipResult = await ImageManipulator.manipulateAsync(
             photo.uri,
             [{ resize: { width: 800 } }], // Resize width to 800px
-            { compress: 0.7, format: ImageManipulator.SaveFormat.PNG, base64: true } // Compress (quality for PNG), save as PNG, GET BASE64
+            {
+              compress: 0.7,
+              format: ImageManipulator.SaveFormat.PNG,
+              base64: true,
+            }, // Compress (quality for PNG), save as PNG, GET BASE64
           );
           console.log("Image manipulation complete.");
 
@@ -168,10 +191,18 @@ const CameraAttendance = () => {
       } catch (err) {
         console.error("Error taking picture or saving data:", err);
         // Check if the error came from saveAttendanceToSupabase or manipulation
-        if (err instanceof Error && (err.message === 'Failed to upload photo' || err.message === 'Failed to save attendance record' || err.message.includes('base64'))) {
-           Alert.alert("Error", `Failed to process or save attendance: ${err.message}`);
+        if (
+          err instanceof Error &&
+          (err.message === "Failed to upload photo" ||
+            err.message === "Failed to save attendance record" ||
+            err.message.includes("base64"))
+        ) {
+          Alert.alert(
+            "Error",
+            `Failed to process or save attendance: ${err.message}`,
+          );
         } else {
-           Alert.alert("Error", "Failed to capture photo or process image.");
+          Alert.alert("Error", "Failed to capture photo or process image.");
         }
       } finally {
         setIsTakingPicture(false);
