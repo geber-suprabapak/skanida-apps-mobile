@@ -430,7 +430,7 @@ export default function Dashboard() {
           >
             <Ionicons 
               name={activeTab === "home" ? "home" : "home-outline"} 
-              size={24} 
+              size={28} 
               color={activeTab === "home" ? "#007AFF" : "#8e8e93"} 
             />
             <Text
@@ -449,7 +449,7 @@ export default function Dashboard() {
           >
             <Ionicons 
               name={activeTab === "attendance" ? "calendar" : "calendar-outline"} 
-              size={24} 
+              size={28} 
               color={activeTab === "attendance" ? "#007AFF" : "#8e8e93"} 
             />
             <Text
@@ -468,7 +468,7 @@ export default function Dashboard() {
           >
             <Ionicons 
               name={activeTab === "settings" ? "settings" : "settings-outline"} 
-              size={24} 
+              size={28} 
               color={activeTab === "settings" ? "#007AFF" : "#8e8e93"} 
             />
             <Text
@@ -873,30 +873,39 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 70,
+    height: 80, // Ditingkatkan dari 70 menjadi 80
     backgroundColor: "#ffffff",
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#e5e5ea",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 10, // Ditingkatkan untuk Android
   },
   navItem: {
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
     height: "100%",
+    paddingVertical: 10, // Menambahkan padding
   },
   activeNavItem: {
-    borderTopWidth: 2,
+    borderTopWidth: 3, // Ditingkatkan dari 2 menjadi 3
     borderTopColor: "#007AFF",
+    backgroundColor: "rgba(0, 122, 255, 0.05)", // Latar belakang untuk tab aktif
   },
   navLabel: {
     marginTop: 4,
-    fontSize: 12,
+    fontSize: 13, // Ditingkatkan dari 12 menjadi 13
     color: "#8e8e93",
+    fontWeight: "500", // Menambahkan ketebalan
   },
   activeNavLabel: {
     color: "#007AFF",
+    fontWeight: "bold", // Membuat teks lebih tebal untuk tab aktif
   },
 });
