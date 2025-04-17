@@ -1,5 +1,5 @@
 // app/Dashboard.tsx
-import { Stack, useRouter, Tabs } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -8,9 +8,9 @@ import {
   StyleSheet,
   ScrollView,
   Switch,
-  FlatList,
   ActivityIndicator,
   Image,
+  Alert,
 } from "react-native";
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 
@@ -43,7 +43,6 @@ export default function Dashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState("ID");
 
   useEffect(() => {
     fetchAttendanceHistory();
@@ -70,8 +69,6 @@ export default function Dashboard() {
   };
 
   const fetchMessages = async () => {
-    // In a real app, you would fetch messages from your backend
-    // This is mock data for demonstration
     setMessages([
       {
         id: "1",
@@ -91,9 +88,31 @@ export default function Dashboard() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.replace("/auth/AuthSelector");
+    Alert.alert(
+      'Logout',
+      'Apakah Anda yakin ingin keluar?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Ya, Keluar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await supabase.auth.signOut();
+              setUser(null);
+              router.replace("/auth/AuthSelector");
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Gagal melakukan logout. Silakan coba lagi.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const markMessageAsRead = (id: string) => {
@@ -115,7 +134,7 @@ export default function Dashboard() {
         </View>
         <View style={styles.userTextContainer}>
           <Text style={styles.welcomeText}>Selamat datang,</Text>
-          <Text style={styles.userNameText}>{user?.email || "User"}</Text>
+          <Text style={styles.userNameText}>{user?.email || "Pengguna"}</Text>
         </View>
       </View>
 
@@ -286,7 +305,7 @@ export default function Dashboard() {
             </Text>
           </View>
           <View style={styles.profileTextContainer}>
-            <Text style={styles.profileNameText}>{user?.email || "User"}</Text>
+            <Text style={styles.profileNameText}>{user?.email || "Pengguna"}</Text>
             <Text style={styles.profileIdText}>User ID: {user?.id?.substring(0, 8) || "Unknown"}</Text>
           </View>
         </View>
@@ -314,39 +333,6 @@ export default function Dashboard() {
         
         <View style={styles.settingsItem}>
           <View style={styles.settingIconContainer}>
-            <Ionicons name="language-outline" size={24} color="#007AFF" />
-          </View>
-          <Text style={styles.settingLabel}>Bahasa</Text>
-          <View style={styles.languageSelector}>
-            <TouchableOpacity 
-              style={[
-                styles.languageOption, 
-                language === "ID" && styles.activeLanguage
-              ]}
-              onPress={() => setLanguage("ID")}
-            >
-              <Text style={[
-                styles.languageText,
-                language === "ID" && styles.activeLanguageText
-              ]}>ID</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.languageOption, 
-                language === "EN" && styles.activeLanguage
-              ]}
-              onPress={() => setLanguage("EN")}
-            >
-              <Text style={[
-                styles.languageText,
-                language === "EN" && styles.activeLanguageText
-              ]}>EN</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        <View style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
             <Ionicons name="moon-outline" size={24} color="#007AFF" />
           </View>
           <Text style={styles.settingLabel}>Mode Gelap</Text>
@@ -371,21 +357,6 @@ export default function Dashboard() {
       <View style={styles.settingsSection}>
         <Text style={styles.settingsSectionTitle}>Akun</Text>
         
-        <TouchableOpacity style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
-            <Ionicons name="help-circle-outline" size={24} color="#007AFF" />
-          </View>
-          <Text style={styles.settingLabel}>Bantuan</Text>
-          <AntDesign name="right" size={16} color="#c7c7cc" style={styles.settingsArrow} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
-            <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
-          </View>
-          <Text style={styles.settingLabel}>Tentang Aplikasi</Text>
-          <AntDesign name="right" size={16} color="#c7c7cc" style={styles.settingsArrow} />
-        </TouchableOpacity>
         
         <TouchableOpacity 
           style={[styles.settingsItem, styles.logoutItem]} 
@@ -394,7 +365,7 @@ export default function Dashboard() {
           <View style={[styles.settingIconContainer, styles.logoutIcon]}>
             <Ionicons name="log-out-outline" size={24} color="#dc3545" />
           </View>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -494,7 +465,7 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     flex: 1,
-    paddingBottom: 80, // Space for bottom nav
+    paddingBottom: 120, // Increased padding to ensure content is visible above bottom nav
   },
   tabTitle: {
     fontSize: 24,
@@ -858,6 +829,7 @@ const styles = StyleSheet.create({
   logoutItem: {
     borderBottomWidth: 0,
     marginTop: 4,
+    marginBottom: 8, // Added margin bottom for better spacing
   },
   logoutIcon: {
     backgroundColor: "rgba(220, 53, 69, 0.1)",
