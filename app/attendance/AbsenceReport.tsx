@@ -1,6 +1,6 @@
 // --- NECESSARY IMPORTS ---
 import { useRouter } from "expo-router";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,25 +15,91 @@ import { supabase } from "~/utils/supabase";
 // --- Component Definition Starts Here ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initialize as true
   const [userId, setUserId] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null,
   );
-  const [isWithinRange, setIsWithinRange] = useState(false);
+  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null); // Use null to indicate "not checked yet"
   const [permissionDenied, setPermissionDenied] = useState(false);
   const router = useRouter();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- Configuration ---
   const TARGET_LOCATION = { latitude: -7.4503, longitude: 110.221 };
   const MAX_DISTANCE = 500;
 
-  // --- useEffect to fetch data and location ---
+  // --- Function to fetch user data and location ---
+  const fetchUserDataAndLocation = async () => {
+    setLoading(true);
+    setPermissionDenied(false);
+    try {
+      // Get User
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        console.error("User auth error:", userError?.message);
+        Alert.alert("Error", "Failed to retrieve user. Please log in again.");
+        router.replace("/auth/Login");
+        return;
+      }
+      setUserId(userData.user.id);
+
+      // Get Location Permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Location permission denied");
+        setPermissionDenied(true);
+        setIsWithinRange(false);
+        setLoading(false); // Stop loading here as we can't proceed without permission
+        return;
+      }
+
+      // Get Current Location
+      console.log("Getting current location...");
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      setLocation(currentLocation);
+      console.log("Current location:", currentLocation.coords);
+
+      // Calculate Distance
+      if (currentLocation?.coords) {
+        const distance = calculateDistance(
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude,
+          TARGET_LOCATION.latitude,
+          TARGET_LOCATION.longitude,
+        );
+        console.log(`Distance to target: ${distance.toFixed(2)} meters`);
+        setIsWithinRange(distance <= MAX_DISTANCE);
+      } else {
+        console.error("Could not get location coordinates.");
+        setIsWithinRange(false);
+        Alert.alert("Error", "Failed to get precise location coordinates.");
+      }
+    } catch (exception: any) {
+      console.error("Error fetching data or location:", exception);
+      if (exception.message.includes("Location request timed out")) {
+        Alert.alert(
+          "Error",
+          "Could not get location: Request timed out. Please ensure GPS is enabled and try again.",
+        );
+      } else {
+        Alert.alert(
+          "Error",
+          "An unexpected error occurred while getting location or user data.",
+        );
+      }
+      setIsWithinRange(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- useEffect to fetch user data on mount ---
   useEffect(() => {
-    const fetchUserDataAndLocation = async () => {
-      setLoading(true);
-      setPermissionDenied(false);
+    const fetchInitialData = async () => {
+      setLoading(true); // Start loading immediately
       try {
         // Get User
         const { data: userData, error: userError } =
@@ -46,70 +112,22 @@ const AbsenceReport = () => {
         }
         setUserId(userData.user.id);
 
-        // Get Location Permission
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          console.log("Location permission denied");
-          setPermissionDenied(true);
-          setIsWithinRange(false);
-          setLoading(false);
-          return;
-        }
-
-        // Get Current Location
-        console.log("Getting current location...");
-        const currentLocation = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        setLocation(currentLocation);
-        console.log("Current location:", currentLocation.coords);
-
-        // Calculate Distance
-        if (currentLocation?.coords) {
-          const distance = calculateDistance(
-            currentLocation.coords.latitude,
-            currentLocation.coords.longitude,
-            TARGET_LOCATION.latitude,
-            TARGET_LOCATION.longitude,
-          );
-          console.log(`Distance to target: ${distance.toFixed(2)} meters`);
-          setIsWithinRange(distance <= MAX_DISTANCE);
-        } else {
-          console.error("Could not get location coordinates.");
-          setIsWithinRange(false);
-          Alert.alert("Error", "Failed to get precise location coordinates.");
-        }
-      } catch (exception: any) {
-        console.error("Error fetching data or location:", exception);
-        if (exception.message.includes("Location request timed out")) {
-          Alert.alert(
-            "Error",
-            "Could not get location: Request timed out. Please ensure GPS is enabled and try again.",
-          );
-        } else {
-          Alert.alert(
-            "Error",
-            "An unexpected error occurred while getting location or user data.",
-          );
-        }
-        setIsWithinRange(false);
+        // Immediately fetch location after user data is fetched
+        await fetchUserDataAndLocation();
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert(
+          "Error",
+          "Failed to retrieve user data. Please try again.",
+        );
+        setLoading(false); // Ensure loading is set to false in case of error
       } finally {
-        setLoading(false);
+        // Keep loading as true until location is fetched
+        // setLoading(false); // Stop loading after initial user data fetch - REMOVE THIS
       }
     };
 
-    fetchUserDataAndLocation();
-
-    // Set up interval for location tracking only while on this screen
-    intervalRef.current = setInterval(fetchUserDataAndLocation, 20000); // Check location every 20 seconds
-
-    // Clean up interval when component unmounts
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    fetchInitialData();
   }, [router]);
 
   // --- Helper function: calculateDistance ---
@@ -137,77 +155,28 @@ const AbsenceReport = () => {
 
   // --- Event Handler: handleRetryLocation ---
   const handleRetryLocation = async () => {
-    setLoading(true);
-    setPermissionDenied(false);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setPermissionDenied(true);
-        setLoading(false);
-        return;
-      }
-      console.log("Retrying location...");
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      setLocation(currentLocation);
-      console.log("Retry location:", currentLocation.coords);
-
-      if (currentLocation?.coords) {
-        const distance = calculateDistance(
-          currentLocation.coords.latitude,
-          currentLocation.coords.longitude,
-          TARGET_LOCATION.latitude,
-          TARGET_LOCATION.longitude,
-        );
-        console.log(`Retry Distance: ${distance.toFixed(2)} meters`);
-        setIsWithinRange(distance <= MAX_DISTANCE);
-      } else {
-        console.error("Could not get location coordinates on retry.");
-        setIsWithinRange(false);
-        Alert.alert(
-          "Error",
-          "Failed to get precise location coordinates on retry.",
-        );
-      }
-    } catch (error: any) {
-      console.error("Retry location error:", error);
-      if (error.message.includes("Location request timed out")) {
-        Alert.alert(
-          "Error",
-          "Could not get location: Request timed out. Please ensure GPS is enabled and try again.",
-        );
-      } else {
-        Alert.alert("Error", "Could not get location during retry.");
-      }
-      setIsWithinRange(false);
-    } finally {
-      setLoading(false);
-    }
+    await fetchUserDataAndLocation();
   };
 
   // --- Event Handler: handleSubmitLocationAndDate ---
   const handleSubmitLocationAndDate = async () => {
+    setLoading(true); // Set loading to true when the submit button is pressed
     if (!userId || !location || !location.coords) {
       Alert.alert(
         "Error",
         "User or location coordinate data is missing. Please retry.",
       );
+      setLoading(false);
       return;
     }
 
-    if (!isWithinRange) {
+    if (isWithinRange === false) { // Check if isWithinRange is explicitly false
       Alert.alert(
         "Error",
         "You seem to be outside the allowed range. Please check your location again.",
       );
+      setLoading(false);
       return;
-    }
-
-    // Stop the location interval when proceeding to camera - we don't need to track anymore
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
     }
 
     // Navigate to camera screen with location data
@@ -220,6 +189,7 @@ const AbsenceReport = () => {
         userId: userId,
       },
     });
+    setLoading(false);
   };
 
   // --- Render Logic ---
@@ -227,7 +197,11 @@ const AbsenceReport = () => {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.infoText}>Checking location and user data...</Text>
+        <Text style={styles.infoText}>
+          {permissionDenied
+            ? "Checking user data..."
+            : "Checking location and user data..."}
+        </Text>
       </View>
     );
   }
@@ -247,7 +221,7 @@ const AbsenceReport = () => {
     );
   }
 
-  if (!isWithinRange) {
+  if (isWithinRange === false) { // Only show this if we've checked and it's false
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>You are outside the allowed range.</Text>
@@ -280,7 +254,7 @@ const AbsenceReport = () => {
     );
   }
 
-  // Default return if within range
+  // Default return if within range or hasn't been checked yet
   return (
     <View style={styles.container}>
       <Text style={styles.titleText}>Location Verified</Text>
