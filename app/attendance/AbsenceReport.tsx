@@ -1,6 +1,6 @@
 // --- NECESSARY IMPORTS ---
 import { useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ const AbsenceReport = () => {
   const [isWithinRange, setIsWithinRange] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const router = useRouter();
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- Configuration ---
   const TARGET_LOCATION = { latitude: -7.4503, longitude: 110.221 };
@@ -101,13 +101,13 @@ const AbsenceReport = () => {
     fetchUserDataAndLocation();
 
     // Set up interval for location tracking only while on this screen
-    const newIntervalId = setInterval(fetchUserDataAndLocation, 20000); // Check location every 20 seconds
-    setIntervalId(newIntervalId);
+    intervalRef.current = setInterval(fetchUserDataAndLocation, 20000); // Check location every 20 seconds
 
     // Clean up interval when component unmounts
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [router]);
@@ -205,9 +205,9 @@ const AbsenceReport = () => {
     }
 
     // Stop the location interval when proceeding to camera - we don't need to track anymore
-    if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
 
     // Navigate to camera screen with location data
