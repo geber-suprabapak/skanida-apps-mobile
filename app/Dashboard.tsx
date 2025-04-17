@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   Switch,
   ActivityIndicator,
@@ -124,154 +123,136 @@ export default function Dashboard() {
   };
 
   const renderHomeTab = () => (
-    <ScrollView style={styles.tabContent}>
+    <ScrollView className="flex-1 pb-32">
       {/* User greeting and info */}
-      <View style={styles.userInfoContainer}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
+      <View className="flex-row items-center p-4 bg-white mb-2 rounded-xl mx-4 mt-4 shadow">
+        <View className="avatar bg-primary w-15 h-15 mr-4 flex items-center justify-center rounded-full">
+          <Text className="text-white font-bold text-2xl">
             {user?.email?.charAt(0).toUpperCase() || "U"}
           </Text>
         </View>
-        <View style={styles.userTextContainer}>
-          <Text style={styles.welcomeText}>Selamat datang,</Text>
-          <Text style={styles.userNameText}>{user?.email || "Pengguna"}</Text>
+        <View className="flex-1">
+          <Text className="text-gray-500 text-sm">Selamat datang,</Text>
+          <Text className="font-bold text-lg text-black">{user?.email || "Pengguna"}</Text>
         </View>
       </View>
 
       {/* Quick actions */}
-      <View style={styles.quickActionsContainer}>
+      <View className="flex-row justify-between px-4 mb-4">
         <TouchableOpacity
-          style={styles.quickActionButton}
+          className="btn btn-primary btn-large flex-1 mr-2 items-center"
           onPress={() => router.push("/attendance/AbsenceReport")}
         >
-          <AntDesign name="scan1" size={24} color="#007AFF" />
-          <Text style={styles.quickActionText}>Absen</Text>
+          <AntDesign name="scan1" size={24} color="#fff" />
+          <Text className="ml-2">Absen</Text>
         </TouchableOpacity>
-        
         <TouchableOpacity
-          style={styles.quickActionButton}
+          className="btn btn-secondary btn-large flex-1 mx-1 items-center"
           onPress={() => setActiveTab("attendance")}
         >
-          <MaterialIcons name="history" size={24} color="#28a745" />
-          <Text style={styles.quickActionText}>Riwayat</Text>
+          <MaterialIcons name="history" size={24} color="#fff" />
+          <Text className="ml-2">Riwayat</Text>
         </TouchableOpacity>
-        
         <TouchableOpacity
-          style={styles.quickActionButton}
+          className="btn btn-tertiary btn-large flex-1 ml-2 items-center"
           onPress={() => setActiveTab("settings")}
         >
-          <Ionicons name="settings-outline" size={24} color="#6c757d" />
-          <Text style={styles.quickActionText}>Pengaturan</Text>
+          <Ionicons name="settings-outline" size={24} color="#212121" />
+          <Text className="ml-2">Pengaturan</Text>
         </TouchableOpacity>
       </View>
 
       {/* Recent attendance */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Kehadiran Terbaru</Text>
-        
+      <View className="card mb-4">
+        <Text className="heading-lg mb-4">Kehadiran Terbaru</Text>
         {loading ? (
-          <ActivityIndicator size="small" color="#007AFF" />
+          <ActivityIndicator size="small" color="#E600FF" />
         ) : attendanceHistory.length > 0 ? (
           attendanceHistory.slice(0, 3).map((record) => (
-            <View key={record.id} style={styles.attendanceItem}>
-              <View style={styles.attendanceIconContainer}>
+            <View key={record.id} className="flex-row items-center py-3 border-b border-gray-100">
+              <View className="mr-3">
                 <AntDesign name="checkcircle" size={24} color="#28a745" />
               </View>
-              <View style={styles.attendanceDetails}>
-                <Text style={styles.attendanceDate}>{record.date}</Text>
-                <Text style={styles.attendanceReason}>{record.reason}</Text>
+              <View className="flex-1">
+                <Text className="font-medium text-base text-black">{record.date}</Text>
+                <Text className="text-gray-500 text-sm">{record.reason}</Text>
               </View>
-              <Text style={styles.attendanceTime}>
+              <Text className="text-gray-500 text-sm">
                 {new Date(record.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
               </Text>
             </View>
           ))
         ) : (
-          <Text style={styles.emptyText}>Belum ada riwayat kehadiran</Text>
+          <Text className="text-center text-gray-400 py-4">Belum ada riwayat kehadiran</Text>
         )}
-        
         {attendanceHistory.length > 3 && (
           <TouchableOpacity 
-            style={styles.viewAllButton}
+            className="w-full text-center mt-3 border-t border-gray-100 pt-2"
             onPress={() => setActiveTab("attendance")}
           >
-            <Text style={styles.viewAllText}>Lihat Semua</Text>
+            <Text className="text-primary font-medium">Lihat Semua</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Messages */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Pesan Penting</Text>
-        
+      <View className="card mb-4">
+        <Text className="heading-lg mb-4">Pesan Penting</Text>
         {messages.length > 0 ? (
           messages.map((message) => (
             <TouchableOpacity 
               key={message.id} 
-              style={[
-                styles.messageItem, 
-                !message.read && styles.unreadMessage
-              ]}
+              className={`flex-row items-center py-3 border-b border-gray-100 relative ${!message.read ? 'bg-blue-50' : ''}`}
               onPress={() => markMessageAsRead(message.id)}
             >
-              <View style={styles.messageIconContainer}>
+              <View className="mr-3">
                 <Ionicons 
                   name={message.read ? "mail-open-outline" : "mail-unread-outline"} 
                   size={24} 
-                  color={message.read ? "#6c757d" : "#007AFF"} 
+                  color={message.read ? "#6c757d" : "#E600FF"} 
                 />
               </View>
-              <View style={styles.messageContent}>
-                <Text style={styles.messageTitle}>{message.title}</Text>
-                <Text style={styles.messagePreview} numberOfLines={2}>
+              <View className="flex-1">
+                <Text className="font-medium text-base text-black">{message.title}</Text>
+                <Text className="text-gray-500 text-sm" numberOfLines={2}>
                   {message.content}
                 </Text>
-                <Text style={styles.messageDate}>{message.date}</Text>
+                <Text className="text-gray-400 text-xs mt-1">{message.date}</Text>
               </View>
-              {!message.read && <View style={styles.unreadDot} />}
+              {!message.read && <View className="w-2.5 h-2.5 rounded-full bg-primary absolute top-3 right-0" />}
             </TouchableOpacity>
           ))
         ) : (
-          <Text style={styles.emptyText}>Tidak ada pesan baru</Text>
+          <Text className="text-center text-gray-400 py-4">Tidak ada pesan baru</Text>
         )}
       </View>
     </ScrollView>
   );
 
   const renderAttendanceTab = () => (
-    <ScrollView style={styles.tabContent}>
-      <Text style={styles.tabTitle}>Riwayat Kehadiran</Text>
-      
+    <ScrollView className="flex-1 pb-32">
+      <Text className="text-xl font-bold my-4 px-4 text-gray-900">Riwayat Kehadiran</Text>
       {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        <ActivityIndicator size="large" color="#007AFF" className="mt-10" />
       ) : attendanceHistory.length > 0 ? (
-        <View style={styles.attendanceHistoryContainer}>
+        <View className="px-4">
           {attendanceHistory.map((record) => (
-            <View key={record.id} style={styles.historyItem}>
-              <View style={styles.historyDateContainer}>
-                <Text style={styles.historyDate}>{record.date}</Text>
-                <Text style={styles.historyTime}>
-                  {new Date(record.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            <View key={record.id} className="bg-white rounded-xl p-4 mb-3 shadow-sm">
+              <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
+                <Text className="text-base font-bold text-gray-900">{record.date}</Text>
+                <Text className="text-sm text-gray-500">
+                  {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
-              
-              <View style={styles.historyDetails}>
-                <View style={styles.historyStatusContainer}>
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center">
                   <AntDesign name="checkcircle" size={20} color="#28a745" />
-                  <Text style={styles.historyStatus}>{record.reason}</Text>
+                  <Text className="text-sm text-green-600 ml-2">{record.reason}</Text>
                 </View>
-                
                 {record.photo_url && (
-                  <TouchableOpacity 
-                    style={styles.photoPreviewContainer}
-                    onPress={() => {/* Show full photo */}}
-                  >
-                    <Image 
-                      source={{ uri: record.photo_url }} 
-                      style={styles.photoThumbnail} 
-                      resizeMode="cover" 
-                    />
-                    <Text style={styles.viewPhotoText}>Lihat Foto</Text>
+                  <TouchableOpacity className="flex-row items-center" onPress={() => { }}>
+                    <Image source={{ uri: record.photo_url }} className="w-10 h-10 rounded" resizeMode="cover" />
+                    <Text className="text-xs text-blue-500 ml-2">Lihat Foto</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -279,10 +260,10 @@ export default function Dashboard() {
           ))}
         </View>
       ) : (
-        <View style={styles.emptyContainer}>
+        <View className="flex-1 items-center justify-center p-10">
           <Ionicons name="document-text-outline" size={60} color="#d1d1d1" />
-          <Text style={styles.emptyTitle}>Belum Ada Data Kehadiran</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text className="text-lg font-bold text-gray-500 mt-4">Belum Ada Data Kehadiran</Text>
+          <Text className="text-sm text-gray-500 mt-2 text-center">
             Riwayat kehadiran Anda akan muncul di sini
           </Text>
         </View>
@@ -291,51 +272,43 @@ export default function Dashboard() {
   );
 
   const renderSettingsTab = () => (
-    <ScrollView style={styles.tabContent}>
-      <Text style={styles.tabTitle}>Pengaturan</Text>
-      
-      {/* Profile Section */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsSectionTitle}>Profil</Text>
-        
-        <View style={styles.profileInfoContainer}>
-          <View style={styles.profileAvatarContainer}>
-            <Text style={styles.profileAvatarText}>
+    <ScrollView className="flex-1 pb-32">
+      <Text className="text-xl font-bold my-4 px-4 text-gray-900">Pengaturan</Text>
+      <View className="bg-white rounded-xl mx-4 mb-4 p-4 shadow-sm">
+        <Text className="text-sm font-medium text-gray-500 mb-4">Profil</Text>
+        <View className="flex-row items-center mb-4 pb-4 border-b border-gray-200">
+          <View className="w-16 h-16 rounded-full bg-blue-500 justify-center items-center mr-4">
+            <Text className="text-2xl font-bold text-white">
               {user?.email?.charAt(0).toUpperCase() || "U"}
             </Text>
           </View>
-          <View style={styles.profileTextContainer}>
-            <Text style={styles.profileNameText}>{user?.email || "Pengguna"}</Text>
-            <Text style={styles.profileIdText}>User ID: {user?.id?.substring(0, 8) || "Unknown"}</Text>
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-gray-900">{user?.email || "Pengguna"}</Text>
+            <Text className="text-sm text-gray-500 mt-1">User ID: {user?.id?.substring(0,8) || "Unknown"}</Text>
           </View>
         </View>
-        
-        <TouchableOpacity style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
+        <TouchableOpacity className="flex-row items-center py-3 border-b border-gray-200">
+          <View className="w-9 h-9 rounded-lg bg-blue-100 justify-center items-center mr-3">
             <Ionicons name="person-outline" size={24} color="#007AFF" />
           </View>
-          <Text style={styles.settingLabel}>Edit Profil</Text>
-          <AntDesign name="right" size={16} color="#c7c7cc" style={styles.settingsArrow} />
+          <Text className="flex-1 text-base text-gray-900">Edit Profil</Text>
+          <AntDesign name="right" size={16} color="#c7c7cc" className="ml-2" />
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
+        <TouchableOpacity className="flex-row items-center py-3 border-b border-gray-200">
+          <View className="w-9 h-9 rounded-lg bg-blue-100 justify-center items-center mr-3">
             <Ionicons name="key-outline" size={24} color="#007AFF" />
           </View>
-          <Text style={styles.settingLabel}>Ubah Password</Text>
-          <AntDesign name="right" size={16} color="#c7c7cc" style={styles.settingsArrow} />
+          <Text className="flex-1 text-base text-gray-900">Ubah Password</Text>
+          <AntDesign name="right" size={16} color="#c7c7cc" className="ml-2" />
         </TouchableOpacity>
       </View>
-      
-      {/* Preferences Section */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsSectionTitle}>Preferensi</Text>
-        
-        <View style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
+      <View className="bg-white rounded-xl mx-4 mb-4 p-4 shadow-sm">
+        <Text className="text-sm font-medium text-gray-500 mb-4">Preferensi</Text>
+        <View className="flex-row items-center py-3 border-b border-gray-200">
+          <View className="w-9 h-9 rounded-lg bg-blue-100 justify-center items-center mr-3">
             <Ionicons name="moon-outline" size={24} color="#007AFF" />
           </View>
-          <Text style={styles.settingLabel}>Mode Gelap</Text>
+          <Text className="flex-1 text-base text-gray-900">Mode Gelap</Text>
           <Switch
             value={darkMode}
             onValueChange={setDarkMode}
@@ -343,29 +316,21 @@ export default function Dashboard() {
             thumbColor={darkMode ? "#007AFF" : "#f4f3f4"}
           />
         </View>
-        
-        <TouchableOpacity style={styles.settingsItem}>
-          <View style={styles.settingIconContainer}>
+        <TouchableOpacity className="flex-row items-center py-3 border-b border-gray-200">
+          <View className="w-9 h-9 rounded-lg bg-blue-100 justify-center items-center mr-3">
             <Ionicons name="notifications-outline" size={24} color="#007AFF" />
           </View>
-          <Text style={styles.settingLabel}>Notifikasi</Text>
-          <AntDesign name="right" size={16} color="#c7c7cc" style={styles.settingsArrow} />
+          <Text className="flex-1 text-base text-gray-900">Notifikasi</Text>
+          <AntDesign name="right" size={16} color="#c7c7cc" className="ml-2" />
         </TouchableOpacity>
       </View>
-      
-      {/* Account Section */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsSectionTitle}>Akun</Text>
-        
-        
-        <TouchableOpacity 
-          style={[styles.settingsItem, styles.logoutItem]} 
-          onPress={handleLogout}
-        >
-          <View style={[styles.settingIconContainer, styles.logoutIcon]}>
+      <View className="bg-white rounded-xl mx-4 mb-4 p-4 shadow-sm">
+        <Text className="text-sm font-medium text-gray-500 mb-4">Akun</Text>
+        <TouchableOpacity className="flex-row items-center py-3 mt-1" onPress={handleLogout}>
+          <View className="w-9 h-9 rounded-lg bg-red-100 justify-center items-center mr-3">
             <Ionicons name="log-out-outline" size={24} color="#dc3545" />
           </View>
-          <Text style={styles.logoutText}>Keluar</Text>
+          <Text className="text-base text-red-600">Keluar</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -378,7 +343,7 @@ export default function Dashboard() {
           headerShown: true,
           title: "Dashboard",
           headerStyle: {
-            backgroundColor: "#007AFF",
+            backgroundColor: "#E600FF",
           },
           headerTintColor: "#fff",
           headerTitleStyle: {
@@ -386,498 +351,48 @@ export default function Dashboard() {
           },
         }}
       />
-
-      <View style={styles.container}>
+      <View className="flex-1 bg-gray-100 relative">
         {/* Content based on active tab */}
         {activeTab === "home" && renderHomeTab()}
         {activeTab === "attendance" && renderAttendanceTab()}
         {activeTab === "settings" && renderSettingsTab()}
-        
         {/* Bottom Navigation */}
-        <View style={styles.bottomNavigation}>
+        <View className="flex-row justify-around items-center h-16 bg-white border-t border-gray-200">
           <TouchableOpacity
-            style={[styles.navItem, activeTab === "home" && styles.activeNavItem]}
+            className={`flex-1 justify-center items-center ${activeTab === "home" ? "border-t-4 border-purple-600 bg-purple-50" : ""}`}
             onPress={() => setActiveTab("home")}
           >
             <Ionicons 
               name={activeTab === "home" ? "home" : "home-outline"} 
               size={28} 
-              color={activeTab === "home" ? "#007AFF" : "#8e8e93"} 
+              color={activeTab === "home" ? "#E600FF" : "#8e8e93"} 
             />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === "home" && styles.activeNavLabel,
-              ]}
-            >
-              Beranda
-            </Text>
+            <Text className={`text-xs ${activeTab === "home" ? "text-purple-600" : "text-gray-500"}`}>Beranda</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
-            style={[styles.navItem, activeTab === "attendance" && styles.activeNavItem]}
+            className={`flex-1 justify-center items-center ${activeTab === "attendance" ? "border-t-4 border-purple-600 bg-purple-50" : ""}`}
             onPress={() => setActiveTab("attendance")}
           >
             <Ionicons 
               name={activeTab === "attendance" ? "calendar" : "calendar-outline"} 
               size={28} 
-              color={activeTab === "attendance" ? "#007AFF" : "#8e8e93"} 
+              color={activeTab === "attendance" ? "#E600FF" : "#8e8e93"} 
             />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === "attendance" && styles.activeNavLabel,
-              ]}
-            >
-              Kehadiran
-            </Text>
+            <Text className={`text-xs ${activeTab === "attendance" ? "text-purple-600" : "text-gray-500"}`}>Kehadiran</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
-            style={[styles.navItem, activeTab === "settings" && styles.activeNavItem]}
+            className={`flex-1 justify-center items-center ${activeTab === "settings" ? "border-t-4 border-purple-600 bg-purple-50" : ""}`}
             onPress={() => setActiveTab("settings")}
           >
             <Ionicons 
               name={activeTab === "settings" ? "settings" : "settings-outline"} 
               size={28} 
-              color={activeTab === "settings" ? "#007AFF" : "#8e8e93"} 
+              color={activeTab === "settings" ? "#E600FF" : "#8e8e93"} 
             />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === "settings" && styles.activeNavLabel,
-              ]}
-            >
-              Pengaturan
-            </Text>
+            <Text className={`text-xs ${activeTab === "settings" ? "text-purple-600" : "text-gray-500"}`}>Pengaturan</Text>
           </TouchableOpacity>
         </View>
       </View>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f2f2f7",
-    position: "relative",
-  },
-  tabContent: {
-    flex: 1,
-    paddingBottom: 120, // Increased padding to ensure content is visible above bottom nav
-  },
-  tabTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginVertical: 16,
-    paddingHorizontal: 16,
-    color: "#1c1c1e",
-  },
-
-  // Home Tab
-  userInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#ffffff",
-    marginBottom: 10,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#007AFF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  userTextContainer: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: "#8e8e93",
-  },
-  userNameText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1c1c1e",
-  },
-  quickActionsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  quickActionButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    width: "30%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  quickActionText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: "#8e8e93",
-  },
-  sectionContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
-    color: "#1c1c1e",
-  },
-  attendanceItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f2f2f7",
-  },
-  attendanceIconContainer: {
-    marginRight: 12,
-  },
-  attendanceDetails: {
-    flex: 1,
-  },
-  attendanceDate: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1c1c1e",
-  },
-  attendanceReason: {
-    fontSize: 14,
-    color: "#8e8e93",
-  },
-  attendanceTime: {
-    fontSize: 14,
-    color: "#8e8e93",
-  },
-  emptyText: {
-    textAlign: "center",
-    color: "#8e8e93",
-    paddingVertical: 16,
-  },
-  viewAllButton: {
-    alignItems: "center",
-    marginTop: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#f2f2f7",
-  },
-  viewAllText: {
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  messageItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f2f2f7",
-    position: "relative",
-  },
-  unreadMessage: {
-    backgroundColor: "#f0f8ff",
-  },
-  messageIconContainer: {
-    marginRight: 12,
-  },
-  messageContent: {
-    flex: 1,
-  },
-  messageTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1c1c1e",
-  },
-  messagePreview: {
-    fontSize: 14,
-    color: "#8e8e93",
-    marginTop: 2,
-  },
-  messageDate: {
-    fontSize: 12,
-    color: "#8e8e93",
-    marginTop: 4,
-  },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#007AFF",
-    position: "absolute",
-    top: 12,
-    right: 0,
-  },
-
-  // Attendance History Tab
-  attendanceHistoryContainer: {
-    paddingHorizontal: 16,
-  },
-  historyItem: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  historyDateContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f2f2f7",
-    paddingBottom: 8,
-  },
-  historyDate: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#1c1c1e",
-  },
-  historyTime: {
-    fontSize: 14,
-    color: "#8e8e93",
-  },
-  historyDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  historyStatusContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  historyStatus: {
-    fontSize: 14,
-    color: "#28a745",
-    marginLeft: 8,
-  },
-  photoPreviewContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  photoThumbnail: {
-    width: 40,
-    height: 40,
-    borderRadius: 4,
-  },
-  viewPhotoText: {
-    fontSize: 12,
-    color: "#007AFF",
-    marginLeft: 8,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#8e8e93",
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: "#8e8e93",
-    marginTop: 8,
-    textAlign: "center",
-  },
-  loader: {
-    marginTop: 40,
-  },
-
-  // Settings Tab
-  settingsSection: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  settingsSectionTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#8e8e93",
-    marginBottom: 16,
-  },
-  profileInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f2f2f7",
-  },
-  profileAvatarContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "#007AFF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  profileAvatarText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  profileTextContainer: {
-    flex: 1,
-  },
-  profileNameText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1c1c1e",
-  },
-  profileIdText: {
-    fontSize: 14,
-    color: "#8e8e93",
-    marginTop: 4,
-  },
-  settingsItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f2f2f7",
-  },
-  settingIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: "rgba(0, 122, 255, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  settingLabel: {
-    flex: 1,
-    fontSize: 16,
-    color: "#1c1c1e",
-  },
-  settingsArrow: {
-    marginLeft: 8,
-  },
-  languageSelector: {
-    flexDirection: "row",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e5e5ea",
-    overflow: "hidden",
-  },
-  languageOption: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    backgroundColor: "#f2f2f7",
-  },
-  activeLanguage: {
-    backgroundColor: "#007AFF",
-  },
-  languageText: {
-    fontSize: 14,
-    color: "#8e8e93",
-  },
-  activeLanguageText: {
-    color: "#ffffff",
-  },
-  logoutItem: {
-    borderBottomWidth: 0,
-    marginTop: 4,
-    marginBottom: 8, // Added margin bottom for better spacing
-  },
-  logoutIcon: {
-    backgroundColor: "rgba(220, 53, 69, 0.1)",
-  },
-  logoutText: {
-    fontSize: 16,
-    color: "#dc3545",
-  },
-
-  // Bottom Navigation
-  bottomNavigation: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80, // Ditingkatkan dari 70 menjadi 80
-    backgroundColor: "#ffffff",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e5ea",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 10, // Ditingkatkan untuk Android
-  },
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    height: "100%",
-    paddingVertical: 10, // Menambahkan padding
-  },
-  activeNavItem: {
-    borderTopWidth: 3, // Ditingkatkan dari 2 menjadi 3
-    borderTopColor: "#007AFF",
-    backgroundColor: "rgba(0, 122, 255, 0.05)", // Latar belakang untuk tab aktif
-  },
-  navLabel: {
-    marginTop: 4,
-    fontSize: 13, // Ditingkatkan dari 12 menjadi 13
-    color: "#8e8e93",
-    fontWeight: "500", // Menambahkan ketebalan
-  },
-  activeNavLabel: {
-    color: "#007AFF",
-    fontWeight: "bold", // Membuat teks lebih tebal untuk tab aktif
-  },
-});
