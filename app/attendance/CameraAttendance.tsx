@@ -1,7 +1,9 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { Camera as ExpoCamera } from "expo-camera";
+import { CameraType } from "expo-camera/build/Camera.types";
 import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import React, { useRef, useState, useEffect } from "react";
 import {
   View,
@@ -9,16 +11,28 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  StyleSheet,
+  Dimensions,
+  Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming,
+  withSequence
+} from "react-native-reanimated";
 
 import { supabase } from "~/utils/supabase";
 
+const { width, height } = Dimensions.get("window");
+
 const CameraAttendance = () => {
-  const cameraRef = useRef<CameraView>(null);
+  const cameraRef = useRef<ExpoCamera>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState<"back" | "front">("back");
+  const [facing, setFacing] = useState(CameraType.back);
   const [isTakingPicture, setIsTakingPicture] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState("");
   const router = useRouter();
 
   // Get location data passed from AbsenceReport screen
@@ -30,16 +44,42 @@ const CameraAttendance = () => {
     userId: (params.userId as string) || "",
   };
 
-  useEffect(() => {
-    if (!permission) {
-      return;
-    }
-    if (!permission.granted) {
-      console.log("Requesting camera permission...");
-      requestPermission();
-    }
+  // Animation for camera button press
+  const buttonScale = useSharedValue(1);
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }]
+  }));
 
-    // Validate location data
+  // Function to animate button press
+  const animateCameraButton = () => {
+    buttonScale.value = withSequence(
+      withTiming(0.8, { duration: 100 }),
+      withTiming(1, { duration: 200 })
+    );
+  };
+
+  useEffect(() => {
+    // Request camera permissions immediately
+    (async () => {
+      try {
+        if (!permission?.granted) {
+          const permissionResult = await requestPermission();
+          console.log("Camera permission result:", permissionResult.granted);
+          
+          if (!permissionResult.granted) {
+            Alert.alert(
+              "Camera Permission Required",
+              "Please grant camera permission to take attendance photos."
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Error requesting camera permission:", err);
+        setCameraError("Failed to request camera permissions");
+      }
+    })();
+
+    // Check location data
     if (
       !locationData.userId ||
       !locationData.latitude ||
@@ -51,13 +91,28 @@ const CameraAttendance = () => {
         [{ text: "OK", onPress: () => router.back() }],
       );
     }
-  }, [permission, requestPermission]);
+  }, []);
+
+  // Handle camera ready state
+  const onCameraReady = () => {
+    console.log("Camera is ready!");
+    setIsCameraReady(true);
+  };
+
+  // Handle camera errors
+  const onCameraError = (error: any) => {
+    console.error("Camera error:", error);
+    setCameraError(typeof error === 'string' ? error : error.message || "Failed to initialize camera");
+  };
 
   // Utility: convert base64 string to Uint8Array
   function base64ToUint8Array(base64: string) {
-    const binaryString = globalThis.atob
-      ? atob(base64)
-      : Buffer.from(base64, "base64").toString("binary");
+    let binaryString: string;
+    if (typeof atob !== 'undefined') {
+      binaryString = atob(base64);
+    } else {
+      binaryString = Buffer.from(base64, "base64").toString("binary");
+    }
     const len = binaryString.length;
     const bytes = new Uint8Array(len);
     for (let i = 0; i < len; i++) {
@@ -80,7 +135,6 @@ const CameraAttendance = () => {
       console.log("Uploading base64 PNG photo data...");
 
       // Create a unique file name using timestamp and userId with .png extension
-       // Format: TanggalHariIni_DataLokasi-UserID.png
       const currentTimestamp = Date.now();
       const formattedDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
       const fileName = `${formattedDate}_${currentTimestamp}_${locationData.userId}.png`;
@@ -150,226 +204,188 @@ const CameraAttendance = () => {
   };
 
   const takePicture = async () => {
+    if (!isCameraReady) {
+      Alert.alert("Camera not ready", "Please wait for the camera to initialize.");
+      return;
+    }
+    
     if (cameraRef.current && !isTakingPicture) {
       setIsTakingPicture(true);
+      animateCameraButton();
+      
       try {
-        const options = { quality: 0.7, base64: false, skipProcessing: true }; // Keep original capture quality high initially
-        const photo = await cameraRef.current.takePictureAsync(options);
+        console.log("Attempting to take picture...");
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.7,
+          base64: true,
+          exif: false,
+        });
 
+        console.log("Photo taken:", photo ? "success" : "failed");
+        
         if (photo && photo.uri) {
-          console.log("Original Photo URI:", photo.uri);
-
-          // Manipulate the image: resize, compress (still applies quality to PNG), AND get base64 directly
-          console.log("Manipulating image to PNG and getting base64...");
+          console.log("Photo URI:", photo.uri);
+          
+          // Process the image
           const manipResult = await ImageManipulator.manipulateAsync(
             photo.uri,
-            [{ resize: { width: 800 } }], // Resize width to 800px
-            {
-              compress: 0.7,
-              format: ImageManipulator.SaveFormat.PNG,
-              base64: true,
-            }, // Compress (quality for PNG), save as PNG, GET BASE64
+            [{ resize: { width: 800 } }],
+            { format: ImageManipulator.SaveFormat.PNG, base64: true, compress: 0.7 }
           );
-          console.log("Image manipulation complete.");
-
-          // Check if base64 data exists
-          if (!manipResult.base64) {
-            throw new Error("Image manipulation did not return base64 data.");
+          
+          if (manipResult && manipResult.base64) {
+            await saveAttendanceToSupabase(manipResult.base64);
+            
+            Alert.alert("Success", "Attendance recorded successfully!", [
+              { text: "OK", onPress: () => router.replace("/Dashboard") }
+            ]);
+          } else {
+            throw new Error("Image manipulation failed");
           }
-
-          // Save attendance data using the BASE64 data from manipulation result
-          await saveAttendanceToSupabase(manipResult.base64);
-
-          Alert.alert("Success", "Attendance recorded successfully!", [
-            {
-              text: "OK",
-              onPress: () => {
-                console.log("Navigating to Dashboard...");
-                router.replace("/Dashboard");
-              },
-            },
-          ]);
         } else {
-          Alert.alert("Error", "Failed to capture photo (no data returned).");
+          throw new Error("No photo data returned");
         }
-      } catch (err) {
-        console.error("Error taking picture or saving data:", err);
-        // Check if the error came from saveAttendanceToSupabase or manipulation
-        if (
-          err instanceof Error &&
-          (err.message === "Failed to upload photo" ||
-            err.message === "Failed to save attendance record" ||
-            err.message.includes("base64"))
-        ) {
-          Alert.alert(
-            "Error",
-            `Failed to process or save attendance: ${err.message}`,
-          );
-        } else {
-          Alert.alert("Error", "Failed to capture photo or process image.");
-        }
+      } catch (error: unknown) {
+        console.error("Error taking picture:", error);
+        Alert.alert(
+          "Error",
+          `Failed to take picture: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       } finally {
         setIsTakingPicture(false);
       }
-    } else if (isTakingPicture) {
-      console.log("Capture in progress...");
-    } else {
-      Alert.alert("Error", "Camera reference not available.");
     }
   };
 
   // Toggle camera facing
   const toggleCameraFacing = () => {
-    setFacing((current) => (current === "back" ? "front" : "back"));
+    setFacing(current => current === CameraType.back ? CameraType.front : CameraType.back);
   };
 
+  // Show loading state while requesting permission
   if (!permission) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.messageText}>Loading permissions...</Text>
+      <View className="flex-1 bg-black justify-center items-center">
+        <Stack.Screen options={{ title: "Camera Attendance" }} />
+        <ActivityIndicator size="large" color="#E600FF" />
+        <Text className="text-white text-lg text-center mx-5 mb-5">Requesting camera permission...</Text>
       </View>
     );
   }
 
+  // Show permission request UI if not granted
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.permissionText}>
-          We need your permission to show the camera
+      <View className="flex-1 bg-black justify-center items-center">
+        <Stack.Screen options={{ title: "Camera Permission" }} />
+        <Text className="text-white text-lg text-center mx-5 mb-5">
+          We need your permission to use the camera
         </Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.button}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
+        <TouchableOpacity
+          className="bg-[#E600FF] px-8 py-4 rounded-lg mt-5"
+          onPress={requestPermission}
+        >
+          <Text className="text-white text-base font-bold">Grant Permission</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
-        {/* Location info overlay */}
-        <View style={styles.locationOverlay}>
-          <Text style={styles.locationText}>
-            Location: {locationData.latitude.toFixed(4)},{" "}
-            {locationData.longitude.toFixed(4)}
-          </Text>
-        </View>
+  // Show error message if camera had an error
+  if (cameraError) {
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <Stack.Screen options={{ title: "Camera Error" }} />
+        <Text className="text-red-400 text-lg text-center mx-5 mb-5">{cameraError}</Text>
+        <TouchableOpacity
+          className="bg-[#E600FF] px-8 py-4 rounded-lg mt-5"
+          onPress={() => router.back()}
+        >
+          <Text className="text-white text-base font-bold">Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.flipButton}
-            onPress={toggleCameraFacing}
-          >
-            <Text style={styles.flipButtonText}>🔄</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.captureButton,
-              isTakingPicture ? styles.captureButtonDisabled : {},
-            ]}
-            onPress={takePicture}
-            disabled={isTakingPicture}
-          >
-            {isTakingPicture ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <View style={styles.captureButtonInner} />
-            )}
-          </TouchableOpacity>
-          <View style={styles.flipButtonPlaceholder} />
-        </View>
+  // Main camera view
+  return (
+    <View className="flex-1 bg-black">
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Camera Attendance",
+          headerStyle: {
+            backgroundColor: "#E600FF",
+          },
+          headerTintColor: "#fff",
+        }}
+      />
+      
+      {/* Camera component */}
+      <CameraView
+        ref={cameraRef}
+        className="flex-1 w-full"
+        type={facing}
+        onCameraReady={onCameraReady}
+        onError={onCameraError}
+      >
+        {/* Camera UI Overlay */}
+        {isCameraReady ? (
+          <>
+            {/* Location info */}
+            <View className="absolute top-3 left-0 right-0 bg-black/60 p-2 items-center">
+              <Text className="text-white text-sm">
+                <Ionicons name="location" size={14} color="#fff" />
+                {' '}Location: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+              </Text>
+            </View>
+
+            {/* Camera Controls */}
+            <View className="absolute bottom-8 left-0 right-0 flex-row justify-around items-center px-5">
+              {/* Flip camera button */}
+              <TouchableOpacity
+                className="w-15 h-15 rounded-full bg-black/50 justify-center items-center p-3"
+                onPress={toggleCameraFacing}
+              >
+                <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+              </TouchableOpacity>
+              
+              {/* Capture button */}
+              <Animated.View
+                style={animatedButtonStyle}
+                className="w-20 h-20 rounded-full bg-white/30 justify-center items-center"
+              >
+                <TouchableOpacity
+                  className="w-[70px] h-[70px] rounded-full bg-white justify-center items-center"
+                  onPress={takePicture}
+                  disabled={isTakingPicture || !isCameraReady}
+                >
+                  {isTakingPicture ? (
+                    <ActivityIndicator size="large" color="#E600FF" />
+                  ) : (
+                    <View className="w-[60px] h-[60px] rounded-full bg-[#E600FF]" />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+              
+              {/* Back button */}
+              <TouchableOpacity
+                className="w-15 h-15 rounded-full bg-black/50 justify-center items-center p-3"
+                onPress={() => router.back()}
+              >
+                <Ionicons name="arrow-back" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <View className="flex-1 justify-center items-center bg-black/70">
+            <ActivityIndicator size="large" color="#E600FF" />
+            <Text className="text-white mt-3">Initializing camera...</Text>
+          </View>
+        )}
       </CameraView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-  },
-  camera: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "flex-end",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-  },
-  captureButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "#ffffff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: "rgba(255, 255, 255, 0.5)",
-  },
-  captureButtonDisabled: {
-    backgroundColor: "#a0a0a0",
-  },
-  captureButtonInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#ff0000",
-  },
-  flipButton: {
-    padding: 10,
-    borderRadius: 50,
-    backgroundColor: "rgba(0,0,0,0.3)",
-  },
-  flipButtonPlaceholder: {
-    width: 40,
-    height: 40,
-  },
-  flipButtonText: {
-    fontSize: 24,
-    color: "#fff",
-  },
-  permissionText: {
-    textAlign: "center",
-    fontSize: 18,
-    marginBottom: 20,
-    color: "#333",
-  },
-  messageText: {
-    marginTop: 10,
-    color: "#555",
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  locationOverlay: {
-    position: "absolute",
-    top: 10,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: 8,
-  },
-  locationText: {
-    color: "white",
-    textAlign: "center",
-    fontSize: 12,
-  },
-});
 
 export default CameraAttendance;

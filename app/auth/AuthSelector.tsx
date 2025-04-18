@@ -1,36 +1,63 @@
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, ImageBackground } from "react-native";
+import Animated, { 
+  FadeIn, 
+  SlideInUp,
+  BounceIn
+} from "react-native-reanimated";
+
+import { Button } from "~/components/Button";
 
 export default function LoginScreen() {
   const router = useRouter();
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: false, // Jika Anda ingin menghilangkan seluruh header, bisa pakai ini
-        }}
-      />
-      <View className="flex-1 items-center justify-center space-y-4 p-4">
-        <Text className="mb-3 text-xl font-medium">
-          Silahkan Login atau Register
-        </Text>
-        <TouchableOpacity
-          className="w-40 items-center rounded-md bg-blue-500 px-4 py-2"
-          onPress={() => router.push("/auth/Login")}
-        >
-          <Text className="font-medium text-white">Login</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="w-40 items-center rounded-md bg-blue-500 px-4 py-2"
-          onPress={() => router.push("/auth/Register")}
-        >
-          <Text className="font-medium text-white">Register</Text>
-        </TouchableOpacity>
+    <ImageBackground 
+      source={require("../../assets/splash.png")}
+      className="flex-1"
+      resizeMode="cover"
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      
+      <View className="flex-1 justify-end p-6 pb-12 bg-black bg-opacity-20">
+        <Animated.View entering={BounceIn.delay(300).duration(800)}>
+          <Text className="text-4xl font-bold text-white text-center mb-2">
+            Skanida Apps
+          </Text>
+        </Animated.View>
+        
+        <Animated.View entering={FadeIn.delay(600).duration(800)}>
+          <Text className="text-white text-center mb-12 text-lg">
+            Sistem Kehadiran dan Informasi Data
+          </Text>
+        </Animated.View>
+        
+        <Animated.View entering={SlideInUp.delay(800).duration(500)}>
+          <Button 
+            variant="primary" 
+            size="large" 
+            className="mb-4"
+            onPress={() => router.push("/auth/Login")}
+          >
+            Masuk
+          </Button>
+        </Animated.View>
+        
+        <Animated.View entering={SlideInUp.delay(1000).duration(500)}>
+          <Button 
+            variant="outline" 
+            size="large" 
+            className="mb-4 border-white" 
+            textClassName="text-white"
+            onPress={() => router.push("/auth/Register")}
+          >
+            Daftar
+          </Button>
+        </Animated.View>
       </View>
-    </>
+    </ImageBackground>
   );
 }
 //test

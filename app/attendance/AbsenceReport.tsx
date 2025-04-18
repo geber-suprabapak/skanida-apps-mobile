@@ -5,362 +5,303 @@ import {
   View,
   Text,
   Alert,
-  TouchableOpacity,
+  // TouchableOpacity, // Replaced by Button
   ActivityIndicator,
-  StyleSheet,
+  // StyleSheet, // Removed StyleSheet
 } from "react-native";
 import * as Location from "expo-location";
 import { supabase } from "~/utils/supabase";
+import { Button } from "~/components/Button"; // Import the custom Button
+import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  SlideInUp,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  withSequence,
+  withDelay,
+  Easing
+} from "react-native-reanimated";
 
 // --- Component Definition Starts Here ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
-  const [loading, setLoading] = useState(true); // Initialize as true
+  const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null,
   );
-  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null); // Use null to indicate "not checked yet"
-  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null);
+  const [statusMessage, setStatusMessage] = useState("");
   const router = useRouter();
 
-  // --- Configuration ---
-  const TARGET_LOCATION = { latitude: -7.4503, longitude: 110.221 };
-  const MAX_DISTANCE = 500;
+  // Animation values
+  const pulseValue = useSharedValue(1);
+  const rotateValue = useSharedValue(0);
 
-  // --- Function to fetch user data and location ---
-  const fetchUserDataAndLocation = async () => {
-    setLoading(true);
-    setPermissionDenied(false);
+  // Animated styles
+  const pulseAnimationStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: pulseValue.value },
+      ],
+    };
+  });
+
+  const rotateAnimationStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { 
+          rotateZ: `${rotateValue.value}deg` 
+        },
+      ],
+    };
+  });
+
+  // Start pulse animation
+  useEffect(() => {
+    pulseValue.value = withRepeat(
+      withSequence(
+        withTiming(1.15, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1, // Infinite repeat
+      true // Reverse on repeat
+    );
+
+    // Animate the location icon rotation when searching
+    if (loading) {
+      rotateValue.value = withRepeat(
+        withTiming(360, { duration: 2000, easing: Easing.linear }),
+        -1 // Infinite repeat
+      );
+    }
+  }, [loading]);
+
+  // --- LOCATION CHECKING LOGIC ---
+  useEffect(() => {
+    checkCurrentUser();
+    requestAndCheckLocation();
+  }, []);
+
+  const checkCurrentUser = async () => {
     try {
-      // Get User
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        console.error("User auth error:", userError?.message);
-        Alert.alert("Error", "Failed to retrieve user. Please log in again.");
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUserId(data.user.id);
+      } else {
+        Alert.alert("Error", "Pengguna tidak ditemukan. Silakan login kembali.");
         router.replace("/auth/Login");
-        return;
       }
-      setUserId(userData.user.id);
+    } catch (error) {
+      console.error("Error getting user:", error);
+      Alert.alert("Error", "Gagal mendapatkan data pengguna");
+    }
+  };
 
-      // Get Location Permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
+  const requestAndCheckLocation = async () => {
+    try {
+      setLoading(true);
+
+      let { status } = await Location.requestForegroundPermissionsAsync();
+
       if (status !== "granted") {
-        console.log("Location permission denied");
-        setPermissionDenied(true);
-        setIsWithinRange(false);
-        setLoading(false); // Stop loading here as we can't proceed without permission
+        setStatusMessage("Izin lokasi ditolak");
+        setLoading(false);
         return;
       }
 
-      // Get Current Location
-      console.log("Getting current location...");
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+      let currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
       });
-      setLocation(currentLocation);
-      console.log("Current location:", currentLocation.coords);
 
-      // Calculate Distance
-      if (currentLocation?.coords) {
-        const distance = calculateDistance(
-          currentLocation.coords.latitude,
-          currentLocation.coords.longitude,
-          TARGET_LOCATION.latitude,
-          TARGET_LOCATION.longitude,
-        );
-        console.log(`Distance to target: ${distance.toFixed(2)} meters`);
-        setIsWithinRange(distance <= MAX_DISTANCE);
-      } else {
-        console.error("Could not get location coordinates.");
-        setIsWithinRange(false);
-        Alert.alert("Error", "Failed to get precise location coordinates.");
-      }
-    } catch (exception: any) {
-      console.error("Error fetching data or location:", exception);
-      if (exception.message.includes("Location request timed out")) {
-        Alert.alert(
-          "Error",
-          "Could not get location: Request timed out. Please ensure GPS is enabled and try again.",
-        );
-      } else {
-        Alert.alert(
-          "Error",
-          "An unexpected error occurred while getting location or user data.",
-        );
-      }
-      setIsWithinRange(false);
+      setLocation(currentLocation);
+
+      // SMKN 2 Magelang coordinates
+      const schoolLatitude = -7.4503; // SMKN 2 Magelang latitude
+      const schoolLongitude = 110.2241; // SMKN 2 Magelang longitude
+      const maxDistanceInMeters = 500; // Maximum allowed distance in meters (500m range)
+
+      // Calculate distance between current location and school
+      const distance = calculateDistance(
+        currentLocation.coords.latitude,
+        currentLocation.coords.longitude,
+        schoolLatitude,
+        schoolLongitude,
+      );
+
+      setIsWithinRange(distance <= maxDistanceInMeters);
+      setStatusMessage(
+        distance <= maxDistanceInMeters
+          ? `Anda berada dalam jangkauan SMKN 2 Magelang (${Math.round(distance)}m)`
+          : `Anda berada diluar jangkauan SMKN 2 Magelang (${Math.round(distance)}m)`
+      );
+    } catch (error) {
+      console.error("Error getting location:", error);
+      setStatusMessage("Gagal mendapatkan lokasi");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- useEffect to fetch user data on mount ---
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true); // Start loading immediately
-      try {
-        // Get User
-        const { data: userData, error: userError } =
-          await supabase.auth.getUser();
-        if (userError || !userData?.user) {
-          console.error("User auth error:", userError?.message);
-          Alert.alert("Error", "Failed to retrieve user. Please log in again.");
-          router.replace("/auth/Login");
-          return;
-        }
-        setUserId(userData.user.id);
-
-        // Immediately fetch location after user data is fetched
-        await fetchUserDataAndLocation();
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        Alert.alert(
-          "Error",
-          "Failed to retrieve user data. Please try again.",
-        );
-        setLoading(false); // Ensure loading is set to false in case of error
-      } finally {
-        // Keep loading as true until location is fetched
-        // setLoading(false); // Stop loading after initial user data fetch - REMOVE THIS
-      }
-    };
-
-    fetchInitialData();
-  }, [router]);
-
-  // --- Helper function: calculateDistance ---
+  // Function to calculate distance between two coordinates using Haversine formula
   const calculateDistance = (
     lat1: number,
     lon1: number,
     lat2: number,
     lon2: number,
   ) => {
-    const toRad = (value: number) => (value * Math.PI) / 180;
     const R = 6371e3; // Earth radius in meters
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const lat1Rad = toRad(lat1);
-    const lat2Rad = toRad(lat2);
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.sin(dLon / 2) *
-        Math.sin(dLon / 2) *
-        Math.cos(lat1Rad) *
-        Math.cos(lat2Rad);
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    const distance = R * c;
+
+    return distance;
   };
 
-  // --- Event Handler: handleRetryLocation ---
-  const handleRetryLocation = async () => {
-    await fetchUserDataAndLocation();
-  };
-
-  // --- Event Handler: handleSubmitLocationAndDate ---
-  const handleSubmitLocationAndDate = async () => {
-    setLoading(true); // Set loading to true when the submit button is pressed
-    if (!userId || !location || !location.coords) {
-      Alert.alert(
-        "Error",
-        "User or location coordinate data is missing. Please retry.",
-      );
-      setLoading(false);
+  // --- PROCEED TO CAMERA ---
+  const handleProceedToCamera = () => {
+    if (!location) {
+      Alert.alert("Error", "Lokasi tidak tersedia");
       return;
     }
 
-    if (isWithinRange === false) { // Check if isWithinRange is explicitly false
+    if (!isWithinRange) {
       Alert.alert(
-        "Error",
-        "You seem to be outside the allowed range. Please check your location again.",
+        "Peringatan",
+        "Anda berada di luar jangkauan kantor. Absensi mungkin akan ditolak.",
+        [
+          {
+            text: "Batal",
+            style: "cancel",
+          },
+          {
+            text: "Lanjutkan",
+            onPress: () => navigateToCameraWithLocation(),
+          },
+        ],
       );
-      setLoading(false);
-      return;
+    } else {
+      navigateToCameraWithLocation();
     }
-
-    // Navigate to camera screen with location data
-    router.push({
-      pathname: "/attendance/CameraAttendance",
-      params: {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        timestamp: new Date().toISOString(),
-        userId: userId,
-      },
-    });
-    setLoading(false);
   };
 
-  // --- Render Logic ---
-  if (loading && !permissionDenied) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.infoText}>
-          {permissionDenied
-            ? "Checking user data..."
-            : "Checking location and user data..."}
-        </Text>
-      </View>
-    );
-  }
+  const navigateToCameraWithLocation = () => {
+    if (location) {
+      router.push({
+        pathname: "/attendance/CameraAttendance",
+        params: {
+          latitude: location.coords.latitude.toString(),
+          longitude: location.coords.longitude.toString(),
+          userId: userId,
+        },
+      });
+    }
+  };
 
-  if (permissionDenied) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Location Permission Denied</Text>
-        <Text style={styles.infoText}>
-          Attendance requires location access. Please grant permission in your
-          device settings.
-        </Text>
-        <TouchableOpacity onPress={handleRetryLocation} style={styles.button}>
-          <Text style={styles.buttonText}>Check Permission Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (isWithinRange === false) { // Only show this if we've checked and it's false
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>You are outside the allowed range.</Text>
-        <Text style={styles.infoText}>
-          Move closer to the target location ({MAX_DISTANCE}m range).
-        </Text>
-        {location?.coords && (
-          <Text style={styles.coordsText}>
-            Your location: {location.coords.latitude.toFixed(4)},{" "}
-            {location.coords.longitude.toFixed(4)}
-          </Text>
-        )}
-        <TouchableOpacity
-          onPress={handleRetryLocation}
-          disabled={loading}
-          style={[styles.button, loading ? styles.buttonDisabled : {}]}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? "Checking..." : "Check Location Again"}
-          </Text>
-        </TouchableOpacity>
-        {loading && (
-          <ActivityIndicator
-            size="small"
-            color="#007AFF"
-            style={{ marginTop: 10 }}
-          />
-        )}
-      </View>
-    );
-  }
-
-  // Default return if within range or hasn't been checked yet
+  // --- RENDER UI ---
   return (
-    <View style={styles.container}>
-      <Text style={styles.titleText}>Location Verified</Text>
-      <Text style={styles.successText}>You are within the allowed range.</Text>
-      <Text style={styles.infoText}>
-        Press the button below to record your location and proceed to take a
-        picture.
-      </Text>
-      {location?.coords && (
-        <Text style={styles.coordsText}>
-          Your location: {location.coords.latitude.toFixed(4)},{" "}
-          {location.coords.longitude.toFixed(4)}
-        </Text>
-      )}
-      <TouchableOpacity
-        onPress={handleSubmitLocationAndDate}
-        disabled={loading}
-        style={[styles.submitButton, loading ? styles.buttonDisabled : {}]}
+    <View className="flex-1 bg-white p-6 items-center justify-center">
+      <Animated.View 
+        entering={ZoomIn.duration(600)} 
+        className="mb-6 items-center"
       >
-        <Text style={styles.submitButtonText}>
-          {loading ? "Submitting..." : "Submit Location & Proceed"}
+        <Text className="text-2xl font-bold text-brand-purple mb-2">
+          Absensi Kehadiran
         </Text>
-      </TouchableOpacity>
-      {loading && (
-        <ActivityIndicator
-          size="small"
-          color="#007AFF"
-          style={{ marginTop: 20 }}
-        />
-      )}
+        <Text className="text-gray-600 text-center">
+          Silahkan lakukan absensi kehadiran Anda
+        </Text>
+      </Animated.View>
+
+      {/* Status Card */}
+      <Animated.View 
+        entering={FadeInUp.delay(300).duration(600)}
+        className="w-full bg-white rounded-xl p-5 shadow-md mb-6"
+      >
+        {loading ? (
+          <View className="items-center py-6">
+            <Animated.View style={rotateAnimationStyle}>
+              <MaterialIcons name="location-searching" size={60} color="#E600FF" />
+            </Animated.View>
+            <Text className="text-lg mt-4 text-gray-600">Memeriksa lokasi...</Text>
+          </View>
+        ) : (
+          <Animated.View entering={FadeIn.duration(400)}>
+            <View className="flex-row items-center justify-center mb-4">
+              {isWithinRange ? (
+                <Animated.View style={pulseAnimationStyle}>
+                  <Ionicons name="checkmark-circle" size={60} color="#28a745" />
+                </Animated.View>
+              ) : (
+                <MaterialIcons name="location-off" size={60} color="#dc3545" />
+              )}
+            </View>
+            <Text className={`text-lg text-center font-semibold mb-2 ${
+              isWithinRange ? "text-green-600" : "text-red-600"
+            }`}>
+              {isWithinRange ? "Lokasi Terverifikasi" : "Di Luar Jangkauan"}
+            </Text>
+            <Text className="text-gray-600 text-center">{statusMessage}</Text>
+            
+            {location && (
+              <View className="mt-4 bg-gray-50 p-3 rounded-lg">
+                <Text className="text-gray-500 text-center text-sm">
+                  Koordinat: {location.coords.latitude.toFixed(6)}, {location.coords.longitude.toFixed(6)}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        )}
+      </Animated.View>
+
+      {/* Action Buttons */}
+      <Animated.View 
+        entering={SlideInUp.delay(600).duration(500)}
+        className="w-full space-y-3"
+      >
+        <Button
+          variant="primary"
+          size="large"
+          onPress={handleProceedToCamera}
+          disabled={loading}
+          leftIcon={<Ionicons name="camera-outline" size={24} color="#fff" />}
+        >
+          Lanjutkan ke Kamera
+        </Button>
+        
+        <Button
+          variant="secondary"
+          size="large"
+          onPress={requestAndCheckLocation}
+          disabled={loading}
+          leftIcon={<Ionicons name="refresh-outline" size={24} color="#444" />}
+        >
+          Periksa Lokasi Kembali
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="large"
+          onPress={() => router.back()}
+          leftIcon={<Ionicons name="arrow-back-outline" size={24} color="#E600FF" />}
+        >
+          Kembali
+        </Button>
+      </Animated.View>
     </View>
   );
 };
-
-// --- Styles ---
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    backgroundColor: "#f8f9fa",
-  },
-  titleText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
-  },
-  successText: {
-    fontSize: 18,
-    color: "#28a745",
-    marginBottom: 15,
-    textAlign: "center",
-  },
-  errorText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#dc3545",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  infoText: {
-    fontSize: 16,
-    color: "#6c757d",
-    textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  coordsText: {
-    fontSize: 14,
-    color: "#495057",
-    marginBottom: 20,
-    fontStyle: "italic",
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    minWidth: 200,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  submitButton: {
-    backgroundColor: "#28a745",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    minWidth: 250,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  submitButtonText: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  buttonDisabled: {
-    backgroundColor: "#6c757d",
-  },
-});
 
 export default AbsenceReport;
