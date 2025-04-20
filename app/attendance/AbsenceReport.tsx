@@ -7,7 +7,6 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet,
 } from "react-native";
 import * as Location from "expo-location";
 import { supabase } from "~/utils/supabase";
@@ -195,9 +194,9 @@ const AbsenceReport = () => {
   // --- Render Logic ---
   if (loading && !permissionDenied) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.infoText}>
+      <View className="flex-1 items-center justify-center p-5 bg-primary-50">
+        <ActivityIndicator size="large" color="#eab308" className="mb-4" />
+        <Text className="text-base text-primary-800">
           {permissionDenied
             ? "Checking user data..."
             : "Checking location and user data..."}
@@ -208,159 +207,67 @@ const AbsenceReport = () => {
 
   if (permissionDenied) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Location Permission Denied</Text>
-        <Text style={styles.infoText}>
-          Attendance requires location access. Please grant permission in your
-          device settings.
+      <View className="flex-1 items-center justify-center p-5 bg-primary-50">
+        <Text className="text-lg font-bold text-red-600 mb-2">Location Permission Denied</Text>
+        <Text className="text-base text-primary-800 text-center mb-4">
+          Attendance requires location access. Please grant permission in your device settings.
         </Text>
-        <TouchableOpacity onPress={handleRetryLocation} style={styles.button}>
-          <Text style={styles.buttonText}>Check Permission Again</Text>
+        <TouchableOpacity onPress={handleRetryLocation} className="bg-primary-500 py-3 px-6 rounded-lg">
+          <Text className="text-white font-bold">Check Permission Again</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  if (isWithinRange === false) { // Only show this if we've checked and it's false
+  if (isWithinRange === false) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>You are outside the allowed range.</Text>
-        <Text style={styles.infoText}>
+      <View className="flex-1 items-center justify-center p-5 bg-primary-50">
+        <Text className="text-lg font-bold text-red-600 mb-2">You are outside the allowed range.</Text>
+        <Text className="text-base text-primary-800 text-center mb-4">
           Move closer to the target location ({MAX_DISTANCE}m range).
         </Text>
         {location?.coords && (
-          <Text style={styles.coordsText}>
-            Your location: {location.coords.latitude.toFixed(4)},{" "}
-            {location.coords.longitude.toFixed(4)}
+          <Text className="text-sm italic text-primary-700 mb-4">
+            Your location: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
           </Text>
         )}
         <TouchableOpacity
           onPress={handleRetryLocation}
           disabled={loading}
-          style={[styles.button, loading ? styles.buttonDisabled : {}]}
-        >
-          <Text style={styles.buttonText}>
+          className={`py-3 px-6 rounded-lg ${loading ? 'bg-gray-400' : 'bg-primary-500'}`}>
+          <Text className="text-white font-bold">
             {loading ? "Checking..." : "Check Location Again"}
           </Text>
         </TouchableOpacity>
-        {loading && (
-          <ActivityIndicator
-            size="small"
-            color="#007AFF"
-            style={{ marginTop: 10 }}
-          />
-        )}
+        {loading && <ActivityIndicator size="small" color="#eab308" className="mt-3" />}
       </View>
     );
   }
 
   // Default return if within range or hasn't been checked yet
   return (
-    <View style={styles.container}>
-      <Text style={styles.titleText}>Location Verified</Text>
-      <Text style={styles.successText}>You are within the allowed range.</Text>
-      <Text style={styles.infoText}>
-        Press the button below to record your location and proceed to take a
-        picture.
+    <View className="flex-1 items-center justify-center p-5 bg-primary-50">
+      <Text className="text-2xl font-bold text-primary-900 mb-2">Location Verified</Text>
+      <Text className="text-lg text-primary-600 mb-4 text-center">You are within the allowed range.</Text>
+      <Text className="text-base text-primary-800 text-center mb-4">
+        Press the button below to record your location and proceed to take a picture.
       </Text>
       {location?.coords && (
-        <Text style={styles.coordsText}>
-          Your location: {location.coords.latitude.toFixed(4)},{" "}
-          {location.coords.longitude.toFixed(4)}
+        <Text className="text-sm italic text-primary-700 mb-4">
+          Your location: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
         </Text>
       )}
       <TouchableOpacity
         onPress={handleSubmitLocationAndDate}
         disabled={loading}
-        style={[styles.submitButton, loading ? styles.buttonDisabled : {}]}
-      >
-        <Text style={styles.submitButtonText}>
+        className={`py-4 px-8 rounded-lg ${loading ? 'bg-gray-400' : 'bg-primary-600'}`}>
+        <Text className="text-white font-bold text-lg">
           {loading ? "Submitting..." : "Submit Location & Proceed"}
         </Text>
       </TouchableOpacity>
-      {loading && (
-        <ActivityIndicator
-          size="small"
-          color="#007AFF"
-          style={{ marginTop: 20 }}
-        />
-      )}
+      {loading && <ActivityIndicator size="small" color="#eab308" className="mt-5" />}
     </View>
   );
 };
-
-// --- Styles ---
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    backgroundColor: "#f8f9fa",
-  },
-  titleText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
-  },
-  successText: {
-    fontSize: 18,
-    color: "#28a745",
-    marginBottom: 15,
-    textAlign: "center",
-  },
-  errorText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#dc3545",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  infoText: {
-    fontSize: 16,
-    color: "#6c757d",
-    textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  coordsText: {
-    fontSize: 14,
-    color: "#495057",
-    marginBottom: 20,
-    fontStyle: "italic",
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    minWidth: 200,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  submitButton: {
-    backgroundColor: "#28a745",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    minWidth: 250,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  submitButtonText: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  buttonDisabled: {
-    backgroundColor: "#6c757d",
-  },
-});
 
 export default AbsenceReport;

@@ -166,7 +166,7 @@ export default function Dashboard() {
       <View className="card mb-4">
         <Text className="heading-lg mb-4">Kehadiran Terbaru</Text>
         {loading ? (
-          <ActivityIndicator size="small" color="#E600FF" />
+           <ActivityIndicator size="small" color="#f59e0b" />
         ) : attendanceHistory.length > 0 ? (
           attendanceHistory.slice(0, 3).map((record) => (
             <View key={record.id} className="flex-row items-center py-3 border-b border-gray-100">
@@ -209,7 +209,7 @@ export default function Dashboard() {
                 <Ionicons 
                   name={message.read ? "mail-open-outline" : "mail-unread-outline"} 
                   size={24} 
-                  color={message.read ? "#6c757d" : "#E600FF"} 
+                  color={message.read ? "#6c757d" : "#f59e0b"} 
                 />
               </View>
               <View className="flex-1">
@@ -343,7 +343,7 @@ export default function Dashboard() {
           headerShown: true,
           title: "Dashboard",
           headerStyle: {
-            backgroundColor: "#E600FF",
+            backgroundColor: "#f59e0b",
           },
           headerTintColor: "#fff",
           headerTitleStyle: {
@@ -359,37 +359,37 @@ export default function Dashboard() {
         {/* Bottom Navigation */}
         <View className="flex-row justify-around items-center h-16 bg-white border-t border-gray-200">
           <TouchableOpacity
-            className={`flex-1 justify-center items-center ${activeTab === "home" ? "border-t-4 border-purple-600 bg-purple-50" : ""}`}
+            className={`flex-1 justify-center items-center ${activeTab === "home" ? "border-t-4 border-yellow-600 bg-yellow-50" : ""}`}
             onPress={() => setActiveTab("home")}
           >
             <Ionicons 
               name={activeTab === "home" ? "home" : "home-outline"} 
               size={28} 
-              color={activeTab === "home" ? "#E600FF" : "#8e8e93"} 
+              color={activeTab === "home" ? "#f59e0b" : "#8e8e93"} 
             />
-            <Text className={`text-xs ${activeTab === "home" ? "text-purple-600" : "text-gray-500"}`}>Beranda</Text>
+            <Text className={`text-xs ${activeTab === "home" ? "text-yellow-600" : "text-gray-500"}`}>Beranda</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className={`flex-1 justify-center items-center ${activeTab === "attendance" ? "border-t-4 border-purple-600 bg-purple-50" : ""}`}
+            className={`flex-1 justify-center items-center ${activeTab === "attendance" ? "border-t-4 border-yellow-600 bg-yellow-50" : ""}`}
             onPress={() => setActiveTab("attendance")}
           >
             <Ionicons 
               name={activeTab === "attendance" ? "calendar" : "calendar-outline"} 
               size={28} 
-              color={activeTab === "attendance" ? "#E600FF" : "#8e8e93"} 
+              color={activeTab === "attendance" ? "#f59e0b" : "#8e8e93"} 
             />
-            <Text className={`text-xs ${activeTab === "attendance" ? "text-purple-600" : "text-gray-500"}`}>Kehadiran</Text>
+            <Text className={`text-xs ${activeTab === "attendance" ? "text-yellow-600" : "text-gray-500"}`}>Kehadiran</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className={`flex-1 justify-center items-center ${activeTab === "settings" ? "border-t-4 border-purple-600 bg-purple-50" : ""}`}
+            className={`flex-1 justify-center items-center ${activeTab === "settings" ? "border-t-4 border-yellow-600 bg-yellow-50" : ""}`}
             onPress={() => setActiveTab("settings")}
           >
             <Ionicons 
               name={activeTab === "settings" ? "settings" : "settings-outline"} 
               size={28} 
-              color={activeTab === "settings" ? "#E600FF" : "#8e8e93"} 
+              color={activeTab === "settings" ? "#f59e0b" : "#8e8e93"} 
             />
-            <Text className={`text-xs ${activeTab === "settings" ? "text-purple-600" : "text-gray-500"}`}>Pengaturan</Text>
+            <Text className={`text-xs ${activeTab === "settings" ? "text-yellow-600" : "text-gray-500"}`}>Pengaturan</Text>
           </TouchableOpacity>
         </View>
       </View>
