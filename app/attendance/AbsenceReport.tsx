@@ -201,6 +201,15 @@ const AbsenceReport = () => {
             ? "Checking user data..."
             : "Checking location and user data..."}
         </Text>
+        <TouchableOpacity
+          onPress={handleRetryLocation}
+          disabled={loading}
+          className={`mt-4 py-3 px-6 rounded-lg ${loading ? 'bg-gray-400' : 'bg-primary-500'}`}
+        >
+          <Text className="text-white font-bold">
+            {loading ? "Refreshing..." : "Refresh Location"}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
