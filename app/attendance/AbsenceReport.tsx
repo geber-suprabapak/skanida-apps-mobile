@@ -122,8 +122,6 @@ const AbsenceReport = () => {
         setLoading(false); // Ensure loading is set to false in case of error
       } finally {
         // Keep loading as true until location is fetched
-        // setLoading(false); // Stop loading after initial user data fetch - REMOVE THIS
-      }
     };
 
     fetchInitialData();
