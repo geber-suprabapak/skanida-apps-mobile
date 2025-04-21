@@ -1,10 +1,19 @@
-import React from 'react';
-import { View, Modal, Image, TouchableOpacity, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
-import Animated, { 
-  FadeIn, 
-  FadeOut, 
-  ZoomIn, 
-  ZoomOut
+import React from "react";
+import {
+  View,
+  Modal,
+  Image,
+  TouchableOpacity,
+  Text,
+  Pressable,
+  Dimensions,
+  StyleSheet,
+} from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  ZoomIn,
+  ZoomOut,
 } from "react-native-reanimated";
 
 type PhotoViewModalProps = {
@@ -13,13 +22,17 @@ type PhotoViewModalProps = {
   onClose: () => void;
 };
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 const imageWidth = Math.min(width * 0.8, 320);
 const imageHeight = Math.min(height * 0.5, 400);
 
-const PhotoViewModal: React.FC<PhotoViewModalProps> = ({ photoUrl, isVisible, onClose }) => {
+const PhotoViewModal: React.FC<PhotoViewModalProps> = ({
+  photoUrl,
+  isVisible,
+  onClose,
+}) => {
   if (!photoUrl) return null;
-  
+
   return (
     <Modal
       transparent={true}
@@ -28,30 +41,28 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({ photoUrl, isVisible, on
       onRequestClose={onClose}
       statusBarTranslucent={true}
     >
-      <Pressable 
+      <Pressable
         style={styles.modalOverlay}
         className="bg-black/75 p-4"
         onPress={onClose}
       >
         <View style={styles.contentContainer}>
-          <Animated.View 
-            entering={ZoomIn.duration(300)} 
+          <Animated.View
+            entering={ZoomIn.duration(300)}
             exiting={ZoomOut.duration(200)}
             className="bg-white rounded-xl overflow-hidden shadow-xl mb-4"
             style={{ width: imageWidth, height: imageHeight }}
           >
             <Pressable onPress={(e) => e.stopPropagation()} className="flex-1">
-              <Image 
-                source={{ uri: photoUrl }} 
+              <Image
+                source={{ uri: photoUrl }}
                 className="w-full h-full"
                 resizeMode="contain"
               />
             </Pressable>
           </Animated.View>
-          
-          <Animated.View
-            entering={FadeIn.delay(200)}
-          >
+
+          <Animated.View entering={FadeIn.delay(200)}>
             <TouchableOpacity
               className="bg-white px-8 py-3 rounded-full shadow-md"
               onPress={onClose}
@@ -69,12 +80,12 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({ photoUrl, isVisible, on
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   contentContainer: {
-    alignItems: 'center',
-  }
+    alignItems: "center",
+  },
 });
 
 export default PhotoViewModal;

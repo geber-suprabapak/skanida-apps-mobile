@@ -1,11 +1,18 @@
 import React from "react";
-import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle, TextStyle } from "react-native"; // Added View import
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  View,
+  ViewStyle,
+  TextStyle,
+} from "react-native"; // Added View import
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
   withSpring,
   interpolate,
-  Extrapolate 
+  Extrapolate,
 } from "react-native-reanimated";
 
 type ButtonProps = {
@@ -33,25 +40,24 @@ export const Button: React.FC<ButtonProps> = ({
   leftIcon,
   rightIcon,
 }) => {
-  const baseClasses = "flex-row items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2";
-  
+  const baseClasses =
+    "flex-row items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2";
+
   // Animation values
   const scale = useSharedValue(1);
-  
+
   // Animated styles for the button
   const animatedStyles = useAnimatedStyle(() => {
     return {
-      transform: [
-        { scale: scale.value },
-      ],
+      transform: [{ scale: scale.value }],
     };
   });
-  
+
   // Handle press animation
   const handlePressIn = () => {
     scale.value = withSpring(0.96, { damping: 15, stiffness: 200 });
   };
-  
+
   const handlePressOut = () => {
     scale.value = withSpring(1, { damping: 10, stiffness: 200 });
   };
@@ -62,7 +68,8 @@ export const Button: React.FC<ButtonProps> = ({
     primary: "bg-brand-purple focus:ring-brand-purple",
     secondary: "bg-brand-gray-light focus:ring-brand-gray-light",
     tertiary: "bg-brand-gray-lighter focus:ring-brand-gray-lighter",
-    outline: "border border-brand-purple bg-transparent focus:ring-brand-purple",
+    outline:
+      "border border-brand-purple bg-transparent focus:ring-brand-purple",
     danger: "bg-brand-red focus:ring-brand-red",
   };
 
@@ -86,14 +93,17 @@ export const Button: React.FC<ButtonProps> = ({
     large: "text-lg font-bold",
   };
 
-  const spinnerColor = variant === 'outline' || variant === 'tertiary' || variant === 'secondary' ? '#212121' : '#ffffff';
+  const spinnerColor =
+    variant === "outline" || variant === "tertiary" || variant === "secondary"
+      ? "#212121"
+      : "#ffffff";
 
   return (
     <Animated.View style={animatedStyles}>
       <TouchableOpacity
         onPress={onPress}
         disabled={disabled || loading}
-        className={`${baseClasses} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? disabledClasses : ''} ${className}`}
+        className={`${baseClasses} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? disabledClasses : ""} ${className}`}
         activeOpacity={0.8}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -103,7 +113,9 @@ export const Button: React.FC<ButtonProps> = ({
         ) : (
           <>
             {leftIcon && <View className="mr-2">{leftIcon}</View>}
-            <Text className={`${textVariantStyles[variant]} ${textSizeStyles[size]} ${textClassName}`}>
+            <Text
+              className={`${textVariantStyles[variant]} ${textSizeStyles[size]} ${textClassName}`}
+            >
               {children}
             </Text>
             {rightIcon && <View className="ml-2">{rightIcon}</View>}

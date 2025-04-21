@@ -41,7 +41,7 @@ export default function Home() {
           // Jika ada user
           setLoadingMessage("Session found, redirecting...");
           setUser(session.user);
-          router.replace("/Home");
+          router.replace("/Dashboard");
           console.log("welcome back");
         } else {
           // Jika tidak ada session
