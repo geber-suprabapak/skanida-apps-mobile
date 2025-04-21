@@ -28,6 +28,19 @@ import Animated, {
   Layout
 } from "react-native-reanimated";
 
+// Import NetInfo with error handling
+let NetInfo: any;
+try {
+  NetInfo = require("@react-native-community/netinfo").default;
+} catch (error) {
+  console.warn("Failed to import NetInfo:", error);
+  // Provide a fallback implementation
+  NetInfo = {
+    addEventListener: () => ({ remove: () => {} }),
+    fetch: async () => ({ isConnected: true, isInternetReachable: true }),
+  };
+}
+
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -286,7 +299,7 @@ export default function Dashboard() {
       ) : attendanceHistory.length > 0 ? (
         <View className="px-5">
           {attendanceHistory.map((record) => (
-            <View key={record.id} className={`rounded-xl p-5 mb-4 shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <View key={record.id} className={`rounded-xl p-4 mb-4 shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <View className={`flex-row justify-between items-center mb-3 pb-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-brand-gray-lighter'}`}>
                 <Text className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {record.date}
@@ -295,18 +308,27 @@ export default function Dashboard() {
                   {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
-              <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center justify-between mt-2">
                 <View className="flex-row items-center">
                   <AntDesign name="checkcircle" size={20} color="#28a745" />
-                  <Text className="text-sm text-brand-green ml-2">{record.reason}</Text>
+                  <Text className={`text-sm ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{record.reason}</Text>
                 </View>
                 {record.photo_url && (
-                  <TouchableOpacity className="flex-row items-center" onPress={() => { 
-                    setSelectedPhoto(record.photo_url);
-                    setPhotoModalVisible(true);
-                  }}>
-                    <Image source={{ uri: record.photo_url }} className="w-10 h-10 rounded" resizeMode="cover" />
-                    <Text className="text-xs text-brand-blue ml-2">Lihat Foto</Text>
+                  <TouchableOpacity 
+                    className="flex-row items-center p-2 -m-2"
+                    onPress={() => { 
+                      console.log("Opening photo:", record.photo_url);
+                      setSelectedPhoto(record.photo_url);
+                      setPhotoModalVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image 
+                      source={{ uri: record.photo_url }} 
+                      className="w-8 h-8 rounded mr-2 bg-gray-200"
+                      resizeMode="cover" 
+                    />
+                    <Text className={`text-sm font-medium ${isDarkMode ? 'text-blue-400' : 'text-brand-blue'}`}>Lihat Foto</Text>
                   </TouchableOpacity>
                 )}
               </View>

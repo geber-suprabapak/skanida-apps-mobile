@@ -5,11 +5,23 @@ import {
   View,
   Text,
   Alert,
-  // TouchableOpacity, // Replaced by Button
   ActivityIndicator,
-  // StyleSheet, // Removed StyleSheet
 } from "react-native";
 import * as Location from "expo-location";
+
+// Import NetInfo with error handling
+let NetInfo: any;
+try {
+  NetInfo = require("@react-native-community/netinfo").default;
+} catch (error) {
+  console.warn("Failed to import NetInfo:", error);
+  // Provide a fallback implementation
+  NetInfo = {
+    addEventListener: () => ({ remove: () => {} }),
+    fetch: async () => ({ isConnected: true, isInternetReachable: true }),
+  };
+}
+
 import { supabase } from "~/utils/supabase";
 import { Button } from "~/components/Button"; // Import the custom Button
 import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
@@ -104,20 +116,42 @@ const AbsenceReport = () => {
   };
 
   const requestAndCheckLocation = async () => {
+    // Reset state before re-checking
+    setLoading(true);
+    setLocation(null);
+    setIsWithinRange(null);
+    setStatusMessage("Memeriksa koneksi dan lokasi..."); // Initial message
+
     try {
-      setLoading(true);
-
-      let { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        setStatusMessage("Izin lokasi ditolak");
+      // Check network connectivity first
+      const netInfoState = await NetInfo.fetch();
+      if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
+        setStatusMessage("Tidak ada koneksi internet. Periksa jaringan Anda.");
         setLoading(false);
         return;
       }
 
-      let currentLocation = await Location.getCurrentPositionAsync({
+      let { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+        setStatusMessage("Izin lokasi ditolak. Aktifkan di pengaturan.");
+        setLoading(false);
+        return;
+      }
+
+      setStatusMessage("Mendapatkan lokasi saat ini..."); // Update status
+
+      // Add a timeout for location fetching (e.g., 15 seconds)
+      const locationPromise = Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Highest,
       });
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Location request timed out")), 15000)
+      );
+
+      // Race the location request against the timeout
+      let currentLocation = await Promise.race([locationPromise, timeoutPromise]) as Location.LocationObject;
 
       setLocation(currentLocation);
 
@@ -134,15 +168,23 @@ const AbsenceReport = () => {
         schoolLongitude,
       );
 
-      setIsWithinRange(distance <= maxDistanceInMeters);
+      const withinRange = distance <= maxDistanceInMeters;
+      setIsWithinRange(withinRange);
       setStatusMessage(
-        distance <= maxDistanceInMeters
+        withinRange
           ? `Anda berada dalam jangkauan SMKN 2 Magelang (${Math.round(distance)}m)`
           : `Anda berada diluar jangkauan SMKN 2 Magelang (${Math.round(distance)}m)`
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting location:", error);
-      setStatusMessage("Gagal mendapatkan lokasi");
+      if (error.message === "Location request timed out") {
+        setStatusMessage("Gagal mendapatkan lokasi: Waktu habis.");
+      } else {
+        setStatusMessage("Gagal mendapatkan lokasi. Coba lagi.");
+      }
+      // Ensure state reflects error
+      setLocation(null);
+      setIsWithinRange(null);
     } finally {
       setLoading(false);
     }
@@ -269,28 +311,35 @@ const AbsenceReport = () => {
       {/* Action Buttons */}
       <Animated.View 
         entering={SlideInUp.delay(600).duration(500)}
-        className="w-full space-y-3"
+        className="w-full space-y-4"
       >
-        <Button
-          variant="primary"
-          size="large"
-          onPress={handleProceedToCamera}
-          disabled={loading}
-          leftIcon={<Ionicons name="camera-outline" size={24} color="#fff" />}
-        >
-          Lanjutkan ke Kamera
-        </Button>
+        {/* Show Camera button only when within range */}
+        {isWithinRange === true && (
+          <Button
+            variant="primary"
+            size="large"
+            onPress={handleProceedToCamera}
+            disabled={loading} 
+            leftIcon={<Ionicons name="camera-outline" size={24} color="#fff" />}
+          >
+            Lanjutkan ke Kamera
+          </Button>
+        )}
+
+        {/* Show Recheck button only when NOT in range and location check is finished */}
+        {isWithinRange === false && !loading && (
+           <Button
+              variant="secondary"
+              size="large"
+              onPress={requestAndCheckLocation}
+              disabled={loading} 
+              leftIcon={<Ionicons name="refresh-outline" size={24} color="#444" />}
+            >
+              Periksa Lokasi Kembali
+            </Button>
+        )}
         
-        <Button
-          variant="secondary"
-          size="large"
-          onPress={requestAndCheckLocation}
-          disabled={loading}
-          leftIcon={<Ionicons name="refresh-outline" size={24} color="#444" />}
-        >
-          Periksa Lokasi Kembali
-        </Button>
-        
+        {/* Always show the Back button */}
         <Button
           variant="outline"
           size="large"
@@ -299,7 +348,7 @@ const AbsenceReport = () => {
         >
           Kembali
         </Button>
-      </Animated.View>
+      </Animated.View> 
     </View>
   );
 };
