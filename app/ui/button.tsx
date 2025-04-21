@@ -1,11 +1,10 @@
 // app/home.tsx
 import { Stack, useRouter } from "expo-router";
-import {  View } from "react-native";
-import { Button } from '~/components/ui/button';
-import { Text } from '~/components/ui/text';
+import { View } from "react-native";
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 
 export default function HomeScreen() {
-
   return (
     <>
       <Stack.Screen
@@ -15,7 +14,7 @@ export default function HomeScreen() {
       />
       <View className="flex-1 items-center justify-center space-y-3">
         <Button>
-            <Text>Lmao</Text>
+          <Text>Lmao</Text>
         </Button>
       </View>
     </>
