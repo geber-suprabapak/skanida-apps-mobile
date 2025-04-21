@@ -117,6 +117,7 @@ const AbsenceReport = () => {
     }
   };
 
+  
   const requestAndCheckLocation = async () => {
     // Reset state before re-checking
     setLoading(true);
