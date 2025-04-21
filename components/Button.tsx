@@ -1,15 +1,24 @@
 import React from "react";
-import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle, TextStyle } from "react-native"; // Added View import
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring,
+  interpolate,
+  Extrapolate 
+} from "react-native-reanimated";
 
 type ButtonProps = {
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: "primary" | "secondary" | "outline";
+  variant?: "primary" | "secondary" | "tertiary" | "outline" | "danger";
   size?: "small" | "medium" | "large";
   disabled?: boolean;
   loading?: boolean;
-  className?: string;
-  textClassName?: string;
+  className?: string; // Allow passing additional Tailwind classes
+  textClassName?: string; // Allow passing additional Tailwind classes for text
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -21,51 +30,86 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   className = "",
   textClassName = "",
+  leftIcon,
+  rightIcon,
 }) => {
-  const variantClasses = {
-    primary: "bg-blue-500",
-    secondary: "bg-gray-200",
-    outline: "bg-transparent border border-blue-500",
+  const baseClasses = "flex-row items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2";
+  
+  // Animation values
+  const scale = useSharedValue(1);
+  
+  // Animated styles for the button
+  const animatedStyles = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value },
+      ],
+    };
+  });
+  
+  // Handle press animation
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 200 });
+  };
+  
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 10, stiffness: 200 });
   };
 
-  const textVariantClasses = {
+  const disabledClasses = "opacity-50"; // Removed cursor-not-allowed as it's web-specific
+
+  const variantStyles = {
+    primary: "bg-brand-purple focus:ring-brand-purple",
+    secondary: "bg-brand-gray-light focus:ring-brand-gray-light",
+    tertiary: "bg-brand-gray-lighter focus:ring-brand-gray-lighter",
+    outline: "border border-brand-purple bg-transparent focus:ring-brand-purple",
+    danger: "bg-brand-red focus:ring-brand-red",
+  };
+
+  const textVariantStyles = {
     primary: "text-white",
-    secondary: "text-gray-800",
-    outline: "text-blue-500",
+    secondary: "text-brand-gray-darker",
+    tertiary: "text-brand-gray-darker",
+    outline: "text-brand-purple",
+    danger: "text-white",
   };
 
-  const sizeClasses = {
-    small: "py-1 px-3",
-    medium: "py-2 px-4",
-    large: "py-3 px-6",
+  const sizeStyles = {
+    small: "px-3 py-1.5",
+    medium: "px-4 py-2",
+    large: "px-6 py-3",
   };
 
-  const textSizeClasses = {
-    small: "text-sm",
-    medium: "text-base",
-    large: "text-lg",
+  const textSizeStyles = {
+    small: "text-sm font-medium",
+    medium: "text-base font-semibold",
+    large: "text-lg font-bold",
   };
+
+  const spinnerColor = variant === 'outline' || variant === 'tertiary' || variant === 'secondary' ? '#212121' : '#ffffff';
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      className={`items-center justify-center rounded-md ${variantClasses[variant]} ${sizeClasses[size]} ${
-        disabled ? "opacity-50" : ""
-      } ${className}`}
-    >
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === "outline" ? "#3b82f6" : "#ffffff"}
-        />
-      ) : (
-        <Text
-          className={`font-medium ${textVariantClasses[variant]} ${textSizeClasses[size]} ${textClassName}`}
-        >
-          {children}
-        </Text>
-      )}
-    </TouchableOpacity>
+    <Animated.View style={animatedStyles}>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={disabled || loading}
+        className={`${baseClasses} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? disabledClasses : ''} ${className}`}
+        activeOpacity={0.8}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={spinnerColor} />
+        ) : (
+          <>
+            {leftIcon && <View className="mr-2">{leftIcon}</View>}
+            <Text className={`${textVariantStyles[variant]} ${textSizeStyles[size]} ${textClassName}`}>
+              {children}
+            </Text>
+            {rightIcon && <View className="ml-2">{rightIcon}</View>}
+          </>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
