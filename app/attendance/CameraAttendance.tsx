@@ -80,11 +80,7 @@ const CameraAttendance = () => {
       console.log("Uploading base64 PNG photo data...");
 
       // Create a unique file name using timestamp and userId with .png extension
-       // Format: TanggalHariIni_DataLokasi-UserID.png
-      const currentTimestamp = Date.now();
-      const formattedDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const fileName = `${formattedDate}_${currentTimestamp}_${locationData.userId}.png`;
-      console.log("Generated filename for storage:", fileName);
+      const fileName = `${Date.now()}_${locationData.userId}.png`;
 
       if (!base64Data) {
         throw new Error("Received empty base64 data for upload");
@@ -184,8 +180,8 @@ const CameraAttendance = () => {
             {
               text: "OK",
               onPress: () => {
-                console.log("Navigating to Dashboard...");
-                router.replace("/Dashboard");
+                console.log("Navigating to Home...");
+                router.replace("/Home");
               },
             },
           ]);
