@@ -195,7 +195,7 @@ export default function Dashboard() {
           variant="primary"
           size="medium"
           className="flex-1"
-          onPress={() => router.push("/Home")}
+          onPress={() => router.push("/attendance/AbsenceReport")}
           leftIcon={<AntDesign name="scan1" size={20} color="#fff" />}
         >
           Absen
