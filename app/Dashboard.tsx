@@ -33,7 +33,6 @@ let NetInfo: any;
 try {
   NetInfo = require("@react-native-community/netinfo").default;
 } catch (error) {
-  console.warn("Failed to import NetInfo:", error);
   // Provide a fallback implementation
   NetInfo = {
     addEventListener: () => ({ remove: () => {} }),
@@ -315,9 +314,8 @@ export default function Dashboard() {
                 </View>
                 {record.photo_url && (
                   <TouchableOpacity 
-                    className="flex-row items-center p-2 -m-2"
+                    className="p-1 -m-1 rounded-md"
                     onPress={() => { 
-                      console.log("Opening photo:", record.photo_url);
                       setSelectedPhoto(record.photo_url);
                       setPhotoModalVisible(true);
                     }}
@@ -325,10 +323,9 @@ export default function Dashboard() {
                   >
                     <Image 
                       source={{ uri: record.photo_url }} 
-                      className="w-8 h-8 rounded mr-2 bg-gray-200"
+                      className="w-10 h-10 rounded-md bg-gray-200"
                       resizeMode="cover" 
                     />
-                    <Text className={`text-sm font-medium ${isDarkMode ? 'text-blue-400' : 'text-brand-blue'}`}>Lihat Foto</Text>
                   </TouchableOpacity>
                 )}
               </View>

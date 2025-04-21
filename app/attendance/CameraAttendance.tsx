@@ -1,4 +1,4 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions, CameraMountError } from "expo-camera";
 // Remove CameraFacing import
 // import { CameraFacing } from "expo-camera";
 import * as FileSystem from "expo-file-system";
@@ -100,16 +100,26 @@ const CameraAttendance = () => {
     return () => backHandler.remove();
   }, [isUploading]);
   
+  // Log component mount and unmount
+  useEffect(() => {
+    // console.log("[CameraAttendance] CameraAttendance component mounted");
+    return () => {
+      // console.log("[CameraAttendance] CameraAttendance component unmounted");
+      setIsCameraReady(false);
+    };
+  }, []);
+
   // Initialize camera and permissions
   useEffect(() => {
     // Request camera permissions immediately
     const initializeCamera = async () => {
+      // console.log("[CameraAttendance] Initializing camera and permissions...");
       try {
-        // Check if permission object exists and is not granted
+        // console.log(`[CameraAttendance] Initial permission status: ${permission ? permission.granted : 'null'}`);
         if (permission && !permission.granted) { 
-          // Await the permission request
+          // console.log("[CameraAttendance] Requesting camera permission...");
           const permissionResult = await requestPermission();
-          console.log("Camera permission result:", permissionResult.granted);
+          // console.log(`[CameraAttendance] Permission result: ${permissionResult.granted}`);
           
           if (!permissionResult.granted) {
             Alert.alert(
@@ -118,9 +128,9 @@ const CameraAttendance = () => {
             );
           }
         } else if (!permission) {
-          // If permission object is null initially, request it
+          // console.log("[CameraAttendance] Requesting initial camera permission...");
           const permissionResult = await requestPermission();
-          console.log("Initial camera permission result:", permissionResult.granted);
+          // console.log(`[CameraAttendance] Initial camera permission result: ${permissionResult.granted}`);
           if (!permissionResult.granted) {
             Alert.alert(
               "Camera Permission Required",
@@ -129,7 +139,7 @@ const CameraAttendance = () => {
           }
         }
       } catch (err) {
-        console.error("Error requesting camera permission:", err);
+        console.error("Error requesting permission:", err); // Keep error log
         setCameraError("Failed to request camera permissions");
       }
     };
@@ -144,16 +154,12 @@ const CameraAttendance = () => {
         [{ text: "OK", onPress: () => router.back() }],
       );
     }
-    
-    return () => {
-      // Cleanup function
-      setIsCameraReady(false);
-    };
-  }, [permission]);
+  }, [permission, requestPermission]);
 
   // Handle camera ready state
   const onCameraReady = useCallback(() => {
-    console.log("Camera is ready!");
+    // console.log("CameraView onCameraReady fired!");
+    // console.log("Camera is ready!");
     setIsCameraReady(true);
   }, []);
 
@@ -180,7 +186,7 @@ const CameraAttendance = () => {
       
       return bytes;
     } catch (error) {
-      console.error("Error converting base64 to Uint8Array:", error);
+      console.error("Error converting base64 to Uint8Array:", error); // Keep error log
       throw new Error("Failed to process image data");
     }
   }, []);
@@ -191,7 +197,7 @@ const CameraAttendance = () => {
     setUploadProgress(0);
     
     try {
-      console.log("Saving attendance data to Supabase...");
+      // console.log("Saving attendance data to Supabase...");
       setUploadProgress(10);
 
       // Check for network connectivity first
@@ -201,7 +207,7 @@ const CameraAttendance = () => {
           throw new Error("Tidak ada koneksi internet. Silakan cek koneksi Anda.");
         }
       } catch (netErr) {
-        console.warn("NetInfo error (continuing anyway):", netErr);
+        // console.warn("NetInfo error (continuing anyway):", netErr);
       }
       
       setUploadProgress(20);
@@ -218,14 +224,14 @@ const CameraAttendance = () => {
       setUploadProgress(30);
 
       // Prepare file for upload
-      console.log("Processing image data...");
+      // console.log("Processing image data...");
       if (!base64Data) {
         throw new Error("Received empty base64 data for upload");
       }
       
       // Generate unique filename
       const fileName = `${formattedDate}_${currentTimestamp}_${locationData.userId}.png`;
-      console.log("Generated filename for storage:", fileName);
+      // console.log("Generated filename for storage:", fileName);
       
       setUploadProgress(40);
       
@@ -235,7 +241,7 @@ const CameraAttendance = () => {
       setUploadProgress(50);
       
       // Upload the buffer to Supabase storage with retry logic
-      console.log("Uploading photo to storage...");
+      // console.log("Uploading photo to storage...");
       let uploadAttempt = 0;
       let storageResult = null;
       let lastError: Error | null = null; // Store the last error
@@ -252,11 +258,11 @@ const CameraAttendance = () => {
           if (storageError) {
             lastError = storageError; // Store the error
             uploadAttempt++;
-            console.warn(`Upload attempt ${uploadAttempt} failed:`, storageError.message);
+            console.warn(`Upload attempt ${uploadAttempt} failed:`, storageError.message); // Keep warning for failed attempts
             if (uploadAttempt < 3) {
               // Wait before retry (exponential backoff)
               const delay = Math.pow(2, uploadAttempt) * 1000;
-              console.log(`Retrying upload in ${delay / 1000} seconds...`);
+              // console.log(`Retrying upload in ${delay / 1000} seconds...`);
               await new Promise(resolve => setTimeout(resolve, delay));
             } 
           } else {
@@ -267,10 +273,10 @@ const CameraAttendance = () => {
         } catch (err: any) {
           lastError = err; // Store the error
           uploadAttempt++;
-          console.warn(`Upload attempt ${uploadAttempt} failed with exception:`, err.message);
+          console.warn(`Upload attempt ${uploadAttempt} failed with exception:`, err.message); // Keep warning for failed attempts
           if (uploadAttempt < 3) {
              const delay = Math.pow(2, uploadAttempt) * 1000;
-             console.log(`Retrying upload in ${delay / 1000} seconds...`);
+             // console.log(`Retrying upload in ${delay / 1000} seconds...`);
              await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
@@ -278,7 +284,7 @@ const CameraAttendance = () => {
 
       // If all attempts failed, throw the last encountered error
       if (lastError) {
-        console.error("Upload failed after multiple attempts.");
+        console.error("Upload failed after multiple attempts."); // Keep error log
         throw lastError;
       }
       
@@ -294,12 +300,12 @@ const CameraAttendance = () => {
         throw new Error("Failed to get photo URL");
       }
       
-      console.log("Photo uploaded successfully. URL:", photoUrl);
+      // console.log("Photo uploaded successfully. URL:", photoUrl);
       
       setUploadProgress(80);
 
       // Save attendance record with location, photo URL and other data
-      console.log("Saving attendance record to database...");
+      // console.log("Saving attendance record to database...");
       const { data, error } = await supabase
         .from("absences")
         .insert([
@@ -316,16 +322,16 @@ const CameraAttendance = () => {
         .select();
 
       if (error) {
-        console.error("Error saving attendance record:", error);
+        console.error("Error saving attendance record:", error); // Keep error log
         throw error;
       }
       
       setUploadProgress(100);
-      console.log("Attendance record saved successfully:", data);
+      // console.log("Attendance record saved successfully:", data);
       
       return data;
     } catch (error: any) {
-      console.error("Error in saveAttendanceToSupabase:", error);
+      console.error("Error in saveAttendanceToSupabase:", error); // Keep error log
       throw new Error(error?.message || "Failed to save attendance data");
     } finally {
       setIsUploading(false);
@@ -344,23 +350,23 @@ const CameraAttendance = () => {
       animateCameraButton();
       
       try {
-        console.log("Attempting to take picture...");
+        // console.log("Attempting to take picture...");
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.7,
           base64: true,
           exif: false,
         });
 
-        console.log("Photo taken:", photo ? "success" : "failed");
+        // console.log("Photo taken:", photo ? "success" : "failed");
         
         if (!photo || !photo.uri) {
           throw new Error("Failed to capture photo");
         }
         
-        console.log("Photo URI:", photo.uri);
+        // console.log("Photo URI:", photo.uri);
         
         // Process the image
-        console.log("Processing image...");
+        // console.log("Processing image...");
         const manipResult = await ImageManipulator.manipulateAsync(
           photo.uri,
           [{ resize: { width: 800 } }],
@@ -380,7 +386,7 @@ const CameraAttendance = () => {
           [{ text: "OK", onPress: () => router.replace("/Dashboard") }]
         );
       } catch (error: unknown) {
-        console.error("Error taking picture:", error);
+        console.error("Error taking picture:", error); // Keep error log
         Alert.alert(
           "Error",
           `Failed to take picture: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -513,79 +519,84 @@ const CameraAttendance = () => {
       />
       
       {/* Camera component */}
-      <CameraView
-        ref={cameraRef}
-        className="flex-1"
-        facing={facing}
-        onCameraReady={onCameraReady}
-        ratio="16:9"
-      >
-        {/* Camera UI Overlay */}
-        {isCameraReady ? (
-          <>
-            {/* Top info bar */}
-            <Animated.View 
-              entering={SlideInDown.duration(400)}
-              className="absolute top-3 left-0 right-0 bg-black/60 py-3 px-4 items-center mx-4 rounded-xl"
-            >
-              <View className="flex-row items-center">
-                <Ionicons name="location" size={16} color="#E600FF" />
-                <Text className="text-white text-sm ml-1">
-                  Location: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+      {permission?.granted ? (
+        <CameraView
+          ref={cameraRef}
+          style={{ flex: 1 }}
+          facing={facing}
+          onCameraReady={onCameraReady}
+        >
+          {/* Camera UI Overlay */}
+          {isCameraReady ? (
+            <>
+              {/* Top info bar */}
+              <Animated.View 
+                entering={SlideInDown.duration(400)}
+                className="absolute top-3 left-0 right-0 bg-black/60 py-3 px-4 items-center mx-4 rounded-xl"
+              >
+                <View className="flex-row items-center">
+                  <Ionicons name="location" size={16} color="#E600FF" />
+                  <Text className="text-white text-sm ml-1">
+                    Location: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+                  </Text>
+                </View>
+                <Text className="text-white/70 text-xs mt-1">
+                  {new Date().toLocaleString()}
                 </Text>
-              </View>
-              <Text className="text-white/70 text-xs mt-1">
-                {new Date().toLocaleString()}
-              </Text>
-            </Animated.View>
-
-            {/* Camera Controls */}
-            <View className="absolute bottom-8 left-0 right-0 flex-row justify-around items-center px-5">
-              {/* Flip camera button */}
-              <TouchableOpacity
-                className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
-                onPress={toggleCameraFacing}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
-              </TouchableOpacity>
-              
-              {/* Capture button */}
-              <Animated.View
-                style={animatedButtonStyle}
-                className="w-24 h-24 rounded-full bg-white/30 justify-center items-center"
-              >
-                <TouchableOpacity
-                  className="w-20 h-20 rounded-full bg-white justify-center items-center"
-                  onPress={takePicture}
-                  disabled={isTakingPicture || !isCameraReady}
-                  activeOpacity={0.8}
-                >
-                  {isTakingPicture ? (
-                    <ActivityIndicator size="large" color="#E600FF" />
-                  ) : (
-                    <View className="w-16 h-16 rounded-full bg-[#E600FF]" />
-                  )}
-                </TouchableOpacity>
               </Animated.View>
-              
-              {/* Back button */}
-              <TouchableOpacity
-                className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
-                onPress={() => router.back()}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="arrow-back" size={28} color="#fff" />
-              </TouchableOpacity>
+
+              {/* Camera Controls */}
+              <View className="absolute bottom-8 left-0 right-0 flex-row justify-around items-center px-5">
+                {/* Flip camera button */}
+                <TouchableOpacity
+                  className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
+                  onPress={toggleCameraFacing}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+                </TouchableOpacity>
+                
+                {/* Capture button */}
+                <Animated.View
+                  style={animatedButtonStyle}
+                  className="w-24 h-24 rounded-full bg-white/30 justify-center items-center"
+                >
+                  <TouchableOpacity
+                    className="w-20 h-20 rounded-full bg-white justify-center items-center"
+                    onPress={takePicture}
+                    disabled={isTakingPicture || !isCameraReady}
+                    activeOpacity={0.8}
+                  >
+                    {isTakingPicture ? (
+                      <ActivityIndicator size="large" color="#E600FF" />
+                    ) : (
+                      <View className="w-16 h-16 rounded-full bg-[#E600FF]" />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+                
+                {/* Back button */}
+                <TouchableOpacity
+                  className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
+                  onPress={() => router.back()}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="arrow-back" size={28} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <View className="flex-1 justify-center items-center bg-black/70">
+              <ActivityIndicator size="large" color="#E600FF" />
+              <Text className="text-white mt-3">Initializing camera...</Text>
             </View>
-          </>
-        ) : (
-          <View className="flex-1 justify-center items-center bg-black/70">
-            <ActivityIndicator size="large" color="#E600FF" />
-            <Text className="text-white mt-3">Initializing camera...</Text>
-          </View>
-        )}
-      </CameraView>
+          )}
+        </CameraView>
+      ) : (
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-white">Camera permission not granted.</Text>
+        </View>
+      )}
     </View>
   );
 };

@@ -38,10 +38,12 @@ import Animated, {
   withDelay,
   Easing
 } from "react-native-reanimated";
+import useThemeStore from "~/store/themeStore"; // Import the theme store
 
 // --- Component Definition Starts Here ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
+  const { isDarkMode } = useThemeStore(); // Get theme state
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(
@@ -254,15 +256,15 @@ const AbsenceReport = () => {
 
   // --- RENDER UI ---
   return (
-    <View className="flex-1 bg-white p-6 items-center justify-center">
+    <View className={`flex-1 p-6 items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
       <Animated.View 
         entering={ZoomIn.duration(600)} 
         className="mb-6 items-center"
       >
-        <Text className="text-2xl font-bold text-brand-purple mb-2">
+        <Text className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-purple-400' : 'text-brand-purple'}`}>
           Absensi Kehadiran
         </Text>
-        <Text className="text-gray-600 text-center">
+        <Text className={`text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
           Silahkan lakukan absensi kehadiran Anda
         </Text>
       </Animated.View>
@@ -270,36 +272,38 @@ const AbsenceReport = () => {
       {/* Status Card */}
       <Animated.View 
         entering={FadeInUp.delay(300).duration(600)}
-        className="w-full bg-white rounded-xl p-5 shadow-md mb-6"
+        className={`w-full rounded-xl p-5 shadow-md mb-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}
       >
         {loading ? (
           <View className="items-center py-6">
             <Animated.View style={rotateAnimationStyle}>
-              <MaterialIcons name="location-searching" size={60} color="#E600FF" />
+              <MaterialIcons name="location-searching" size={60} color={isDarkMode ? '#C084FC' : '#E600FF'} />
             </Animated.View>
-            <Text className="text-lg mt-4 text-gray-600">Memeriksa lokasi...</Text>
+            <Text className={`text-lg mt-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Memeriksa lokasi...</Text>
           </View>
         ) : (
           <Animated.View entering={FadeIn.duration(400)}>
             <View className="flex-row items-center justify-center mb-4">
               {isWithinRange ? (
                 <Animated.View style={pulseAnimationStyle}>
-                  <Ionicons name="checkmark-circle" size={60} color="#28a745" />
+                  <Ionicons name="checkmark-circle" size={60} color={isDarkMode ? '#34D399' : '#28a745'} />
                 </Animated.View>
               ) : (
-                <MaterialIcons name="location-off" size={60} color="#dc3545" />
+                <MaterialIcons name="location-off" size={60} color={isDarkMode ? '#F87171' : '#dc3545'} />
               )}
             </View>
             <Text className={`text-lg text-center font-semibold mb-2 ${
-              isWithinRange ? "text-green-600" : "text-red-600"
+              isWithinRange 
+                ? (isDarkMode ? 'text-green-400' : 'text-green-600') 
+                : (isDarkMode ? 'text-red-400' : 'text-red-600')
             }`}>
               {isWithinRange ? "Lokasi Terverifikasi" : "Di Luar Jangkauan"}
             </Text>
-            <Text className="text-gray-600 text-center">{statusMessage}</Text>
+            <Text className={`text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{statusMessage}</Text>
             
             {location && (
-              <View className="mt-4 bg-gray-50 p-3 rounded-lg">
-                <Text className="text-gray-500 text-center text-sm">
+              <View className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <Text className={`text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Koordinat: {location.coords.latitude.toFixed(6)}, {location.coords.longitude.toFixed(6)}
                 </Text>
               </View>
@@ -333,7 +337,8 @@ const AbsenceReport = () => {
               size="large"
               onPress={requestAndCheckLocation}
               disabled={loading} 
-              leftIcon={<Ionicons name="refresh-outline" size={24} color="#444" />}
+              // Make icon color theme-aware for secondary button
+              leftIcon={<Ionicons name="refresh-outline" size={24} color={isDarkMode ? '#CBD5E1' : '#444'} />}
             >
               Periksa Lokasi Kembali
             </Button>
@@ -344,9 +349,10 @@ const AbsenceReport = () => {
           variant="outline"
           size="large"
           onPress={() => router.back()}
-          leftIcon={<Ionicons name="arrow-back-outline" size={24} color="#E600FF" />}
+          // Correctly pass the icon element with conditional color
+          leftIcon={<Ionicons name="arrow-back-outline" size={24} color={isDarkMode ? '#C084FC' : '#E600FF'} />}
         >
-          Kembali
+          Kembali {/* Add the button text back */}
         </Button>
       </Animated.View> 
     </View>

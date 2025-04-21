@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Modal, Image, TouchableOpacity, Text, Pressable, Dimensions } from 'react-native';
+import { View, Modal, Image, TouchableOpacity, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
 import Animated, { 
   FadeIn, 
   FadeOut, 
@@ -29,17 +29,18 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({ photoUrl, isVisible, on
       statusBarTranslucent={true}
     >
       <Pressable 
-        className="flex-1 bg-black/75 justify-center items-center"
+        style={styles.modalOverlay}
+        className="bg-black/75 p-4"
         onPress={onClose}
       >
-        <View className="w-full items-center justify-center">
+        <View style={styles.contentContainer}>
           <Animated.View 
             entering={ZoomIn.duration(300)} 
             exiting={ZoomOut.duration(200)}
-            className="bg-white rounded-xl overflow-hidden shadow-xl"
+            className="bg-white rounded-xl overflow-hidden shadow-xl mb-4"
             style={{ width: imageWidth, height: imageHeight }}
           >
-            <Pressable onPress={(e) => e.stopPropagation()}>
+            <Pressable onPress={(e) => e.stopPropagation()} className="flex-1">
               <Image 
                 source={{ uri: photoUrl }} 
                 className="w-full h-full"
@@ -50,7 +51,6 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({ photoUrl, isVisible, on
           
           <Animated.View
             entering={FadeIn.delay(200)}
-            className="mt-4"
           >
             <TouchableOpacity
               className="bg-white px-8 py-3 rounded-full shadow-md"
@@ -65,5 +65,16 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({ photoUrl, isVisible, on
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentContainer: {
+    alignItems: 'center',
+  }
+});
 
 export default PhotoViewModal;
