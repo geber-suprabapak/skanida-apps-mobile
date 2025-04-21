@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "skanida-apps",
+    "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "1.0.0",
+    "version": "0.3.0",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",
