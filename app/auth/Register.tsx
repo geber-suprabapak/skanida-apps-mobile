@@ -2,12 +2,12 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native"; // Added Alert
-import Animated, { 
-  FadeInDown, 
-  FadeInUp, 
-  BounceIn, 
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  BounceIn,
   Layout,
-  SlideInDown
+  SlideInDown,
 } from "react-native-reanimated";
 
 import useAuthStore from "../../store/authStore";
@@ -55,7 +55,7 @@ export default function RegisterScreen() {
               text: "OK",
               onPress: () => router.replace("/Dashboard"),
             },
-          ]
+          ],
         );
       }
     } catch (error) {
@@ -73,7 +73,7 @@ export default function RegisterScreen() {
           Daftar Akun
         </Text>
       </Animated.View>
-      
+
       <Animated.View entering={FadeInDown.delay(400).duration(600)}>
         <Text className="text-center mb-8 text-gray-600">
           Buat akun baru untuk menggunakan aplikasi

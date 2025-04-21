@@ -2,12 +2,12 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
-import Animated, { 
-  FadeInDown, 
-  FadeInUp, 
-  BounceIn, 
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  BounceIn,
   Layout,
-  SlideInDown
+  SlideInDown,
 } from "react-native-reanimated";
 
 import useAuthStore from "../../store/authStore";
@@ -58,7 +58,7 @@ export default function Login() {
           Selamat Datang
         </Text>
       </Animated.View>
-      
+
       <Animated.View entering={FadeInDown.delay(400).duration(600)}>
         <Text className="text-center mb-8 text-gray-600">
           Masuk ke akun Anda untuk melanjutkan
@@ -93,7 +93,7 @@ export default function Login() {
       </Animated.View>
 
       <Animated.View entering={FadeInUp.delay(800).duration(600)}>
-        <Button 
+        <Button
           variant="primary"
           size="large"
           className="mb-4"

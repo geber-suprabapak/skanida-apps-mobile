@@ -35,6 +35,13 @@ export default function HomeScreen() {
         >
           <Text className="font-medium text-white">Absen</Text>
         </TouchableOpacity>
+                <TouchableOpacity
+          onPress={() => router.push("/ui/button")}
+          className="gap-3 rounded bg-blue-500 px-4 py-2"
+        >
+          <Text className="font-medium text-white">Absen</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={handleLogout}
           className="rounded bg-blue-500 px-4 py-2"
