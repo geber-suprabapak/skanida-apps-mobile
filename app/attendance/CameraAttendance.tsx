@@ -347,51 +347,62 @@ const CameraAttendance = () => {
     
     if (cameraRef.current && !isTakingPicture) {
       setIsTakingPicture(true);
-      animateCameraButton();
-      
       try {
-        // console.log("Attempting to take picture...");
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.7,
-          base64: true,
-          exif: false,
-        });
+        const options = { quality: 0.7, base64: false, skipProcessing: true }; // Keep original capture quality high initially
+        const photo = await cameraRef.current.takePictureAsync(options);
 
-        // console.log("Photo taken:", photo ? "success" : "failed");
-        
-        if (!photo || !photo.uri) {
-          throw new Error("Failed to capture photo");
+        if (photo && photo.uri) {
+          console.log("Original Photo URI:", photo.uri);
+
+          // Manipulate the image: resize, compress (still applies quality to PNG), AND get base64 directly
+          console.log("Manipulating image to PNG and getting base64...");
+          const manipResult = await ImageManipulator.manipulateAsync(
+            photo.uri,
+            [{ resize: { width: 800 } }], // Resize width to 800px
+            {
+              compress: 0.7,
+              format: ImageManipulator.SaveFormat.PNG,
+              base64: true,
+            }, // Compress (quality for PNG), save as PNG, GET BASE64
+          );
+          console.log("Image manipulation complete.");
+
+          // Check if base64 data exists
+          if (!manipResult.base64) {
+            throw new Error("Image manipulation did not return base64 data.");
+          }
+
+          // Save attendance data using the BASE64 data from manipulation result
+          await saveAttendanceToSupabase(manipResult.base64);
+
+          Alert.alert("Success", "Attendance recorded successfully!", [
+            {
+              text: "OK",
+              onPress: () => {
+                console.log("Navigating to Home...");
+                router.replace("/Home");
+              },
+            },
+          ]);
+        } else {
+          Alert.alert("Error", "Failed to capture photo (no data returned).");
         }
-        
-        // console.log("Photo URI:", photo.uri);
-        
-        // Process the image
-        // console.log("Processing image...");
-        const manipResult = await ImageManipulator.manipulateAsync(
-          photo.uri,
-          [{ resize: { width: 800 } }],
-          { format: ImageManipulator.SaveFormat.PNG, base64: true, compress: 0.7 }
-        );
-        
-        if (!manipResult || !manipResult.base64) {
-          throw new Error("Image processing failed");
+      } catch (err) {
+        console.error("Error taking picture or saving data:", err);
+        // Check if the error came from saveAttendanceToSupabase or manipulation
+        if (
+          err instanceof Error &&
+          (err.message === "Failed to upload photo" ||
+            err.message === "Failed to save attendance record" ||
+            err.message.includes("base64"))
+        ) {
+          Alert.alert(
+            "Error",
+            `Failed to process or save attendance: ${err.message}`,
+          );
+        } else {
+          Alert.alert("Error", "Failed to capture photo or process image.");
         }
-        
-        // Save to Supabase
-        await saveAttendanceToSupabase(manipResult.base64);
-        
-        Alert.alert(
-          "Success", 
-          "Attendance recorded successfully!", 
-          [{ text: "OK", onPress: () => router.replace("/Dashboard") }]
-        );
-      } catch (error: unknown) {
-        console.error("Error taking picture:", error); // Keep error log
-        Alert.alert(
-          "Error",
-          `Failed to take picture: ${error instanceof Error ? error.message : "Unknown error"}`,
-          [{ text: "OK" }]
-        );
       } finally {
         setIsTakingPicture(false);
       }

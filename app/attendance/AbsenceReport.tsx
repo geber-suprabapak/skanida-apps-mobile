@@ -51,12 +51,31 @@ const AbsenceReport = () => {
   );
   const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
+  const [isWithinRange, setIsWithinRange] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const router = useRouter();
+  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
 
   // Animation values
   const pulseValue = useSharedValue(1);
   const rotateValue = useSharedValue(0);
 
+  // --- useEffect to fetch data and location ---
+  useEffect(() => {
+    const fetchUserDataAndLocation = async () => {
+      setLoading(true);
+      setPermissionDenied(false);
+      try {
+        // Get User
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
+        if (userError || !userData?.user) {
+          console.error("User auth error:", userError?.message);
+          Alert.alert("Error", "Failed to retrieve user. Please log in again.");
+          router.replace("/auth/Login");
+          return;
+        }
+        setUserId(userData.user.id);
   // Animated styles
   const pulseAnimationStyle = useAnimatedStyle(() => {
     return {
@@ -222,6 +241,7 @@ const AbsenceReport = () => {
     }
 
     if (!isWithinRange) {
+    if (!isWithinRange) {
       Alert.alert(
         "Peringatan",
         "Anda berada di luar jangkauan kantor. Absensi mungkin akan ditolak.",
@@ -329,32 +349,41 @@ const AbsenceReport = () => {
             Lanjutkan ke Kamera
           </Button>
         )}
+      </View>
+    );
+  }
 
-        {/* Show Recheck button only when NOT in range and location check is finished */}
-        {isWithinRange === false && !loading && (
-           <Button
-              variant="secondary"
-              size="large"
-              onPress={requestAndCheckLocation}
-              disabled={loading} 
-              // Make icon color theme-aware for secondary button
-              leftIcon={<Ionicons name="refresh-outline" size={24} color={isDarkMode ? '#CBD5E1' : '#444'} />}
-            >
-              Periksa Lokasi Kembali
-            </Button>
-        )}
-        
-        {/* Always show the Back button */}
-        <Button
-          variant="outline"
-          size="large"
-          onPress={() => router.back()}
-          // Correctly pass the icon element with conditional color
-          leftIcon={<Ionicons name="arrow-back-outline" size={24} color={isDarkMode ? '#C084FC' : '#E600FF'} />}
-        >
-          Kembali {/* Add the button text back */}
-        </Button>
-      </Animated.View> 
+  // Default return if within range
+  return (
+    <View style={styles.container}>
+      <Text style={styles.titleText}>Location Verified</Text>
+      <Text style={styles.successText}>You are within the allowed range.</Text>
+      <Text style={styles.infoText}>
+        Press the button below to record your location and proceed to take a
+        picture.
+      </Text>
+      {location?.coords && (
+        <Text style={styles.coordsText}>
+          Your location: {location.coords.latitude.toFixed(4)},{" "}
+          {location.coords.longitude.toFixed(4)}
+        </Text>
+      )}
+      <TouchableOpacity
+        onPress={handleSubmitLocationAndDate}
+        disabled={loading}
+        style={[styles.submitButton, loading ? styles.buttonDisabled : {}]}
+      >
+        <Text style={styles.submitButtonText}>
+          {loading ? "Submitting..." : "Submit Location & Proceed"}
+        </Text>
+      </TouchableOpacity>
+      {loading && (
+        <ActivityIndicator
+          size="small"
+          color="#007AFF"
+          style={{ marginTop: 20 }}
+        />
+      )}
     </View>
   );
 };
