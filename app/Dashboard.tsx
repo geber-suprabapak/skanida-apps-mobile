@@ -483,6 +483,7 @@ export default function Dashboard() {
         </View>
         <TouchableOpacity
           className={`flex-row items-center py-3 border-b ${isDarkMode ? "border-gray-700" : "border-brand-gray-lighter"}`}
+          onPress={() => router.push("/profile/EditProfile")}
         >
           <View
             className={`w-9 h-9 rounded-lg ${isDarkMode ? "bg-blue-900" : "bg-blue-100"} justify-center items-center mr-3`}
@@ -505,7 +506,10 @@ export default function Dashboard() {
             className="ml-2"
           />
         </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center py-3">
+        <TouchableOpacity
+          className={`flex-row items-center py-3`}
+          onPress={() => router.push("/profile/ChangePassword")}
+        >
           <View
             className={`w-9 h-9 rounded-lg ${isDarkMode ? "bg-blue-900" : "bg-blue-100"} justify-center items-center mr-3`}
           >
