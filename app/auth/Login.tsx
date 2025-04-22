@@ -54,7 +54,7 @@ export default function Login() {
   return (
     <View className="flex-1 p-6 justify-center bg-white">
       <Animated.View entering={BounceIn.delay(200).duration(800)}>
-        <Text className="text-3xl font-bold mb-2 text-center text-brand-purple">
+        <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
           Selamat Datang
         </Text>
       </Animated.View>
@@ -108,7 +108,7 @@ export default function Login() {
         <View className="flex-row justify-center mt-4">
           <Text className="text-gray-600">Belum memiliki akun? </Text>
           <TouchableOpacity onPress={() => router.push("/auth/Register")}>
-            <Text className="text-brand-purple font-semibold">Daftar</Text>
+            <Text className="text-gray-700 font-semibold">Daftar</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

@@ -65,20 +65,20 @@ export const Button: React.FC<ButtonProps> = ({
   const disabledClasses = "opacity-50"; // Removed cursor-not-allowed as it's web-specific
 
   const variantStyles = {
-    primary: "bg-brand-purple focus:ring-brand-purple",
-    secondary: "bg-brand-gray-light focus:ring-brand-gray-light",
-    tertiary: "bg-brand-gray-lighter focus:ring-brand-gray-lighter",
+    primary: "bg-gray-500 focus:ring-gray-500",
+    secondary: "bg-gray-200 focus:ring-gray-200",
+    tertiary: "bg-gray-100 focus:ring-gray-100",
     outline:
-      "border border-brand-purple bg-transparent focus:ring-brand-purple",
+      "border border-gray-500 bg-transparent focus:ring-gray-500",
     danger: "bg-brand-red focus:ring-brand-red",
   };
 
   const textVariantStyles = {
     primary: "text-white",
-    secondary: "text-brand-gray-darker",
-    tertiary: "text-brand-gray-darker",
-    outline: "text-brand-purple",
-    danger: "text-white",
+    secondary: "text-gray-700",
+    tertiary: "text-gray-700",
+    outline: "text-gray-700",
+    danger: "text-red-600",
   };
 
   const sizeStyles = {

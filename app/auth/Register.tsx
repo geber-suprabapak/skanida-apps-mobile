@@ -69,7 +69,7 @@ export default function RegisterScreen() {
   return (
     <View className="flex-1 p-6 justify-center bg-white">
       <Animated.View entering={BounceIn.delay(200).duration(800)}>
-        <Text className="text-3xl font-bold mb-2 text-center text-brand-purple">
+        <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
           Daftar Akun
         </Text>
       </Animated.View>
@@ -136,7 +136,7 @@ export default function RegisterScreen() {
         <View className="flex-row justify-center mt-4">
           <Text className="text-gray-600">Sudah memiliki akun? </Text>
           <TouchableOpacity onPress={() => router.push("/auth/Login")}>
-            <Text className="text-brand-purple font-semibold">Masuk</Text>
+            <Text className="text-gray-700 font-semibold">Masuk</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
