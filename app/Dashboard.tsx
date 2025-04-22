@@ -170,7 +170,7 @@ export default function Dashboard() {
       <View
         className={`flex-row items-center p-4 mb-2 rounded-xl mx-5 mt-4 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
       >
-        <View className="w-14 h-14 mr-4 flex items-center justify-center rounded-full bg-brand-purple">
+        <View className="w-14 h-14 mr-4 flex items-center justify-center rounded-full bg-gray-500">
           <Text className="text-white font-bold text-2xl">
             {user?.email?.charAt(0).toUpperCase() || "U"}
           </Text>
@@ -286,7 +286,7 @@ export default function Dashboard() {
             className={`w-full items-center mt-3 pt-3 border-t ${isDarkMode ? "border-gray-700" : "border-brand-gray-lighter"}`}
             onPress={() => setActiveTab("attendance")}
           >
-            <Text className="text-brand-purple font-medium">Lihat Semua</Text>
+            <Text className="text-gray-700 font-medium">Lihat Semua</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -341,7 +341,7 @@ export default function Dashboard() {
                 </Text>
               </View>
               {!message.read && (
-                <View className="w-2.5 h-2.5 rounded-full bg-brand-purple absolute top-3 right-0" />
+                <View className="w-2.5 h-2.5 rounded-full bg-gray-500 absolute top-3 right-0" />
               )}
             </TouchableOpacity>
           ))
@@ -483,6 +483,7 @@ export default function Dashboard() {
         </View>
         <TouchableOpacity
           className={`flex-row items-center py-3 border-b ${isDarkMode ? "border-gray-700" : "border-brand-gray-lighter"}`}
+          onPress={() => router.push("/profile/EditProfile")}
         >
           <View
             className={`w-9 h-9 rounded-lg ${isDarkMode ? "bg-blue-900" : "bg-blue-100"} justify-center items-center mr-3`}
@@ -505,7 +506,10 @@ export default function Dashboard() {
             className="ml-2"
           />
         </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center py-3">
+        <TouchableOpacity
+          className={`flex-row items-center py-3`}
+          onPress={() => router.push("/profile/ChangePassword")}
+        >
           <View
             className={`w-9 h-9 rounded-lg ${isDarkMode ? "bg-blue-900" : "bg-blue-100"} justify-center items-center mr-3`}
           >
@@ -601,9 +605,6 @@ export default function Dashboard() {
           size="medium"
           onPress={handleLogout}
           className={`w-full rounded-lg py-3 ${isDarkMode ? "bg-transparent" : "bg-brand-red bg-opacity-10"}`}
-          textClassName={
-            isDarkMode ? "text-brand-red" : "text-black font-medium"
-          }
           leftIcon={
             <Ionicons
               name="log-out-outline"
@@ -625,7 +626,7 @@ export default function Dashboard() {
           headerShown: true,
           title: "Dashboard",
           headerStyle: {
-            backgroundColor: "#E600FF", // Use brand-purple from theme if preferred
+            backgroundColor: "#6B7280", // abu-abu
           },
           headerTintColor: "#fff",
           headerTitleStyle: {
@@ -745,7 +746,7 @@ function AnimatedTabButton({
     <Animated.View
       className={`flex-1 justify-center items-center h-full ${
         isActive
-          ? `border-t-2 border-brand-purple ${isDarkMode ? "bg-purple-900/30" : "bg-purple-50"}`
+          ? `border-t-2 border-gray-500 ${isDarkMode ? "bg-gray-800/30" : "bg-gray-50"}`
           : ""
       }`}
       style={animatedStyles}
@@ -765,7 +766,7 @@ function AnimatedTabButton({
         <Text
           className={`text-xs mt-1 ${
             isActive
-              ? "text-brand-purple font-semibold"
+              ? "text-gray-700 font-semibold"
               : isDarkMode
                 ? "text-gray-400"
                 : "text-brand-gray"

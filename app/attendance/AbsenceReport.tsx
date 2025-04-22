@@ -266,7 +266,7 @@ const AbsenceReport = () => {
         className="mb-6 items-center"
       >
         <Text
-          className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-purple-400" : "text-brand-purple"}`}
+          className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-700"}`}
         >
           Absensi Kehadiran
         </Text>

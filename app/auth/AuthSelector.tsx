@@ -25,16 +25,17 @@ export default function LoginScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(600).duration(800)}>
-          <Text className="text-white text-center mb-12 text-lg">
+          <Text className="text-white text-center mb-12 text-lg mt-4">
             Sistem Kehadiran dan Informasi Data
           </Text>
         </Animated.View>
 
         <Animated.View entering={SlideInUp.delay(800).duration(500)}>
           <Button
-            variant="primary"
+            variant="outline"
             size="large"
-            className="mb-4"
+            className="mb-4 border-white mt-4"
+            textClassName="text-white"
             onPress={() => router.push("/auth/Login")}
           >
             Masuk
