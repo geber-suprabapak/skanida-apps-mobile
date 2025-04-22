@@ -1,60 +1,47 @@
+// filepath: e:\skanida-apps-mobile\app\auth\AuthSelector.tsx
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
 import React from "react";
-import { View, Text, TouchableOpacity, ImageBackground } from "react-native";
-import Animated, { FadeIn, SlideInUp, BounceIn } from "react-native-reanimated";
+import { View } from "react-native";
 
-import { Button } from "~/components/Button";
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 
 export default function LoginScreen() {
   const router = useRouter();
 
   return (
-    <ImageBackground
-      source={require("../../assets/splash.png")}
-      className="flex-1"
-      resizeMode="cover"
-    >
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="flex-1 justify-end p-6 pb-12 bg-black bg-opacity-20">
-        <Animated.View entering={BounceIn.delay(300).duration(800)}>
-          <Text className="text-4xl font-bold text-white text-center mb-2">
+      <View className="flex-1 justify-center items-center p-6">
+        <View className="w-full max-w-md">
+          <Text className="text-4xl font-bold text-center mb-2 text-black">
             Skanida Apps
           </Text>
-        </Animated.View>
 
-        <Animated.View entering={FadeIn.delay(600).duration(800)}>
-          <Text className="text-white text-center mb-12 text-lg mt-4">
+          <Text className="text-center mb-12 text-lg mt-4 text-black">
             Sistem Kehadiran dan Informasi Data
           </Text>
-        </Animated.View>
-
-        <Animated.View entering={SlideInUp.delay(800).duration(500)}>
           <Button
             variant="outline"
-            size="large"
-            className="mb-4 border-white mt-4"
-            textClassName="text-white"
+            size="lg"
+            className="mb-4 mt-4 w-full"
             onPress={() => router.push("/auth/Login")}
           >
-            Masuk
+            <Text className="text-black">Masuk</Text>
           </Button>
-        </Animated.View>
 
-        <Animated.View entering={SlideInUp.delay(1000).duration(500)}>
           <Button
             variant="outline"
-            size="large"
-            className="mb-4 border-white"
-            textClassName="text-white"
+            size="lg"
+            className="mb-4 w-full"
             onPress={() => router.push("/auth/Register")}
           >
-            Daftar
+            <Text className="text-black">Daftar</Text>
           </Button>
-        </Animated.View>
+        </View>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
-//test

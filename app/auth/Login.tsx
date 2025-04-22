@@ -1,18 +1,14 @@
 // app/Login.tsx
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
-import Animated, {
-  FadeInDown,
-  FadeInUp,
-  BounceIn,
-  Layout,
-  SlideInDown,
-} from "react-native-reanimated";
+import { View, TouchableOpacity, Alert } from "react-native";
 
 import useAuthStore from "../../store/authStore";
 import { supabase } from "../../utils/supabase";
-import { Button } from "~/components/Button";
+
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Text } from "~/components/ui/text";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -53,22 +49,22 @@ export default function Login() {
 
   return (
     <View className="flex-1 p-6 justify-center bg-white">
-      <Animated.View entering={BounceIn.delay(200).duration(800)}>
+      <View>
         <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
           Selamat Datang
         </Text>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+      <View>
         <Text className="text-center mb-8 text-gray-600">
           Masuk ke akun Anda untuk melanjutkan
         </Text>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={SlideInDown.delay(600).duration(500)}>
+      <View>
         <View className="mb-4">
           <Text className="text-gray-700 mb-2">Email</Text>
-          <TextInput
+          <Input
             className="border border-gray-300 rounded-lg px-4 py-2.5"
             placeholder="Masukkan email Anda"
             keyboardType="email-address"
@@ -77,12 +73,12 @@ export default function Login() {
             onChangeText={setEmail}
           />
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={SlideInDown.delay(700).duration(500)}>
+      <View>
         <View className="mb-6">
           <Text className="text-gray-700 mb-2">Password</Text>
-          <TextInput
+          <Input
             className="border border-gray-300 rounded-lg px-4 py-2.5"
             placeholder="Masukkan password Anda"
             secureTextEntry
@@ -90,28 +86,28 @@ export default function Login() {
             onChangeText={setPassword}
           />
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInUp.delay(800).duration(600)}>
+      <View>
         <Button
-          variant="primary"
-          size="large"
+          variant="default"
+          size="lg"
           className="mb-4"
           onPress={handleLogin}
-          loading={loading}
+          disabled={loading}
         >
-          Masuk
+          <Text>{loading ? "Loading..." : "Masuk"}</Text>
         </Button>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInUp.delay(1000).duration(600)}>
+      <View>
         <View className="flex-row justify-center mt-4">
           <Text className="text-gray-600">Belum memiliki akun? </Text>
           <TouchableOpacity onPress={() => router.push("/auth/Register")}>
             <Text className="text-gray-700 font-semibold">Daftar</Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
+      </View>
     </View>
   );
 }
