@@ -190,32 +190,20 @@ export default function Dashboard() {
           Absen
         </Button>
         <Button
-          variant="secondary"
+          variant="primary"
           size="medium"
           className="flex-1"
           onPress={() => setActiveTab("attendance")}
-          leftIcon={
-            <MaterialIcons
-              name="history"
-              size={20}
-              color={isDarkMode ? "#fff" : "#212121"}
-            />
-          }
+          leftIcon={<MaterialIcons name="history" size={20} color="#fff" />}
         >
           Riwayat
         </Button>
         <Button
-          variant="tertiary"
+          variant="primary"
           size="medium"
           className="flex-1"
           onPress={() => setActiveTab("settings")}
-          leftIcon={
-            <Ionicons
-              name="settings-outline"
-              size={20}
-              color={isDarkMode ? "#fff" : "#212121"}
-            />
-          }
+          leftIcon={<Ionicons name="settings-outline" size={20} color="#fff" />}
         >
           Pengaturan
         </Button>
