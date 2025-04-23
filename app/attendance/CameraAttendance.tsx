@@ -1,14 +1,10 @@
-import {
-  CameraView,
-  useCameraPermissions,
-  CameraMountError,
-} from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions } from "expo-camera";
 // Remove CameraFacing import
 // import { CameraFacing } from "expo-camera";
-import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,12 +15,9 @@ import {
   StatusBar,
   BackHandler,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
-  withSequence,
   FadeIn,
   SlideInDown,
 } from "react-native-reanimated";
@@ -44,7 +37,7 @@ try {
   };
 }
 
-const { width, height } = Dimensions.get("window");
+Dimensions.get("window");
 
 const CameraAttendance = () => {
   const cameraRef = useRef<CameraView>(null);
@@ -74,12 +67,6 @@ const CameraAttendance = () => {
   }));
 
   // Function to animate button press
-  const animateCameraButton = () => {
-    buttonScale.value = withSequence(
-      withTiming(0.8, { duration: 100 }),
-      withTiming(1, { duration: 200 }),
-    );
-  };
 
   // Handle back button press
   useEffect(() => {
@@ -220,6 +207,7 @@ const CameraAttendance = () => {
             "Tidak ada koneksi internet. Silakan cek koneksi Anda.",
           );
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (netErr) {
         // console.warn("NetInfo error (continuing anyway):", netErr);
       }
@@ -284,6 +272,7 @@ const CameraAttendance = () => {
               await new Promise((resolve) => setTimeout(resolve, delay));
             }
           } else {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             storageResult = storageData;
             lastError = null; // Clear error on success
             break; // Exit loop on success

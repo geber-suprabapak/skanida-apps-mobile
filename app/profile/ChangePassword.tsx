@@ -1,8 +1,9 @@
+import { useRouter, Stack } from "expo-router";
 import React, { useState } from "react";
 import { View, Text, TextInput, Alert } from "react-native";
-import { useRouter, Stack } from "expo-router";
-import { supabase } from "~/utils/supabase";
+
 import { Button } from "~/components/Button";
+import { supabase } from "~/utils/supabase";
 
 export default function ChangePassword() {
   const router = useRouter();
@@ -40,7 +41,9 @@ export default function ChangePassword() {
         return;
       }
       // Update password
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
       if (error) {
         Alert.alert("Error", error.message);
         setLoading(false);
@@ -49,6 +52,7 @@ export default function ChangePassword() {
       Alert.alert("Sukses", "Password berhasil diubah", [
         { text: "OK", onPress: () => router.back() },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       Alert.alert("Error", "Gagal mengubah password");
     } finally {
@@ -99,11 +103,7 @@ export default function ChangePassword() {
       >
         Simpan
       </Button>
-      <Button
-        variant="outline"
-        size="large"
-        onPress={() => router.back()}
-      >
+      <Button variant="outline" size="large" onPress={() => router.back()}>
         Batal
       </Button>
     </View>

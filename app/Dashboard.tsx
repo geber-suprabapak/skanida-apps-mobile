@@ -1,4 +1,5 @@
 // app/Dashboard.tsx
+import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
@@ -10,10 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
-  Pressable,
-  useColorScheme,
 } from "react-native";
-import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -22,29 +20,27 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
-  interpolate,
-  Extrapolate,
-  Layout,
 } from "react-native-reanimated";
+
+import { Button } from "~/components/Button";
+import PhotoViewModal from "~/components/PhotoViewModal";
+import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore";
+import { supabase } from "~/utils/supabase";
 
 // Import NetInfo with error handling
 let NetInfo: any;
 try {
   NetInfo = require("@react-native-community/netinfo").default;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 } catch (error) {
   // Provide a fallback implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   NetInfo = {
     addEventListener: () => ({ remove: () => {} }),
     fetch: async () => ({ isConnected: true, isInternetReachable: true }),
   };
 }
-
-import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
-import { Button } from "~/components/Button";
-import PhotoViewModal from "~/components/PhotoViewModal";
 
 type AttendanceRecord = {
   id: string;
@@ -66,7 +62,6 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const systemColorScheme = useColorScheme();
 
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const setDarkMode = useThemeStore((state) => state.setDarkMode);
@@ -507,7 +502,7 @@ export default function Dashboard() {
           />
         </TouchableOpacity>
         <TouchableOpacity
-          className={`flex-row items-center py-3`}
+          className="flex-row items-center py-3"
           onPress={() => router.push("/profile/ChangePassword")}
         >
           <View

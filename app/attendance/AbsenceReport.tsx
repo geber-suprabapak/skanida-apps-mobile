@@ -1,8 +1,25 @@
 // --- NECESSARY IMPORTS ---
+import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { View, Text, Alert, ActivityIndicator } from "react-native";
-import * as Location from "expo-location";
+import { View, Text, Alert } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  SlideInUp,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
+
+import { Button } from "~/components/Button"; // Import the custom Button
+import useThemeStore from "~/store/themeStore";
+import { supabase } from "~/utils/supabase";
 
 // Import NetInfo with error handling
 let NetInfo: any;
@@ -15,25 +32,7 @@ try {
     addEventListener: () => ({ remove: () => {} }),
     fetch: async () => ({ isConnected: true, isInternetReachable: true }),
   };
-}
-
-import { supabase } from "~/utils/supabase";
-import { Button } from "~/components/Button"; // Import the custom Button
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
-import Animated, {
-  FadeIn,
-  FadeInUp,
-  SlideInUp,
-  ZoomIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  withSequence,
-  withDelay,
-  Easing,
-} from "react-native-reanimated";
-import useThemeStore from "~/store/themeStore"; // Import the theme store
+} // Import the theme store
 
 // --- Component Definition Starts Here ---
 const AbsenceReport = () => {
@@ -129,7 +128,7 @@ const AbsenceReport = () => {
         return;
       }
 
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
         setStatusMessage("Izin lokasi ditolak. Aktifkan di pengaturan.");
@@ -152,7 +151,7 @@ const AbsenceReport = () => {
       );
 
       // Race the location request against the timeout
-      let currentLocation = (await Promise.race([
+      const currentLocation = (await Promise.race([
         locationPromise,
         timeoutPromise,
       ])) as Location.LocationObject;
@@ -250,7 +249,7 @@ const AbsenceReport = () => {
         params: {
           latitude: location.coords.latitude.toString(),
           longitude: location.coords.longitude.toString(),
-          userId: userId,
+          userId,
         },
       });
     }

@@ -1,18 +1,9 @@
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  View,
-  ViewStyle,
-  TextStyle,
-} from "react-native"; // Added View import
+import { TouchableOpacity, Text, ActivityIndicator, View } from "react-native"; // Added View import
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  interpolate,
-  Extrapolate,
 } from "react-native-reanimated";
 
 type ButtonProps = {
@@ -68,8 +59,7 @@ export const Button: React.FC<ButtonProps> = ({
     primary: "bg-gray-500 focus:ring-gray-500",
     secondary: "bg-gray-200 focus:ring-gray-200",
     tertiary: "bg-gray-100 focus:ring-gray-100",
-    outline:
-      "border border-gray-500 bg-transparent focus:ring-gray-500",
+    outline: "border border-gray-500 bg-transparent focus:ring-gray-500",
     danger: "bg-brand-red focus:ring-brand-red",
   };
 
