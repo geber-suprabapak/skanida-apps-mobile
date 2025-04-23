@@ -9,7 +9,6 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
-  Image,
   Alert,
 } from "react-native";
 import Animated, {
@@ -23,7 +22,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Button } from "~/components/Button";
-import PhotoViewModal from "~/components/PhotoViewModal";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -72,8 +70,6 @@ export default function Dashboard() {
   >([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
   useEffect(() => {
     fetchAttendanceHistory();
@@ -193,7 +189,7 @@ export default function Dashboard() {
           variant="primary"
           size="medium"
           className="flex-1"
-          onPress={() => setActiveTab("attendance")}
+          onPress={() => router.push("/riwayat/riwayat")}
           leftIcon={<MaterialIcons name="history" size={20} color="#fff" />}
         >
           Riwayat
@@ -261,7 +257,7 @@ export default function Dashboard() {
         {attendanceHistory.length > 3 && (
           <TouchableOpacity
             className={`w-full items-center mt-3 pt-3 border-t ${isDarkMode ? "border-gray-700" : "border-brand-gray-lighter"}`}
-            onPress={() => setActiveTab("attendance")}
+            onPress={() => router.push("/riwayat/riwayat")}
           >
             <Text
               className={`font-medium ${isDarkMode ? "text-white" : "text-gray-700"}`}
@@ -294,11 +290,7 @@ export default function Dashboard() {
                     message.read ? "mail-open-outline" : "mail-unread-outline"
                   }
                   size={24}
-                  color={
-                    message.read
-                      ? "hsl(var(--muted-foreground))"
-                      : "hsl(var(--primary))"
-                  }
+                  color="white"
                 />
               </View>
               <View className="flex-1">
@@ -332,92 +324,6 @@ export default function Dashboard() {
           </Text>
         )}
       </View>
-    </ScrollView>
-  );
-
-  const renderAttendanceTab = () => (
-    <ScrollView
-      className={`flex-1 pb-32 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
-    >
-      <Text
-        className={`text-xl font-bold my-4 px-5 ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-      >
-        Riwayat Kehadiran
-      </Text>
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="hsl(var(--primary))"
-          className="mt-10"
-        />
-      ) : attendanceHistory.length > 0 ? (
-        <View className="px-5">
-          {attendanceHistory.map((record) => (
-            <View
-              key={record.id}
-              className={`rounded-xl p-4 mb-4 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
-            >
-              <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-border">
-                <Text
-                  className={`text-base font-bold ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-                >
-                  {record.date}
-                </Text>
-                <Text
-                  className={`text-sm ${isDarkMode ? "text-gray-300" : "text-muted-foreground"}`}
-                >
-                  {new Date(record.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </Text>
-              </View>
-              <View className="flex-row items-center justify-between mt-2">
-                <View className="flex-row items-center">
-                  <AntDesign name="checkcircle" size={20} color="#28a745" />
-                  <Text className="text-sm ml-2 text-green-600">
-                    {record.reason}
-                  </Text>
-                </View>
-                {record.photo_url && (
-                  <TouchableOpacity
-                    className="p-1 -m-1 rounded-md"
-                    onPress={() => {
-                      setSelectedPhoto(record.photo_url);
-                      setPhotoModalVisible(true);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Image
-                      source={{ uri: record.photo_url }}
-                      className="w-10 h-10 rounded-md bg-muted"
-                      resizeMode="cover"
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View className="flex-1 items-center justify-center p-10 mt-10">
-          <Ionicons
-            name="document-text-outline"
-            size={60}
-            color="hsl(var(--muted))"
-          />
-          <Text
-            className={`text-lg font-bold mt-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
-          >
-            Belum Ada Data Kehadiran
-          </Text>
-          <Text
-            className={`text-sm mt-2 text-center ${isDarkMode ? "text-gray-300" : "text-muted-foreground/70"}`}
-          >
-            Riwayat kehadiran Anda akan muncul di sini
-          </Text>
-        </View>
-      )}
     </ScrollView>
   );
 
@@ -616,15 +522,6 @@ export default function Dashboard() {
             {renderHomeTab()}
           </Animated.View>
         )}
-        {activeTab === "attendance" && (
-          <Animated.View
-            entering={SlideInRight.duration(300)}
-            exiting={SlideOutLeft.duration(200)}
-            className="flex-1"
-          >
-            {renderAttendanceTab()}
-          </Animated.View>
-        )}
         {activeTab === "settings" && (
           <Animated.View
             entering={SlideInRight.duration(300)}
@@ -634,16 +531,6 @@ export default function Dashboard() {
             {renderSettingsTab()}
           </Animated.View>
         )}
-
-        {/* Photo Viewing Modal - Using the standalone component */}
-        <PhotoViewModal
-          photoUrl={selectedPhoto}
-          isVisible={photoModalVisible}
-          onClose={() => {
-            setPhotoModalVisible(false);
-            setSelectedPhoto(null);
-          }}
-        />
 
         {/* Bottom Navigation */}
         <View
@@ -657,10 +544,10 @@ export default function Dashboard() {
             isDarkMode={isDarkMode}
           />
           <AnimatedTabButton
-            isActive={activeTab === "attendance"}
-            icon={activeTab === "attendance" ? "calendar" : "calendar-outline"}
+            isActive={false}
+            icon="calendar-outline"
             label="Kehadiran"
-            onPress={() => setActiveTab("attendance")}
+            onPress={() => router.push("/riwayat/riwayat")}
             isDarkMode={isDarkMode}
           />
           <AnimatedTabButton
