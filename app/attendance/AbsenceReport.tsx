@@ -265,12 +265,12 @@ const AbsenceReport = () => {
         className="mb-6 items-center"
       >
         <Text
-          className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-700"}`}
+          className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-700"}`}
         >
           Absensi Kehadiran
         </Text>
         <Text
-          className={`text-center ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+          className={`text-center ${isDarkMode ? "text-white" : "text-gray-600"}`}
         >
           Silahkan lakukan absensi kehadiran Anda
         </Text>
@@ -287,11 +287,11 @@ const AbsenceReport = () => {
               <MaterialIcons
                 name="location-searching"
                 size={60}
-                color={isDarkMode ? "#C084FC" : "#E600FF"}
+                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
               />
             </Animated.View>
             <Text
-              className={`text-lg mt-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-lg mt-4 ${isDarkMode ? "text-white" : "text-gray-600"}`}
             >
               Memeriksa lokasi...
             </Text>
@@ -329,7 +329,7 @@ const AbsenceReport = () => {
               {isWithinRange ? "Lokasi Terverifikasi" : "Di Luar Jangkauan"}
             </Text>
             <Text
-              className={`text-center ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-center ${isDarkMode ? "text-white" : "text-gray-600"}`}
             >
               {statusMessage}
             </Text>
@@ -339,7 +339,7 @@ const AbsenceReport = () => {
                 className={`mt-4 p-3 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}
               >
                 <Text
-                  className={`text-center text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                  className={`text-center text-sm ${isDarkMode ? "text-white" : "text-gray-500"}`}
                 >
                   Koordinat: {location.coords.latitude.toFixed(6)},{" "}
                   {location.coords.longitude.toFixed(6)}
@@ -362,7 +362,13 @@ const AbsenceReport = () => {
             size="large"
             onPress={handleProceedToCamera}
             disabled={loading}
-            leftIcon={<Ionicons name="camera-outline" size={24} color="#fff" />}
+            leftIcon={
+              <Ionicons
+                name="camera-outline"
+                size={24}
+                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
+              />
+            }
           >
             Lanjutkan ke Kamera
           </Button>
@@ -380,7 +386,7 @@ const AbsenceReport = () => {
               <Ionicons
                 name="refresh-outline"
                 size={24}
-                color={isDarkMode ? "#CBD5E1" : "#444"}
+                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
               />
             }
           >
@@ -398,7 +404,7 @@ const AbsenceReport = () => {
             <Ionicons
               name="arrow-back-outline"
               size={24}
-              color={isDarkMode ? "#C084FC" : "#E600FF"}
+              color={isDarkMode ? "#C0DAFF" : "#0066FF"}
             />
           }
         >

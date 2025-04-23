@@ -6,6 +6,8 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
+import useThemeStore from "~/store/themeStore";
+
 type ButtonProps = {
   children: React.ReactNode;
   onPress?: () => void;
@@ -31,6 +33,8 @@ export const Button: React.FC<ButtonProps> = ({
   leftIcon,
   rightIcon,
 }) => {
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+
   const baseClasses =
     "flex-row items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2";
 
@@ -63,12 +67,13 @@ export const Button: React.FC<ButtonProps> = ({
     danger: "bg-brand-red focus:ring-brand-red",
   };
 
-  const textVariantStyles = {
-    primary: "text-white",
-    secondary: "text-gray-700",
-    tertiary: "text-gray-700",
-    outline: "text-gray-700",
-    danger: "text-red-600",
+  // Text variants with dark mode support
+  const getTextVariantStyle = (variantType: string) => {
+    if (variantType === "primary") return "text-white";
+    if (variantType === "danger") return "text-red-600";
+
+    // For secondary, tertiary, and outline - use white text in dark mode
+    return isDarkMode ? "text-white" : "text-gray-700";
   };
 
   const sizeStyles = {
@@ -104,7 +109,7 @@ export const Button: React.FC<ButtonProps> = ({
           <>
             {leftIcon && <View className="mr-2">{leftIcon}</View>}
             <Text
-              className={`${textVariantStyles[variant]} ${textSizeStyles[size]} ${textClassName}`}
+              className={`${getTextVariantStyle(variant)} ${textSizeStyles[size]} ${textClassName}`}
             >
               {children}
             </Text>

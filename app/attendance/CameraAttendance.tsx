@@ -438,7 +438,7 @@ const CameraAttendance = () => {
         <Stack.Screen
           options={{ title: "Camera Attendance", headerShown: false }}
         />
-        <ActivityIndicator size="large" color="#E600FF" />
+        <ActivityIndicator size="large" color="#0066FF" />
         <Text className="text-white text-lg text-center mx-5 mt-4">
           Requesting camera permission...
         </Text>
@@ -458,7 +458,7 @@ const CameraAttendance = () => {
           entering={FadeIn.duration(500)}
           className="items-center justify-center"
         >
-          <Ionicons name="camera-outline" size={80} color="#E600FF" />
+          <Ionicons name="camera-outline" size={80} color="#0066FF" />
           <Text className="text-white text-2xl font-bold text-center mt-4 mb-2">
             Camera Access Needed
           </Text>
@@ -466,7 +466,7 @@ const CameraAttendance = () => {
             We need your permission to use the camera for attendance
           </Text>
           <TouchableOpacity
-            className="bg-[#E600FF] px-8 py-4 rounded-lg"
+            className="bg-[#0066FF] px-8 py-4 rounded-lg"
             activeOpacity={0.7}
             onPress={requestPermission}
           >
@@ -497,7 +497,7 @@ const CameraAttendance = () => {
             {cameraError}
           </Text>
           <TouchableOpacity
-            className="bg-[#E600FF] px-8 py-4 rounded-lg"
+            className="bg-[#0066FF] px-8 py-4 rounded-lg"
             activeOpacity={0.7}
             onPress={() => router.back()}
           >
@@ -518,7 +518,7 @@ const CameraAttendance = () => {
           entering={FadeIn.duration(400)}
           className="items-center justify-center w-4/5"
         >
-          <ActivityIndicator size="large" color="#E600FF" />
+          <ActivityIndicator size="large" color="#0066FF" />
           <Text className="text-white text-xl font-semibold mt-4 mb-2">
             Saving Attendance...
           </Text>
@@ -531,7 +531,7 @@ const CameraAttendance = () => {
           </Text>
           <View className="w-full h-2 bg-gray-700 rounded-full">
             <View
-              className="h-full bg-[#E600FF] rounded-full"
+              className="h-full bg-[#0066FF] rounded-full"
               style={{ width: `${uploadProgress}%` }}
             />
           </View>
@@ -554,7 +554,7 @@ const CameraAttendance = () => {
           headerShown: true,
           title: "Camera Attendance",
           headerStyle: {
-            backgroundColor: "#E600FF",
+            backgroundColor: "#0066FF",
           },
           headerTintColor: "#fff",
         }}
@@ -577,7 +577,7 @@ const CameraAttendance = () => {
                 className="absolute top-3 left-0 right-0 bg-black/60 py-3 px-4 items-center mx-4 rounded-xl"
               >
                 <View className="flex-row items-center">
-                  <Ionicons name="location" size={16} color="#E600FF" />
+                  <Ionicons name="location" size={16} color="#0066FF" />
                   <Text className="text-white text-sm ml-1">
                     Location: {locationData.latitude.toFixed(4)},{" "}
                     {locationData.longitude.toFixed(4)}
@@ -615,9 +615,9 @@ const CameraAttendance = () => {
                     activeOpacity={0.8}
                   >
                     {isTakingPicture ? (
-                      <ActivityIndicator size="large" color="#E600FF" />
+                      <ActivityIndicator size="large" color="#0066FF" />
                     ) : (
-                      <View className="w-16 h-16 rounded-full bg-[#E600FF]" />
+                      <View className="w-16 h-16 rounded-full bg-[#0066FF]" />
                     )}
                   </TouchableOpacity>
                 </Animated.View>
@@ -634,7 +634,7 @@ const CameraAttendance = () => {
             </>
           ) : (
             <View className="flex-1 justify-center items-center bg-black/70">
-              <ActivityIndicator size="large" color="#E600FF" />
+              <ActivityIndicator size="large" color="#0066FF" />
               <Text className="text-white mt-3">Initializing camera...</Text>
             </View>
           )}
