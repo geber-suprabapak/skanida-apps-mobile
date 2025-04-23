@@ -4,14 +4,15 @@ import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   View,
-  Text,
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
   Image,
 } from "react-native";
 
+import { Button } from "~/components/Button";
 import PhotoViewModal from "~/components/PhotoViewModal";
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -79,23 +80,22 @@ export default function Riwayat() {
         <ScrollView
           className={`flex-1 pb-32 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
         >
-          {/* Back Button at the top of content area */}
-          <TouchableOpacity
-            className={`flex-row items-center mx-5 mt-4 mb-2 p-3 rounded-lg ${isDarkMode ? "bg-card" : "bg-card"}`}
+          {/* Back Button using reusable Button component */}
+          <Button
+            variant="outline"
+            size="medium"
+            className="mx-5 mt-4 mb-2"
             onPress={() => router.push("/Dashboard")}
-            activeOpacity={0.7}
+            leftIcon={
+              <Ionicons
+                name="arrow-back-outline"
+                size={24}
+                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
+              />
+            }
           >
-            <Ionicons
-              name="arrow-back-outline"
-              size={24}
-              color={isDarkMode ? "#C0DAFF" : "#0066FF"}
-            />
-            <Text
-              className={`ml-2 text-base font-medium ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-            >
-              Kembali ke Dashboard
-            </Text>
-          </TouchableOpacity>
+            Kembali ke Dashboard
+          </Button>
 
           {loading ? (
             <ActivityIndicator
