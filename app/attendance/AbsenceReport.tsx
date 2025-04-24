@@ -3,7 +3,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { View, Text, Alert } from "react-native";
+import { View, Alert } from "react-native"; // Removed Text from here
 import Animated, {
   FadeIn,
   FadeInUp,
@@ -17,7 +17,9 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Button } from "~/components/Button"; // Import the custom Button
+// import { Button } from "~/components/Button"; // Remove this line
+import { Button } from "~/components/ui/button"; // Use the new button
+import { Text } from "~/components/ui/text"; // Import Text from ui
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
@@ -358,57 +360,58 @@ const AbsenceReport = () => {
         {/* Show Camera button only when within range */}
         {isWithinRange === true && (
           <Button
-            variant="primary"
-            size="large"
+            variant="default" // Removed curly braces
+            size="lg" // Removed curly braces
             onPress={handleProceedToCamera}
             disabled={loading}
-            leftIcon={
-              <Ionicons
-                name="camera-outline"
-                size={24}
-                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
-              />
-            }
           >
-            Lanjutkan ke Kamera
+            <Ionicons
+              name="camera-outline"
+              size={24}
+              color="hsl(var(--primary-foreground))"
+              className="mr-2"
+            />
+            <Text>Lanjutkan ke Kamera</Text>
           </Button>
         )}
 
         {/* Show Recheck button only when NOT in range and location check is finished */}
         {isWithinRange === false && !loading && (
           <Button
-            variant="secondary"
-            size="large"
+            variant="secondary" // Removed curly braces
+            size="lg" // Removed curly braces
             onPress={requestAndCheckLocation}
             disabled={loading}
-            // Make icon color theme-aware for secondary button
-            leftIcon={
-              <Ionicons
-                name="refresh-outline"
-                size={24}
-                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
-              />
-            }
           >
-            Periksa Lokasi Kembali
+            <Ionicons
+              name="refresh-outline"
+              size={24}
+              color={
+                isDarkMode
+                  ? "hsl(var(--secondary-foreground))"
+                  : "hsl(var(--secondary-foreground))"
+              }
+              className="mr-2"
+            />
+            <Text>Periksa Lokasi Kembali</Text>
           </Button>
         )}
 
         {/* Always show the Back button */}
         <Button
-          variant="outline"
-          size="large"
+          variant="outline" // Removed curly braces
+          size="lg" // Removed curly braces
           onPress={() => router.back()}
-          // Correctly pass the icon element with conditional color
-          leftIcon={
-            <Ionicons
-              name="arrow-back-outline"
-              size={24}
-              color={isDarkMode ? "#C0DAFF" : "#0066FF"}
-            />
-          }
         >
-          Kembali {/* Add the button text back */}
+          <Ionicons
+            name="arrow-back-outline"
+            size={24}
+            color={
+              isDarkMode ? "hsl(var(--foreground))" : "hsl(var(--foreground))"
+            }
+            className="mr-2"
+          />
+          <Text>Kembali</Text>
         </Button>
       </Animated.View>
     </View>

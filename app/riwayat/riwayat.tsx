@@ -2,14 +2,9 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
 
-import { Button } from "~/components/Button";
+import { Button } from "~/components/ui/button"; // Use the new button
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -96,28 +91,27 @@ export default function Riwayat() {
           removeClippedSubviews // For performance
         >
           <Button
-            variant={isDarkMode ? "outline" : "outline"}
-            size="medium"
-            className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`}
+            variant="outline" // Keep outline variant
+            size="default" // Map medium to default
+            className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`} // Keep className for now
             onPress={() => router.push("/Dashboard")}
-            leftIcon={
-              <Ionicons
-                name="arrow-back-outline"
-                size={24}
-                color={isDarkMode ? "#fff" : "#0066FF"}
-              />
-            }
           >
-            Kembali ke Dashboard
+            <Ionicons
+              name="arrow-back-outline"
+              size={20} // Adjust size if needed
+              color={isDarkMode ? "#fff" : "hsl(var(--primary))"} // Adjust color based on context
+              className="mr-2" // Add margin if needed
+            />
+            <Text>Kembali ke Dashboard</Text> {/* Wrap text */}
           </Button>
 
           <Button
-            variant="primary"
-            size="small"
+            variant="default" // Map primary to default
+            size="sm" // Map small to sm
             className="mx-5 my-1"
             onPress={fetchAttendanceHistory}
           >
-            Refresh Data
+            <Text>Refresh Data</Text> {/* Wrap text */}
           </Button>
 
           {loading && attendanceHistory.length === 0 ? (

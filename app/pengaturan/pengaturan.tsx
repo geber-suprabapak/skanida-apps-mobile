@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 
-import { Button } from "~/components/Button";
+import { Button } from "~/components/ui/button"; // Use the new button
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -145,19 +145,18 @@ export default function Pengaturan() {
       >
         {/* Back Button dengan komponen Button reusable */}
         <Button
-          variant={isDarkMode ? "outline" : "outline"}
-          size="medium"
-          className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`}
+          variant="outline" // Keep outline variant
+          size="default" // Map medium to default
+          className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`} // Keep className for now, might need adjustment based on new button's styling
           onPress={() => router.push("/Dashboard")}
-          leftIcon={
-            <Ionicons
-              name="arrow-back-outline"
-              size={24}
-              color={isDarkMode ? "#fff" : "#0066FF"}
-            />
-          }
         >
-          Kembali ke Dashboard
+          <Ionicons
+            name="arrow-back-outline"
+            size={20} // Adjust size if needed
+            color={isDarkMode ? "#fff" : "hsl(var(--primary))"} // Adjust color based on context
+            className="mr-2" // Add margin if needed
+          />
+          <Text>Kembali ke Dashboard</Text> {/* Wrap text */}
         </Button>
 
         {/* Profile Section */}
@@ -274,21 +273,20 @@ export default function Pengaturan() {
           <SectionHeader title="Akun" />
 
           <Button
-            variant="danger"
-            size="medium"
+            variant="destructive" // Map danger to destructive
+            size="default" // Map medium to default
             onPress={handleLogout}
             className={`w-full rounded-lg py-3 ${
-              isDarkMode ? "bg-red-900/30" : "bg-destructive/10"
+              isDarkMode ? "bg-red-900/30" : "bg-destructive/10" // Keep className for now
             }`}
-            leftIcon={
-              <Ionicons
-                name="log-out-outline"
-                size={24}
-                color={isDarkMode ? "#f87171" : "hsl(var(--destructive))"}
-              />
-            }
           >
-            Keluar
+            <Ionicons
+              name="log-out-outline"
+              size={20} // Adjust size if needed
+              color={isDarkMode ? "#f87171" : "hsl(var(--destructive))"} // Adjust color based on context
+              className="mr-2" // Add margin if needed
+            />
+            <Text>Keluar</Text> {/* Wrap text */}
           </Button>
         </View>
 

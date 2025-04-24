@@ -1,8 +1,9 @@
 import { useRouter, Stack } from "expo-router";
 import React, { useState } from "react";
-import { View, Text, TextInput, Alert } from "react-native";
+import { View, TextInput, Alert, ActivityIndicator } from "react-native";
 
-import { Button } from "~/components/Button";
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 
@@ -73,16 +74,28 @@ export default function EditProfile() {
         />
       </View>
       <Button
-        variant="primary"
-        size="large"
-        loading={loading}
+        variant="default"
+        size="lg"
+        disabled={loading}
         onPress={handleSave}
         className="mb-4"
       >
-        Simpan
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color="hsl(var(--primary-foreground))"
+            className="mr-2"
+          />
+        ) : null}
+        <Text>Simpan</Text>
       </Button>
-      <Button variant="outline" size="large" onPress={() => router.back()}>
-        Batal
+      <Button
+        variant="outline"
+        size="lg"
+        onPress={() => router.back()}
+        disabled={loading}
+      >
+        <Text>Batal</Text>
       </Button>
     </View>
   );
