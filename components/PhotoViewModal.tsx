@@ -1,4 +1,5 @@
-import React from "react";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
 import {
   View,
   Modal,
@@ -8,13 +9,9 @@ import {
   Pressable,
   Dimensions,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  ZoomIn,
-  ZoomOut,
-} from "react-native-reanimated";
+import Animated, { FadeIn, ZoomIn, ZoomOut } from "react-native-reanimated";
 
 type PhotoViewModalProps = {
   photoUrl: string | null;
@@ -31,15 +28,18 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({
   isVisible,
   onClose,
 }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
   if (!photoUrl) return null;
 
   return (
     <Modal
-      transparent={true}
+      transparent
       visible={isVisible}
       animationType="fade"
       onRequestClose={onClose}
-      statusBarTranslucent={true}
+      statusBarTranslucent
     >
       <Pressable
         style={styles.modalOverlay}
@@ -53,12 +53,46 @@ const PhotoViewModal: React.FC<PhotoViewModalProps> = ({
             className="bg-white rounded-xl overflow-hidden shadow-xl mb-4"
             style={{ width: imageWidth, height: imageHeight }}
           >
-            <Pressable onPress={(e) => e.stopPropagation()} className="flex-1">
-              <Image
-                source={{ uri: photoUrl }}
-                className="w-full h-full"
-                resizeMode="contain"
-              />
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="flex-1 bg-gray-100 items-center justify-center"
+            >
+              {loading && !error && (
+                <View
+                  style={StyleSheet.absoluteFill}
+                  className="items-center justify-center"
+                >
+                  <ActivityIndicator size="large" color="#0066FF" />
+                </View>
+              )}
+
+              {error ? (
+                <View
+                  style={StyleSheet.absoluteFill}
+                  className="items-center justify-center"
+                >
+                  <Ionicons name="image-outline" size={50} color="#666" />
+                  <Text className="text-gray-500 mt-2">
+                    Tidak dapat menampilkan foto
+                  </Text>
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: photoUrl }}
+                  style={{ width: "100%", height: "100%" }} // Explicitly set width and height
+                  resizeMode="contain"
+                  onLoadStart={() => {
+                    setLoading(true);
+                    setError(false);
+                  }}
+                  onLoadEnd={() => setLoading(false)}
+                  onError={() => {
+                    console.log("Error loading image in modal:", photoUrl);
+                    setError(true);
+                    setLoading(false);
+                  }}
+                />
+              )}
             </Pressable>
           </Animated.View>
 

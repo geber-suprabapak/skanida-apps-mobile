@@ -6,12 +6,10 @@ import {
   View,
   ScrollView,
   ActivityIndicator,
-  TouchableOpacity,
-  Image,
+  Alert,
 } from "react-native";
 
 import { Button } from "~/components/Button";
-import PhotoViewModal from "~/components/PhotoViewModal";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -22,7 +20,6 @@ type AttendanceRecord = {
   date: string;
   created_at: string;
   reason: string;
-  photo_url: string;
 };
 
 export default function Riwayat() {
@@ -34,8 +31,6 @@ export default function Riwayat() {
     AttendanceRecord[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
   useEffect(() => {
     fetchAttendanceHistory();
@@ -44,16 +39,31 @@ export default function Riwayat() {
   const fetchAttendanceHistory = async () => {
     setLoading(true);
     try {
+      console.log("Fetching attendance for user ID:", user.id);
+
       const { data, error } = await supabase
         .from("absences")
-        .select("*")
+        .select("id, date, created_at, reason") // Select only necessary fields
         .eq("user_id", user.id)
         .order("date", { ascending: false });
 
-      if (error) throw error;
-      setAttendanceHistory(data || []);
+      if (error) {
+        console.error("Supabase query error:", error);
+        throw error;
+      }
+
+      console.log("Fetched records count:", data?.length || 0);
+      if (data && data.length > 0) {
+        setAttendanceHistory(data);
+      } else {
+        setAttendanceHistory([]);
+      }
     } catch (error) {
       console.error("Error fetching attendance history:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load attendance history. Please try again later.",
+      );
     } finally {
       setLoading(false);
     }
@@ -83,8 +93,8 @@ export default function Riwayat() {
       >
         <ScrollView
           className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+          removeClippedSubviews // For performance
         >
-          {/* Back Button using reusable Button component */}
           <Button
             variant={isDarkMode ? "outline" : "outline"}
             size="medium"
@@ -101,7 +111,16 @@ export default function Riwayat() {
             Kembali ke Dashboard
           </Button>
 
-          {loading ? (
+          <Button
+            variant="primary"
+            size="small"
+            className="mx-5 my-1"
+            onPress={fetchAttendanceHistory}
+          >
+            Refresh Data
+          </Button>
+
+          {loading && attendanceHistory.length === 0 ? (
             <ActivityIndicator
               size="large"
               color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
@@ -135,39 +154,20 @@ export default function Riwayat() {
                       })}
                     </Text>
                   </View>
-                  <View className="flex-row items-center justify-between mt-2">
-                    <View className="flex-row items-center">
-                      <AntDesign
-                        name="checkcircle"
-                        size={20}
-                        color={isDarkMode ? "#28a745" : "#28a745"}
-                      />
-                      <Text
-                        className={`text-sm ml-2 ${
-                          isDarkMode ? "text-gray-400" : "text-green-600"
-                        }`}
-                      >
-                        {record.reason}
-                      </Text>
-                    </View>
-                    {record.photo_url && (
-                      <TouchableOpacity
-                        className={`p-1 -m-1 rounded-md ${
-                          isDarkMode ? "bg-gray-700" : "bg-muted"
-                        }`}
-                        onPress={() => {
-                          setSelectedPhoto(record.photo_url);
-                          setPhotoModalVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Image
-                          source={{ uri: record.photo_url }}
-                          className="w-10 h-10 rounded-md"
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    )}
+
+                  <View className="flex-row items-center mt-2">
+                    <AntDesign
+                      name="checkcircle"
+                      size={20}
+                      color={isDarkMode ? "#28a745" : "#28a745"}
+                    />
+                    <Text
+                      className={`text-sm ml-2 ${
+                        isDarkMode ? "text-gray-400" : "text-green-600"
+                      }`}
+                    >
+                      {record.reason}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -196,16 +196,6 @@ export default function Riwayat() {
             </View>
           )}
         </ScrollView>
-
-        {/* Photo Viewing Modal */}
-        <PhotoViewModal
-          photoUrl={selectedPhoto}
-          isVisible={photoModalVisible}
-          onClose={() => {
-            setPhotoModalVisible(false);
-            setSelectedPhoto(null);
-          }}
-        />
       </View>
     </>
   );
