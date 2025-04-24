@@ -2,16 +2,10 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
-  Image,
-} from "react-native";
+import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
 
-import PhotoViewModal from "~/components/PhotoViewModal";
+import { Button } from "~/components/ui/button"; // Use the new button
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -21,7 +15,6 @@ type AttendanceRecord = {
   date: string;
   created_at: string;
   reason: string;
-  photo_url: string;
 };
 
 export default function Riwayat() {
@@ -33,8 +26,6 @@ export default function Riwayat() {
     AttendanceRecord[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
   useEffect(() => {
     fetchAttendanceHistory();
@@ -43,16 +34,31 @@ export default function Riwayat() {
   const fetchAttendanceHistory = async () => {
     setLoading(true);
     try {
+      console.log("Fetching attendance for user ID:", user.id);
+
       const { data, error } = await supabase
         .from("absences")
-        .select("*")
+        .select("id, date, created_at, reason") // Select only necessary fields
         .eq("user_id", user.id)
         .order("date", { ascending: false });
 
-      if (error) throw error;
-      setAttendanceHistory(data || []);
+      if (error) {
+        console.error("Supabase query error:", error);
+        throw error;
+      }
+
+      console.log("Fetched records count:", data?.length || 0);
+      if (data && data.length > 0) {
+        setAttendanceHistory(data);
+      } else {
+        setAttendanceHistory([]);
+      }
     } catch (error) {
       console.error("Error fetching attendance history:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load attendance history. Please try again later.",
+      );
     } finally {
       setLoading(false);
     }
@@ -65,42 +71,53 @@ export default function Riwayat() {
           headerShown: true,
           title: "Riwayat Kehadiran",
           headerStyle: {
-            backgroundColor: "hsl(var(--primary))",
+            backgroundColor: isDarkMode
+              ? "hsl(var(--primary))"
+              : "hsl(var(--primary))",
           },
-          headerTintColor: "hsl(var(--primary-foreground))",
+          headerTintColor: isDarkMode
+            ? "hsl(var(--primary-foreground))"
+            : "hsl(var(--primary-foreground))",
           headerTitleStyle: {
             fontWeight: "bold",
           },
         }}
       />
       <View
-        className={`flex-1 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
         <ScrollView
-          className={`flex-1 pb-32 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
+          className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+          removeClippedSubviews // For performance
         >
-          {/* Back Button at the top of content area */}
-          <TouchableOpacity
-            className={`flex-row items-center mx-5 mt-4 mb-2 p-3 rounded-lg ${isDarkMode ? "bg-card" : "bg-card"}`}
+          <Button
+            variant="outline" // Keep outline variant
+            size="default" // Map medium to default
+            className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`} // Keep className for now
             onPress={() => router.push("/Dashboard")}
-            activeOpacity={0.7}
           >
             <Ionicons
               name="arrow-back-outline"
-              size={24}
-              color={isDarkMode ? "#C0DAFF" : "#0066FF"}
+              size={20} // Adjust size if needed
+              color={isDarkMode ? "#fff" : "hsl(var(--primary))"} // Adjust color based on context
+              className="mr-2" // Add margin if needed
             />
-            <Text
-              className={`ml-2 text-base font-medium ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-            >
-              Kembali ke Dashboard
-            </Text>
-          </TouchableOpacity>
+            <Text>Kembali ke Dashboard</Text> {/* Wrap text */}
+          </Button>
 
-          {loading ? (
+          <Button
+            variant="default" // Map primary to default
+            size="sm" // Map small to sm
+            className="mx-5 my-1"
+            onPress={fetchAttendanceHistory}
+          >
+            <Text>Refresh Data</Text> {/* Wrap text */}
+          </Button>
+
+          {loading && attendanceHistory.length === 0 ? (
             <ActivityIndicator
               size="large"
-              color="hsl(var(--primary))"
+              color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
               className="mt-10"
             />
           ) : attendanceHistory.length > 0 ? (
@@ -108,16 +125,22 @@ export default function Riwayat() {
               {attendanceHistory.map((record) => (
                 <View
                   key={record.id}
-                  className={`rounded-xl p-4 mb-4 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
+                  className={`rounded-xl p-4 mb-4 shadow-sm ${
+                    isDarkMode ? "bg-gray-800" : "bg-card"
+                  }`}
                 >
                   <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-border">
                     <Text
-                      className={`text-base font-bold ${isDarkMode ? "text-white" : "text-card-foreground"}`}
+                      className={`text-base font-bold ${
+                        isDarkMode ? "text-white" : "text-card-foreground"
+                      }`}
                     >
                       {record.date}
                     </Text>
                     <Text
-                      className={`text-sm ${isDarkMode ? "text-gray-300" : "text-muted-foreground"}`}
+                      className={`text-sm ${
+                        isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                      }`}
                     >
                       {new Date(record.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -125,29 +148,20 @@ export default function Riwayat() {
                       })}
                     </Text>
                   </View>
-                  <View className="flex-row items-center justify-between mt-2">
-                    <View className="flex-row items-center">
-                      <AntDesign name="checkcircle" size={20} color="#28a745" />
-                      <Text className="text-sm ml-2 text-green-600">
-                        {record.reason}
-                      </Text>
-                    </View>
-                    {record.photo_url && (
-                      <TouchableOpacity
-                        className="p-1 -m-1 rounded-md"
-                        onPress={() => {
-                          setSelectedPhoto(record.photo_url);
-                          setPhotoModalVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Image
-                          source={{ uri: record.photo_url }}
-                          className="w-10 h-10 rounded-md bg-muted"
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    )}
+
+                  <View className="flex-row items-center mt-2">
+                    <AntDesign
+                      name="checkcircle"
+                      size={20}
+                      color={isDarkMode ? "#28a745" : "#28a745"}
+                    />
+                    <Text
+                      className={`text-sm ml-2 ${
+                        isDarkMode ? "text-gray-400" : "text-green-600"
+                      }`}
+                    >
+                      {record.reason}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -157,31 +171,25 @@ export default function Riwayat() {
               <Ionicons
                 name="document-text-outline"
                 size={60}
-                color="hsl(var(--muted))"
+                color={isDarkMode ? "#4b5563" : "hsl(var(--muted))"}
               />
               <Text
-                className={`text-lg font-bold mt-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
+                className={`text-lg font-bold mt-4 ${
+                  isDarkMode ? "text-white" : "text-muted-foreground"
+                }`}
               >
                 Belum Ada Data Kehadiran
               </Text>
               <Text
-                className={`text-sm mt-2 text-center ${isDarkMode ? "text-gray-300" : "text-muted-foreground/70"}`}
+                className={`text-sm mt-2 text-center ${
+                  isDarkMode ? "text-gray-400" : "text-muted-foreground/70"
+                }`}
               >
                 Riwayat kehadiran Anda akan muncul di sini
               </Text>
             </View>
           )}
         </ScrollView>
-
-        {/* Photo Viewing Modal */}
-        <PhotoViewModal
-          photoUrl={selectedPhoto}
-          isVisible={photoModalVisible}
-          onClose={() => {
-            setPhotoModalVisible(false);
-            setSelectedPhoto(null);
-          }}
-        />
       </View>
     </>
   );

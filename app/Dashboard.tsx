@@ -4,13 +4,13 @@ import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
 } from "react-native";
 
-import { Button } from "~/components/Button";
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -139,10 +139,18 @@ export default function Dashboard() {
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-sm text-muted-foreground">
+              <Text
+                className={`text-sm ${
+                  isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                }`}
+              >
                 Selamat datang,
               </Text>
-              <Text className="font-bold text-lg text-card-foreground">
+              <Text
+                className={`font-bold text-lg ${
+                  isDarkMode ? "text-white" : "text-card-foreground"
+                }`}
+              >
                 {user?.email || "Pengguna"}
               </Text>
             </View>
@@ -151,33 +159,41 @@ export default function Dashboard() {
           {/* Quick actions */}
           <View className="flex-row justify-between px-5 mb-5 space-x-3">
             <Button
-              variant="primary"
-              size="medium"
+              variant="default" // Map primary to default
+              size="default" // Map medium to default
               className="flex-1"
               onPress={() => router.push("/attendance/AbsenceReport")}
-              leftIcon={<AntDesign name="scan1" size={20} color="#fff" />}
             >
-              Absen
+              <AntDesign name="scan1" size={20} color="#fff" className="mr-2" />
+              <Text>Absen</Text> {/* Wrap text */}
             </Button>
             <Button
-              variant="primary"
-              size="medium"
+              variant="default" // Map primary to default
+              size="default" // Map medium to default
               className="flex-1"
               onPress={() => router.push("/riwayat/riwayat")}
-              leftIcon={<MaterialIcons name="history" size={20} color="#fff" />}
             >
-              Riwayat
+              <MaterialIcons
+                name="history"
+                size={20}
+                color="#fff"
+                className="mr-2"
+              />
+              <Text>Riwayat</Text> {/* Wrap text */}
             </Button>
             <Button
-              variant="primary"
-              size="medium"
+              variant="default" // Map primary to default
+              size="default" // Map medium to default
               className="flex-1"
               onPress={() => router.push("/pengaturan/pengaturan")}
-              leftIcon={
-                <Ionicons name="settings-outline" size={20} color="#fff" />
-              }
             >
-              Pengaturan
+              <Ionicons
+                name="settings-outline"
+                size={20}
+                color="#fff"
+                className="mr-2"
+              />
+              <Text>Pengaturan</Text> {/* Wrap text */}
             </Button>
           </View>
 
@@ -268,7 +284,7 @@ export default function Dashboard() {
                           : "mail-unread-outline"
                       }
                       size={24}
-                      color="white"
+                      color={isDarkMode ? "white" : "black"}
                     />
                   </View>
                   <View className="flex-1">
