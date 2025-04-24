@@ -58,7 +58,9 @@ export default function Pengaturan() {
   // Section Components untuk reusable UI
   const SectionHeader = ({ title }: { title: string }) => (
     <Text
-      className={`text-sm font-medium mb-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
+      className={`text-sm font-medium mb-4 ${
+        isDarkMode ? "text-white" : "text-muted-foreground"
+      }`}
     >
       {title}
     </Text>
@@ -81,13 +83,13 @@ export default function Pengaturan() {
   }) => (
     <TouchableOpacity
       className={`flex-row items-center py-3 ${
-        showBorder ? "border-b border-border" : ""
+        showBorder ? `border-b ${isDarkMode ? "border-gray-700" : "border-border"}` : ""
       }`}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
     >
-      <View className="w-9 h-9 rounded-lg bg-accent justify-center items-center mr-3">
+      <View className={`w-9 h-9 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-accent"} justify-center items-center mr-3`}>
         {icon}
       </View>
       <View className="flex-1">
@@ -108,14 +110,15 @@ export default function Pengaturan() {
           </Text>
         )}
       </View>
-      {rightElement ||
-        (onPress && (
+      {rightElement || (
+        onPress && (
           <AntDesign
             name="right"
             size={16}
-            color="hsl(var(--muted-foreground))"
+            color={isDarkMode ? "#fff" : "hsl(var(--muted-foreground))"}
           />
-        ))}
+        )
+      )}
     </TouchableOpacity>
   );
 
@@ -135,31 +138,37 @@ export default function Pengaturan() {
         }}
       />
       <ScrollView
-        className={`flex-1 pb-32 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
+        className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
         {/* Back Button dengan komponen Button reusable */}
         <Button
-          variant="outline"
+          variant={isDarkMode ? "outline" : "outline"}
           size="medium"
-          className="mx-5 mt-4 mb-2"
+          className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`}
           onPress={() => router.push("/Dashboard")}
           leftIcon={
-            <Ionicons
-              name="arrow-back-outline"
-              size={24}
-              color={isDarkMode ? "#C0DAFF" : "#0066FF"}
+            <Ionicons 
+              name="arrow-back-outline" 
+              size={24} 
+              color={isDarkMode ? "#fff" : "#0066FF"} 
             />
           }
         >
           Kembali ke Dashboard
         </Button>
-
+        
         {/* Profile Section */}
         <View
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
+            isDarkMode 
+              ? "bg-gray-800" 
+              : "bg-card"
+          }`}
         >
           <SectionHeader title="Profil" />
-          <View className="flex-row items-center mb-4 pb-4 border-b border-border">
+          <View className={`flex-row items-center mb-4 pb-4 border-b ${
+            isDarkMode ? "border-gray-700" : "border-border"
+          }`}>
             <View className="w-16 h-16 rounded-full bg-primary justify-center items-center mr-4">
               <Text className="text-2xl font-bold text-primary-foreground">
                 {user?.email?.charAt(0).toUpperCase() || "U"}
@@ -167,36 +176,40 @@ export default function Pengaturan() {
             </View>
             <View className="flex-1">
               <Text
-                className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-card-foreground"}`}
+                className={`text-lg font-bold ${
+                  isDarkMode ? "text-white" : "text-card-foreground"
+                }`}
               >
                 {user?.email || "Pengguna"}
               </Text>
               <Text
-                className={`text-sm mt-1 ${isDarkMode ? "text-gray-300" : "text-muted-foreground"}`}
+                className={`text-sm mt-1 ${
+                  isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                }`}
               >
                 User ID: {user?.id?.substring(0, 8) || "Unknown"}
               </Text>
             </View>
           </View>
 
-          <ListItem
+          <ListItem 
             icon={
               <Ionicons
                 name="person-outline"
                 size={20}
-                color="hsl(var(--accent-foreground))"
+                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
               />
             }
             title="Edit Profil"
             onPress={() => router.push("/profile/EditProfile")}
           />
 
-          <ListItem
+          <ListItem 
             icon={
               <Ionicons
                 name="key-outline"
                 size={20}
-                color="hsl(var(--accent-foreground))"
+                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
               />
             }
             title="Ubah Password"
@@ -207,16 +220,20 @@ export default function Pengaturan() {
 
         {/* Preferences Section */}
         <View
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
+            isDarkMode 
+              ? "bg-gray-800" 
+              : "bg-card"
+          }`}
         >
           <SectionHeader title="Preferensi" />
-
-          <ListItem
+          
+          <ListItem 
             icon={
               <Ionicons
                 name={isDarkMode ? "moon" : "moon-outline"}
                 size={20}
-                color="hsl(var(--accent-foreground))"
+                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
               />
             }
             title="Mode Gelap"
@@ -226,21 +243,21 @@ export default function Pengaturan() {
                 onValueChange={setDarkMode}
                 trackColor={{
                   false: "hsl(var(--muted))",
-                  true: "hsl(var(--primary))",
+                  true: isDarkMode ? "#3b82f6" : "hsl(var(--primary))",
                 }}
                 thumbColor={
-                  isDarkMode ? "hsl(var(--primary-foreground))" : "#f4f3f4"
+                  isDarkMode ? "#fff" : "#f4f3f4"
                 }
               />
             }
           />
 
-          <ListItem
+          <ListItem 
             icon={
               <Ionicons
                 name="notifications-outline"
                 size={20}
-                color="hsl(var(--accent-foreground))"
+                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
               />
             }
             title="Notifikasi"
@@ -251,20 +268,28 @@ export default function Pengaturan() {
 
         {/* Account Section */}
         <View
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
+            isDarkMode 
+              ? "bg-gray-800" 
+              : "bg-card"
+          }`}
         >
           <SectionHeader title="Akun" />
-
+          
           <Button
             variant="danger"
             size="medium"
             onPress={handleLogout}
-            className="w-full rounded-lg py-3 bg-destructive/10"
+            className={`w-full rounded-lg py-3 ${
+              isDarkMode 
+                ? "bg-red-900/30" 
+                : "bg-destructive/10"
+            }`}
             leftIcon={
               <Ionicons
                 name="log-out-outline"
                 size={24}
-                color="hsl(var(--destructive))"
+                color={isDarkMode ? "#f87171" : "hsl(var(--destructive))"}
               />
             }
           >
@@ -274,32 +299,36 @@ export default function Pengaturan() {
 
         {/* App Info Section */}
         <View
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
+            isDarkMode 
+              ? "bg-gray-800" 
+              : "bg-card"
+          }`}
         >
           <SectionHeader title="Informasi Aplikasi" />
-
+          
           <View className="py-2">
-            <Text
-              className={`text-sm ${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
-            >
+            <Text className={`text-sm ${
+              isDarkMode ? "text-gray-400" : "text-muted-foreground"
+            }`}>
               Versi Aplikasi
             </Text>
-            <Text
-              className={`mt-1 ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-            >
+            <Text className={`mt-1 ${
+              isDarkMode ? "text-white" : "text-card-foreground"
+            }`}>
               1.0.0 (Build 100)
             </Text>
           </View>
-
+          
           <View className="py-2 mt-2">
-            <Text
-              className={`text-sm ${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
-            >
+            <Text className={`text-sm ${
+              isDarkMode ? "text-gray-400" : "text-muted-foreground"
+            }`}>
               © 2025 Skanida Apps
             </Text>
-            <Text
-              className={`mt-1 ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-            >
+            <Text className={`mt-1 ${
+              isDarkMode ? "text-white" : "text-card-foreground"
+            }`}>
               Semua hak dilindungi
             </Text>
           </View>

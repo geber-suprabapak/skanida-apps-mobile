@@ -66,31 +66,35 @@ export default function Riwayat() {
           headerShown: true,
           title: "Riwayat Kehadiran",
           headerStyle: {
-            backgroundColor: "hsl(var(--primary))",
+            backgroundColor: isDarkMode
+              ? "hsl(var(--primary))"
+              : "hsl(var(--primary))",
           },
-          headerTintColor: "hsl(var(--primary-foreground))",
+          headerTintColor: isDarkMode
+            ? "hsl(var(--primary-foreground))"
+            : "hsl(var(--primary-foreground))",
           headerTitleStyle: {
             fontWeight: "bold",
           },
         }}
       />
       <View
-        className={`flex-1 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
         <ScrollView
-          className={`flex-1 pb-32 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
+          className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
         >
           {/* Back Button using reusable Button component */}
           <Button
-            variant="outline"
+            variant={isDarkMode ? "outline" : "outline"}
             size="medium"
-            className="mx-5 mt-4 mb-2"
+            className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`}
             onPress={() => router.push("/Dashboard")}
             leftIcon={
               <Ionicons
                 name="arrow-back-outline"
                 size={24}
-                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
+                color={isDarkMode ? "#fff" : "#0066FF"}
               />
             }
           >
@@ -100,7 +104,7 @@ export default function Riwayat() {
           {loading ? (
             <ActivityIndicator
               size="large"
-              color="hsl(var(--primary))"
+              color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
               className="mt-10"
             />
           ) : attendanceHistory.length > 0 ? (
@@ -108,16 +112,22 @@ export default function Riwayat() {
               {attendanceHistory.map((record) => (
                 <View
                   key={record.id}
-                  className={`rounded-xl p-4 mb-4 shadow-sm ${isDarkMode ? "dark:bg-card" : "bg-card"}`}
+                  className={`rounded-xl p-4 mb-4 shadow-sm ${
+                    isDarkMode ? "bg-gray-800" : "bg-card"
+                  }`}
                 >
                   <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-border">
                     <Text
-                      className={`text-base font-bold ${isDarkMode ? "text-white" : "text-card-foreground"}`}
+                      className={`text-base font-bold ${
+                        isDarkMode ? "text-white" : "text-card-foreground"
+                      }`}
                     >
                       {record.date}
                     </Text>
                     <Text
-                      className={`text-sm ${isDarkMode ? "text-gray-300" : "text-muted-foreground"}`}
+                      className={`text-sm ${
+                        isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                      }`}
                     >
                       {new Date(record.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -127,14 +137,24 @@ export default function Riwayat() {
                   </View>
                   <View className="flex-row items-center justify-between mt-2">
                     <View className="flex-row items-center">
-                      <AntDesign name="checkcircle" size={20} color="#28a745" />
-                      <Text className="text-sm ml-2 text-green-600">
+                      <AntDesign
+                        name="checkcircle"
+                        size={20}
+                        color={isDarkMode ? "#28a745" : "#28a745"}
+                      />
+                      <Text
+                        className={`text-sm ml-2 ${
+                          isDarkMode ? "text-gray-400" : "text-green-600"
+                        }`}
+                      >
                         {record.reason}
                       </Text>
                     </View>
                     {record.photo_url && (
                       <TouchableOpacity
-                        className="p-1 -m-1 rounded-md"
+                        className={`p-1 -m-1 rounded-md ${
+                          isDarkMode ? "bg-gray-700" : "bg-muted"
+                        }`}
                         onPress={() => {
                           setSelectedPhoto(record.photo_url);
                           setPhotoModalVisible(true);
@@ -143,7 +163,7 @@ export default function Riwayat() {
                       >
                         <Image
                           source={{ uri: record.photo_url }}
-                          className="w-10 h-10 rounded-md bg-muted"
+                          className="w-10 h-10 rounded-md"
                           resizeMode="cover"
                         />
                       </TouchableOpacity>
@@ -157,15 +177,19 @@ export default function Riwayat() {
               <Ionicons
                 name="document-text-outline"
                 size={60}
-                color="hsl(var(--muted))"
+                color={isDarkMode ? "#4b5563" : "hsl(var(--muted))"}
               />
               <Text
-                className={`text-lg font-bold mt-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
+                className={`text-lg font-bold mt-4 ${
+                  isDarkMode ? "text-white" : "text-muted-foreground"
+                }`}
               >
                 Belum Ada Data Kehadiran
               </Text>
               <Text
-                className={`text-sm mt-2 text-center ${isDarkMode ? "text-gray-300" : "text-muted-foreground/70"}`}
+                className={`text-sm mt-2 text-center ${
+                  isDarkMode ? "text-gray-400" : "text-muted-foreground/70"
+                }`}
               >
                 Riwayat kehadiran Anda akan muncul di sini
               </Text>
