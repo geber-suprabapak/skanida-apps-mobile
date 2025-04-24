@@ -139,10 +139,18 @@ export default function Dashboard() {
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-sm text-muted-foreground">
+              <Text
+                className={`text-sm ${
+                  isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                }`}
+              >
                 Selamat datang,
               </Text>
-              <Text className="font-bold text-lg text-card-foreground">
+              <Text
+                className={`font-bold text-lg ${
+                  isDarkMode ? "text-white" : "text-card-foreground"
+                }`}
+              >
                 {user?.email || "Pengguna"}
               </Text>
             </View>
@@ -268,7 +276,7 @@ export default function Dashboard() {
                           : "mail-unread-outline"
                       }
                       size={24}
-                      color="white"
+                      color={isDarkMode ? "white" : "black"}
                     />
                   </View>
                   <View className="flex-1">
