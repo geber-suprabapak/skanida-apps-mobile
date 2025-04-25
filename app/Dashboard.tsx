@@ -159,41 +159,37 @@ export default function Dashboard() {
           {/* Quick actions */}
           <View className="flex-row justify-between px-5 mb-5 space-x-3">
             <Button
-              variant="default" // Map primary to default
-              size="default" // Map medium to default
+              variant="default"
+              size="default"
               className="flex-1"
               onPress={() => router.push("/attendance/AbsenceReport")}
             >
-              <AntDesign name="scan1" size={20} color="#fff" className="mr-2" />
-              <Text>Absen</Text> {/* Wrap text */}
+              <View className="flex-row items-center justify-center space-x-2">
+                <AntDesign name="scan1" size={20} color="#fff" />
+                <Text className="text-black">Absen</Text>
+              </View>
             </Button>
             <Button
-              variant="default" // Map primary to default
-              size="default" // Map medium to default
+              variant="default"
+              size="default"
               className="flex-1"
               onPress={() => router.push("/riwayat/riwayat")}
             >
-              <MaterialIcons
-                name="history"
-                size={20}
-                color="#fff"
-                className="mr-2"
-              />
-              <Text>Riwayat</Text> {/* Wrap text */}
+              <View className="flex-row items-center justify-center space-x-2">
+                <MaterialIcons name="history" size={20} color="#fff" />
+                <Text className="text-black">Riwayat</Text>
+              </View>
             </Button>
             <Button
-              variant="default" // Map primary to default
-              size="default" // Map medium to default
+              variant="default"
+              size="default"
               className="flex-1"
               onPress={() => router.push("/pengaturan/pengaturan")}
             >
-              <Ionicons
-                name="settings-outline"
-                size={20}
-                color="#fff"
-                className="mr-2"
-              />
-              <Text>Pengaturan</Text> {/* Wrap text */}
+              <View className="flex-row items-center justify-center space-x-2">
+                <Ionicons name="settings-outline" size={20} color="#fff" />
+                <Text className="text-black">Pengaturan</Text>
+              </View>
             </Button>
           </View>
 

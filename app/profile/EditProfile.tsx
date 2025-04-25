@@ -81,13 +81,17 @@ export default function EditProfile() {
         className="mb-4"
       >
         {loading ? (
-          <ActivityIndicator
-            size="small"
-            color="hsl(var(--primary-foreground))"
-            className="mr-2"
-          />
-        ) : null}
-        <Text>Simpan</Text>
+          <>
+            <ActivityIndicator
+              size="small"
+              color="hsl(var(--primary-foreground))"
+              className="mr-2"
+            />
+            <Text>Sedang menyimpan...</Text>
+          </>
+        ) : (
+          <Text>Simpan</Text>
+        )}
       </Button>
       <Button
         variant="outline"

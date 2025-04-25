@@ -97,31 +97,39 @@ export default function Pengaturan() {
         {icon}
       </View>
       <View className="flex-1">
+        {/* Pastikan title selalu dibungkus <Text> */}
         <Text
           className={`text-base ${
             isDarkMode ? "text-white" : "text-card-foreground"
           }`}
         >
-          {title}
+          {typeof title === "string" ? title : <>{title}</>}
         </Text>
+        {/* Pastikan subtitle selalu dibungkus <Text> jika ada */}
         {subtitle && (
           <Text
             className={`text-xs mt-1 ${
               isDarkMode ? "text-gray-400" : "text-muted-foreground"
             }`}
           >
-            {subtitle}
+            {typeof subtitle === "string" ? subtitle : <>{subtitle}</>}
           </Text>
         )}
       </View>
-      {rightElement ||
-        (onPress && (
-          <AntDesign
-            name="right"
-            size={16}
-            color={isDarkMode ? "#fff" : "hsl(var(--muted-foreground))"}
-          />
-        ))}
+      {/* Pastikan rightElement tidak string mentah */}
+      {rightElement && typeof rightElement === "string" ? (
+        <Text>{rightElement}</Text>
+      ) : (
+        rightElement
+      )}
+      {/* Icon panah kanan tetap aman */}
+      {!rightElement && onPress && (
+        <AntDesign
+          name="right"
+          size={16}
+          color={isDarkMode ? "#fff" : "hsl(var(--muted-foreground))"}
+        />
+      )}
     </TouchableOpacity>
   );
 
@@ -143,24 +151,27 @@ export default function Pengaturan() {
       <ScrollView
         className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
-        {/* Back Button dengan komponen Button reusable */}
+        {/* Back Button dengan komponen Button reusable - Spasi dihapus*/}
         <Button
-          variant="outline" // Keep outline variant
-          size="default" // Map medium to default
-          className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`} // Keep className for now, might need adjustment based on new button's styling
+          variant="outline"
+          size="default"
+          className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`}
           onPress={() => router.push("/Dashboard")}
         >
-          <Ionicons
-            name="arrow-back-outline"
-            size={20} // Adjust size if needed
-            color={isDarkMode ? "#fff" : "hsl(var(--primary))"} // Adjust color based on context
-            className="mr-2" // Add margin if needed
-          />
-          <Text>Kembali ke Dashboard</Text> {/* Wrap text */}
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons
+              name="arrow-back-outline"
+              size={20}
+              color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
+              style={{ marginRight: 8 }}
+            />
+            <Text>Kembali ke Dashboard</Text>
+          </View>
         </Button>
 
-        {/* Profile Section */}
+        {/* Profile Section - Ditambah Key */}
         <View
+          key="profile-section" // <- Tambahkan key
           className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
             isDarkMode ? "bg-gray-800" : "bg-card"
           }`}
@@ -220,8 +231,9 @@ export default function Pengaturan() {
           />
         </View>
 
-        {/* Preferences Section */}
+        {/* Preferences Section - Ditambah Key */}
         <View
+          key="preferences-section" // <- Tambahkan key
           className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
             isDarkMode ? "bg-gray-800" : "bg-card"
           }`}
@@ -264,8 +276,9 @@ export default function Pengaturan() {
           />
         </View>
 
-        {/* Account Section */}
+        {/* Account Section - Ditambah Key */}
         <View
+          key="account-section" // <- Tambahkan key
           className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
             isDarkMode ? "bg-gray-800" : "bg-card"
           }`}
@@ -273,25 +286,26 @@ export default function Pengaturan() {
           <SectionHeader title="Akun" />
 
           <Button
-            variant="destructive" // Map danger to destructive
-            size="default" // Map medium to default
+            variant="destructive"
+            size="default"
             onPress={handleLogout}
-            className={`w-full rounded-lg py-3 ${
-              isDarkMode ? "bg-red-900/30" : "bg-destructive/10" // Keep className for now
-            }`}
+            className={`w-full rounded-lg py-3 ${isDarkMode ? "bg-red-900/30" : "bg-destructive/10"}`}
           >
-            <Ionicons
-              name="log-out-outline"
-              size={20} // Adjust size if needed
-              color={isDarkMode ? "#f87171" : "hsl(var(--destructive))"} // Adjust color based on context
-              className="mr-2" // Add margin if needed
-            />
-            <Text>Keluar</Text> {/* Wrap text */}
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={isDarkMode ? "#f87171" : "hsl(var(--destructive))"}
+                style={{ marginRight: 8 }}
+              />
+              <Text>Keluar</Text>
+            </View>
           </Button>
         </View>
 
-        {/* App Info Section */}
+        {/* App Info Section - Ditambah Key */}
         <View
+          key="appinfo-section" // <- Tambahkan key
           className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
             isDarkMode ? "bg-gray-800" : "bg-card"
           }`}

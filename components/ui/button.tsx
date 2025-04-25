@@ -61,12 +61,14 @@ const buttonTextVariants = cva(
 );
 
 type ButtonProps = React.ComponentPropsWithoutRef<typeof Pressable> &
-  VariantProps<typeof buttonVariants>;
+  VariantProps<typeof buttonVariants> & {
+    children?: React.ReactNode;
+  };
 
 const Button = React.forwardRef<
   React.ElementRef<typeof Pressable>,
   ButtonProps
->(({ className, variant, size, ...props }, ref) => {
+>(({ className, variant, size, children, ...props }, ref) => {
   return (
     <TextClassContext.Provider
       value={buttonTextVariants({
@@ -83,10 +85,13 @@ const Button = React.forwardRef<
         ref={ref}
         role="button"
         {...props}
-      />
+      >
+        {children}
+      </Pressable>
     </TextClassContext.Provider>
   );
 });
+
 Button.displayName = "Button";
 
 export { Button, buttonTextVariants, buttonVariants };
