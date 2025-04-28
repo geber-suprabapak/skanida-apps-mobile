@@ -153,9 +153,14 @@ export default function Pengaturan() {
       >
         {/* Back Button dengan komponen Button reusable - Spasi dihapus*/}
         <Button
-          variant="outline"
+          // Hapus variant="outline" jika dark mode, atur semua gaya di className
+          variant={isDarkMode ? undefined : "outline"}
           size="default"
-          className={`mx-5 mt-4 mb-2 ${isDarkMode ? "border-primary bg-gray-800" : ""}`}
+          className={`mx-5 mt-4 mb-2 ${
+            isDarkMode
+              ? "border border-white bg-gray-800 active:bg-gray-800"
+              : "" // Light mode masih pakai variant="outline"
+          }`}
           onPress={() => router.push("/Dashboard")}
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -165,7 +170,12 @@ export default function Pengaturan() {
               color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
               style={{ marginRight: 8 }}
             />
-            <Text>Kembali ke Dashboard</Text>
+            {/* Pastikan teks tetap putih saat active di dark mode */}
+            <Text
+              className={`${isDarkMode ? "text-white active:text-white" : "text-primary"}`}
+            >
+              Kembali ke Dashboard
+            </Text>
           </View>
         </Button>
 
