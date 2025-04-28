@@ -286,19 +286,21 @@ export default function Pengaturan() {
           <SectionHeader title="Akun" />
 
           <Button
-            variant="destructive"
+            variant="destructive" // Keep variant for semantic meaning, but override styles
             size="default"
             onPress={handleLogout}
-            className={`w-full rounded-lg py-3 ${isDarkMode ? "bg-red-900/30" : "bg-destructive/10"}`}
+            // Apply fixed red background and remove conditional styling
+            className="w-full rounded-lg py-3 bg-red-600" // Always use bg-red-600
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Ionicons
                 name="log-out-outline"
                 size={20}
-                color={isDarkMode ? "#f87171" : "hsl(var(--destructive))"}
+                color="#fff" // Always use white color for icon
                 style={{ marginRight: 8 }}
               />
-              <Text>Keluar</Text>
+              {/* Apply fixed white text color */}
+              <Text className="text-white">Keluar</Text>
             </View>
           </Button>
         </View>
