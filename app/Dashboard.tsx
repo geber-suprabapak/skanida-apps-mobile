@@ -137,15 +137,7 @@ export default function Dashboard() {
     <>
       <Stack.Screen
         options={{
-          headerShown: true,
-          title: "Dashboard",
-          headerStyle: {
-            backgroundColor: "hsl(var(--primary))",
-          },
-          headerTintColor: "hsl(var(--primary-foreground))",
-          headerTitleStyle: {
-            fontWeight: "bold",
-          },
+          headerShown: false,
         }}
       />
       <View
