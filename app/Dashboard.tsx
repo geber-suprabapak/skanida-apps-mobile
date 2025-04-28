@@ -165,8 +165,15 @@ export default function Dashboard() {
               onPress={() => router.push("/attendance/AbsenceReport")}
             >
               <View className="flex-row items-center justify-center space-x-2">
-                <AntDesign name="scan1" size={20} color="#fff" />
-                <Text className="text-black">Absen</Text>
+                {/* Ubah warna ikon berdasarkan mode */}
+                <AntDesign
+                  name="scan1"
+                  size={20}
+                  color={isDarkMode ? "#fff" : "#000"}
+                />
+                <Text className={isDarkMode ? "text-white" : "text-black"}>
+                  Absen
+                </Text>
               </View>
             </Button>
             <Button
@@ -176,8 +183,15 @@ export default function Dashboard() {
               onPress={() => router.push("/riwayat/riwayat")}
             >
               <View className="flex-row items-center justify-center space-x-2">
-                <MaterialIcons name="history" size={20} color="#fff" />
-                <Text className="text-black">Riwayat</Text>
+                {/* Ubah warna ikon berdasarkan mode */}
+                <MaterialIcons
+                  name="history"
+                  size={20}
+                  color={isDarkMode ? "#fff" : "#000"}
+                />
+                <Text className={isDarkMode ? "text-white" : "text-black"}>
+                  Riwayat
+                </Text>
               </View>
             </Button>
             <Button
@@ -187,8 +201,15 @@ export default function Dashboard() {
               onPress={() => router.push("/pengaturan/pengaturan")}
             >
               <View className="flex-row items-center justify-center space-x-2">
-                <Ionicons name="settings-outline" size={20} color="#fff" />
-                <Text className="text-black">Pengaturan</Text>
+                {/* Ubah warna ikon berdasarkan mode */}
+                <Ionicons
+                  name="settings-outline"
+                  size={20}
+                  color={isDarkMode ? "#fff" : "#000"}
+                />
+                <Text className={isDarkMode ? "text-white" : "text-black"}>
+                  Pengaturan
+                </Text>
               </View>
             </Button>
           </View>
