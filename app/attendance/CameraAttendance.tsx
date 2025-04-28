@@ -392,7 +392,6 @@ const CameraAttendance = () => {
             {
               text: "OK",
               onPress: () => {
-                console.log("Navigating to Home...");
                 router.replace("/Dashboard");
               },
             },
