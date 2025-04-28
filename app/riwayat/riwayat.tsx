@@ -1,7 +1,13 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { Stack, useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
-import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+} from "react-native";
 
 import { Button } from "~/components/ui/button"; // Use the new button
 import { Text } from "~/components/ui/text"; // Import Text component
@@ -63,6 +69,29 @@ export default function Riwayat() {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (router.canGoBack()) {
+          router.back();
+          return true; // Prevent default behavior (exit app)
+        }
+        // If router.canGoBack() is false, let the default system behavior handle it
+        // (e.g., exit the app if this is the first screen).
+        return false;
+      };
+
+      // Add the event listener
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
+
+      // Return a cleanup function to remove the listener when the screen loses focus
+      return () => subscription.remove();
+    }, [router]), // Dependency: router instance
+  );
+
   return (
     <>
       <Stack.Screen
@@ -87,7 +116,6 @@ export default function Riwayat() {
       >
         <ScrollView
           className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
-          removeClippedSubviews
         >
           {/* Tombol Kembali ke Dashboard */}
           <Button
