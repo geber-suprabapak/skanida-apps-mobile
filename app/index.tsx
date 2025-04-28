@@ -5,9 +5,10 @@ import { View, Text, ActivityIndicator } from "react-native";
 import useAuthStore from "../store/authStore";
 import { supabase } from "../utils/supabase";
 
-export default function Home() {
+export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 

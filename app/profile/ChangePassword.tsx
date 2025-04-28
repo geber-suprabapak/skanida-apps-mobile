@@ -1,8 +1,10 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, Alert } from "react-native";
 import { useRouter, Stack } from "expo-router";
+import React, { useState } from "react";
+import { View, TextInput, Alert, ActivityIndicator } from "react-native";
+
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
-import { Button } from "~/components/Button";
 
 export default function ChangePassword() {
   const router = useRouter();
@@ -40,7 +42,9 @@ export default function ChangePassword() {
         return;
       }
       // Update password
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
       if (error) {
         Alert.alert("Error", error.message);
         setLoading(false);
@@ -49,6 +53,7 @@ export default function ChangePassword() {
       Alert.alert("Sukses", "Password berhasil diubah", [
         { text: "OK", onPress: () => router.back() },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       Alert.alert("Error", "Gagal mengubah password");
     } finally {
@@ -91,20 +96,28 @@ export default function ChangePassword() {
         />
       </View>
       <Button
-        variant="primary"
-        size="large"
-        loading={loading}
+        variant="default"
+        size="lg"
+        disabled={loading}
         onPress={handleChangePassword}
         className="mb-4"
       >
-        Simpan
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color="hsl(var(--primary-foreground))"
+            className="mr-2"
+          />
+        ) : null}
+        <Text>Simpan</Text>
       </Button>
       <Button
         variant="outline"
-        size="large"
+        size="lg"
         onPress={() => router.back()}
+        disabled={loading}
       >
-        Batal
+        <Text>Batal</Text>
       </Button>
     </View>
   );

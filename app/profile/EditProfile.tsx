@@ -1,9 +1,11 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, Alert } from "react-native";
 import { useRouter, Stack } from "expo-router";
+import React, { useState } from "react";
+import { View, TextInput, Alert, ActivityIndicator } from "react-native";
+
+import { Button } from "~/components/ui/button";
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import { Button } from "~/components/Button";
 
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
@@ -30,7 +32,8 @@ export default function EditProfile() {
         return;
       }
       // Ambil ulang user terbaru dari Supabase
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
       if (userError || !userData?.user) {
         Alert.alert("Error", "Gagal mengambil data user terbaru");
         return;
@@ -39,6 +42,7 @@ export default function EditProfile() {
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
         { text: "OK", onPress: () => router.back() },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       Alert.alert("Error", "Gagal memperbarui profil");
     } finally {
@@ -70,20 +74,32 @@ export default function EditProfile() {
         />
       </View>
       <Button
-        variant="primary"
-        size="large"
-        loading={loading}
+        variant="default"
+        size="lg"
+        disabled={loading}
         onPress={handleSave}
         className="mb-4"
       >
-        Simpan
+        {loading ? (
+          <>
+            <ActivityIndicator
+              size="small"
+              color="hsl(var(--primary-foreground))"
+              className="mr-2"
+            />
+            <Text>Sedang menyimpan...</Text>
+          </>
+        ) : (
+          <Text>Simpan</Text>
+        )}
       </Button>
       <Button
         variant="outline"
-        size="large"
+        size="lg"
         onPress={() => router.back()}
+        disabled={loading}
       >
-        Batal
+        <Text>Batal</Text>
       </Button>
     </View>
   );

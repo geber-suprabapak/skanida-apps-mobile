@@ -1,8 +1,27 @@
 // --- NECESSARY IMPORTS ---
+import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { View, Text, Alert, ActivityIndicator } from "react-native";
-import * as Location from "expo-location";
+import { View, Alert } from "react-native"; // Removed Text from here
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  SlideInUp,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
+
+// import { Button } from "~/components/Button"; // Remove this line
+import { Button } from "~/components/ui/button"; // Use the new button
+import { Text } from "~/components/ui/text"; // Import Text from ui
+import useThemeStore from "~/store/themeStore";
+import { supabase } from "~/utils/supabase";
 
 // Import NetInfo with error handling
 let NetInfo: any;
@@ -15,25 +34,7 @@ try {
     addEventListener: () => ({ remove: () => {} }),
     fetch: async () => ({ isConnected: true, isInternetReachable: true }),
   };
-}
-
-import { supabase } from "~/utils/supabase";
-import { Button } from "~/components/Button"; // Import the custom Button
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
-import Animated, {
-  FadeIn,
-  FadeInUp,
-  SlideInUp,
-  ZoomIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  withSequence,
-  withDelay,
-  Easing,
-} from "react-native-reanimated";
-import useThemeStore from "~/store/themeStore"; // Import the theme store
+} // Import the theme store
 
 // --- Component Definition Starts Here ---
 const AbsenceReport = () => {
@@ -129,7 +130,7 @@ const AbsenceReport = () => {
         return;
       }
 
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
         setStatusMessage("Izin lokasi ditolak. Aktifkan di pengaturan.");
@@ -152,7 +153,7 @@ const AbsenceReport = () => {
       );
 
       // Race the location request against the timeout
-      let currentLocation = (await Promise.race([
+      const currentLocation = (await Promise.race([
         locationPromise,
         timeoutPromise,
       ])) as Location.LocationObject;
@@ -250,7 +251,7 @@ const AbsenceReport = () => {
         params: {
           latitude: location.coords.latitude.toString(),
           longitude: location.coords.longitude.toString(),
-          userId: userId,
+          userId,
         },
       });
     }
@@ -266,12 +267,12 @@ const AbsenceReport = () => {
         className="mb-6 items-center"
       >
         <Text
-          className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-700"}`}
+          className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-700"}`}
         >
           Absensi Kehadiran
         </Text>
         <Text
-          className={`text-center ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+          className={`text-center ${isDarkMode ? "text-white" : "text-gray-600"}`}
         >
           Silahkan lakukan absensi kehadiran Anda
         </Text>
@@ -288,11 +289,11 @@ const AbsenceReport = () => {
               <MaterialIcons
                 name="location-searching"
                 size={60}
-                color={isDarkMode ? "#C084FC" : "#E600FF"}
+                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
               />
             </Animated.View>
             <Text
-              className={`text-lg mt-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-lg mt-4 ${isDarkMode ? "text-white" : "text-gray-600"}`}
             >
               Memeriksa lokasi...
             </Text>
@@ -330,7 +331,7 @@ const AbsenceReport = () => {
               {isWithinRange ? "Lokasi Terverifikasi" : "Di Luar Jangkauan"}
             </Text>
             <Text
-              className={`text-center ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-center ${isDarkMode ? "text-white" : "text-gray-600"}`}
             >
               {statusMessage}
             </Text>
@@ -340,7 +341,7 @@ const AbsenceReport = () => {
                 className={`mt-4 p-3 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}
               >
                 <Text
-                  className={`text-center text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                  className={`text-center text-sm ${isDarkMode ? "text-white" : "text-gray-500"}`}
                 >
                   Koordinat: {location.coords.latitude.toFixed(6)},{" "}
                   {location.coords.longitude.toFixed(6)}
@@ -359,51 +360,58 @@ const AbsenceReport = () => {
         {/* Show Camera button only when within range */}
         {isWithinRange === true && (
           <Button
-            variant="primary"
-            size="large"
+            variant="default" // Removed curly braces
+            size="lg" // Removed curly braces
             onPress={handleProceedToCamera}
             disabled={loading}
-            leftIcon={<Ionicons name="camera-outline" size={24} color="#fff" />}
           >
-            Lanjutkan ke Kamera
+            <Ionicons
+              name="camera-outline"
+              size={24}
+              color="hsl(var(--primary-foreground))"
+              className="mr-2"
+            />
+            <Text>Lanjutkan ke Kamera</Text>
           </Button>
         )}
 
         {/* Show Recheck button only when NOT in range and location check is finished */}
         {isWithinRange === false && !loading && (
           <Button
-            variant="secondary"
-            size="large"
+            variant="secondary" // Removed curly braces
+            size="lg" // Removed curly braces
             onPress={requestAndCheckLocation}
             disabled={loading}
-            // Make icon color theme-aware for secondary button
-            leftIcon={
-              <Ionicons
-                name="refresh-outline"
-                size={24}
-                color={isDarkMode ? "#CBD5E1" : "#444"}
-              />
-            }
           >
-            Periksa Lokasi Kembali
+            <Ionicons
+              name="refresh-outline"
+              size={24}
+              color={
+                isDarkMode
+                  ? "hsl(var(--secondary-foreground))"
+                  : "hsl(var(--secondary-foreground))"
+              }
+              className="mr-2"
+            />
+            <Text>Periksa Lokasi Kembali</Text>
           </Button>
         )}
 
         {/* Always show the Back button */}
         <Button
-          variant="outline"
-          size="large"
+          variant="outline" // Removed curly braces
+          size="lg" // Removed curly braces
           onPress={() => router.back()}
-          // Correctly pass the icon element with conditional color
-          leftIcon={
-            <Ionicons
-              name="arrow-back-outline"
-              size={24}
-              color={isDarkMode ? "#C084FC" : "#E600FF"}
-            />
-          }
         >
-          Kembali {/* Add the button text back */}
+          <Ionicons
+            name="arrow-back-outline"
+            size={24}
+            color={
+              isDarkMode ? "hsl(var(--foreground))" : "hsl(var(--foreground))"
+            }
+            className="mr-2"
+          />
+          <Text>Kembali</Text>
         </Button>
       </Animated.View>
     </View>
