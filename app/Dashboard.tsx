@@ -1,6 +1,6 @@
 // app/Dashboard.tsx
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, type Href } from "expo-router";
 import { useState, useEffect } from "react";
 import {
   View,
@@ -108,6 +108,31 @@ export default function Dashboard() {
     );
   };
 
+  // Komponen reusable tombol navigasi yang dibuat inline
+  const DashboardNavButton = ({
+    icon,
+    label,
+    path,
+  }: {
+    icon: JSX.Element;
+    label: string;
+    path: Href;
+  }) => (
+    <Button
+      variant="default"
+      size="sm"
+      className={`flex-1 max-w-[105px] h-[40px] py-2 ${isDarkMode ? "bg-white" : "bg-black"}`}
+      onPress={() => router.push(path)}
+    >
+      <View className="flex-row items-center justify-center">
+        <View className="mr-1">{icon}</View>
+        <Text className={`text-xs ${isDarkMode ? "text-black" : "text-white"}`}>
+          {label}
+        </Text>
+      </View>
+    </Button>
+  );
+
   return (
     <>
       <Stack.Screen
@@ -156,62 +181,41 @@ export default function Dashboard() {
             </View>
           </View>
 
-          {/* Quick actions */}
+          {/* Quick actions - Menggunakan DashboardNavButton inline component */}
           <View className="flex-row justify-between px-5 mb-5 space-x-3">
-            <Button
-              variant="default"
-              size="default"
-              className="flex-1"
-              onPress={() => router.push("/attendance/AbsenceReport")}
-            >
-              <View className="flex-row items-center justify-center space-x-2">
-                {/* Ubah warna ikon berdasarkan mode */}
+            <DashboardNavButton
+              icon={
                 <AntDesign
                   name="scan1"
-                  size={20}
-                  color={isDarkMode ? "#fff" : "#000"}
+                  size={16}
+                  color={isDarkMode ? "black" : "white"}
                 />
-                <Text className={isDarkMode ? "text-white" : "text-black"}>
-                  Absen
-                </Text>
-              </View>
-            </Button>
-            <Button
-              variant="default"
-              size="default"
-              className="flex-1"
-              onPress={() => router.push("/riwayat/riwayat")}
-            >
-              <View className="flex-row items-center justify-center space-x-2">
-                {/* Ubah warna ikon berdasarkan mode */}
+              }
+              label="Absen"
+              path="/attendance/AbsenceReport"
+            />
+            <DashboardNavButton
+              icon={
                 <MaterialIcons
                   name="history"
-                  size={20}
-                  color={isDarkMode ? "#fff" : "#000"}
+                  size={16}
+                  color={isDarkMode ? "black" : "white"}
                 />
-                <Text className={isDarkMode ? "text-white" : "text-black"}>
-                  Riwayat
-                </Text>
-              </View>
-            </Button>
-            <Button
-              variant="default"
-              size="default"
-              className="flex-1"
-              onPress={() => router.push("/pengaturan/pengaturan")}
-            >
-              <View className="flex-row items-center justify-center space-x-2">
-                {/* Ubah warna ikon berdasarkan mode */}
+              }
+              label="Riwayat"
+              path="/riwayat/riwayat"
+            />
+            <DashboardNavButton
+              icon={
                 <Ionicons
                   name="settings-outline"
-                  size={20}
-                  color={isDarkMode ? "#fff" : "#000"}
+                  size={16}
+                  color={isDarkMode ? "black" : "white"}
                 />
-                <Text className={isDarkMode ? "text-white" : "text-black"}>
-                  Pengaturan
-                </Text>
-              </View>
-            </Button>
+              }
+              label="Pengaturan"
+              path="/pengaturan/pengaturan"
+            />
           </View>
 
           {/* Recent attendance */}

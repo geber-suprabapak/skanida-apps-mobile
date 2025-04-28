@@ -296,11 +296,10 @@ export default function Pengaturan() {
           <SectionHeader title="Akun" />
 
           <Button
-            variant="destructive" // Keep variant for semantic meaning, but override styles
             size="default"
             onPress={handleLogout}
-            // Apply fixed red background and remove conditional styling
-            className="w-full rounded-lg py-3 bg-red-600" // Always use bg-red-600
+            // Apply fixed red background style directly with className
+            className="w-full rounded-lg py-3 bg-red-600"
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Ionicons
