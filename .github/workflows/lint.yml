@@ -35,3 +35,4 @@ jobs:
           # To report GitHub Actions status checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: develop
+          FILTER_REGEX_INCLUDE: \.(ts|tsx)$
