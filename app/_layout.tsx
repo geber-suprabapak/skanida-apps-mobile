@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as React from "react";
 import { Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -51,13 +52,27 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-      <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-      <Stack />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+        <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+        <Stack
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: "transparent", // ✅ hanya backgroundColor yang valid
+            },
+            headerTransparent: true, // ✅ header transparan
+            headerShadowVisible: false, // ✅ hapus bayangan header
+            contentStyle: {
+              paddingTop: 0, // ✅ isi screen mulai dari atas
+            },
+          }}
+        />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
+// Untuk support server-side rendering di web
 const useIsomorphicLayoutEffect =
   Platform.OS === "web" && typeof window === "undefined"
     ? React.useEffect

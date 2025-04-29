@@ -2,12 +2,12 @@
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { View, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
@@ -22,11 +22,13 @@ export default function Dashboard() {
           headerShown: false,
         }}
       />
-      <View
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-brand-background"} relative`}
+      <SafeAreaView
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-brand-background"}`}
+        edges={["top", "left", "right"]}
       >
         <ScrollView
           className={`flex-1 pb-32 ${isDarkMode ? "dark:bg-background" : "bg-background"}`}
+          contentInsetAdjustmentBehavior="automatic"
         >
           {/* User greeting and info */}
           <View
@@ -54,6 +56,7 @@ export default function Dashboard() {
               </Text>
             </View>
           </View>
+
           {/* Navigation buttons */}
           <View className="flex-row justify-between px-5 mb-5 space-x-3">
             <Button
@@ -121,7 +124,7 @@ export default function Dashboard() {
             </Button>
           </View>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </>
   );
 }
