@@ -12,35 +12,13 @@ import { View, ScrollView, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Import your reusable shadcn/ui components
+import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
-import { Text } from "~/components/ui/text";
+import { Small, H2, H3 } from "~/components/ui/typography"; // Import H2 and H3
 import useAuthStore from "~/store/authStore";
 
-// Placeholder for profile picture component or logic
-const ProfileAvatar = ({ user }: { user: any }) => {
-  // Replace with your actual avatar logic if available (e.g., user?.avatarUrl)
-  const avatarUrl = null; // Example: No avatar URL
-
-  if (avatarUrl) {
-    return (
-      <Image
-        source={{ uri: avatarUrl }}
-        className="w-20 h-20 rounded-full mb-2"
-      />
-    );
-  }
-  // Fallback Icon using View and Icon
-  return (
-    <View className="w-20 h-20 rounded-full mb-2 bg-primary items-center justify-center border-2 border-primary-foreground/20">
-      {/* Using Ionicons as a placeholder */}
-      <Ionicons name="person" size={40} color="white" />
-      {/* You could also use a Text initial like your original code if preferred */}
-      {/* <Text className="text-primary-foreground font-bold text-3xl">
-         {user?.email?.charAt(0).toUpperCase() || 'U'}
-       </Text> */}
-    </View>
-  );
-};
+// Import the icon image
+const profileImage = require("../assets/logosmk.png"); // Import the new image
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
@@ -68,14 +46,20 @@ export default function Dashboard() {
         {/* Main container with white background */}
         <View className="flex-1 bg-white">
           {/* --- Header Section (Black Background) --- */}
-          <View className="bg-black items-center pt-8 pb-5">
-            <ProfileAvatar user={user} />
-            <Text className="text-white font-semibold text-lg mb-1 native:text-xl">
+          <View className="bg-black items-center pt-28 pb-28">
+            {" "}
+            {/* Slightly increased top and bottom padding */}
+            {/* Use the Avatar component from ui/avatar */}
+            <Avatar
+              size="lg" // Use the 'lg' size defined in ui/avatar
+              fallback={user?.email?.charAt(0).toUpperCase() || "?"} // Fallback initial
+              className="mb-2" // Add margin if needed
+              source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
+            />
+            <H2 className="text-white mb-1">
               {user?.email || "test@mail.com"}
-            </Text>
-            <Text className="text-white text-sm native:text-base">
-              {formattedTime}
-            </Text>
+            </H2>
+            <H3 className="text-white">{formattedTime}</H3>
           </View>
 
           {/* --- Content Section (Scrollable, White Background) --- */}
@@ -88,38 +72,38 @@ export default function Dashboard() {
             <View className="flex-row justify-around items-start mb-8">
               {/* Presensi Datang */}
               <TouchableOpacity
-                className="items-center w-[45%]" // Adjust width as needed
+                className="items-center w-[40%]" // Reduced width from w-[45%]
                 onPress={navigateToCheckIn}
                 activeOpacity={0.7}
               >
                 <View className="w-full aspect-square bg-card rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
                   <AntDesign
                     name="scan1"
-                    size={48}
+                    size={40} // Reduced icon size from 48
                     className="text-foreground"
                   />
                 </View>
-                <Text className="text-foreground font-semibold text-center native:text-base">
+                <Small className="text-foreground font-semibold text-center native:text-base">
                   Presensi{"\n"}Datang
-                </Text>
+                </Small>
               </TouchableOpacity>
 
               {/* Presensi Pulang */}
               <TouchableOpacity
-                className="items-center w-[45%]" // Adjust width as needed
+                className="items-center w-[40%]" // Reduced width from w-[45%]
                 onPress={navigateToCheckOut}
                 activeOpacity={0.7}
               >
                 <View className="w-full aspect-square bg-card rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
                   <AntDesign
                     name="scan1"
-                    size={48}
+                    size={40} // Reduced icon size from 48
                     className="text-foreground"
                   />
                 </View>
-                <Text className="text-foreground font-semibold text-center native:text-base">
+                <Small className="text-foreground font-semibold text-center native:text-base">
                   Presensi{"\n"}Pulang
-                </Text>
+                </Small>
               </TouchableOpacity>
             </View>
 
@@ -134,9 +118,9 @@ export default function Dashboard() {
               >
                 <View className="flex-row items-center justify-center">
                   <MaterialIcons name="history" size={24} color="white" />
-                  <Text className="text-white font-medium text-lg ml-3">
+                  <Small className="text-white font-medium text-lg ml-3">
                     Riwayat
-                  </Text>
+                  </Small>
                 </View>
               </Button>
 
@@ -149,9 +133,9 @@ export default function Dashboard() {
               >
                 <View className="flex-row items-center justify-center">
                   <Ionicons name="settings-outline" size={24} color="white" />
-                  <Text className="text-white font-medium text-lg ml-3">
+                  <Small className="text-white font-medium text-lg ml-3">
                     Pengaturan
-                  </Text>
+                  </Small>
                 </View>
               </Button>
 
@@ -164,9 +148,9 @@ export default function Dashboard() {
               >
                 <View className="flex-row items-center justify-center">
                   <Feather name="user" size={24} color="white" />
-                  <Text className="text-white font-medium text-lg ml-3">
+                  <Small className="text-white font-medium text-lg ml-3">
                     Profil
-                  </Text>
+                  </Small>
                 </View>
               </Button>
             </View>
@@ -174,9 +158,7 @@ export default function Dashboard() {
 
           {/* --- Footer Section --- */}
           <View className="items-center py-4 bg-background border-t border-border">
-            <Text className="text-foreground text-xs native:text-sm">
-              Version 0.3.0
-            </Text>
+            <Small className="text-foreground">Version 0.3.0</Small>
           </View>
         </View>
       </SafeAreaView>

@@ -15,7 +15,7 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
     const sizeClasses = {
       sm: "h-8 w-8",
       md: "h-10 w-10",
-      lg: "h-16 w-16",
+      lg: "h-48 w-48",
     };
 
     return (
