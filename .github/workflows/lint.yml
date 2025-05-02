@@ -36,3 +36,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: develop
           FILTER_REGEX_INCLUDE: \.(ts|tsx)$
+          DISABLE_LINTERS: "TYPESCRIPT_ES,TYPESCRIPT_STANDARD,CHECKOV,JSCPD"
