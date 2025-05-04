@@ -14,11 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
-import { Small, H2, H3 } from "~/components/ui/typography"; // Import H2 and H3
+import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
 import useAuthStore from "~/store/authStore";
 
 // Import the icon image
-const profileImage = require("../assets/logosmk.png"); // Import the new image
+const profileImage = require("../assets/sigma.jpg"); // Import the new image
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
@@ -47,7 +47,6 @@ export default function Dashboard() {
         <View className="flex-1 bg-white">
           {/* --- Header Section (Black Background) --- */}
           <View className="bg-black items-center pt-28 pb-28">
-            {" "}
             {/* Slightly increased top and bottom padding */}
             {/* Use the Avatar component from ui/avatar */}
             <Avatar
@@ -69,41 +68,45 @@ export default function Dashboard() {
             showsVerticalScrollIndicator={false}
           >
             {/* --- Main Action Buttons (TouchableOpacity for custom layout) --- */}
-            <View className="flex-row justify-around items-start mb-8">
+            <View className="flex-row justify-between items-start mb-8 px-2">
               {/* Presensi Datang */}
               <TouchableOpacity
-                className="items-center w-[40%]" // Reduced width from w-[45%]
+                className="items-center w-[45%]"
                 onPress={navigateToCheckIn}
                 activeOpacity={0.7}
               >
-                <View className="w-full aspect-square bg-card rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
+                <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
+                  {/* Changed bg-card to bg-black */}
                   <AntDesign
                     name="scan1"
-                    size={40} // Reduced icon size from 48
-                    className="text-foreground"
+                    size={40}
+                    color="white" // Changed className to color="white"
                   />
                 </View>
-                <Small className="text-foreground font-semibold text-center native:text-base">
+                <H1 className="text-black font-semibold text-center">
+                  {/* Changed text-foreground to text-white */}
                   Presensi{"\n"}Datang
-                </Small>
+                </H1>
               </TouchableOpacity>
 
               {/* Presensi Pulang */}
               <TouchableOpacity
-                className="items-center w-[40%]" // Reduced width from w-[45%]
+                className="items-center w-[45%]"
                 onPress={navigateToCheckOut}
                 activeOpacity={0.7}
               >
-                <View className="w-full aspect-square bg-card rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
+                <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
+                  {/* Changed bg-card to bg-black */}
                   <AntDesign
                     name="scan1"
-                    size={40} // Reduced icon size from 48
-                    className="text-foreground"
+                    size={40}
+                    color="white" // Changed className to color="white"
                   />
                 </View>
-                <Small className="text-foreground font-semibold text-center native:text-base">
+                <H1 className="text-black font-semibold text-center">
+                  {/* Changed text-foreground to text-white */}
                   Presensi{"\n"}Pulang
-                </Small>
+                </H1>
               </TouchableOpacity>
             </View>
 
@@ -113,14 +116,12 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black mb-8 h-16"
+                className="w-full justify-center bg-black mb-8 h-20" // Removed border classes
                 onPress={navigateToHistory}
               >
                 <View className="flex-row items-center justify-center">
-                  <MaterialIcons name="history" size={24} color="white" />
-                  <Small className="text-white font-medium text-lg ml-3">
-                    Riwayat
-                  </Small>
+                  <MaterialIcons name="history" size={32} color="white" />
+                  <Large className="text-white font-medium ml-4">Riwayat</Large>
                 </View>
               </Button>
 
@@ -128,14 +129,14 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black mb-8 h-16"
+                className="w-full justify-center bg-black mb-8 h-20" // Removed border classes
                 onPress={navigateToSettings}
               >
                 <View className="flex-row items-center justify-center">
-                  <Ionicons name="settings-outline" size={24} color="white" />
-                  <Small className="text-white font-medium text-lg ml-3">
+                  <Ionicons name="settings-outline" size={32} color="white" />
+                  <Large className="text-white font-medium ml-4">
                     Pengaturan
-                  </Small>
+                  </Large>
                 </View>
               </Button>
 
@@ -143,22 +144,21 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black h-16"
+                className="w-full justify-center bg-black h-20" // Removed border classes
                 onPress={navigateToProfile}
               >
                 <View className="flex-row items-center justify-center">
-                  <Feather name="user" size={24} color="white" />
-                  <Small className="text-white font-medium text-lg ml-3">
-                    Profil
-                  </Small>
+                  <Feather name="user" size={32} color="white" />
+                  <Large className="text-white font-medium ml-4">Profil</Large>
                 </View>
               </Button>
             </View>
           </ScrollView>
 
           {/* --- Footer Section --- */}
-          <View className="items-center py-4 bg-background border-t border-border">
-            <Small className="text-foreground">Version 0.3.0</Small>
+          <View className="items-start px-5 py-4 bg-background border-t border-border">
+            {/* Changed items-center to items-start and added horizontal padding */}
+            <H4 className="text-foreground">Version 0.3.0</H4>
           </View>
         </View>
       </SafeAreaView>
