@@ -11,7 +11,7 @@ import { supabase } from "../../utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { Large } from "~/components/ui/typography"; // Import Large
+import { Large, H1, H4, P, H3 } from "~/components/ui/typography"; // Import H1, H4, and H3 components
 import { cn } from "~/lib/utils";
 
 export default function Login() {
@@ -73,15 +73,15 @@ export default function Login() {
       {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
-          <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
+          <H1 className="mb-2 text-center text-gray-700">
             Selamat Datang
-          </Text>
+          </H1>
         </View>
 
         <View>
-          <Text className="text-center mb-8 text-gray-600">
+          <P className="text-center mb-8 text-gray-600">
             Masuk ke akun Anda untuk melanjutkan
-          </Text>
+          </P>
         </View>
 
         <View>
@@ -120,14 +120,14 @@ export default function Login() {
         <View>
           <Button
             variant="default"
-            size="default"
-            className="mb-4 w-full bg-black"
+            size="lg"
+            className="mb-4 w-full bg-black py-3"
             onPress={handleLogin}
             disabled={loading}
           >
-            <Large className="text-white font-medium text-center">
+            <H3 className="text-white font-medium text-center">
               {loading ? "Loading..." : "Masuk"}
-            </Large>
+            </H3>
           </Button>
         </View>
 

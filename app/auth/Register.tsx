@@ -10,7 +10,7 @@ import useAuthStore from "../../store/authStore";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { Large } from "~/components/ui/typography";
+import { Large, H1, P, H3 } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
 
@@ -85,15 +85,15 @@ export default function RegisterScreen() {
       {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
-          <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
+          <H1 className="mb-2 text-center text-gray-700">
             Daftar Akun
-          </Text>
+          </H1>
         </View>
 
         <View>
-          <Text className="text-center mb-8 text-gray-600">
+          <P className="text-center mb-8 text-gray-600">
             Buat akun baru untuk menggunakan aplikasi
-          </Text>
+          </P>
         </View>
 
         <View>
@@ -154,14 +154,14 @@ export default function RegisterScreen() {
         <View>
           <Button
             variant="default"
-            size="default"
-            className="mb-4 w-full bg-black"
+            size="lg"
+            className="mb-4 w-full bg-black py-3"
             onPress={handleRegister}
             disabled={loading}
           >
-            <Large className="text-white font-medium">
+            <H3 className="text-white font-medium">
               {loading ? "Loading..." : "Daftar"}
-            </Large>
+            </H3>
           </Button>
         </View>
 

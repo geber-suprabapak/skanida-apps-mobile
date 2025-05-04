@@ -11,14 +11,14 @@ const Input = React.forwardRef<
     <TextInput
       ref={ref}
       className={cn(
-        // Increase height from h-12 to h-14
-        "flex h-14 w-full rounded-md border border-gray-300 bg-white px-4 py-2.5",
-        // Increase base text size from text-base to text-lg
-        "text-lg placeholder:text-gray-500", // Darker text, gray placeholder
+        // Increase height from h-14 to h-16
+        "flex h-16 w-full rounded-md border border-gray-300 bg-white px-4 py-3",
+        // Increase text size from text-lg to text-xl
+        "text-xl placeholder:text-gray-500", // Darker text, gray placeholder
         // Focus styles (darker gray border)
         "focus:border-gray-500", // Simple border change on focus
         // Adjust native styles if needed (e.g., native:text-xl)
-        "native:text-xl native:leading-[1.25]",
+        "native:text-2xl native:leading-[1.3]",
         // Disabled styles
         props.editable === false && "opacity-50 web:cursor-not-allowed",
         // Allow overriding with className prop (important for error state)
