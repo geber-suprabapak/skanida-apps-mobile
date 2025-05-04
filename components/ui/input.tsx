@@ -11,14 +11,14 @@ const Input = React.forwardRef<
     <TextInput
       ref={ref}
       className={cn(
-        // Base styles to match the image (white bg, light gray border)
-        "flex h-12 w-full rounded-md border border-gray-300 bg-white px-4 py-2.5",
-        // Text and placeholder styles
-        "text-base placeholder:text-gray-500", // Darker text, gray placeholder
+        // Increase height from h-12 to h-14
+        "flex h-14 w-full rounded-md border border-gray-300 bg-white px-4 py-2.5",
+        // Increase base text size from text-base to text-lg
+        "text-lg placeholder:text-gray-500", // Darker text, gray placeholder
         // Focus styles (darker gray border)
         "focus:border-gray-500", // Simple border change on focus
-        // Native-specific styles (adjust if needed)
-        "native:text-lg native:leading-[1.25]",
+        // Adjust native styles if needed (e.g., native:text-xl)
+        "native:text-xl native:leading-[1.25]",
         // Disabled styles
         props.editable === false && "opacity-50 web:cursor-not-allowed",
         // Allow overriding with className prop (important for error state)

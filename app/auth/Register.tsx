@@ -3,12 +3,14 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 import useAuthStore from "../../store/authStore";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { Large } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
 
@@ -77,8 +79,11 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <ScrollView contentContainerClassName="flex-grow justify-center p-6">
+    <SafeAreaView className="flex-1 bg-white pt-10" edges={["top", "left", "right"]}>
+      {/* Set status bar style to dark for light background */}
+      <StatusBar style="dark" />
+      {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
           <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
             Daftar Akun
@@ -149,12 +154,14 @@ export default function RegisterScreen() {
         <View>
           <Button
             variant="default"
-            size="lg"
-            className="mb-4"
+            size="default"
+            className="mb-4 w-full bg-black"
             onPress={handleRegister}
             disabled={loading}
           >
-            <Text>{loading ? "Loading..." : "Daftar"}</Text>
+            <Large className="text-white font-medium">
+              {loading ? "Loading..." : "Daftar"}
+            </Large>
           </Button>
         </View>
 

@@ -66,7 +66,23 @@ export default function RootLayout() {
               paddingTop: 0, // ✅ isi screen mulai dari atas
             },
           }}
-        />
+        >
+          {/* Default screen options */}
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="Dashboard" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="auth/AuthSelector"
+            options={{ headerShown: false }}
+          />
+          {/* Hide default header for Login and Register */}
+          <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/Register" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="attendance/AbsenceReport"
+            options={{ title: "Lapor Absensi" }}
+          />
+          {/* ... rest of the screens ... */}
+        </Stack>
       </ThemeProvider>
     </SafeAreaProvider>
   );

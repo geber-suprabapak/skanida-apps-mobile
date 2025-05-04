@@ -42,10 +42,12 @@ export default function Dashboard() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-black" edges={["top"]}>
+      {/* Change SafeAreaView background to white */}
+      <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
         {/* Main container with white background */}
         <View className="flex-1 bg-white">
           {/* --- Header Section (Black Background) --- */}
+          {/* Ensure this View retains the black background */}
           <View className="bg-black items-center pt-20 pb-20">
             {/* Reduced padding */}
             {/* Use the Avatar component from ui/avatar */}

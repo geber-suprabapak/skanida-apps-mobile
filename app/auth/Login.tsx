@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 import useAuthStore from "../../store/authStore";
 import { supabase } from "../../utils/supabase";
@@ -10,6 +11,7 @@ import { supabase } from "../../utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { Large } from "~/components/ui/typography"; // Import Large
 import { cn } from "~/lib/utils";
 
 export default function Login() {
@@ -63,8 +65,13 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <ScrollView contentContainerClassName="flex-grow justify-center p-6">
+    // Add top padding (pt-10) directly to SafeAreaView
+    <SafeAreaView className="flex-1 bg- pt-10" edges={["top", "left", "right"]}>
+      {/* Set status bar style to dark for light background */}
+      <StatusBar style="dark" />
+      {/* Remove the spacer View */}
+      {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
           <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
             Selamat Datang
@@ -113,12 +120,14 @@ export default function Login() {
         <View>
           <Button
             variant="default"
-            size="lg"
-            className="mb-4"
+            size="default"
+            className="mb-4 w-full bg-black"
             onPress={handleLogin}
             disabled={loading}
           >
-            <Text>{loading ? "Loading..." : "Masuk"}</Text>
+            <Large className="text-white font-medium text-center">
+              {loading ? "Loading..." : "Masuk"}
+            </Large>
           </Button>
         </View>
 
