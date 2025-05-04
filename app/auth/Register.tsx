@@ -1,7 +1,7 @@
 // app/register.tsx
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { View, TouchableOpacity, Alert } from "react-native";
+import { View, TouchableOpacity, Alert, ScrollView } from "react-native"; // Add ScrollView
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "../../store/authStore";
@@ -65,7 +65,8 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <View className="flex-1 p-6 justify-center">
+      <ScrollView contentContainerClassName="flex-grow justify-center p-6">
+        {/* Wrap content in ScrollView */}
         <View>
           <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
             Daftar Akun
@@ -138,7 +139,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

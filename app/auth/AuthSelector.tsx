@@ -2,7 +2,7 @@
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
 import React from "react";
-import { View } from "react-native";
+import { View, ScrollView } from "react-native";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -14,7 +14,7 @@ export default function LoginScreen() {
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="flex-1 justify-center items-center p-6">
+      <ScrollView contentContainerClassName="flex-grow justify-center items-center p-6">
         <View className="w-full max-w-md">
           <Text className="text-4xl font-bold text-center mb-2 text-black">
             Skanida Apps
@@ -41,7 +41,7 @@ export default function LoginScreen() {
             <Text className="text-black">Daftar</Text>
           </Button>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

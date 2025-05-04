@@ -46,8 +46,8 @@ export default function Dashboard() {
         {/* Main container with white background */}
         <View className="flex-1 bg-white">
           {/* --- Header Section (Black Background) --- */}
-          <View className="bg-black items-center pt-28 pb-28">
-            {/* Slightly increased top and bottom padding */}
+          <View className="bg-black items-center pt-20 pb-20">
+            {/* Reduced padding */}
             {/* Use the Avatar component from ui/avatar */}
             <Avatar
               size="lg" // Use the 'lg' size defined in ui/avatar
@@ -116,7 +116,7 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black mb-8 h-20" // Removed border classes
+                className="w-full justify-center bg-black mb-8 py-5" // Use py-5 instead of h-20
                 onPress={navigateToHistory}
               >
                 <View className="flex-row items-center justify-center">
@@ -129,7 +129,7 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black mb-8 h-20" // Removed border classes
+                className="w-full justify-center bg-black mb-8 py-5" // Use py-5 instead of h-20
                 onPress={navigateToSettings}
               >
                 <View className="flex-row items-center justify-center">
@@ -144,7 +144,7 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black h-20" // Removed border classes
+                className="w-full justify-center bg-black py-5" // Use py-5 instead of h-20
                 onPress={navigateToProfile}
               >
                 <View className="flex-row items-center justify-center">
