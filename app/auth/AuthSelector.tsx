@@ -1,13 +1,11 @@
 // filepath: e:\skanida-apps-mobile\app\auth\AuthSelector.tsx
 // app/login.tsx
-import { Asset } from "expo-asset";
 import { useRouter, Stack } from "expo-router";
-import React from "react";
 import { View, ScrollView, Image } from "react-native"; // Import Image
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { H2, H3, H4 } from "~/components/ui/typography"; // Ensure H3 is imported
+import { H3 } from "~/components/ui/typography"; // Ensure H3 is imported
 
 // Import the logo - using require for better compatibility
 const SkanidaLogo = require("../../assets/skanida.png");

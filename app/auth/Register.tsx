@@ -1,7 +1,7 @@
 // app/register.tsx
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { View, TouchableOpacity, Alert, ScrollView } from "react-native"; // Add ScrollView
+import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "../../store/authStore";
@@ -9,6 +9,7 @@ import useAuthStore from "../../store/authStore";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
 
 export default function RegisterScreen() {
@@ -16,17 +17,39 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword) {
-      Alert.alert("Error", "Semua kolom harus diisi");
-      return;
+    setEmailError(false);
+    setPasswordError(false);
+    setConfirmPasswordError(false);
+
+    let hasValidationError = false;
+    if (!email) {
+      setEmailError(true);
+      hasValidationError = true;
+    }
+    if (!password) {
+      setPasswordError(true);
+      hasValidationError = true;
+    }
+    if (!confirmPassword) {
+      setConfirmPasswordError(true);
+      hasValidationError = true;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Password dan konfirmasi password harus sama");
+    let passwordMismatch = false;
+    if (password && confirmPassword && password !== confirmPassword) {
+      setPasswordError(true);
+      setConfirmPasswordError(true);
+      passwordMismatch = true;
+    }
+
+    if (hasValidationError || passwordMismatch) {
       return;
     }
 
@@ -38,26 +61,16 @@ export default function RegisterScreen() {
       });
 
       if (error) {
-        Alert.alert("Error", error.message);
+        console.error("Supabase signup error:", error.message);
         return;
       }
 
       if (data?.user) {
         setUser(data.user);
-        Alert.alert(
-          "Berhasil",
-          "Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.",
-          [
-            {
-              text: "OK",
-              onPress: () => router.replace("/Dashboard"),
-            },
-          ],
-        );
+        router.replace("/Dashboard");
       }
     } catch (error) {
       console.error("Registration error:", error);
-      Alert.alert("Error", "Terjadi kesalahan saat mendaftar");
     } finally {
       setLoading(false);
     }
@@ -66,7 +79,6 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <ScrollView contentContainerClassName="flex-grow justify-center p-6">
-        {/* Wrap content in ScrollView */}
         <View>
           <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
             Daftar Akun
@@ -83,12 +95,15 @@ export default function RegisterScreen() {
           <View className="mb-4">
             <Text className="text-gray-700 mb-2">Email</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(emailError && "border-red-500")}
               placeholder="Masukkan email Anda"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError(false);
+              }}
             />
           </View>
         </View>
@@ -97,11 +112,17 @@ export default function RegisterScreen() {
           <View className="mb-4">
             <Text className="text-gray-700 mb-2">Password</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(passwordError && "border-red-500")}
               placeholder="Masukkan password Anda"
               secureTextEntry
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (passwordError) setPasswordError(false);
+                if (confirmPasswordError && text === confirmPassword) {
+                  setConfirmPasswordError(false);
+                }
+              }}
             />
           </View>
         </View>
@@ -110,11 +131,17 @@ export default function RegisterScreen() {
           <View className="mb-6">
             <Text className="text-gray-700 mb-2">Konfirmasi Password</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(confirmPasswordError && "border-red-500")}
               placeholder="Masukkan kembali password Anda"
               secureTextEntry
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (confirmPasswordError) setConfirmPasswordError(false);
+                if (passwordError && text === password) {
+                  setPasswordError(false);
+                }
+              }}
             />
           </View>
         </View>

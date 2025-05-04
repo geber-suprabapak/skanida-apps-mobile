@@ -1,7 +1,7 @@
 // app/Login.tsx
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { View, TouchableOpacity, Alert, ScrollView } from "react-native"; // Add ScrollView
+import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "../../store/authStore";
@@ -10,17 +10,32 @@ import { supabase } from "../../utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { cn } from "~/lib/utils";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Email dan password harus diisi");
+    setEmailError(false);
+    setPasswordError(false);
+
+    let hasError = false;
+    if (!email) {
+      setEmailError(true);
+      hasError = true;
+    }
+    if (!password) {
+      setPasswordError(true);
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
 
@@ -32,7 +47,7 @@ export default function Login() {
       });
 
       if (error) {
-        Alert.alert("Error", error.message);
+        console.error("Supabase login error:", error.message); // Keep console log for debugging
         return;
       }
 
@@ -42,7 +57,6 @@ export default function Login() {
       }
     } catch (error) {
       console.error("Login error:", error);
-      Alert.alert("Error", "Terjadi kesalahan saat login");
     } finally {
       setLoading(false);
     }
@@ -51,7 +65,6 @@ export default function Login() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <ScrollView contentContainerClassName="flex-grow justify-center p-6">
-        {/* Wrap content in ScrollView */}
         <View>
           <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
             Selamat Datang
@@ -68,12 +81,15 @@ export default function Login() {
           <View className="mb-4">
             <Text className="text-gray-700 mb-2">Email</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(emailError && "border-red-500")}
               placeholder="Masukkan email Anda"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError(false);
+              }}
             />
           </View>
         </View>
@@ -82,11 +98,14 @@ export default function Login() {
           <View className="mb-6">
             <Text className="text-gray-700 mb-2">Password</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(passwordError && "border-red-500")}
               placeholder="Masukkan password Anda"
               secureTextEntry
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (passwordError) setPasswordError(false);
+              }}
             />
           </View>
         </View>
