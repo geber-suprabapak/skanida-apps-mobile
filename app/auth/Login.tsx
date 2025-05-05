@@ -1,9 +1,9 @@
 // app/Login.tsx
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 
 import useAuthStore from "../../store/authStore";
 import { supabase } from "../../utils/supabase";
@@ -11,7 +11,7 @@ import { supabase } from "../../utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { Large, H1, H4, P, H3 } from "~/components/ui/typography"; // Import H1, H4, and H3 components
+import { H1, P, H3 } from "~/components/ui/typography"; // Import H1, H4, and H3 components
 import { cn } from "~/lib/utils";
 
 export default function Login() {
@@ -73,9 +73,7 @@ export default function Login() {
       {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
-          <H1 className="mb-2 text-center text-gray-700">
-            Selamat Datang
-          </H1>
+          <H1 className="mb-2 text-center text-gray-700">Selamat Datang</H1>
         </View>
 
         <View>
