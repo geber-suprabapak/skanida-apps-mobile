@@ -9,7 +9,8 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env":{"EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact"}
     },
     "production": {
       "autoIncrement": true
