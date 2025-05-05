@@ -2,12 +2,11 @@
 import {
   AntDesign,
   Ionicons,
-  MaterialIcons,
-  Feather, // For profile icon
+  MaterialIcons, // For profile icon
 } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { View, ScrollView, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -19,7 +18,7 @@ import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore"; // Import theme store
 
 // Import the icon image
-const profileImage = require("../assets/cas.jpg"); // Import the new image
+const profileImage = require("../assets/muflih.jpg"); // Import the new image
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
@@ -36,17 +35,15 @@ export default function Dashboard() {
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
-  const navigateToCheckOut = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToProfile = () => router.push("/profile/EditProfile"); // Adjust route if needed
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       {/* Apply dynamic background based on theme */}
-      <SafeAreaView 
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`} 
+      <SafeAreaView
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
         edges={["top"]}
       >
         {/* Main container with theme-based background */}
@@ -62,9 +59,7 @@ export default function Dashboard() {
               className="mb-2" // Add margin if needed
               source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
             />
-            <H2 className="text-white mb-1">
-              {user?.email || "test@mail.com"}
-            </H2>
+            <H2 className="text-white mb-1">{user?.email || "eror"}</H2>
             <H3 className="text-white">{formattedTime}</H3>
           </View>
 
@@ -83,9 +78,11 @@ export default function Dashboard() {
                 activeOpacity={0.7}
               >
                 <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
-                  <AntDesign name="scan1" size={40} color="white" />
+                  <AntDesign name="login" size={40} color="white" />
                 </View>
-                <H1 className={`font-semibold text-center ${isDarkMode ? "text-white" : "text-black"}`}>
+                <H1
+                  className={`font-semibold text-center ${isDarkMode ? "text-white" : "text-black"}`}
+                >
                   Presensi
                 </H1>
               </TouchableOpacity>
@@ -120,29 +117,20 @@ export default function Dashboard() {
                   </Large>
                 </View>
               </Button>
-
-              {/* Profil Button */}
-              <Button
-                variant="default"
-                size="lg"
-                className="w-full justify-center bg-black mb-5"
-                onPress={navigateToProfile}
-              >
-                <View className="flex-row items-center justify-center">
-                  <Feather name="user" size={28} color="white" />
-                  <Large className="text-white font-medium ml-4">Profil</Large>
-                </View>
-              </Button>
             </View>
           </ScrollView>
 
           {/* --- Footer Section with theme colors --- */}
-          <View 
+          <View
             className={`items-start px-5 py-4 ${
-              isDarkMode ? "bg-gray-800 border-gray-700" : "bg-background border-border"
+              isDarkMode
+                ? "bg-gray-800 border-gray-700"
+                : "bg-background border-border"
             } border-t`}
           >
-            <H4 className={isDarkMode ? "text-white" : "text-foreground"}>Version 0.3.0</H4>
+            <H4 className={isDarkMode ? "text-white" : "text-foreground"}>
+              Version 0.3.0
+            </H4>
           </View>
         </View>
       </SafeAreaView>

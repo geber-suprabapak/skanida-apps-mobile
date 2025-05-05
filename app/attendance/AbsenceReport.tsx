@@ -8,7 +8,6 @@ import { SafeAreaView } from "react-native-safe-area-context"; // Import SafeAre
 
 import { Button } from "~/components/ui/button"; // Use the new button
 import { Text } from "~/components/ui/text"; // Import Text from ui
-import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
@@ -37,7 +36,7 @@ const AbsenceReport = () => {
   const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const router = useRouter();
-  
+
   // Auto-navigate to camera when location is verified
   useEffect(() => {
     if (isWithinRange === true && location && !loading) {
@@ -45,7 +44,7 @@ const AbsenceReport = () => {
       const timer = setTimeout(() => {
         navigateToCameraWithLocation();
       }, 1500); // 1.5 seconds delay
-      
+
       return () => clearTimeout(timer);
     }
   }, [isWithinRange, location, loading]);
@@ -178,31 +177,6 @@ const AbsenceReport = () => {
   };
 
   // --- PROCEED TO CAMERA ---
-  const handleProceedToCamera = () => {
-    if (!location) {
-      Alert.alert("Error", "Lokasi tidak tersedia");
-      return;
-    }
-
-    if (!isWithinRange) {
-      Alert.alert(
-        "Peringatan",
-        "Anda berada di luar jangkauan kantor. Absensi mungkin akan ditolak.",
-        [
-          {
-            text: "Batal",
-            style: "cancel",
-          },
-          {
-            text: "Lanjutkan",
-            onPress: () => navigateToCameraWithLocation(),
-          },
-        ],
-      );
-    } else {
-      navigateToCameraWithLocation();
-    }
-  };
 
   const navigateToCameraWithLocation = () => {
     if (location) {
@@ -227,7 +201,7 @@ const AbsenceReport = () => {
           headerShown: false, // Hide the default header
         }}
       />
-      
+
       {/* Custom Header */}
       <View
         className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-white"}`}
@@ -264,10 +238,10 @@ const AbsenceReport = () => {
         >
           {loading ? (
             <View className="items-center py-6">
-              <ActivityIndicator 
-                size="large" 
-                color={isDarkMode ? "#C0DAFF" : "#0066FF"} 
-                className="mb-4" 
+              <ActivityIndicator
+                size="large"
+                color={isDarkMode ? "#C0DAFF" : "#0066FF"}
+                className="mb-4"
               />
               <Text
                 className={`text-lg mt-2 ${isDarkMode ? "text-white" : "text-gray-600"}`}
@@ -323,11 +297,13 @@ const AbsenceReport = () => {
                   </Text>
                 </View>
               )}
-              
+
               {/* Show navigation message when location is verified */}
               {isWithinRange === true && (
                 <View className="mt-4 items-center">
-                  <Text className={`text-sm italic ${isDarkMode ? "text-blue-300" : "text-blue-600"}`}>
+                  <Text
+                    className={`text-sm italic ${isDarkMode ? "text-blue-300" : "text-blue-600"}`}
+                  >
                     Melanjutkan ke kamera dalam beberapa detik...
                   </Text>
                 </View>
@@ -353,7 +329,9 @@ const AbsenceReport = () => {
                   color={isDarkMode ? "white" : "black"}
                   style={{ marginRight: 8 }}
                 />
-                <Text className={isDarkMode ? "text-white" : "text-black"}>Periksa Lokasi Kembali</Text>
+                <Text className={isDarkMode ? "text-white" : "text-black"}>
+                  Periksa Lokasi Kembali
+                </Text>
               </View>
             </Button>
           )}
