@@ -33,7 +33,7 @@ export default function LoginScreen() {
           </Text>
           <Button
             size="lg"
-            className="mb-5 mt-4 w-full bg-black border border-transparent active:bg-white active:border-gray-400 py-4"
+            className="mb-5  w-full bg-black border border-transparent active:bg-white active:border-gray-400 "
             onPress={() => router.push("/auth/Login")}
           >
             <H3 className="text-white group-active:text-gray-400 font-bold">
@@ -42,7 +42,7 @@ export default function LoginScreen() {
           </Button>
           <Button
             size="lg"
-            className="mb-4 w-full bg-black border border-transparent active:bg-white active:border-gray-400 py-4"
+            className="mb-5 w-full bg-black border border-transparent active:bg-white active:border-gray-400 "
             onPress={() => router.push("/auth/Register")}
           >
             <H3 className="text-white group-active:text-gray-400 font-bold">

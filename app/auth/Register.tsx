@@ -156,7 +156,7 @@ export default function RegisterScreen() {
           <Button
             variant="default"
             size="lg"
-            className="mb-4 w-full bg-black py-3"
+            className="mb-4 w-full bg-black"
             onPress={handleRegister}
             disabled={loading}
           >

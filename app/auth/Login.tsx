@@ -119,7 +119,7 @@ export default function Login() {
           <Button
             variant="default"
             size="lg"
-            className="mb-4 w-full bg-black py-3"
+            className="mb-4 w-full bg-black"
             onPress={handleLogin}
             disabled={loading}
           >
