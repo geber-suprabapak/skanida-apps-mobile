@@ -1,6 +1,13 @@
 import { useRouter, Stack } from "expo-router";
 import React, { useState } from "react";
-import { View, TextInput, Alert, ActivityIndicator } from "react-native";
+import {
+  View,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -62,63 +69,69 @@ export default function ChangePassword() {
   };
 
   return (
-    <View className="flex-1 p-6 bg-white justify-center">
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <Stack.Screen options={{ title: "Ubah Password" }} />
-      <Text className="text-2xl font-bold mb-6 text-center">Ubah Password</Text>
-      <View className="mb-4">
-        <Text className="mb-2 text-gray-700">Password Lama</Text>
-        <TextInput
-          className="border border-gray-300 rounded-lg px-4 py-2.5"
-          placeholder="Password lama"
-          value={currentPassword}
-          onChangeText={setCurrentPassword}
-          secureTextEntry
-        />
-      </View>
-      <View className="mb-4">
-        <Text className="mb-2 text-gray-700">Password Baru</Text>
-        <TextInput
-          className="border border-gray-300 rounded-lg px-4 py-2.5"
-          placeholder="Password baru"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-        />
-      </View>
-      <View className="mb-6">
-        <Text className="mb-2 text-gray-700">Konfirmasi Password Baru</Text>
-        <TextInput
-          className="border border-gray-300 rounded-lg px-4 py-2.5"
-          placeholder="Konfirmasi password baru"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-      </View>
-      <Button
-        variant="default"
-        size="lg"
-        disabled={loading}
-        onPress={handleChangePassword}
-        className="mb-4"
-      >
-        {loading ? (
-          <ActivityIndicator
-            size="small"
-            color="hsl(var(--primary-foreground))"
-            className="mr-2"
-          />
-        ) : null}
-        <Text>Simpan</Text>
-      </Button>
-      <Button
-        variant="outline"
-        size="lg"
-        onPress={() => router.back()}
-        disabled={loading}
-      >
-        <Text>Batal</Text>
-      </Button>
-    </View>
+      <ScrollView contentContainerClassName="flex-grow">
+        <View className="flex-1 p-6 justify-center">
+          <Text className="text-2xl font-bold mb-6 text-center">
+            Ubah Password
+          </Text>
+          <View className="mb-4">
+            <Text className="mb-2 text-gray-700">Password Lama</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              placeholder="Password lama"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+            />
+          </View>
+          <View className="mb-4">
+            <Text className="mb-2 text-gray-700">Password Baru</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              placeholder="Password baru"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+          </View>
+          <View className="mb-6">
+            <Text className="mb-2 text-gray-700">Konfirmasi Password Baru</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              placeholder="Konfirmasi password baru"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+          </View>
+          <Button
+            variant="default"
+            size="lg"
+            disabled={loading}
+            onPress={handleChangePassword}
+            className="mb-4"
+          >
+            {loading ? (
+              <ActivityIndicator
+                size="small"
+                color="hsl(var(--primary-foreground))"
+                className="mr-2"
+              />
+            ) : null}
+            <Text>Simpan</Text>
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onPress={() => router.back()}
+            disabled={loading}
+          >
+            <Text>Batal</Text>
+          </Button>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

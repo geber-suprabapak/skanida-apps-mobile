@@ -1,7 +1,8 @@
 // app/Login.tsx
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { View, TouchableOpacity, Alert } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
+import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "../../store/authStore";
@@ -10,17 +11,33 @@ import { supabase } from "../../utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { H1, P, H3 } from "~/components/ui/typography"; // Import H1, H4, and H3 components
+import { cn } from "~/lib/utils";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Email dan password harus diisi");
+    setEmailError(false);
+    setPasswordError(false);
+
+    let hasError = false;
+    if (!email) {
+      setEmailError(true);
+      hasError = true;
+    }
+    if (!password) {
+      setPasswordError(true);
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
 
@@ -32,7 +49,7 @@ export default function Login() {
       });
 
       if (error) {
-        Alert.alert("Error", error.message);
+        console.error("Supabase login error:", error.message); // Keep console log for debugging
         return;
       }
 
@@ -42,37 +59,42 @@ export default function Login() {
       }
     } catch (error) {
       console.error("Login error:", error);
-      Alert.alert("Error", "Terjadi kesalahan saat login");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <View className="flex-1 p-6 justify-center">
+    // Add top padding (pt-10) directly to SafeAreaView
+    <SafeAreaView className="flex-1 bg- pt-10" edges={["top", "left", "right"]}>
+      {/* Set status bar style to dark for light background */}
+      <StatusBar style="dark" />
+      {/* Remove the spacer View */}
+      {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
-          <Text className="text-3xl font-bold mb-2 text-center text-gray-700">
-            Selamat Datang
-          </Text>
+          <H1 className="mb-2 text-center text-gray-700">Selamat Datang</H1>
         </View>
 
         <View>
-          <Text className="text-center mb-8 text-gray-600">
+          <P className="text-center mb-8 text-gray-600">
             Masuk ke akun Anda untuk melanjutkan
-          </Text>
+          </P>
         </View>
 
         <View>
           <View className="mb-4">
             <Text className="text-gray-700 mb-2">Email</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(emailError && "border-red-500")}
               placeholder="Masukkan email Anda"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError(false);
+              }}
             />
           </View>
         </View>
@@ -81,11 +103,14 @@ export default function Login() {
           <View className="mb-6">
             <Text className="text-gray-700 mb-2">Password</Text>
             <Input
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={cn(passwordError && "border-red-500")}
               placeholder="Masukkan password Anda"
               secureTextEntry
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (passwordError) setPasswordError(false);
+              }}
             />
           </View>
         </View>
@@ -94,11 +119,13 @@ export default function Login() {
           <Button
             variant="default"
             size="lg"
-            className="mb-4"
+            className="mb-4 w-full bg-black"
             onPress={handleLogin}
             disabled={loading}
           >
-            <Text>{loading ? "Loading..." : "Masuk"}</Text>
+            <H3 className="text-white font-medium text-center">
+              {loading ? "Loading..." : "Masuk"}
+            </H3>
           </Button>
         </View>
 
@@ -110,7 +137,7 @@ export default function Login() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

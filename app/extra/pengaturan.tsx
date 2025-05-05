@@ -9,6 +9,7 @@ import {
   Switch,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context"; // Import SafeAreaView
 
 import { Button } from "~/components/ui/button"; // Use the new button
 import { Text } from "~/components/ui/text";
@@ -58,9 +59,7 @@ export default function Pengaturan() {
   // Section Components untuk reusable UI
   const SectionHeader = ({ title }: { title: string }) => (
     <Text
-      className={`text-sm font-medium mb-4 ${
-        isDarkMode ? "text-white" : "text-muted-foreground"
-      }`}
+      className={`text-sm font-medium mb-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
     >
       {title}
     </Text>
@@ -134,57 +133,39 @@ export default function Pengaturan() {
   );
 
   return (
-    <>
+    <SafeAreaView
+      className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+    >
       <Stack.Screen
         options={{
-          headerShown: true,
-          title: "Pengaturan",
-          headerStyle: {
-            backgroundColor: "hsl(var(--primary))",
-          },
-          headerTintColor: "hsl(var(--primary-foreground))",
-          headerTitleStyle: {
-            fontWeight: "bold",
-          },
+          headerShown: false, // Hide the default header
         }}
       />
+      {/* Custom Header */}
+      <View
+        className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+      >
+        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <Ionicons
+            name="arrow-back-outline"
+            size={24}
+            color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
+          />
+        </TouchableOpacity>
+        <Text
+          className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-foreground"}`}
+        >
+          Pengaturan
+        </Text>
+      </View>
+
       <ScrollView
         className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
-        {/* Back Button dengan komponen Button reusable - Spasi dihapus*/}
-        <Button
-          // Hapus variant="outline" jika dark mode, atur semua gaya di className
-          variant={isDarkMode ? undefined : "outline"}
-          size="default"
-          className={`mx-5 mt-4 mb-2 ${
-            isDarkMode
-              ? "border border-white bg-gray-800 active:bg-gray-800"
-              : "" // Light mode masih pakai variant="outline"
-          }`}
-          onPress={() => router.push("/Dashboard")}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Ionicons
-              name="arrow-back-outline"
-              size={20}
-              color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
-              style={{ marginRight: 8 }}
-            />
-            {/* Pastikan teks tetap putih saat active di dark mode */}
-            <Text
-              className={`${isDarkMode ? "text-white active:text-white" : "text-primary"}`}
-            >
-              Kembali ke Dashboard
-            </Text>
-          </View>
-        </Button>
-
-        {/* Profile Section - Ditambah Key */}
+        {/* Profile Section */}
         <View
-          key="profile-section" // <- Tambahkan key
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
-            isDarkMode ? "bg-gray-800" : "bg-card"
-          }`}
+          key="profile-section"
+          className={`rounded-xl mx-5 mt-4 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Profil" />
           <View
@@ -241,12 +222,10 @@ export default function Pengaturan() {
           />
         </View>
 
-        {/* Preferences Section - Ditambah Key */}
+        {/* Preferences Section */}
         <View
-          key="preferences-section" // <- Tambahkan key
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
-            isDarkMode ? "bg-gray-800" : "bg-card"
-          }`}
+          key="preferences-section"
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Preferensi" />
 
@@ -286,12 +265,10 @@ export default function Pengaturan() {
           />
         </View>
 
-        {/* Account Section - Ditambah Key */}
+        {/* Account Section */}
         <View
-          key="account-section" // <- Tambahkan key
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
-            isDarkMode ? "bg-gray-800" : "bg-card"
-          }`}
+          key="account-section"
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Akun" />
 
@@ -314,12 +291,10 @@ export default function Pengaturan() {
           </Button>
         </View>
 
-        {/* App Info Section - Ditambah Key */}
+        {/* App Info Section */}
         <View
-          key="appinfo-section" // <- Tambahkan key
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${
-            isDarkMode ? "bg-gray-800" : "bg-card"
-          }`}
+          key="appinfo-section"
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Informasi Aplikasi" />
 
@@ -358,6 +333,6 @@ export default function Pengaturan() {
           </View>
         </View>
       </ScrollView>
-    </>
+    </SafeAreaView>
   );
 }

@@ -563,16 +563,15 @@ const CameraAttendance = () => {
 
   // Main camera view
   return (
-    <SafeAreaView className="flex-1 bg-black" edges={["top"]}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <View className="flex-1 bg-black">
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
       <Stack.Screen
         options={{
-          headerShown: true,
-          title: "Camera Attendance",
-          headerStyle: {
-            backgroundColor: "#0066FF",
-          },
-          headerTintColor: "#fff",
+          headerShown: false, // Hide the header to prevent overlap with status bar
         }}
       />
 
@@ -588,25 +587,39 @@ const CameraAttendance = () => {
             {/* Camera UI Overlay */}
             {isCameraReady ? (
               <>
-                {/* Top info bar */}
-                <Animated.View
-                  entering={SlideInDown.duration(400)}
-                  className="absolute top-3 left-0 right-0 bg-black/60 py-3 px-4 items-center mx-4 rounded-xl"
-                >
-                  <View className="flex-row items-center">
-                    <Ionicons name="location" size={16} color="#0066FF" />
-                    <Text className="text-white text-sm ml-1">
-                      Location: {locationData.latitude.toFixed(4)},{" "}
-                      {locationData.longitude.toFixed(4)}
-                    </Text>
-                  </View>
-                  <Text className="text-white/70 text-xs mt-1">
-                    {new Date().toLocaleString()}
-                  </Text>
-                </Animated.View>
+                {/* Status bar safe area padding */}
+                <View className="w-full h-10" />
 
+                {/* Top bar with location info and back button - side by side */}
+                <View className="flex-row items-center justify-between px-4">
+                  {/* Back button with contrasting color */}
+                  <TouchableOpacity
+                    className="w-10 h-10 rounded-full bg-[#0066FF] justify-center items-center shadow-lg"
+                    onPress={() => router.back()}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="arrow-back" size={24} color="#fff" />
+                  </TouchableOpacity>
+
+                  {/* Location info */}
+                  <Animated.View
+                    entering={SlideInDown.duration(400)}
+                    className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl"
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons name="location" size={16} color="#0066FF" />
+                      <Text className="text-white text-sm ml-1">
+                        {locationData.latitude.toFixed(4)},{" "}
+                        {locationData.longitude.toFixed(4)}
+                      </Text>
+                    </View>
+                    <Text className="text-white/70 text-xs">
+                      {new Date().toLocaleString()}
+                    </Text>
+                  </Animated.View>
+                </View>
                 {/* Camera Controls */}
-                <View className="absolute bottom-8 left-0 right-0 flex-row justify-around items-center px-5">
+                <View className="absolute bottom-12 left-0 right-0 flex-row justify-around items-center px-5">
                   {/* Flip camera button */}
                   <TouchableOpacity
                     className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
@@ -639,14 +652,8 @@ const CameraAttendance = () => {
                     </TouchableOpacity>
                   </Animated.View>
 
-                  {/* Back button */}
-                  <TouchableOpacity
-                    className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
-                    onPress={() => router.back()}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="arrow-back" size={28} color="#fff" />
-                  </TouchableOpacity>
+                  {/* Empty view to balance layout */}
+                  <View className="w-16 h-16" />
                 </View>
               </>
             ) : (
@@ -662,7 +669,7 @@ const CameraAttendance = () => {
           <Text className="text-white">Camera permission not granted.</Text>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -23,6 +23,7 @@
     "@types/react-navigation": "^3.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "expo": "^52.0.44",
     "expo-camera": "~16.0.18",
     "expo-constants": "~17.0.8",
