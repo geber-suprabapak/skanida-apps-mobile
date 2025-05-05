@@ -16,12 +16,14 @@ import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
 import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
 import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore"; // Import theme store
 
 // Import the icon image
 const profileImage = require("../assets/cas.jpg"); // Import the new image
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
+  const { isDarkMode } = useThemeStore(); // Get theme state
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -42,12 +44,15 @@ export default function Dashboard() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Change SafeAreaView background to white */}
-      <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-        {/* Main container with white background */}
-        <View className="flex-1 bg-white">
+      {/* Apply dynamic background based on theme */}
+      <SafeAreaView 
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`} 
+        edges={["top"]}
+      >
+        {/* Main container with theme-based background */}
+        <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
           {/* --- Header Section (Black Background) --- */}
-          {/* Ensure this View retains the black background */}
+          {/* Header can stay black in both themes */}
           <View className="bg-black items-center py-5">
             {/* Reduced padding */}
             {/* Use the Avatar component from ui/avatar */}
@@ -63,9 +68,9 @@ export default function Dashboard() {
             <H3 className="text-white">{formattedTime}</H3>
           </View>
 
-          {/* --- Content Section (Scrollable, White Background) --- */}
+          {/* --- Content Section (Scrollable, Theme-based Background) --- */}
           <ScrollView
-            className="flex-1 px-5 pt-6" // Added padding top
+            className={`flex-1 px-5 pt-6 ${isDarkMode ? "bg-gray-900" : "bg-white"}`} // Added theme colors
             contentContainerStyle={{ paddingBottom: 20 }} // Ensure padding at the bottom
             showsVerticalScrollIndicator={false}
           >
@@ -80,7 +85,7 @@ export default function Dashboard() {
                 <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
                   <AntDesign name="scan1" size={40} color="white" />
                 </View>
-                <H1 className="text-black font-semibold text-center">
+                <H1 className={`font-semibold text-center ${isDarkMode ? "text-white" : "text-black"}`}>
                   Presensi
                 </H1>
               </TouchableOpacity>
@@ -105,7 +110,7 @@ export default function Dashboard() {
               <Button
                 variant="default"
                 size="lg"
-                className="w-full justify-center bg-black mb-5" // Use py-5 instead of h-20
+                className="w-full justify-center bg-black mb-5"
                 onPress={navigateToSettings}
               >
                 <View className="flex-row items-center justify-center">
@@ -115,13 +120,29 @@ export default function Dashboard() {
                   </Large>
                 </View>
               </Button>
+
+              {/* Profil Button */}
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full justify-center bg-black mb-5"
+                onPress={navigateToProfile}
+              >
+                <View className="flex-row items-center justify-center">
+                  <Feather name="user" size={28} color="white" />
+                  <Large className="text-white font-medium ml-4">Profil</Large>
+                </View>
+              </Button>
             </View>
           </ScrollView>
 
-          {/* --- Footer Section --- */}
-          <View className="items-start px-5 py-4 bg-background border-t border-border">
-            {/* Changed items-center to items-start and added horizontal padding */}
-            <H4 className="text-foreground">Version 0.3.0</H4>
+          {/* --- Footer Section with theme colors --- */}
+          <View 
+            className={`items-start px-5 py-4 ${
+              isDarkMode ? "bg-gray-800 border-gray-700" : "bg-background border-border"
+            } border-t`}
+          >
+            <H4 className={isDarkMode ? "text-white" : "text-foreground"}>Version 0.3.0</H4>
           </View>
         </View>
       </SafeAreaView>
