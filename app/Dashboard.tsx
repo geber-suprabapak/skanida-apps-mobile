@@ -2,7 +2,8 @@
 import {
   AntDesign,
   Ionicons,
-  MaterialIcons, // For profile icon
+  MaterialIcons, 
+  Feather, // Untuk ikon pensil
 } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
+  const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
 
   return (
     <>
@@ -53,12 +55,24 @@ export default function Dashboard() {
           <View className="bg-black items-center py-5">
             {/* Reduced padding */}
             {/* Use the Avatar component from ui/avatar */}
-            <Avatar
-              size="lg" // Use the 'lg' size defined in ui/avatar
-              fallback={user?.email?.charAt(0).toUpperCase() || "?"} // Fallback initial
-              className="mb-2" // Add margin if needed
-              source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
-            />
+            <View className="relative">
+              <Avatar
+                size="lg" // Use the 'lg' size defined in ui/avatar
+                fallback={user?.email?.charAt(0).toUpperCase() || "?"} // Fallback initial
+                className="mb-2" // Add margin if needed
+                source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
+              />
+              {/* Pencil icon positioned at bottom-right of avatar */}
+              <TouchableOpacity
+                className="absolute bottom-2 right-0"
+                onPress={navigateToEditProfile}
+                activeOpacity={0.7}
+              >
+                <View className="bg-white rounded-full p-1 border border-gray-300">
+                  <Feather name="edit-2" size={14} color="black" />
+                </View>
+              </TouchableOpacity>
+            </View>
             <H2 className="text-white mb-1">{user?.email || "eror"}</H2>
             <H3 className="text-white">{formattedTime}</H3>
           </View>
