@@ -3,7 +3,6 @@ import { useRouter, Stack } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
-  TextInput,
   Alert,
   ActivityIndicator,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -102,16 +102,15 @@ export default function EditProfile() {
             >
               Nama
             </Text>
-            <TextInput
-              className={`border rounded-lg px-4 py-2.5 ${
-                isDarkMode
-                  ? "border-gray-600 bg-gray-700 text-white"
-                  : "border-gray-300 bg-white text-gray-800"
-              }`}
+            <Input
               placeholder="Nama lengkap"
-              placeholderTextColor={isDarkMode ? "#9ca3af" : "#9ca3af"}
               value={name}
               onChangeText={setName}
+              className={
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                  : ""
+              }
             />
           </View>
           <View className="mb-6">
@@ -120,17 +119,16 @@ export default function EditProfile() {
             >
               No. Telepon
             </Text>
-            <TextInput
-              className={`border rounded-lg px-4 py-2.5 ${
-                isDarkMode
-                  ? "border-gray-600 bg-gray-700 text-white"
-                  : "border-gray-300 bg-white text-gray-800"
-              }`}
+            <Input
               placeholder="Nomor telepon"
-              placeholderTextColor={isDarkMode ? "#9ca3af" : "#9ca3af"}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
+              className={
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                  : ""
+              }
             />
           </View>
         </View>
@@ -143,28 +141,46 @@ export default function EditProfile() {
             size="lg"
             disabled={loading}
             onPress={handleSave}
-            className="mb-4"
+            className={`mb-4 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
           >
             {loading ? (
-              <>
+              <View className="flex-row items-center justify-center">
                 <ActivityIndicator
                   size="small"
-                  color="hsl(var(--primary-foreground))"
-                  className="mr-2"
+                  color={isDarkMode ? "#000" : "#fff"}
+                  style={{ marginRight: 8 }}
                 />
-                <Text>Sedang menyimpan...</Text>
-              </>
+                <Text
+                  className={
+                    isDarkMode
+                      ? "text-black font-medium"
+                      : "text-white font-medium"
+                  }
+                >
+                  Sedang menyimpan...
+                </Text>
+              </View>
             ) : (
-              <Text>Simpan</Text>
+              <Text
+                className={
+                  isDarkMode
+                    ? "text-black font-medium"
+                    : "text-white font-medium"
+                }
+              >
+                Simpan
+              </Text>
             )}
           </Button>
           <Button
-            variant="outline"
-            size="lg"
+            size="default"
             onPress={() => router.back()}
             disabled={loading}
+            className="w-full rounded-lg py-3 bg-red-600"
           >
-            <Text>Batal</Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text className="text-white">Batal</Text>
+            </View>
           </Button>
         </View>
       </ScrollView>
