@@ -17,25 +17,60 @@ import { Button } from "~/components/ui/button";
 import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore"; // Import theme store
+import { supabase } from "~/utils/supabase";
 
-// Import the icon image
-const profileImage = require("../assets/muflih.jpg"); // Import the new image
+// Fallback profile image in case avatar_url is not available
+const fallbackProfileImage = require("../assets/muflih.jpg");
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkMode } = useThemeStore(); // Get theme state
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [profileData, setProfileData] = useState(null);
 
   useEffect(() => {
     const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timerId);
   }, []);
 
+  // Fetch profile data from the user_profiles table
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data && !error) {
+          setProfileData(data);
+        }
+      } catch (err) {
+        console.error("Error fetching profile data:", err);
+      }
+    };
+    
+    fetchProfileData();
+  }, [user]);
+
   const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
   
-  // Get user's display name from user_metadata, fallback to email if not available
-  const displayName = user?.user_metadata?.name || user?.email || "Pengguna";
+  // Get user's display name prioritizing profile data, then falling back to metadata
+  const displayName = 
+    (profileData?.full_name) || 
+    user?.user_metadata?.name || 
+    user?.email || 
+    "Pengguna";
+  
+  // Get user's avatar URL from profile data or from metadata
+  const avatarUrl = 
+    (profileData?.avatar_url) || 
+    user?.user_metadata?.avatar_url || 
+    null;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -63,7 +98,7 @@ export default function Dashboard() {
                 size="lg" // Use the 'lg' size defined in ui/avatar
                 fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
                 className="mb-2" // Add margin if needed
-                source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
+                source={avatarUrl || Image.resolveAssetSource(fallbackProfileImage).uri} // Use the avatar URL from profile data or metadata
               />
               {/* Pencil icon positioned at bottom-right of avatar */}
               <TouchableOpacity

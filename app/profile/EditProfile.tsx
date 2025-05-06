@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Alert,
@@ -25,7 +25,45 @@ export default function EditProfile() {
 
   const [name, setName] = useState(user?.user_metadata?.name || "");
   const [email, setEmail] = useState(user?.email || "");
+  const [absenceNumber, setAbsenceNumber] = useState(user?.user_metadata?.absence_number || "");
+  const [className, setClassName] = useState(user?.user_metadata?.class_name || "");
   const [loading, setLoading] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [fetchProfileError, setFetchProfileError] = useState(false);
+
+  useEffect(() => {
+    // Fetch profile data from user_profiles table when component mounts
+    const fetchProfileData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching profile:", error.message);
+          setFetchProfileError(true);
+          return;
+        }
+        
+        if (data) {
+          setProfileData(data);
+          // If we have data from profiles, use it to initialize state
+          setName(data.full_name || user?.user_metadata?.name || "");
+          setAbsenceNumber(data.absence_number || user?.user_metadata?.absence_number || "");
+          setClassName(data.class_name || user?.user_metadata?.class_name || "");
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching profile:", err);
+        setFetchProfileError(true);
+      }
+    };
+    
+    fetchProfileData();
+  }, [user]);
 
   const handleSave = async () => {
     if (!name) {
@@ -51,15 +89,46 @@ export default function EditProfile() {
         return;
       }
 
-      // Update name di Supabase
+      // Update user metadata in Auth
       const { error } = await supabase.auth.updateUser({
-        data: { name },
+        data: { 
+          name,
+          full_name: name,
+          absence_number: absenceNumber,
+          class_name: className
+        },
+        options: {
+          data: {
+            display_name: name,
+          }
+        }
       });
 
       if (error) {
         Alert.alert("Error", error.message);
         setLoading(false);
         return;
+      }
+
+      // Update user_profiles table with all fields including email
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          full_name: name,
+          email: email, // Make sure to update email in the profile table too
+          absence_number: absenceNumber,
+          class_name: className
+        }, { onConflict: 'user_id' });
+
+      if (profileError) {
+        console.error("Error updating profile table:", profileError);
+        Alert.alert(
+          "Perhatian", 
+          "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
+          [{ text: "OK" }]
+        );
+        // We'll continue but alert the user about the partial success
       }
 
       // Ambil ulang user terbaru dari Supabase
@@ -71,16 +140,35 @@ export default function EditProfile() {
         return;
       }
 
+      // Refresh profile data after successful update
+      const { data: refreshedProfile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (refreshedProfile) {
+        setProfileData(refreshedProfile);
+      }
+
       setUser(userData.user);
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err) {
       Alert.alert("Error", "Gagal memperbarui profil");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show message if table doesn't exist yet
+  useEffect(() => {
+    if (fetchProfileError && user) {
+      console.warn("Couldn't connect to profiles table. Table might not exist yet.");
+    }
+  }, [fetchProfileError, user]);
 
   return (
     <SafeAreaView
@@ -112,7 +200,7 @@ export default function EditProfile() {
 
       <ScrollView
         className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
-        contentContainerClassName="p-6"
+        contentContainerStyle={{ padding: 24 }}
       >
         <View
           className={`rounded-xl p-5 shadow-sm mb-4 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
@@ -134,7 +222,7 @@ export default function EditProfile() {
               }
             />
           </View>
-          <View className="mb-6">
+          <View className="mb-4">
             <Text
               className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
             >
@@ -146,6 +234,41 @@ export default function EditProfile() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              className={
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                  : ""
+              }
+            />
+          </View>
+          <View className="mb-4">
+            <Text
+              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+            >
+              No. Absen
+            </Text>
+            <Input
+              placeholder="Nomor Absen"
+              value={absenceNumber}
+              onChangeText={setAbsenceNumber}
+              keyboardType="numeric"
+              className={
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                  : ""
+              }
+            />
+          </View>
+          <View className="mb-6">
+            <Text
+              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+            >
+              Kelas
+            </Text>
+            <Input
+              placeholder="Kelas"
+              value={className}
+              onChangeText={setClassName}
               className={
                 isDarkMode
                   ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
