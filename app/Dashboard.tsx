@@ -33,6 +33,9 @@ export default function Dashboard() {
   }, []);
 
   const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
+  
+  // Get user's display name from user_metadata, fallback to email if not available
+  const displayName = user?.user_metadata?.name || user?.email || "Pengguna";
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -58,7 +61,7 @@ export default function Dashboard() {
             <View className="relative">
               <Avatar
                 size="lg" // Use the 'lg' size defined in ui/avatar
-                fallback={user?.email?.charAt(0).toUpperCase() || "?"} // Fallback initial
+                fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
                 className="mb-2" // Add margin if needed
                 source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
               />
@@ -73,7 +76,7 @@ export default function Dashboard() {
                 </View>
               </TouchableOpacity>
             </View>
-            <H2 className="text-white mb-1">{user?.email || "eror"}</H2>
+            <H2 className="text-white mb-1">{displayName}</H2>
             <H3 className="text-white">{formattedTime}</H3>
           </View>
 

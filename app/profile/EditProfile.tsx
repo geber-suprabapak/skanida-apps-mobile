@@ -24,7 +24,7 @@ export default function EditProfile() {
   const router = useRouter();
 
   const [name, setName] = useState(user?.user_metadata?.name || "");
-  const [phone, setPhone] = useState(user?.user_metadata?.phone || "");
+  const [email, setEmail] = useState(user?.email || "");
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -32,28 +32,49 @@ export default function EditProfile() {
       Alert.alert("Error", "Nama tidak boleh kosong");
       return;
     }
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      Alert.alert("Error", "Email tidak valid");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Update profile di Supabase
-      const { error } = await supabase.auth.updateUser({
-        data: { name, phone },
+      // Update email di Supabase
+      const { error: emailError } = await supabase.auth.updateUser({
+        email: email,
       });
-      if (error) {
-        Alert.alert("Error", error.message);
+
+      if (emailError) {
+        Alert.alert("Error", emailError.message);
+        setLoading(false);
         return;
       }
+
+      // Update name di Supabase
+      const { error } = await supabase.auth.updateUser({
+        data: { name },
+      });
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        setLoading(false);
+        return;
+      }
+
       // Ambil ulang user terbaru dari Supabase
       const { data: userData, error: userError } =
         await supabase.auth.getUser();
       if (userError || !userData?.user) {
         Alert.alert("Error", "Gagal mengambil data user terbaru");
+        setLoading(false);
         return;
       }
+
       setUser(userData.user);
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
         { text: "OK", onPress: () => router.back() },
       ]);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       Alert.alert("Error", "Gagal memperbarui profil");
     } finally {
@@ -117,13 +138,14 @@ export default function EditProfile() {
             <Text
               className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
             >
-              No. Telepon
+              Email
             </Text>
             <Input
-              placeholder="Nomor telepon"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
               className={
                 isDarkMode
                   ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
