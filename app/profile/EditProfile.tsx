@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -6,17 +7,20 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const router = useRouter();
 
   const [name, setName] = useState(user?.user_metadata?.name || "");
@@ -58,32 +62,82 @@ export default function EditProfile() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <Stack.Screen options={{ title: "Edit Profil" }} />
-      <ScrollView contentContainerClassName="flex-grow">
-        <View className="flex-1 p-6 justify-center">
-          <Text className="text-2xl font-bold mb-6 text-center">
-            Edit Profil
-          </Text>
+    <SafeAreaView
+      className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+    >
+      <Stack.Screen
+        options={{
+          headerShown: false, // Hide the default header
+        }}
+      />
+
+      {/* Custom Header */}
+      <View
+        className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+      >
+        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <Ionicons
+            name="arrow-back-outline"
+            size={24}
+            color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
+          />
+        </TouchableOpacity>
+        <Text
+          className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-foreground"}`}
+        >
+          Edit Profil
+        </Text>
+      </View>
+
+      <ScrollView
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+        contentContainerClassName="p-6"
+      >
+        <View
+          className={`rounded-xl p-5 shadow-sm mb-4 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+        >
           <View className="mb-4">
-            <Text className="mb-2 text-gray-700">Nama</Text>
+            <Text
+              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+            >
+              Nama
+            </Text>
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={`border rounded-lg px-4 py-2.5 ${
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white"
+                  : "border-gray-300 bg-white text-gray-800"
+              }`}
               placeholder="Nama lengkap"
+              placeholderTextColor={isDarkMode ? "#9ca3af" : "#9ca3af"}
               value={name}
               onChangeText={setName}
             />
           </View>
           <View className="mb-6">
-            <Text className="mb-2 text-gray-700">No. Telepon</Text>
+            <Text
+              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+            >
+              No. Telepon
+            </Text>
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className={`border rounded-lg px-4 py-2.5 ${
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white"
+                  : "border-gray-300 bg-white text-gray-800"
+              }`}
               placeholder="Nomor telepon"
+              placeholderTextColor={isDarkMode ? "#9ca3af" : "#9ca3af"}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
           </View>
+        </View>
+
+        <View
+          className={`rounded-xl p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+        >
           <Button
             variant="default"
             size="lg"
