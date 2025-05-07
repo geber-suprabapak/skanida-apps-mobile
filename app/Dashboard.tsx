@@ -22,12 +22,22 @@ import { supabase } from "~/utils/supabase";
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
 
+// Define interface for user profile data
+interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkMode } = useThemeStore(); // Get theme state
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [profileData, setProfileData] = useState(null);
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const timerId = setInterval(() => setCurrentTime(new Date()), 1000);

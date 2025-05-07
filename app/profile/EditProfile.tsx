@@ -17,6 +17,19 @@ import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
+// Define interface for user profile data
+interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name?: string;
+  email?: string;
+  absence_number?: string;
+  class_name?: string;
+  avatar_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -28,7 +41,7 @@ export default function EditProfile() {
   const [absenceNumber, setAbsenceNumber] = useState(user?.user_metadata?.absence_number || "");
   const [className, setClassName] = useState(user?.user_metadata?.class_name || "");
   const [loading, setLoading] = useState(false);
-  const [profileData, setProfileData] = useState(null);
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [fetchProfileError, setFetchProfileError] = useState(false);
 
   useEffect(() => {
@@ -95,12 +108,8 @@ export default function EditProfile() {
           name,
           full_name: name,
           absence_number: absenceNumber,
-          class_name: className
-        },
-        options: {
-          data: {
-            display_name: name,
-          }
+          class_name: className,
+          display_name: name
         }
       });
 
