@@ -5,15 +5,14 @@ title: ""
 labels: ""
 assignees: ""
 ---
+- Apakah permintaan fitur Anda terkait dengan suatu masalah? Harap jelaskan.
+Deskripsi yang jelas dan singkat tentang masalah yang dihadapi. Contoh: Saya selalu merasa frustrasi ketika [...]
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+- Jelaskan solusi yang Anda inginkan
+Deskripsi yang jelas dan singkat tentang apa yang Anda harapkan terjadi.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+- Jelaskan alternatif yang telah Anda pertimbangkan
+Deskripsi yang jelas dan singkat tentang solusi atau fitur alternatif yang telah Anda pertimbangkan.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
-
-**Additional context**
-Add any other context or screenshots about the feature request here.
+- Konteks tambahan
+Tambahkan konteks lain atau tangkapan layar terkait permintaan fitur Anda di sini.

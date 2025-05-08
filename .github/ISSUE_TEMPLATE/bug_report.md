@@ -6,8 +6,8 @@ labels: bug
 assignees: ""
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+🔁 Langkah untuk Mereproduksi Bug
+Langkah-langkah untuk melihat/memunculkan bug:
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -17,11 +17,9 @@ Steps to reproduce the behavior:
 3. Scroll down to '....'
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+Klik pada '...'
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+Scroll ke bagian '...'
 
 **Smartphone (please complete the following information):**
 
@@ -30,5 +28,20 @@ If applicable, add screenshots to help explain your problem.
 - Browser [e.g. stock browser, safari]
 - Version [e.g. 22]
 
-**Additional context**
-Add any other context about the problem here.
+✅ Perilaku yang Diharapkan
+Jelaskan apa yang seharusnya terjadi jika tidak ada bug.
+
+📸 Tangkapan Layar
+Jika ada, tambahkan screenshot untuk membantu menjelaskan masalah.
+
+📱 Informasi Perangkat (jika relevan)
+Perangkat: [contoh: iPhone 6]
+
+Sistem Operasi: [contoh: iOS 8.1]
+
+Browser: [contoh: Safari, Chrome]
+
+Versi Aplikasi: [contoh: 1.2.0]
+
+🧩 Konteks Tambahan
+Tambahkan informasi lain yang relevan mengenai bug ini.
