@@ -1,10 +1,9 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
-
+title: ""
+labels: ""
+assignees: ""
 ---
 - Apakah permintaan fitur Anda terkait dengan suatu masalah? Harap jelaskan.
 Deskripsi yang jelas dan singkat tentang masalah yang dihadapi. Contoh: Saya selalu merasa frustrasi ketika [...]

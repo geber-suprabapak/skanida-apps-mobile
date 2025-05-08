@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "skanida-apps",
+    "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "1.0.0",
+    "version": "0.3.0",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",
@@ -31,16 +31,32 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hfzrk.skanidaappsmobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hfzrk.skanidaappsmobilerebuild"
-    }
+      "package": "com.hfzrk.skanidaappsmobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "a423f8e9-23fd-472b-b405-f5ef8f726bf9"
+      }
+    },
+    "owner": "geber-suprabapak"
   }
 }

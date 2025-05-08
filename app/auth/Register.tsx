@@ -1,78 +1,180 @@
 // app/register.tsx
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
+import { View, TouchableOpacity, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import useAuthStore from '../../store/authStore';
+import useAuthStore from "../../store/authStore";
 
-import { supabase } from '~/utils/supabase';
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Text } from "~/components/ui/text";
+import { H1, P, H3 } from "~/components/ui/typography";
+import { cn } from "~/lib/utils";
+import { supabase } from "~/utils/supabase";
 
 export default function RegisterScreen() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-
   const handleRegister = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      // Jika Anda menggunakan "magic link" atau email verification yang dikirim otomatis,
-      // Supabase akan mengirim link verifikasi ke email pengguna.
-    });
-    setLoading(false);
+    setEmailError(false);
+    setPasswordError(false);
+    setConfirmPasswordError(false);
 
-    if (error) {
-      setErrorMessage(error.message);
+    let hasValidationError = false;
+    if (!email) {
+      setEmailError(true);
+      hasValidationError = true;
+    }
+    if (!password) {
+      setPasswordError(true);
+      hasValidationError = true;
+    }
+    if (!confirmPassword) {
+      setConfirmPasswordError(true);
+      hasValidationError = true;
+    }
+
+    let passwordMismatch = false;
+    if (password && confirmPassword && password !== confirmPassword) {
+      setPasswordError(true);
+      setConfirmPasswordError(true);
+      passwordMismatch = true;
+    }
+
+    if (hasValidationError || passwordMismatch) {
       return;
     }
 
-    // Berhasil signUp
-    if (data?.user) {
-      // Cek apakah email sudah terverifikasi
-      if (data.user.email_confirmed_at) {
-        // Jika email sudah terverifikasi (mungkin user sudah pernah daftar, dll.)
-        setUser(data.user);
-        router.replace('/auth/AuthSelector');
-      } else {
-        alert(
-          'Pendaftaran berhasil, namun email Anda belum terverifikasi. Silakan cek inbox untuk memverifikasi email.'
-        );
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("Supabase signup error:", error.message);
+        return;
       }
+
+      if (data?.user) {
+        setUser(data.user);
+        router.replace("/Dashboard");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View className="flex-1 items-center justify-center space-y-4 p-4">
-      <Text className="text-xl font-bold">Daftar Akun</Text>
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        className="w-4/5 rounded border border-gray-300 p-3"
-      />
-      <TextInput
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        className="w-4/5 rounded border border-gray-300 p-3"
-      />
-      {errorMessage ? <Text className="text-sm text-red-500">{errorMessage}</Text> : null}
-      <TouchableOpacity
-        onPress={handleRegister}
-        disabled={loading}
-        className="mt-3 rounded bg-blue-500 px-4 py-2">
-        <Text className="font-medium text-white">{loading ? 'Loading...' : 'Register'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/auth/Login')} className="mt-2">
-        <Text className="text-blue-500">Sudah punya akun? Login</Text>
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView
+      className="flex-1 bg-white pt-10"
+      edges={["top", "left", "right"]}
+    >
+      {/* Set status bar style to dark for light background */}
+      <StatusBar style="dark" />
+      {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
+        <View>
+          <H1 className="mb-2 text-center text-gray-700">Daftar Akun</H1>
+        </View>
+
+        <View>
+          <P className="text-center mb-8 text-gray-600">
+            Buat akun baru untuk menggunakan aplikasi
+          </P>
+        </View>
+
+        <View>
+          <View className="mb-4">
+            <Text className="text-gray-700 mb-2">Email</Text>
+            <Input
+              className={cn(emailError && "border-red-500")}
+              placeholder="Masukkan email Anda"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError(false);
+              }}
+            />
+          </View>
+        </View>
+
+        <View>
+          <View className="mb-4">
+            <Text className="text-gray-700 mb-2">Password</Text>
+            <Input
+              className={cn(passwordError && "border-red-500")}
+              placeholder="Masukkan password Anda"
+              secureTextEntry
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (passwordError) setPasswordError(false);
+                if (confirmPasswordError && text === confirmPassword) {
+                  setConfirmPasswordError(false);
+                }
+              }}
+            />
+          </View>
+        </View>
+
+        <View>
+          <View className="mb-6">
+            <Text className="text-gray-700 mb-2">Konfirmasi Password</Text>
+            <Input
+              className={cn(confirmPasswordError && "border-red-500")}
+              placeholder="Masukkan kembali password Anda"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (confirmPasswordError) setConfirmPasswordError(false);
+                if (passwordError && text === password) {
+                  setPasswordError(false);
+                }
+              }}
+            />
+          </View>
+        </View>
+
+        <View>
+          <Button
+            variant="default"
+            size="lg"
+            className="mb-4 w-full bg-black"
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <H3 className="text-white font-medium">
+              {loading ? "Loading..." : "Daftar"}
+            </H3>
+          </Button>
+        </View>
+
+        <View>
+          <View className="flex-row justify-center mt-4">
+            <Text className="text-gray-600">Sudah memiliki akun? </Text>
+            <TouchableOpacity onPress={() => router.push("/auth/Login")}>
+              <Text className="text-gray-700 font-semibold">Masuk</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
