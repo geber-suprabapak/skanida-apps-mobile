@@ -141,7 +141,7 @@ const AbsenceReport = () => {
       );
     } catch (error: any) {
       console.error("Error getting location:", error);
-      if (error.message === "Location request timed out") {
+      if (error && typeof error === "object" && "message" in error && error.message === "Location request timed out") {
         setStatusMessage("Gagal mendapatkan lokasi: Waktu habis.");
       } else {
         setStatusMessage("Gagal mendapatkan lokasi. Coba lagi.");
