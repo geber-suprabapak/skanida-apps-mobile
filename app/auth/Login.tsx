@@ -50,6 +50,7 @@ export default function Login() {
 
       if (error) {
         console.error("Supabase login error:", error.message); // Keep console log for debugging
+        setLoginError("Login failed. Please check your email and password."); // Set user-facing error message
         return;
       }
 
