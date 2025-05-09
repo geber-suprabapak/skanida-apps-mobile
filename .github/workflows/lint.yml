@@ -5,13 +5,15 @@ on:
   push:
     branches:
       - develop
-  pull_request: 
+  pull_request:
     types: [opened]
+  workflow_dispatch:
 
 permissions: {}
 
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/develop'
     name: Lint
     runs-on: ubuntu-latest
 
