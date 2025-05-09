@@ -5,8 +5,9 @@ on:
   push:
     branches:
       - develop
-  pull_request: 
+  pull_request:
     types: [opened]
+  workflow_dispatch:
 
 permissions: {}
 
@@ -33,6 +34,9 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
