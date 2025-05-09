@@ -1,7 +1,7 @@
 ---
 name: Lint
 
-on: # yamllint disable-line rule:truthy
+on:
   push:
     branches:
       - develop
@@ -18,7 +18,6 @@ jobs:
     permissions:
       contents: read
       packages: read
-      # To report GitHub Actions status checks
       statuses: write
 
     steps:
@@ -28,6 +27,15 @@ jobs:
           # super-linter needs the full git history to get the
           # list of files that changed across commits
           fetch-depth: 1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Super-linter
         uses: super-linter/super-linter@v7.3.0 # x-release-please-version
