@@ -2,7 +2,7 @@
 import {
   AntDesign,
   Ionicons,
-  MaterialIcons, 
+  MaterialIcons,
   Feather, // Untuk ikon pensil
 } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
@@ -48,14 +48,14 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchProfileData = async () => {
       if (!user) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
           .single();
-        
+
         if (data && !error) {
           setProfileData(data);
         }
@@ -63,23 +63,23 @@ export default function Dashboard() {
         console.error("Error fetching profile data:", err);
       }
     };
-    
+
     fetchProfileData();
   }, [user]);
 
   const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
-  
+
   // Get user's display name prioritizing profile data, then falling back to metadata
-  const displayName = 
-    (profileData?.full_name) || 
-    user?.user_metadata?.name || 
-    user?.email || 
+  const displayName =
+    (profileData?.full_name) ||
+    user?.user_metadata?.name ||
+    user?.email ||
     "Pengguna";
-  
+
   // Get user's avatar URL from profile data or from metadata
-  const avatarUrl = 
-    (profileData?.avatar_url) || 
-    user?.user_metadata?.avatar_url || 
+  const avatarUrl =
+    (profileData?.avatar_url) ||
+    user?.user_metadata?.avatar_url ||
     null;
 
   // --- Navigation Handlers ---
@@ -191,7 +191,7 @@ export default function Dashboard() {
             } border-t`}
           >
             <H4 className={isDarkMode ? "text-white" : "text-foreground"}>
-              Version 0.3.0
+              Version 0.4.0
             </H4>
           </View>
         </View>
