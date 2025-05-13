@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter, Stack } from "expo-router";
-import React, { useState, useEffect } from "react";
+import { useRouter, Stack, useNavigation } from "expo-router";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Alert,
@@ -37,6 +37,7 @@ export default function EditProfile() {
   const setUser = useAuthStore((state) => state.setUser);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const router = useRouter();
+  const navigation = useNavigation();
 
   const [name, setName] = useState(user?.user_metadata?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -52,53 +53,107 @@ export default function EditProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  const [initialName, setInitialName] = useState("");
+  const [initialEmail, setInitialEmail] = useState("");
+  const [initialAbsenceNumber, setInitialAbsenceNumber] = useState("");
+  const [initialClassName, setInitialClassName] = useState("");
+  const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
+
   useEffect(() => {
-    // Fetch profile data from user_profiles table when component mounts
-    const fetchProfileData = async () => {
-      if (!user) return;
+    const fetchAndSetInitialProfileData = async () => {
+      if (!user) {
+        setInitialName(name);
+        setInitialEmail(email);
+        setInitialAbsenceNumber(absenceNumber);
+        setInitialClassName(className);
+        setInitialAvatarUrl(avatarUrl);
+        return;
+      }
+
+      let currentName = user.user_metadata?.name || "";
+      let currentEmail = user.email || "";
+      let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+      let currentClassName = user.user_metadata?.class_name || "";
+      let currentAvatarUrl: string | null = user.user_metadata?.avatar_url || null;
+
+      setEmail(currentEmail);
 
       try {
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("*")
+          .select("full_name, email, absence_number, class_name, avatar_url")
           .eq("user_id", user.id)
           .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') {
           console.error("Error fetching profile:", error.message);
           setFetchProfileError(true);
-          return;
         }
 
         if (data) {
-          setProfileData(data);
-          // If we have data from profiles, use it to initialize state
-          setName(data.full_name || user?.user_metadata?.name || "");
-          setAbsenceNumber(
-            data.absence_number || user?.user_metadata?.absence_number || "",
-          );
-          setClassName(
-            data.class_name || user?.user_metadata?.class_name || "",
-          );
-
-          // Set avatar URL from profile data
-          if (data.avatar_url) {
-            setAvatarUrl(data.avatar_url);
-          }
+          setProfileData(data as UserProfile);
+          currentName = data.full_name || currentName;
+          currentAbsenceNumber = data.absence_number || currentAbsenceNumber;
+          currentClassName = data.class_name || currentClassName;
+          currentAvatarUrl = data.avatar_url || currentAvatarUrl;
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
         setFetchProfileError(true);
       }
+
+      setName(currentName);
+      setInitialName(currentName);
+      setInitialEmail(currentEmail);
+      setAbsenceNumber(currentAbsenceNumber);
+      setInitialAbsenceNumber(currentAbsenceNumber);
+      setClassName(currentClassName);
+      setInitialClassName(currentClassName);
+      setAvatarUrl(currentAvatarUrl);
+      setInitialAvatarUrl(currentAvatarUrl);
     };
 
-    fetchProfileData();
+    fetchAndSetInitialProfileData();
   }, [user]);
 
-  // Function to pick an image from the gallery
+  useEffect(() => {
+    const onBeforeRemove = (e: any) => {
+      const hasUnsavedChanges =
+        name !== initialName ||
+        email !== initialEmail ||
+        absenceNumber !== initialAbsenceNumber ||
+        className !== initialClassName ||
+        avatarUrl !== initialAvatarUrl;
+
+      if (!hasUnsavedChanges) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        "Perubahan Belum Disimpan",
+        "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
+        [
+          { text: "Tetap di Sini", style: "cancel", onPress: () => {} },
+          {
+            text: "Tinggalkan",
+            style: "destructive",
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    };
+
+    navigation.addListener('beforeRemove', onBeforeRemove);
+
+    return () => {
+      navigation.removeListener('beforeRemove', onBeforeRemove);
+    };
+  }, [navigation, name, email, absenceNumber, className, avatarUrl, initialName, initialEmail, initialAbsenceNumber, initialClassName, initialAvatarUrl]);
+
   const pickImage = async () => {
     try {
-      // Request permission to access media library
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== 'granted') {
@@ -106,7 +161,6 @@ export default function EditProfile() {
         return;
       }
 
-      // Launch the image picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -116,8 +170,6 @@ export default function EditProfile() {
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-
-        // Upload the avatar to Supabase Storage
         await uploadAvatar(imageUri);
       }
     } catch (error) {
@@ -126,7 +178,6 @@ export default function EditProfile() {
     }
   };
 
-  // Function to upload avatar to Supabase storage
   const uploadAvatar = async (uri: string) => {
     if (!user) return;
 
@@ -137,20 +188,18 @@ export default function EditProfile() {
       const fileNameInBucket = `avatar_${user.id}_${Date.now()}.${fileExt}`;
       const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
 
-      // Create FormData
       const formData = new FormData();
       formData.append('file', {
         uri: uri,
         name: fileNameInBucket,
         type: contentType,
-      } as any); // Cast to any to satisfy FormData.append type, React Native handles this
+      } as any);
 
-      // Upload to the 'avatars' bucket using FormData
       const { data: storageData, error: storageError } = await supabase
         .storage
         .from('avatars')
         .upload(fileNameInBucket, formData, {
-          contentType: contentType, // Explicitly set contentType, though FormData might set it too
+          contentType: contentType,
           upsert: true,
         });
 
@@ -159,7 +208,6 @@ export default function EditProfile() {
         throw new Error(`Supabase storage error: ${storageError.message}`);
       }
 
-      // Get the public URL of the uploaded avatar
       const { data: urlData } = supabase
         .storage
         .from('avatars')
@@ -168,18 +216,17 @@ export default function EditProfile() {
       const newAvatarUrl = urlData?.publicUrl;
 
       if (!newAvatarUrl) {
-        // If publicUrl is null or undefined, it means an error occurred or the file doesn't exist.
         console.error('Failed to get public URL. Storage data:', storageData);
         throw new Error('Gagal mendapatkan URL publik avatar setelah unggah.');
       }
 
       setAvatarUrl(newAvatarUrl);
-      Alert.alert('Sukses', 'Avatar berhasil diperbarui. Klik Simpan untuk menyimpan perubahan profil Anda.'); // Indonesian message
+      Alert.alert('Sukses', 'Avatar berhasil diperbarui. Klik Simpan untuk menyimpan perubahan profil Anda.');
 
     } catch (error) {
       console.error('Error in uploadAvatar function:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Gagal Unggah', `Gagal mengunggah avatar: ${errorMessage}`); // Indonesian message
+      Alert.alert('Gagal Unggah', `Gagal mengunggah avatar: ${errorMessage}`);
     } finally {
       setUploadingAvatar(false);
     }
@@ -198,7 +245,6 @@ export default function EditProfile() {
 
     setLoading(true);
     try {
-      // Update email di Supabase
       const { error: emailError } = await supabase.auth.updateUser({
         email,
       });
@@ -209,7 +255,6 @@ export default function EditProfile() {
         return;
       }
 
-      // Update user metadata in Auth
       const { error } = await supabase.auth.updateUser({
         data: {
           name,
@@ -217,7 +262,7 @@ export default function EditProfile() {
           absence_number: absenceNumber,
           class_name: className,
           display_name: name,
-          avatar_url: avatarUrl, // Add avatar URL to user metadata
+          avatar_url: avatarUrl,
         },
       });
 
@@ -227,17 +272,16 @@ export default function EditProfile() {
         return;
       }
 
-      // Update user_profiles table with all fields including email
       const { error: profileError } = await supabase
         .from("user_profiles")
         .upsert(
           {
             user_id: user.id,
             full_name: name,
-            email, // Make sure to update email in the profile table too
+            email,
             absence_number: absenceNumber,
             class_name: className,
-            avatar_url: avatarUrl, // Add avatar URL to profile table
+            avatar_url: avatarUrl,
           },
           { onConflict: "user_id" },
         );
@@ -249,10 +293,8 @@ export default function EditProfile() {
           "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
           [{ text: "OK" }],
         );
-        // We'll continue but alert the user about the partial success
       }
 
-      // Ambil ulang user terbaru dari Supabase
       const { data: userData, error: userError } =
         await supabase.auth.getUser();
       if (userError || !userData?.user) {
@@ -261,7 +303,6 @@ export default function EditProfile() {
         return;
       }
 
-      // Refresh profile data after successful update
       const { data: refreshedProfile } = await supabase
         .from("user_profiles")
         .select("*")
@@ -273,6 +314,13 @@ export default function EditProfile() {
       }
 
       setUser(userData.user);
+
+      setInitialName(name);
+      setInitialEmail(email);
+      setInitialAbsenceNumber(absenceNumber);
+      setInitialClassName(className);
+      setInitialAvatarUrl(avatarUrl);
+
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -284,7 +332,6 @@ export default function EditProfile() {
     }
   };
 
-  // Show message if table doesn't exist yet
   useEffect(() => {
     if (fetchProfileError && user) {
       console.warn(
@@ -299,11 +346,10 @@ export default function EditProfile() {
     >
       <Stack.Screen
         options={{
-          headerShown: false, // Hide the default header
+          headerShown: false,
         }}
       />
 
-      {/* Custom Header */}
       <View
         className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
@@ -325,15 +371,14 @@ export default function EditProfile() {
         className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
         contentContainerStyle={{ padding: 24 }}
       >
-        {/* Avatar Section */}
         <View
           className={`rounded-xl p-5 shadow-sm mb-4 items-center ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
         >
           <View className="relative">
             {uploadingAvatar ? (
-              <View className="w-24 h-24 rounded-full bg-gray-300 items-center justify-center mb-4">
+              <View className={`w-36 h-36 rounded-full items-center justify-center mb-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
                 <ActivityIndicator
-                  size="small"
+                  size="large"
                   color={isDarkMode ? "#fff" : "#000"}
                 />
               </View>
@@ -342,22 +387,20 @@ export default function EditProfile() {
                 {avatarUrl ? (
                   <Image
                     source={{ uri: avatarUrl }}
-                    className="w-24 h-24 rounded-full"
+                    className="w-36 h-36 rounded-full"
                   />
                 ) : (
-                  <View className="w-24 h-24 rounded-full bg-primary items-center justify-center">
-                    <Text className="text-2xl font-bold text-primary-foreground">
-                      {name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
-                    </Text>
+                  <View className={`w-36 h-36 rounded-full items-center justify-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
+                    <Ionicons name="person-circle-outline" size={80} color={isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                   </View>
                 )}
                 <TouchableOpacity
-                  className="absolute bottom-0 right-0 bg-primary rounded-full p-2"
+                  className="absolute bottom-0 right-0 bg-primary rounded-full p-3"
                   onPress={pickImage}
                 >
                   <Ionicons
                     name="camera"
-                    size={18}
+                    size={20}
                     color="#fff"
                   />
                 </TouchableOpacity>
