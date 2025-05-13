@@ -80,7 +80,7 @@ export default function EditProfile() {
           setClassName(
             data.class_name || user?.user_metadata?.class_name || "",
           );
-          
+
           // Set avatar URL from profile data
           if (data.avatar_url) {
             setAvatarUrl(data.avatar_url);
@@ -100,12 +100,12 @@ export default function EditProfile() {
     try {
       // Request permission to access media library
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'We need permission to access your photos');
         return;
       }
-      
+
       // Launch the image picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -113,10 +113,10 @@ export default function EditProfile() {
         aspect: [1, 1],
         quality: 0.7,
       });
-      
+
       if (!result.canceled && result.assets && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        
+
         // Upload the avatar to Supabase Storage
         await uploadAvatar(imageUri);
       }
@@ -125,55 +125,61 @@ export default function EditProfile() {
       Alert.alert('Error', 'Failed to pick image');
     }
   };
-  
+
   // Function to upload avatar to Supabase storage
   const uploadAvatar = async (uri: string) => {
     if (!user) return;
-    
+
     setUploadingAvatar(true);
-    
+
     try {
-      // Fetch the image data
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
-      // Generate a unique file name for the avatar
-      const fileExt = uri.split('.').pop() || 'jpg';
-      const fileName = `avatar_${user.id}_${Date.now()}.${fileExt}`;
-      
-      // Upload to the 'avatars' bucket
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileNameInBucket = `avatar_${user.id}_${Date.now()}.${fileExt}`;
+      const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', {
+        uri: uri,
+        name: fileNameInBucket,
+        type: contentType,
+      } as any); // Cast to any to satisfy FormData.append type, React Native handles this
+
+      // Upload to the 'avatars' bucket using FormData
       const { data: storageData, error: storageError } = await supabase
         .storage
         .from('avatars')
-        .upload(fileName, blob, {
-          contentType: `image/${fileExt}`,
-          upsert: true
+        .upload(fileNameInBucket, formData, {
+          contentType: contentType, // Explicitly set contentType, though FormData might set it too
+          upsert: true,
         });
-      
+
       if (storageError) {
-        throw new Error(storageError.message);
+        console.error('Supabase storage error details:', storageError);
+        throw new Error(`Supabase storage error: ${storageError.message}`);
       }
-      
+
       // Get the public URL of the uploaded avatar
       const { data: urlData } = supabase
         .storage
         .from('avatars')
-        .getPublicUrl(fileName);
-      
+        .getPublicUrl(fileNameInBucket);
+
       const newAvatarUrl = urlData?.publicUrl;
-      
+
       if (!newAvatarUrl) {
-        throw new Error('Failed to get avatar URL');
+        // If publicUrl is null or undefined, it means an error occurred or the file doesn't exist.
+        console.error('Failed to get public URL. Storage data:', storageData);
+        throw new Error('Gagal mendapatkan URL publik avatar setelah unggah.');
       }
-      
-      // Update the state with the new avatar URL
+
       setAvatarUrl(newAvatarUrl);
-      
-      Alert.alert('Success', 'Avatar updated successfully. Click Save to update your profile.');
-      
+      Alert.alert('Sukses', 'Avatar berhasil diperbarui. Klik Simpan untuk menyimpan perubahan profil Anda.'); // Indonesian message
+
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      Alert.alert('Error', 'Failed to upload avatar');
+      console.error('Error in uploadAvatar function:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert('Gagal Unggah', `Gagal mengunggah avatar: ${errorMessage}`); // Indonesian message
     } finally {
       setUploadingAvatar(false);
     }
@@ -326,9 +332,9 @@ export default function EditProfile() {
           <View className="relative">
             {uploadingAvatar ? (
               <View className="w-24 h-24 rounded-full bg-gray-300 items-center justify-center mb-4">
-                <ActivityIndicator 
-                  size="small" 
-                  color={isDarkMode ? "#fff" : "#000"} 
+                <ActivityIndicator
+                  size="small"
+                  color={isDarkMode ? "#fff" : "#000"}
                 />
               </View>
             ) : (
@@ -358,7 +364,7 @@ export default function EditProfile() {
               </View>
             )}
           </View>
-          
+
           <Text className={isDarkMode ? "text-gray-300" : "text-gray-700"}>
             Ketuk ikon kamera untuk mengubah foto profil
           </Text>
