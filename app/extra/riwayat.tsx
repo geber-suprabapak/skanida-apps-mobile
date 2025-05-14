@@ -127,7 +127,7 @@ export default function Riwayat() {
           }`}
           onPress={fetchAttendanceHistory}
         >
-          <Text className={`${isDarkMode ? "text-white" : "text-white"}`}>
+          <Text className="text-white">
             Refresh Data
           </Text>
         </Button>
