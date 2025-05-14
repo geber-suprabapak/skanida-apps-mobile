@@ -11,13 +11,23 @@ import { Text } from "~/components/ui/text"; // Import Text from ui
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
-// Import NetInfo with error handling
-let NetInfo: any;
+// Import NetInfo with better type handling
+interface NetInfoState {
+  isConnected: boolean;
+  isInternetReachable: boolean;
+}
+
+interface NetInfoType {
+  addEventListener: (callback: (state: NetInfoState) => void) => { remove: () => void };
+  fetch: () => Promise<NetInfoState>;
+}
+
+let NetInfo: NetInfoType;
 try {
   NetInfo = require("@react-native-community/netinfo").default;
 } catch (error) {
   console.warn("Failed to import NetInfo:", error);
-  // Provide a fallback implementation
+  // Provide a fallback implementation with proper typing
   NetInfo = {
     addEventListener: () => ({ remove: () => {} }),
     fetch: async () => ({ isConnected: true, isInternetReachable: true }),

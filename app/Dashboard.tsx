@@ -2,7 +2,8 @@
 import {
   AntDesign,
   Ionicons,
-  MaterialIcons, // For profile icon
+  MaterialIcons,
+  Feather, // Untuk ikon pensil
 } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
@@ -16,27 +17,76 @@ import { Button } from "~/components/ui/button";
 import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore"; // Import theme store
+import { supabase } from "~/utils/supabase";
 
-// Import the icon image
-const profileImage = require("../assets/muflih.jpg"); // Import the new image
+// Fallback profile image in case avatar_url is not available
+const fallbackProfileImage = require("../assets/muflih.jpg");
+
+// Define interface for user profile data
+interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkMode } = useThemeStore(); // Get theme state
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timerId);
   }, []);
 
+  // Fetch profile data from the user_profiles table
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data && !error) {
+          setProfileData(data);
+        }
+      } catch (err) {
+        console.error("Error fetching profile data:", err);
+      }
+    };
+
+    fetchProfileData();
+  }, [user]);
+
   const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
+
+  // Get user's display name prioritizing profile data, then falling back to metadata
+  const displayName =
+    (profileData?.full_name) ||
+    user?.user_metadata?.name ||
+    user?.email ||
+    "Pengguna";
+
+  // Get user's avatar URL from profile data or from metadata
+  const avatarUrl =
+    (profileData?.avatar_url) ||
+    user?.user_metadata?.avatar_url ||
+    null;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
+  const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
 
   return (
     <>
@@ -53,13 +103,25 @@ export default function Dashboard() {
           <View className="bg-black items-center py-5">
             {/* Reduced padding */}
             {/* Use the Avatar component from ui/avatar */}
-            <Avatar
-              size="lg" // Use the 'lg' size defined in ui/avatar
-              fallback={user?.email?.charAt(0).toUpperCase() || "?"} // Fallback initial
-              className="mb-2" // Add margin if needed
-              source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
-            />
-            <H2 className="text-white mb-1">{user?.email || "eror"}</H2>
+            <View className="relative">
+              <Avatar
+                size="lg" // Use the 'lg' size defined in ui/avatar
+                fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
+                className="mb-2" // Add margin if needed
+                source={avatarUrl || Image.resolveAssetSource(fallbackProfileImage).uri} // Use the avatar URL from profile data or metadata
+              />
+              {/* Pencil icon positioned at bottom-right of avatar */}
+              <TouchableOpacity
+                className="absolute bottom-2 right-0"
+                onPress={navigateToEditProfile}
+                activeOpacity={0.7}
+              >
+                <View className="bg-white rounded-full p-1 border border-gray-300">
+                  <Feather name="edit-2" size={14} color="black" />
+                </View>
+              </TouchableOpacity>
+            </View>
+            <H2 className="text-white mb-1">{displayName}</H2>
             <H3 className="text-white">{formattedTime}</H3>
           </View>
 
@@ -129,7 +191,7 @@ export default function Dashboard() {
             } border-t`}
           >
             <H4 className={isDarkMode ? "text-white" : "text-foreground"}>
-              Version 0.3.0
+              Version 0.4.0
             </H4>
           </View>
         </View>

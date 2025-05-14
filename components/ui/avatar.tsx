@@ -7,7 +7,7 @@ interface AvatarProps {
   className?: string;
   fallback?: string;
   source?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
@@ -16,6 +16,7 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
       sm: "h-8 w-8",
       md: "h-10 w-10",
       lg: "h-48 w-48",
+      xl: "h-64 w-64",
     };
 
     return (
@@ -35,7 +36,7 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
           />
         ) : (
           <View className="flex h-full w-full items-center justify-center bg-muted">
-            <Text className="text-sm font-medium text-muted-foreground">
+            <Text className={`font-medium text-muted-foreground ${size === 'lg' || size === 'xl' ? 'text-3xl' : 'text-sm'}`}>
               {fallback || "?"}
             </Text>
           </View>
