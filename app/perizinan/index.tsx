@@ -19,31 +19,6 @@ import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
-const logError = (context: string, error: any): string => {
-  console.error(`==== ERROR [${context}] ====`);
-  console.error(`Message: ${error.message || "No error message"}`);
-  console.error(`Stack: ${error.stack || "No stack trace"}`);
-
-  if (error.error) {
-    console.error(`Supabase error code: ${error.error}`);
-  }
-
-  if (error.status) {
-    console.error(`Status: ${error.status}`);
-  }
-
-  if (error.details) {
-    console.error(`Details: ${JSON.stringify(error.details)}`);
-  }
-
-  if (error.response) {
-    console.error(`Response: ${JSON.stringify(error.response)}`);
-  }
-
-  console.error("==== END ERROR ====");
-  return error.message || "Unknown error occurred";
-};
-
 // Utility function to convert base64 string to Uint8Array
 const base64ToUint8Array = (base64: string): Uint8Array => {
   if (!base64) {
@@ -59,7 +34,6 @@ const base64ToUint8Array = (base64: string): Uint8Array => {
     return bytes;
   } catch (error: any) {
     console.error("Error converting base64 to Uint8Array:", error.message);
-    logError("base64ToUint8Array", { message: error.message, stack: error.stack });
     throw new Error("Failed to process image data: " + error.message);
   }
 };
@@ -82,7 +56,10 @@ export default function PerizinanScreen() {
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Izin Ditolak", "Izin kamera diperlukan untuk mengambil foto.");
+      Alert.alert(
+        "Izin Ditolak",
+        "Izin kamera diperlukan untuk mengambil foto.",
+      );
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -146,52 +123,106 @@ export default function PerizinanScreen() {
           }
 
           fileBuffer = base64ToUint8Array(imageBase64);
-          console.log("Uint8Array created from base64:", { size: fileBuffer.byteLength });
-
+          console.log("Uint8Array created from base64:", {
+            size: fileBuffer.byteLength,
+          });
         } catch (err: any) {
-          const errorMsg = logError("createUint8ArrayFromFile", err);
-          throw new Error(`Failed to process image data: ${errorMsg}`);
+          throw new Error(`Failed to process image data: ${err.message}`);
         }
 
         const fileNameParts = imageUri.split(".");
         const fileNameExt = fileNameParts.pop();
-        const fileName = `${user.id}/${Date.now()}.${fileNameExt || 'bin'}`;
+        const fileName = `${user.id}/${Date.now()}.${fileNameExt || "bin"}`;
 
         console.log("Preparing to upload file (Uint8Array):", fileName);
-        const { data, error: uploadError } = await supabase.storage
-          .from("perizinan")
-          .upload(fileName, fileBuffer, {
-            contentType: determinedContentType,
-            cacheControl: "3600",
-            upsert: false,
-          });
+        try {
+          const { data, error: uploadError } = await supabase.storage
+            .from("perizinan")
+            .upload(fileName, fileBuffer, {
+              contentType: determinedContentType,
+              cacheControl: "3600",
+              upsert: false,
+            });
 
-        if (uploadError) {
-          const errorMsg = logError("uploadToStorage", uploadError);
-          throw new Error(`Supabase storage upload error: ${errorMsg}`);
+          if (uploadError) {
+            // Check specifically for network-related errors
+            if (
+              uploadError.message?.includes("network") ||
+              uploadError.message?.includes("connection") ||
+              uploadError.message?.toLowerCase().includes("timeout")
+            ) {
+              throw new Error(
+                `Koneksi internet bermasalah. Mohon periksa koneksi internet Anda dan coba lagi.`,
+              );
+            }
+            throw new Error(
+              `Supabase storage upload error: ${uploadError.message}`,
+            );
+          }
+
+          console.log("File uploaded successfully, getting public URL");
+          const { data: urlData } = supabase.storage
+            .from("perizinan")
+            .getPublicUrl(data.path);
+
+          publicUrl = urlData.publicUrl;
+          console.log("Public URL acquired:", publicUrl);
+        } catch (networkErr: any) {
+          if (
+            networkErr.message?.includes("network") ||
+            networkErr.message?.includes("connection") ||
+            networkErr.message?.toLowerCase().includes("timeout")
+          ) {
+            throw new Error(
+              `Koneksi internet bermasalah. Mohon periksa koneksi internet Anda dan coba lagi.`,
+            );
+          }
+          throw networkErr;
         }
-
-        console.log("File uploaded successfully, getting public URL");
-        const { data: urlData } = supabase.storage
-          .from("perizinan")
-          .getPublicUrl(data.path);
-
-        publicUrl = urlData.publicUrl;
-        console.log("Public URL acquired:", publicUrl);
       }
 
       console.log("Inserting record to database");
-      const { error: insertError } = await supabase.from("perizinan").insert({
-        user_id: user.id,
-        kategori_izin: category,
-        deskripsi: description,
-        status: "pending",
-        link_foto: publicUrl,
-      });
+      try {
+        const { error: insertError } = await supabase.from("perizinan").insert({
+          user_id: user.id,
+          kategori_izin: category,
+          deskripsi: description,
+          status: false,
+          link_foto: publicUrl,
+        });
 
-      if (insertError) {
-        const errorMsg = logError("insertToDB", insertError);
-        throw new Error(`Supabase insert error: ${errorMsg}`);
+        if (insertError) {
+          // log full error object for debugging
+          console.error("Supabase insertError object:", insertError);
+          // existing retry / throw logic
+          if (insertError.message?.includes("boolean")) {
+            console.log("Retrying with boolean status due to type mismatch");
+            const { error: retryError } = await supabase
+              .from("perizinan")
+              .insert({
+                user_id: user.id,
+                kategori_izin: category,
+                deskripsi: description,
+                status: false,
+                link_foto: publicUrl,
+              });
+            if (retryError) {
+              console.error("Supabase retryError object:", retryError);
+              throw new Error(`Supabase insert error: ${retryError.message}`);
+            }
+          } else {
+            console.error(
+              "Supabase insertError object (non-boolean):",
+              insertError,
+            );
+            throw new Error(`Supabase insert error: ${insertError.message}`);
+          }
+        }
+      } catch (dbErr: any) {
+        // also log any caught exception
+        console.error("Database insert caught exception:", dbErr);
+        // ...existing network check / rethrow...
+        throw dbErr;
       }
 
       console.log("Record inserted successfully");
@@ -201,8 +232,24 @@ export default function PerizinanScreen() {
       clearImage();
       router.back();
     } catch (error: any) {
-      const errorMessage = logError("uploadPermit", error);
-      Alert.alert("Error", `Gagal mengirim izin: ${errorMessage}`);
+      const errorMessage = error.message || "Unknown error";
+      console.error("Upload error:", errorMessage);
+
+      // Provide a more user-friendly message for network errors
+      if (
+        errorMessage.includes("network") ||
+        errorMessage.includes("connection") ||
+        errorMessage.toLowerCase().includes("timeout") ||
+        errorMessage.includes("internet")
+      ) {
+        Alert.alert(
+          "Koneksi Bermasalah",
+          "Gagal mengirim izin karena masalah koneksi internet. Mohon periksa koneksi Anda dan coba lagi.",
+          [{ text: "OK" }],
+        );
+      } else {
+        Alert.alert("Error", `Gagal mengirim izin: ${errorMessage}`);
+      }
     } finally {
       setUploading(false);
     }
@@ -274,8 +321,12 @@ export default function PerizinanScreen() {
             </View>
           </View>
 
-          <View className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}>
-            <Text className={`text-lg font-semibold mb-3 ${isDarkMode ? "text-white" : "text-foreground"}`}>
+          <View
+            className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-3 ${isDarkMode ? "text-white" : "text-foreground"}`}
+            >
               Deskripsi
             </Text>
             <TextInput
@@ -285,7 +336,9 @@ export default function PerizinanScreen() {
                   : "border-input bg-background text-foreground placeholder-muted-foreground"
               }`}
               placeholder="Masukkan alasan atau deskripsi izin Anda di sini..."
-              placeholderTextColor={isDarkMode ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)"}
+              placeholderTextColor={
+                isDarkMode ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)"
+              }
               multiline
               value={description}
               onChangeText={setDescription}
@@ -293,8 +346,12 @@ export default function PerizinanScreen() {
             />
           </View>
 
-          <View className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}>
-            <Text className={`text-lg font-semibold mb-4 ${isDarkMode ? "text-white" : "text-foreground"}`}>
+          <View
+            className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-4 ${isDarkMode ? "text-white" : "text-foreground"}`}
+            >
               Lampiran Foto (Opsional)
             </Text>
             <View className="flex-row space-x-3 mb-4">
@@ -355,7 +412,9 @@ export default function PerizinanScreen() {
                 <TouchableOpacity
                   onPress={clearImage}
                   className={`absolute top-2 right-2 p-1.5 rounded-full ${
-                    isDarkMode ? "bg-gray-600 opacity-80" : "bg-gray-300 opacity-80"
+                    isDarkMode
+                      ? "bg-gray-600 opacity-80"
+                      : "bg-gray-300 opacity-80"
                   }`}
                 >
                   <Ionicons
@@ -368,7 +427,9 @@ export default function PerizinanScreen() {
             )}
           </View>
 
-          <View className={`rounded-xl p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}>
+          <View
+            className={`rounded-xl p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          >
             <Button
               disabled={uploading || !description.trim()}
               onPress={uploadPermit}
@@ -378,8 +439,8 @@ export default function PerizinanScreen() {
                     ? "bg-gray-600"
                     : "bg-gray-400"
                   : isDarkMode
-                  ? "bg-primary"
-                  : "bg-black"
+                    ? "bg-primary"
+                    : "bg-black"
               }`}
             >
               <Text
