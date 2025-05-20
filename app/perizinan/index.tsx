@@ -368,7 +368,7 @@ export default function PerizinanScreen() {
               <CardTitle
                 className={`${isDarkMode ? "text-white" : "text-foreground"}`}
               >
-                Lampiran Foto (Opsional)
+                Lampiran Foto
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -444,7 +444,6 @@ export default function PerizinanScreen() {
 
           <Card>
             <CardContent className="pt-6">
-              {" "}
               {/* Added pt-6 to CardContent for submit button spacing */}
               <Button // Using custom Button component
                 disabled={uploading || !description.trim()}
