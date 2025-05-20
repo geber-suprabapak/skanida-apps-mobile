@@ -2,19 +2,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
-import React, { useState } from "react";
-import {
-  View,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  Alert,
-  ScrollView,
-} from "react-native";
+import { useState } from "react";
+import { View, TouchableOpacity, Image, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
-import { Text } from "~/components/ui/text";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card"; // Added import
+import { Input } from "~/components/ui/input"; // Added import
+import { Text } from "~/components/ui/text"; // Updated import
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -45,7 +46,7 @@ export default function PerizinanScreen() {
   const [category, setCategory] = useState<"sakit" | "pergi">("sakit");
   const [description, setDescription] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null); // New state for base64 data
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const clearImage = () => {
@@ -265,7 +266,7 @@ export default function PerizinanScreen() {
       <SafeAreaView
         className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
-        <View
+        <View // Header View
           className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
         >
           <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1">
@@ -275,7 +276,7 @@ export default function PerizinanScreen() {
               color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
             />
           </TouchableOpacity>
-          <Text
+          <Text // Using custom Text component
             className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-foreground"}`}
           >
             Buat Pengajuan Izin
@@ -286,176 +287,194 @@ export default function PerizinanScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          <View className="mb-5">
-            <Text
-              className={`${isDarkMode ? "text-white" : "text-black"} mb-2 text-center`}
-            >
-              Pilih Kategori
-            </Text>
-            <View className="flex-row justify-around space-x-3 mt-2">
-              {(["sakit", "pergi"] as const).map((catValue) => (
-                <Button
-                  key={catValue}
-                  onPress={() => setCategory(catValue)}
-                  className={`flex-1 py-3 rounded-lg border ${
-                    category === catValue
-                      ? "bg-black border-black"
-                      : isDarkMode
-                        ? "bg-gray-800 border-gray-700"
-                        : "bg-gray-200 border-gray-300"
-                  }`}
-                >
-                  <Text
-                    className={`font-medium text-center ${
+          <Card className="mb-5">
+            <CardHeader>
+              <CardTitle
+                className={`${isDarkMode ? "text-white" : "text-black"} text-center`}
+              >
+                Pilih Kategori
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <View className="flex-row justify-around space-x-3 mt-2">
+                {(["sakit", "pergi"] as const).map((catValue) => (
+                  <Button // Using custom Button component
+                    key={catValue}
+                    onPress={() => setCategory(catValue)}
+                    variant={category === catValue ? "default" : "outline"}
+                    className={`flex-1 py-3 rounded-lg ${
                       category === catValue
-                        ? "text-white"
+                        ? isDarkMode
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-black text-white"
                         : isDarkMode
-                          ? "text-gray-300"
-                          : "text-gray-700"
+                          ? "border-gray-700 bg-gray-800"
+                          : "border-gray-300 bg-gray-200"
                     }`}
                   >
-                    {catValue.charAt(0).toUpperCase() + catValue.slice(1)}
-                  </Text>
-                </Button>
-              ))}
-            </View>
-          </View>
-
-          <View
-            className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
-          >
-            <Text
-              className={`text-lg font-semibold mb-3 ${isDarkMode ? "text-white" : "text-foreground"}`}
-            >
-              Deskripsi
-            </Text>
-            <TextInput
-              className={`border rounded-lg p-4 h-32 text-base ${
-                isDarkMode
-                  ? "border-gray-600 bg-gray-700 text-white placeholder-gray-400"
-                  : "border-input bg-background text-foreground placeholder-muted-foreground"
-              }`}
-              placeholder="Masukkan alasan atau deskripsi izin Anda di sini..."
-              placeholderTextColor={
-                isDarkMode ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)"
-              }
-              multiline
-              value={description}
-              onChangeText={setDescription}
-              textAlignVertical="top"
-            />
-          </View>
-
-          <View
-            className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
-          >
-            <Text
-              className={`text-lg font-semibold mb-4 ${isDarkMode ? "text-white" : "text-foreground"}`}
-            >
-              Lampiran Foto (Opsional)
-            </Text>
-            <View className="flex-row space-x-3 mb-4">
-              <Button
-                variant="outline"
-                onPress={pickFromCamera}
-                className={`flex-1 py-3 ${
-                  isDarkMode ? "border-gray-600 bg-gray-700" : "border-input"
-                }`}
-              >
-                <View className="flex-row items-center justify-center">
-                  <Ionicons
-                    name="camera-outline"
-                    size={20}
-                    color={isDarkMode ? "#D1D5DB" : "hsl(var(--foreground))"}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text
-                    className={`${
-                      isDarkMode ? "text-gray-300" : "text-foreground"
-                    } font-medium`}
-                  >
-                    Ambil Foto
-                  </Text>
-                </View>
-              </Button>
-              <Button
-                variant="outline"
-                onPress={pickFromLibrary}
-                className={`flex-1 py-3 ${
-                  isDarkMode ? "border-gray-600 bg-gray-700" : "border-input"
-                }`}
-              >
-                <View className="flex-row items-center justify-center">
-                  <Ionicons
-                    name="image-outline"
-                    size={20}
-                    color={isDarkMode ? "#D1D5DB" : "hsl(var(--foreground))"}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text
-                    className={`${
-                      isDarkMode ? "text-gray-300" : "text-foreground"
-                    } font-medium`}
-                  >
-                    Pilih File
-                  </Text>
-                </View>
-              </Button>
-            </View>
-            {imageUri && (
-              <View className="mt-4 items-center relative">
-                <Image
-                  source={{ uri: imageUri }}
-                  className="w-full h-48 rounded-lg"
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  onPress={clearImage}
-                  className={`absolute top-2 right-2 p-1.5 rounded-full ${
-                    isDarkMode
-                      ? "bg-gray-600 opacity-80"
-                      : "bg-gray-300 opacity-80"
-                  }`}
-                >
-                  <Ionicons
-                    name="close-circle-outline"
-                    size={28}
-                    color={isDarkMode ? "white" : "black"}
-                  />
-                </TouchableOpacity>
+                    <Text // Using custom Text component
+                      className={`font-medium text-center ${
+                        category === catValue
+                          ? isDarkMode
+                            ? "text-primary-foreground"
+                            : "text-white"
+                          : isDarkMode
+                            ? "text-gray-300"
+                            : "text-gray-700"
+                      }`}
+                    >
+                      {catValue.charAt(0).toUpperCase() + catValue.slice(1)}
+                    </Text>
+                  </Button>
+                ))}
               </View>
-            )}
-          </View>
+            </CardContent>
+          </Card>
 
-          <View
-            className={`rounded-xl p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
-          >
-            <Button
-              disabled={uploading || !description.trim()}
-              onPress={uploadPermit}
-              className={`w-full py-3.5 rounded-lg ${
-                uploading || !description.trim()
-                  ? isDarkMode
-                    ? "bg-gray-600"
-                    : "bg-gray-400"
-                  : isDarkMode
-                    ? "bg-primary"
-                    : "bg-black"
-              }`}
-            >
-              <Text
-                className={`font-semibold text-base text-center ${
+          <Card className="mb-5">
+            <CardHeader>
+              <CardTitle
+                className={`${isDarkMode ? "text-white" : "text-foreground"}`}
+              >
+                Deskripsi
+              </CardTitle>
+              <CardDescription
+                className={`${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
+              >
+                Jelaskan alasan pengajuan izin Anda.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input // Using custom Input component
+                className={`h-32 text-base ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white placeholder-gray-400"
+                    : "border-input bg-background text-foreground placeholder-muted-foreground"
+                }`}
+                placeholder="Masukkan alasan atau deskripsi izin Anda di sini..."
+                multiline
+                value={description}
+                onChangeText={setDescription}
+                textAlignVertical="top" // Supported by TextInput, ensure Input passes this down or handles it
+                placeholderClassName={
+                  isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                }
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="mb-5">
+            <CardHeader>
+              <CardTitle
+                className={`${isDarkMode ? "text-white" : "text-foreground"}`}
+              >
+                Lampiran Foto (Opsional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <View className="flex-row space-x-3 mb-4">
+                <Button // Using custom Button component
+                  variant="outline"
+                  onPress={pickFromCamera}
+                  className="flex-1"
+                >
+                  <View className="flex-row items-center justify-center">
+                    <Ionicons
+                      name="camera-outline"
+                      size={20}
+                      color={isDarkMode ? "#D1D5DB" : "hsl(var(--foreground))"}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text // Using custom Text component
+                      className={`${
+                        isDarkMode ? "text-gray-300" : "text-foreground"
+                      } font-medium`}
+                    >
+                      Ambil Foto
+                    </Text>
+                  </View>
+                </Button>
+                <Button // Using custom Button component
+                  variant="outline"
+                  onPress={pickFromLibrary}
+                  className="flex-1"
+                >
+                  <View className="flex-row items-center justify-center">
+                    <Ionicons
+                      name="image-outline"
+                      size={20}
+                      color={isDarkMode ? "#D1D5DB" : "hsl(var(--foreground))"}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text // Using custom Text component
+                      className={`${
+                        isDarkMode ? "text-gray-300" : "text-foreground"
+                      } font-medium`}
+                    >
+                      Pilih File
+                    </Text>
+                  </View>
+                </Button>
+              </View>
+              {imageUri && (
+                <View className="mt-4 items-center relative">
+                  <Image
+                    source={{ uri: imageUri }}
+                    className="w-full h-48 rounded-lg"
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    onPress={clearImage}
+                    className={`absolute top-2 right-2 p-1.5 rounded-full ${
+                      isDarkMode
+                        ? "bg-gray-600 opacity-80"
+                        : "bg-gray-300 opacity-80"
+                    }`}
+                  >
+                    <Ionicons
+                      name="close-circle-outline"
+                      size={28}
+                      color={isDarkMode ? "white" : "black"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              {" "}
+              {/* Added pt-6 to CardContent for submit button spacing */}
+              <Button // Using custom Button component
+                disabled={uploading || !description.trim()}
+                onPress={uploadPermit}
+                className={`w-full py-3.5 rounded-lg ${
                   uploading || !description.trim()
                     ? isDarkMode
-                      ? "text-gray-400"
-                      : "text-gray-700"
-                    : "text-white"
+                      ? "bg-gray-600" // Consider using a disabled variant from your Button component
+                      : "bg-gray-400"
+                    : isDarkMode
+                      ? "bg-primary"
+                      : "bg-black"
                 }`}
               >
-                {uploading ? "Mengirim..." : "Kirim Pengajuan Izin"}
-              </Text>
-            </Button>
-          </View>
+                <Text // Using custom Text component
+                  className={`font-semibold text-base text-center ${
+                    uploading || !description.trim()
+                      ? isDarkMode
+                        ? "text-gray-400"
+                        : "text-gray-700"
+                      : isDarkMode
+                        ? "text-primary-foreground"
+                        : "text-white" // Ensure contrast with button bg
+                  }`}
+                >
+                  {uploading ? "Mengirim..." : "Kirim Pengajuan Izin"}
+                </Text>
+              </Button>
+            </CardContent>
+          </Card>
         </ScrollView>
       </SafeAreaView>
     </>
