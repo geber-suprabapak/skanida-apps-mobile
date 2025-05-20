@@ -51,9 +51,9 @@ export default function Dashboard() {
 
       try {
         const { data, error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', user.id)
+          .from("user_profiles")
+          .select("*")
+          .eq("user_id", user.id)
           .single();
 
         if (data && !error) {
@@ -71,22 +71,20 @@ export default function Dashboard() {
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   const displayName =
-    (profileData?.full_name) ||
+    profileData?.full_name ||
     user?.user_metadata?.name ||
     user?.email ||
     "Pengguna";
 
   // Get user's avatar URL from profile data or from metadata
-  const avatarUrl =
-    (profileData?.avatar_url) ||
-    user?.user_metadata?.avatar_url ||
-    null;
+  const avatarUrl = profileData?.avatar_url || user?.user_metadata?.avatar_url || null;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
+  const navigateToPerizinan = () => router.push("/perizinan"); // New handler for Perizinan
 
   return (
     <>
@@ -108,7 +106,10 @@ export default function Dashboard() {
                 size="lg" // Use the 'lg' size defined in ui/avatar
                 fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
                 className="mb-2" // Add margin if needed
-                source={avatarUrl || Image.resolveAssetSource(fallbackProfileImage).uri} // Use the avatar URL from profile data or metadata
+                source={
+                  avatarUrl ||
+                  Image.resolveAssetSource(fallbackProfileImage).uri
+                } // Use the avatar URL from profile data or metadata
               />
               {/* Pencil icon positioned at bottom-right of avatar */}
               <TouchableOpacity
@@ -176,6 +177,21 @@ export default function Dashboard() {
                   <Ionicons name="settings-outline" size={28} color="white" />
                   <Large className="text-white font-medium ml-4">
                     Pengaturan
+                  </Large>
+                </View>
+              </Button>
+
+              {/* Perizinan Button */}
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full justify-center bg-black mb-5"
+                onPress={navigateToPerizinan}
+              >
+                <View className="flex-row items-center justify-center">
+                  <MaterialIcons name="assignment" size={28} color="white" />
+                  <Large className="text-white font-medium ml-4">
+                    Perizinan
                   </Large>
                 </View>
               </Button>
