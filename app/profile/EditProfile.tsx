@@ -11,7 +11,6 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -39,7 +38,6 @@ export default function EditProfile() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const router = useRouter();
   const navigation = useNavigation();
-  const isFocused = useIsFocused();
 
   const [name, setName] = useState(user?.user_metadata?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -62,56 +60,61 @@ export default function EditProfile() {
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        setLoading(true);
-        try {
-          // Fetch from user_profiles first
-          const { data: profileData, error: profileError } = await supabase
-            .from("user_profiles")
-            .select("full_name, email, avatar_url, absence_number, class_name")
-            .eq("user_id", user.id)
-            .single();
-
-          if (profileError && profileError.code !== "PGRST116") {
-            console.error("Error fetching profile from DB:", profileError);
-            Alert.alert("Error", "Gagal memuat profil.");
-            setLoading(false);
-            return;
-          }
-
-          // Use DB data if available, otherwise fallback to auth metadata or defaults
-          const currentName = profileData?.full_name || user.user_metadata?.name || "";
-          const currentEmail = profileData?.email || user.email || "";
-          const currentAvatarUrl = profileData?.avatar_url || user.user_metadata?.avatar_url || "";
-          const currentAbsenceNumber = profileData?.absence_number?.toString() || user.user_metadata?.absence_number?.toString() || "";
-          const currentClassName = profileData?.class_name || user.user_metadata?.class_name || "";
-
-          setName(currentName);
-          setEmail(currentEmail);
-          setAvatarUrl(currentAvatarUrl);
-          setAbsenceNumber(currentAbsenceNumber);
-          setClassName(currentClassName);
-
-          setInitialName(currentName);
-          setInitialEmail(currentEmail);
-          setInitialAvatarUrl(currentAvatarUrl);
-          setInitialAbsenceNumber(currentAbsenceNumber);
-          setInitialClassName(currentClassName);
-
-        } catch (error) {
-          console.error("Error in fetchProfile:", error);
-          Alert.alert("Error", "Terjadi kesalahan saat memuat profil.");
-        } finally {
-          setLoading(false);
-        }
+    const fetchAndSetInitialProfileData = async () => {
+      if (!user) {
+        setInitialName(name);
+        setInitialEmail(email);
+        setInitialAbsenceNumber(absenceNumber);
+        setInitialClassName(className);
+        setInitialAvatarUrl(avatarUrl);
+        return;
       }
+
+      let currentName = user.user_metadata?.name || "";
+      let currentEmail = user.email || "";
+      let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+      let currentClassName = user.user_metadata?.class_name || "";
+      let currentAvatarUrl: string | null = user.user_metadata?.avatar_url || null;
+
+      setEmail(currentEmail);
+
+      try {
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("full_name, email, absence_number, class_name, avatar_url")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching profile:", error.message);
+          setFetchProfileError(true);
+        }
+
+        if (data) {
+          setProfileData(data as UserProfile);
+          currentName = data.full_name || currentName;
+          currentAbsenceNumber = data.absence_number || currentAbsenceNumber;
+          currentClassName = data.class_name || currentClassName;
+          currentAvatarUrl = data.avatar_url || currentAvatarUrl;
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching profile:", err);
+        setFetchProfileError(true);
+      }
+
+      setName(currentName);
+      setInitialName(currentName);
+      setInitialEmail(currentEmail);
+      setAbsenceNumber(currentAbsenceNumber);
+      setInitialAbsenceNumber(currentAbsenceNumber);
+      setClassName(currentClassName);
+      setInitialClassName(currentClassName);
+      setAvatarUrl(currentAvatarUrl);
+      setInitialAvatarUrl(currentAvatarUrl);
     };
 
-    if (isFocused && user) {
-      fetchProfile();
-    }
-  }, [user, isFocused]);
+    fetchAndSetInitialProfileData();
+  }, [user]);
 
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
@@ -230,181 +233,104 @@ export default function EditProfile() {
   };
 
   const handleSave = async () => {
-    if (!user) {
-      Alert.alert("Error", "User not found. Please re-login.");
+    if (!name) {
+      Alert.alert("Error", "Nama tidak boleh kosong");
       return;
     }
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      Alert.alert("Error", "Email tidak valid");
+      return;
+    }
+
     setLoading(true);
-
-    let metadataUpdates: { [key: string]: any } = {};
-    let profileUpdates: { [key: string]: any } = {};
-    let emailChanged = false;
-
-    // Handle email change
-    if (email && email !== initialEmail) {
-      emailChanged = true;
-      profileUpdates.email = email; // Update in user_profiles
-    }
-
-    // Prepare profile updates for user_profiles table
-    if (name !== initialName) profileUpdates.full_name = name;
-    if (avatarUrl !== initialAvatarUrl) profileUpdates.avatar_url = avatarUrl;
-    if (absenceNumber !== initialAbsenceNumber) {
-      profileUpdates.absence_number = absenceNumber ? parseInt(absenceNumber, 10) : null;
-    }
-    if (className !== initialClassName) {
-      profileUpdates.class_name = className === "" ? null : className; // Store null if empty string
-    }
-
-    // Prepare metadata updates for auth.users.user_metadata
-    const currentAuthMetadata = user.user_metadata || {};
-
-    if (name && name !== currentAuthMetadata.name) {
-      metadataUpdates.name = name;
-    }
-
-    if (avatarUrl !== currentAuthMetadata.avatar_url) {
-      metadataUpdates.avatar_url = avatarUrl;
-    }
-
-    const formAbsenceNumStr = absenceNumber;
-    const currentMetaAbsenceNum = currentAuthMetadata.absence_number;
-    if (formAbsenceNumStr) {
-      const formAbsenceNum = parseInt(formAbsenceNumStr, 10);
-      if (!isNaN(formAbsenceNum) && formAbsenceNum !== currentMetaAbsenceNum) {
-        metadataUpdates.absence_number = formAbsenceNum;
-      }
-    } else if (formAbsenceNumStr === "" && currentMetaAbsenceNum !== null && currentMetaAbsenceNum !== undefined) {
-      metadataUpdates.absence_number = null;
-    }
-
-    const formClassNameStr = className; 
-    const currentMetaClassName = currentAuthMetadata.class_name;
-
-    if (formClassNameStr !== undefined) { // Check if className state itself is defined
-      if (formClassNameStr === "") {
-        // If input is empty string, set metadata to null if it wasn't already null/undefined
-        if (currentMetaClassName !== null && currentMetaClassName !== undefined) {
-          metadataUpdates.class_name = null;
-        }
-      } else {
-        // If input has a value, update if it's different from metadata
-        if (formClassNameStr !== currentMetaClassName) {
-          metadataUpdates.class_name = formClassNameStr;
-        }
-      }
-    }
-
     try {
-      // 1. Update email in auth.users if changed
-      if (emailChanged && email) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: email,
-        });
-        if (emailError) {
-          throw new Error(`Gagal memperbarui email: ${emailError.message}`);
-        }
+      const { error: emailError } = await supabase.auth.updateUser({
+        email,
+      });
+
+      if (emailError) {
+        Alert.alert("Error", emailError.message);
+        setLoading(false);
+        return;
       }
 
-      // 2. Update user_profiles table
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .update(profileUpdates)
-          .eq("user_id", user.id);
-        if (profileError) {
-          throw new Error(
-            `Gagal memperbarui profil pengguna: ${profileError.message}`,
-          );
-        }
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          name,
+          full_name: name,
+          absence_number: absenceNumber,
+          class_name: className,
+          display_name: name,
+          avatar_url: avatarUrl,
+        },
+      });
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        setLoading(false);
+        return;
       }
 
-      // 3. Update Supabase Auth user_metadata if there are changes
-      if (Object.keys(metadataUpdates).length > 0) {
-        const { data: userAuthUpdateData, error: userMetadataError } =
-          await supabase.auth.updateUser({
-            data: metadataUpdates,
-          });
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .upsert(
+          {
+            user_id: user.id,
+            full_name: name,
+            email,
+            absence_number: absenceNumber,
+            class_name: className,
+            avatar_url: avatarUrl,
+          },
+          { onConflict: "user_id" },
+        );
 
-        if (userMetadataError) {
-          console.error(
-            "EditProfile: Error updating user metadata in Supabase Auth:",
-            userMetadataError.message,
-          );
-          Alert.alert("Error", `Gagal memperbarui metadata pengguna: ${userMetadataError.message}`);
-        }
+      if (profileError) {
+        console.error("Error updating profile table:", profileError);
+        Alert.alert(
+          "Perhatian",
+          "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
+          [{ text: "OK" }],
+        );
       }
 
-      // 4. Refresh user state in store
-      const { data: refreshedSessionData, error: refreshError } =
-        await supabase.auth.refreshSession();
-
-      if (refreshError) {
-        console.error("EditProfile: Error refreshing session:", refreshError.message);
-        const { data: directUserData, error: directUserError } = await supabase.auth.getUser();
-        if (directUserData.user) {
-            setUser(directUserData.user);
-        } else {
-            console.error("EditProfile: Failed to get user directly after session refresh error:", directUserError?.message);
-        }
-      } else if (refreshedSessionData.user) {
-        const { data: latestUserProfile, error: latestProfileError } =
-          await supabase
-            .from("user_profiles")
-            .select("*")
-            .eq("user_id", refreshedSessionData.user.id)
-            .single();
-
-        if (latestProfileError && latestProfileError.code !== "PGRST116") {
-          console.error("EditProfile: Error fetching latest user_profile post-save:", latestProfileError.message);
-          setUser(refreshedSessionData.user);
-        } else if (latestUserProfile) {
-          const finalUserMetadata = { ...refreshedSessionData.user.user_metadata };
-          finalUserMetadata.name = latestUserProfile.full_name ?? finalUserMetadata.name;
-          finalUserMetadata.avatar_url = latestUserProfile.avatar_url ?? finalUserMetadata.avatar_url;
-          finalUserMetadata.absence_number = latestUserProfile.absence_number ?? finalUserMetadata.absence_number;
-          finalUserMetadata.class_name = latestUserProfile.class_name ?? finalUserMetadata.class_name;
-
-          const updatedAuthUser = {
-            ...refreshedSessionData.user,
-            user_metadata: finalUserMetadata,
-          };
-          setUser(updatedAuthUser);
-
-          setInitialName(latestUserProfile.full_name || "");
-          setInitialEmail(refreshedSessionData.user.email || "");
-          setInitialAbsenceNumber(latestUserProfile.absence_number?.toString() || "");
-          setInitialClassName(latestUserProfile.class_name || "");
-          setInitialAvatarUrl(latestUserProfile.avatar_url || null);
-        } else {
-          setUser(refreshedSessionData.user);
-          setInitialName(refreshedSessionData.user.user_metadata.name || "");
-          setInitialEmail(refreshedSessionData.user.email || "");
-          setInitialAbsenceNumber(refreshedSessionData.user.user_metadata.absence_number?.toString() || "");
-          setInitialClassName(refreshedSessionData.user.user_metadata.class_name || "");
-          setInitialAvatarUrl(refreshedSessionData.user.user_metadata.avatar_url || null);
-        }
-      } else {
-        const { data: directUserData, error: directUserError } = await supabase.auth.getUser();
-        if (directUserData.user) {
-          setUser(directUserData.user);
-        } else {
-          console.error("EditProfile: Failed to get user directly after session refresh issue:", directUserError?.message);
-        }
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        Alert.alert("Error", "Gagal mengambil data user terbaru");
+        setLoading(false);
+        return;
       }
 
-      Alert.alert("Sukses", "Profil berhasil diperbarui.");
-      router.replace("/Dashboard");
-    } catch (error: any) {
-      console.error("General error in handleSave profile:", error.message, error);
-      Alert.alert("Error", `Gagal menyimpan profil: ${error.message || "Terjadi kesalahan tidak diketahui."}`);
+      const { data: refreshedProfile } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (refreshedProfile) {
+        setProfileData(refreshedProfile);
+      }
+
+      setUser(userData.user);
+
+      setInitialName(name);
+      setInitialEmail(email);
+      setInitialAbsenceNumber(absenceNumber);
+      setInitialClassName(className);
+      setInitialAvatarUrl(avatarUrl);
+
+      Alert.alert("Sukses", "Profil berhasil diperbarui", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (err) {
+      Alert.alert("Error", "Gagal memperbarui profil");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
-
-  // Fallback for avatar if URL is invalid or null
-  const displayAvatar = avatarUrl || initialAvatarUrl;
 
   useEffect(() => {
     if (fetchProfileError && user) {
@@ -458,9 +384,9 @@ export default function EditProfile() {
               </View>
             ) : (
               <View className="mb-4">
-                {displayAvatar ? (
+                {avatarUrl ? (
                   <Image
-                    source={{ uri: displayAvatar }}
+                    source={{ uri: avatarUrl }}
                     className="w-36 h-36 rounded-full"
                   />
                 ) : (
