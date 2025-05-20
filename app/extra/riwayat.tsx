@@ -1,6 +1,6 @@
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -17,11 +17,17 @@ import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
-type AttendanceRecord = {
+type InvoiceStatus = "Pending" | "Unpaid" | "Paid";
+
+type PaymentMethod = "Bank Transfer" | "Credit Card" | "PayPal";
+
+type InvoiceRecord = {
   id: string;
-  date: string;
-  created_at: string;
-  reason: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  paymentMethod: PaymentMethod;
+  amount: number; // Assuming amount might be needed later, though not in current display
+  date: string; // This will be used for ordering
 };
 
 export default function Riwayat() {
@@ -29,42 +35,62 @@ export default function Riwayat() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const router = useRouter();
 
-  const [attendanceHistory, setAttendanceHistory] = useState<
-    AttendanceRecord[]
-  >([]);
+  const [invoiceHistory, setInvoiceHistory] = useState<InvoiceRecord[]>([]); // Renamed state
   const [loading, setLoading] = useState(true);
+  // Add state for filters if they become interactive
+  // const [activeFilter, setActiveFilter] = useState<'day' | 'month'>('month');
+  // const [selectedMonth, setSelectedMonth] = useState<string>('');
+  // const [selectedYear, setSelectedYear] = useState<string>('');
 
   useEffect(() => {
-    fetchAttendanceHistory();
+    fetchInvoiceHistory(); // Renamed function call
   }, []);
 
-  const fetchAttendanceHistory = async () => {
+  const fetchInvoiceHistory = async () => {
+    // Renamed function
     setLoading(true);
     try {
-      console.log("Fetching attendance for user ID:", user.id);
+      // console.log("Fetching invoice history for user ID:", user.id); // Keep for debugging if needed
 
+      // Adjust Supabase query for invoices
       const { data, error } = await supabase
-        .from("absences")
-        .select("id, date, created_at, reason")
-        .eq("user_id", user.id)
+        .from("invoices") // Assuming 'invoices' table
+        .select("id, invoiceNumber, status, paymentMethod, amount, date")
+        .eq("user_id", user.id) // Assuming invoices are tied to a user
         .order("date", { ascending: false });
 
       if (error) {
-        console.error("Supabase query error:", error);
+        // console.error("Supabase query error:", error); // Keep for debugging
         throw error;
       }
 
-      console.log("Fetched records count:", data?.length || 0);
+      // console.log("Fetched records count:", data?.length || 0); // Keep for debugging
       if (data && data.length > 0) {
-        setAttendanceHistory(data);
+        setInvoiceHistory(data);
       } else {
-        setAttendanceHistory([]);
+        setInvoiceHistory([]);
       }
     } catch (error) {
-      console.error("Error fetching attendance history:", error);
+      // console.error("Error fetching invoice history:", error); // Keep for debugging
+      let errorMessage = "An unknown error occurred.";
+      if (typeof error === "object" && error !== null) {
+        if ("message" in error) {
+          errorMessage = String(error.message);
+        } else {
+          try {
+            errorMessage = JSON.stringify(error);
+          } catch (e) {
+            // If stringify fails, fallback to a generic message
+            errorMessage = "Failed to stringify error object.";
+          }
+        }
+      } else if (error !== undefined && error !== null) {
+        errorMessage = String(error);
+      }
+
       Alert.alert(
         "Error",
-        "Failed to load attendance history. Please try again later.",
+        `Failed to load invoice history: ${errorMessage}. Please try again later.`,
       );
     } finally {
       setLoading(false);
@@ -99,97 +125,113 @@ export default function Riwayat() {
           headerShown: false,
         }}
       />
+      {/* Custom Header */}
+      <View className={`p-4 ${isDarkMode ? "bg-gray-800" : "bg-black"}`}>
+        <View className="flex-row items-center mb-4">
+          <TouchableOpacity onPress={() => router.back()} className="p-1 mr-2">
+            <Ionicons name="arrow-back-outline" size={24} color="white" />
+          </TouchableOpacity>
+          <View className="flex-1">
+            <Text className="text-xl font-bold text-white text-center">
+              Riwayat Absensi
+            </Text>
+          </View>
+          {/* Spacer to help center title if back button was absolutely positioned or for symmetry */}
+          <View style={{ width: 24 + 8 }} />
+        </View>
+        <View className="flex-row justify-around items-center">
+          <TouchableOpacity className="items-center px-2 py-1">
+            <Ionicons name="calendar-outline" size={32} color="white" />
+            <Text className="text-white mt-1 text-xs">Hari Ini</Text>
+          </TouchableOpacity>
+          <TouchableOpacity className="items-center px-2 py-1">
+            <Ionicons name="calendar-outline" size={32} color="white" />
+            <Text className="text-white mt-1 text-xs">Bulan ini</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Filter Buttons */}
       <View
-        className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+        className={`flex-row p-4 space-x-2 items-center ${isDarkMode ? "bg-gray-900 border-b border-gray-700" : "bg-background border-b border-border"}`}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons
-            name="arrow-back-outline"
-            size={24}
-            color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
-          />
-        </TouchableOpacity>
-        <Text
-          className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-foreground"}`}
+        <Button
+          variant="default"
+          className={`flex-1 ${isDarkMode ? "" : "bg-black hover:bg-gray-800"}`}
+          // onPress={() => { /* Handle Bulan filter */ }}
         >
-          Riwayat Kehadiran
-        </Text>
+          <Text
+            className={`${isDarkMode ? "text-primary-foreground" : "text-white"}`}
+          >
+            Bulan
+          </Text>
+        </Button>
+        <Button
+          variant="default"
+          className={`flex-1 ${isDarkMode ? "" : "bg-black hover:bg-gray-800"}`}
+          // onPress={() => { /* Handle Tahun filter */ }}
+        >
+          <Text
+            className={`${isDarkMode ? "text-primary-foreground" : "text-white"}`}
+          >
+            Tahun
+          </Text>
+        </Button>
+        <Button
+          variant="outline"
+          className="flex-1"
+          onPress={fetchInvoiceHistory} // "Tampilkan data" can act as a refresh or apply filters
+        >
+          <Text
+            className={`${isDarkMode ? "text-foreground" : "text-foreground"}`}
+          >
+            Tampilkan data
+          </Text>
+        </Button>
       </View>
 
       <ScrollView
-        className={`pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+        contentContainerClassName="grow"
       >
-        <Button
-          variant="outline"
-          size="sm"
-          className={`mx-5 my-4 ${
-            isDarkMode ? "bg-black" : "bg-black border-black"
-          }`}
-          onPress={fetchAttendanceHistory}
-        >
-          <Text className="text-white">Refresh Data</Text>
-        </Button>
-
-        {loading && attendanceHistory.length === 0 ? (
-          <ActivityIndicator
-            size="large"
-            color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
-            className="mt-10"
-          />
-        ) : attendanceHistory.length > 0 ? (
-          <View className="px-5 py-4">
-            {attendanceHistory.map((record) => (
+        {loading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator
+              size="large"
+              color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
+            />
+          </View>
+        ) : invoiceHistory.length > 0 ? (
+          <View className="px-4 py-3">
+            {invoiceHistory.map((record) => (
               <View
                 key={record.id}
-                className={`rounded-xl p-4 mb-4 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+                className={`flex-row justify-between items-center p-3 mb-2 rounded-lg shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
               >
-                <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-border">
-                  <Text
-                    className={`text-base font-bold ${isDarkMode ? "text-white" : "text-card-foreground"}`}
-                  >
-                    {record.date}
-                  </Text>
-                  <Text
-                    className={`text-sm ${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
-                  >
-                    {new Date(record.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center mt-2">
-                  <AntDesign
-                    name="checkcircle"
-                    size={20}
-                    color={isDarkMode ? "#28a745" : "#28a745"}
-                  />
-                  <Text
-                    className={`text-sm ml-2 ${isDarkMode ? "text-gray-400" : "text-green-600"}`}
-                  >
-                    {record.reason}
-                  </Text>
-                </View>
+                <Text
+                  className={`w-1/3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}
+                >
+                  {record.invoiceNumber}
+                </Text>
+                <Text
+                  className={`w-1/3 text-center ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                >
+                  {record.status}
+                </Text>
+                <Text
+                  className={`w-1/3 text-right ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                >
+                  {record.paymentMethod}
+                </Text>
               </View>
             ))}
           </View>
         ) : (
-          <View className="flex-1 items-center justify-center p-10 mt-10">
-            <Ionicons
-              name="document-text-outline"
-              size={60}
-              color={isDarkMode ? "#4b5563" : "hsl(var(--muted))"}
-            />
+          <View className="flex-1 items-center justify-center py-10">
             <Text
-              className={`text-lg font-bold mt-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
+              className={`text-lg font-semibold ${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
             >
-              Belum Ada Data Kehadiran
-            </Text>
-            <Text
-              className={`text-sm mt-2 text-center ${isDarkMode ? "text-gray-400" : "text-muted-foreground/70"}`}
-            >
-              Riwayat kehadiran Anda akan muncul di sini
+              Belum Ada Data
             </Text>
           </View>
         )}
