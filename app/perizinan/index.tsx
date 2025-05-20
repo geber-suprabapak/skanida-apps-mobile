@@ -5,7 +5,6 @@ import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   Image,
   TextInput,
@@ -15,18 +14,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
-import { H1, Large } from "~/components/ui/typography";
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
-// Debug helper function untuk menampilkan error dengan detail
 const logError = (context: string, error: any): string => {
   console.error(`==== ERROR [${context}] ====`);
   console.error(`Message: ${error.message || "No error message"}`);
   console.error(`Stack: ${error.stack || "No stack trace"}`);
 
-  // Log additional Supabase specific error details if available
   if (error.error) {
     console.error(`Supabase error code: ${error.error}`);
   }
@@ -47,6 +44,26 @@ const logError = (context: string, error: any): string => {
   return error.message || "Unknown error occurred";
 };
 
+// Utility function to convert base64 string to Uint8Array
+const base64ToUint8Array = (base64: string): Uint8Array => {
+  if (!base64) {
+    throw new Error("Invalid base64 string: cannot be null or empty");
+  }
+  try {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (error: any) {
+    console.error("Error converting base64 to Uint8Array:", error.message);
+    logError("base64ToUint8Array", { message: error.message, stack: error.stack });
+    throw new Error("Failed to process image data: " + error.message);
+  }
+};
+
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -54,37 +71,47 @@ export default function PerizinanScreen() {
   const [category, setCategory] = useState<"sakit" | "pergi">("sakit");
   const [description, setDescription] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null); // New state for base64 data
   const [uploading, setUploading] = useState(false);
+
+  const clearImage = () => {
+    setImageUri(null);
+    setImageBase64(null);
+  };
 
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission denied", "Camera permission is required");
+      Alert.alert("Izin Ditolak", "Izin kamera diperlukan untuk mengambil foto.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
+      allowsEditing: false,
+      base64: true, // Request base64 data
     });
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setImageUri(uri);
+    if (!result.canceled && result.assets && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
     }
   };
 
   const pickFromLibrary = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission denied", "Media library permission is required");
+      Alert.alert("Izin Ditolak", "Izin galeri diperlukan untuk memilih foto.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
+      allowsEditing: false,
+      base64: true, // Request base64 data
     });
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setImageUri(uri);
+    if (!result.canceled && result.assets && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
     }
   };
 
@@ -93,87 +120,87 @@ export default function PerizinanScreen() {
       Alert.alert("Error", "User not authenticated");
       return;
     }
-    if (!imageUri) {
-      Alert.alert("Error", "Pilih foto terlebih dahulu");
+
+    if (!description.trim()) {
+      Alert.alert("Error", "Deskripsi tidak boleh kosong.");
       return;
     }
+
     try {
       setUploading(true);
-      console.log("Network Request: GET", imageUri);
-      let response;
-      try {
-        response = await fetch(imageUri);
-        // Detailed network response logging
-        console.log("Network Response Details:", {
-          url: response.url,
-          status: response.status,
-          ok: response.ok,
-          type: response.type,
-          redirected: response.redirected,
-        });
-        console.log("Response Headers:");
-        for (const [key, value] of response.headers.entries()) {
-          console.log(`Response Header: ${key}: ${value}`);
+      let publicUrl: string | null = null;
+
+      if (imageBase64 && imageUri) {
+        console.log("Processing image (base64 available):", imageUri);
+        let fileBuffer: Uint8Array;
+        let determinedContentType = "application/octet-stream";
+
+        try {
+          const uriParts = imageUri.split(".");
+          const fileExt = uriParts.pop()?.toLowerCase();
+
+          if (fileExt === "jpg" || fileExt === "jpeg") {
+            determinedContentType = "image/jpeg";
+          } else if (fileExt === "png") {
+            determinedContentType = "image/png";
+          }
+
+          fileBuffer = base64ToUint8Array(imageBase64);
+          console.log("Uint8Array created from base64:", { size: fileBuffer.byteLength });
+
+        } catch (err: any) {
+          const errorMsg = logError("createUint8ArrayFromFile", err);
+          throw new Error(`Failed to process image data: ${errorMsg}`);
         }
-      } catch (err) {
-        const errorMsg = logError("fetchImage", err);
-        throw new Error("Network request failed: " + errorMsg);
+
+        const fileNameParts = imageUri.split(".");
+        const fileNameExt = fileNameParts.pop();
+        const fileName = `${user.id}/${Date.now()}.${fileNameExt || 'bin'}`;
+
+        console.log("Preparing to upload file (Uint8Array):", fileName);
+        const { data, error: uploadError } = await supabase.storage
+          .from("perizinan")
+          .upload(fileName, fileBuffer, {
+            contentType: determinedContentType,
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          const errorMsg = logError("uploadToStorage", uploadError);
+          throw new Error(`Supabase storage upload error: ${errorMsg}`);
+        }
+
+        console.log("File uploaded successfully, getting public URL");
+        const { data: urlData } = supabase.storage
+          .from("perizinan")
+          .getPublicUrl(data.path);
+
+        publicUrl = urlData.publicUrl;
+        console.log("Public URL acquired:", publicUrl);
       }
-      let blob;
-      try {
-        blob = await response.blob();
-        console.log("Blob created:", { size: blob.size, type: blob.type });
-      } catch (err) {
-        const errorMsg = logError("createBlob", err);
-        throw new Error("Failed to create blob: " + errorMsg);
-      }
-      const fileExt = imageUri.split(".").pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      console.log("Preparing to upload file:", fileName);
-      const { data, error: uploadError } = await supabase.storage
-        .from("perizinan")
-        .upload(fileName, blob, {
-          contentType: "image/jpeg",
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        const errorMsg = logError("uploadToStorage", uploadError);
-        throw new Error(errorMsg);
-      }
-
-      console.log("File uploaded successfully, getting public URL");
-      const { data: urlData } = supabase.storage
-        .from("perizinan")
-        .getPublicUrl(data.path);
-
-      const publicUrl = urlData.publicUrl;
-      console.log("Public URL acquired:", publicUrl);
 
       console.log("Inserting record to database");
       const { error: insertError } = await supabase.from("perizinan").insert({
         user_id: user.id,
         kategori_izin: category,
         deskripsi: description,
-        status: false,
+        status: "pending",
         link_foto: publicUrl,
       });
 
       if (insertError) {
         const errorMsg = logError("insertToDB", insertError);
-        throw new Error(errorMsg);
+        throw new Error(`Supabase insert error: ${errorMsg}`);
       }
 
       console.log("Record inserted successfully");
       Alert.alert("Success", "Izin berhasil dikirim");
-      // Reset form
       setCategory("sakit");
       setDescription("");
-      setImageUri(null);
+      clearImage();
       router.back();
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage = logError("uploadPermit", error);
       Alert.alert("Error", `Gagal mengirim izin: ${errorMessage}`);
     } finally {
@@ -191,104 +218,181 @@ export default function PerizinanScreen() {
       <SafeAreaView
         className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
-        {/* Custom Header Bar */}
         <View
           className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
         >
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1">
             <Ionicons
               name="arrow-back-outline"
               size={24}
-              color={isDarkMode ? "#fff" : "black"}
+              color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
             />
           </TouchableOpacity>
           <Text
-            className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-black"}`}
+            className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-foreground"}`}
           >
-            Perizinan
+            Buat Pengajuan Izin
           </Text>
         </View>
         <ScrollView
-          className={`flex-1 px-5 pt-5 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
           <View className="mb-5">
-            <H1
+            <Text
               className={`${isDarkMode ? "text-white" : "text-black"} mb-2 text-center`}
             >
               Pilih Kategori
-            </H1>
-            <View className="flex-row justify-center space-x-4 mt-2">
-              {["sakit", "pergi"].map((item) => (
-                <TouchableOpacity
-                  key={item}
-                  className={`px-8 py-3 rounded ${category === item ? "bg-black" : "bg-gray-200"}`}
-                  onPress={() => setCategory(item as "sakit" | "pergi")}
+            </Text>
+            <View className="flex-row justify-around space-x-3 mt-2">
+              {(["sakit", "pergi"] as const).map((catValue) => (
+                <Button
+                  key={catValue}
+                  onPress={() => setCategory(catValue)}
+                  className={`flex-1 py-3 rounded-lg border ${
+                    category === catValue
+                      ? "bg-black border-black"
+                      : isDarkMode
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-gray-200 border-gray-300"
+                  }`}
                 >
                   <Text
-                    className={`${category === item ? "text-white font-bold" : "text-black"} text-center`}
+                    className={`font-medium text-center ${
+                      category === catValue
+                        ? "text-white"
+                        : isDarkMode
+                          ? "text-gray-300"
+                          : "text-gray-700"
+                    }`}
                   >
-                    {item}
+                    {catValue.charAt(0).toUpperCase() + catValue.slice(1)}
                   </Text>
-                </TouchableOpacity>
+                </Button>
               ))}
             </View>
           </View>
-          <View className="mb-5">
-            <H1
-              className={`${isDarkMode ? "text-white" : "text-black"} mb-2 text-center`}
-            >
+
+          <View className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}>
+            <Text className={`text-lg font-semibold mb-3 ${isDarkMode ? "text-white" : "text-foreground"}`}>
               Deskripsi
-            </H1>
+            </Text>
             <TextInput
-              className={`border ${isDarkMode ? "border-gray-700 bg-gray-800 text-white" : "border-gray-300 bg-white text-black"} rounded-lg p-4 mt-2 h-28`}
-              placeholder="Masukkan deskripsi izin"
-              placeholderTextColor={isDarkMode ? "#9ca3af" : "#6b7280"}
+              className={`border rounded-lg p-4 h-32 text-base ${
+                isDarkMode
+                  ? "border-gray-600 bg-gray-700 text-white placeholder-gray-400"
+                  : "border-input bg-background text-foreground placeholder-muted-foreground"
+              }`}
+              placeholder="Masukkan alasan atau deskripsi izin Anda di sini..."
+              placeholderTextColor={isDarkMode ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)"}
               multiline
               value={description}
               onChangeText={setDescription}
               textAlignVertical="top"
             />
           </View>
-          <View className="mb-5">
-            <H1
-              className={`${isDarkMode ? "text-white" : "text-black"} mb-2 text-center`}
-            >
-              Foto
-            </H1>
-            <View className="flex-row justify-center space-x-4 mt-2">
-              <Button onPress={pickFromCamera} className="bg-black flex-1 py-3">
-                <Text className="text-white font-medium text-center">
-                  Ambil Foto
-                </Text>
+
+          <View className={`rounded-xl p-5 shadow-sm mb-5 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}>
+            <Text className={`text-lg font-semibold mb-4 ${isDarkMode ? "text-white" : "text-foreground"}`}>
+              Lampiran Foto (Opsional)
+            </Text>
+            <View className="flex-row space-x-3 mb-4">
+              <Button
+                variant="outline"
+                onPress={pickFromCamera}
+                className={`flex-1 py-3 ${
+                  isDarkMode ? "border-gray-600 bg-gray-700" : "border-input"
+                }`}
+              >
+                <View className="flex-row items-center justify-center">
+                  <Ionicons
+                    name="camera-outline"
+                    size={20}
+                    color={isDarkMode ? "#D1D5DB" : "hsl(var(--foreground))"}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    className={`${
+                      isDarkMode ? "text-gray-300" : "text-foreground"
+                    } font-medium`}
+                  >
+                    Ambil Foto
+                  </Text>
+                </View>
               </Button>
               <Button
+                variant="outline"
                 onPress={pickFromLibrary}
-                className="bg-black flex-1 py-3"
+                className={`flex-1 py-3 ${
+                  isDarkMode ? "border-gray-600 bg-gray-700" : "border-input"
+                }`}
               >
-                <Text className="text-white font-medium text-center">
-                  Pilih File
-                </Text>
+                <View className="flex-row items-center justify-center">
+                  <Ionicons
+                    name="image-outline"
+                    size={20}
+                    color={isDarkMode ? "#D1D5DB" : "hsl(var(--foreground))"}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    className={`${
+                      isDarkMode ? "text-gray-300" : "text-foreground"
+                    } font-medium`}
+                  >
+                    Pilih File
+                  </Text>
+                </View>
               </Button>
             </View>
             {imageUri && (
-              <Image
-                source={{ uri: imageUri }}
-                className="w-full h-48 mt-4 rounded-lg"
-                resizeMode="cover"
-              />
+              <View className="mt-4 items-center relative">
+                <Image
+                  source={{ uri: imageUri }}
+                  className="w-full h-48 rounded-lg"
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  onPress={clearImage}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full ${
+                    isDarkMode ? "bg-gray-600 opacity-80" : "bg-gray-300 opacity-80"
+                  }`}
+                >
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={28}
+                    color={isDarkMode ? "white" : "black"}
+                  />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
-          <View className="items-center">
+
+          <View className={`rounded-xl p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}>
             <Button
-              disabled={uploading}
+              disabled={uploading || !description.trim()}
               onPress={uploadPermit}
-              className="w-full bg-black rounded-lg py-4 mb-4"
+              className={`w-full py-3.5 rounded-lg ${
+                uploading || !description.trim()
+                  ? isDarkMode
+                    ? "bg-gray-600"
+                    : "bg-gray-400"
+                  : isDarkMode
+                  ? "bg-primary"
+                  : "bg-black"
+              }`}
             >
-              <Large className="text-white font-bold text-center">
-                {uploading ? "Uploading..." : "Submit"}
-              </Large>
+              <Text
+                className={`font-semibold text-base text-center ${
+                  uploading || !description.trim()
+                    ? isDarkMode
+                      ? "text-gray-400"
+                      : "text-gray-700"
+                    : "text-white"
+                }`}
+              >
+                {uploading ? "Mengirim..." : "Kirim Pengajuan Izin"}
+              </Text>
             </Button>
           </View>
         </ScrollView>
