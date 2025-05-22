@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Dimensions,
   StatusBar,
   BackHandler,
 } from "react-native";
@@ -36,8 +35,6 @@ try {
   };
 }
 
-Dimensions.get("window");
-
 const CameraAttendance = () => {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -52,11 +49,19 @@ const CameraAttendance = () => {
 
   // Get location data passed from AbsenceReport screen
   const params = useLocalSearchParams();
+  const pLat = params.latitude as string;
+  const pLon = params.longitude as string;
+  const pUserId = params.userId as string;
+  const pAbsenceType = params.absenceType as "present" | "home";
+
+  const parsedLatitude = parseFloat(pLat);
+  const parsedLongitude = parseFloat(pLon);
+
   const locationData = {
-    latitude: parseFloat(params.latitude as string) || 0,
-    longitude: parseFloat(params.longitude as string) || 0,
-    timestamp: (params.timestamp as string) || new Date().toISOString(),
-    userId: (params.userId as string) || "",
+    latitude: isNaN(parsedLatitude) ? null : parsedLatitude,
+    longitude: isNaN(parsedLongitude) ? null : parsedLongitude,
+    userId: pUserId || null,
+    absenceType: pAbsenceType || "present", // Default to "present" if not provided
   };
 
   // Animation for camera button press
@@ -64,8 +69,6 @@ const CameraAttendance = () => {
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
   }));
-
-  // Function to animate button press
 
   // Handle back button press
   useEffect(() => {
@@ -96,9 +99,7 @@ const CameraAttendance = () => {
 
   // Log component mount and unmount
   useEffect(() => {
-    // console.log("[CameraAttendance] CameraAttendance component mounted");
     return () => {
-      // console.log("[CameraAttendance] CameraAttendance component unmounted");
       setIsCameraReady(false);
     };
   }, []);
@@ -107,14 +108,9 @@ const CameraAttendance = () => {
   useEffect(() => {
     // Request camera permissions immediately
     const initializeCamera = async () => {
-      // console.log("[CameraAttendance] Initializing camera and permissions...");
       try {
-        // console.log(`[CameraAttendance] Initial permission status: ${permission ? permission.granted : 'null'}`);
         if (permission && !permission.granted) {
-          // console.log("[CameraAttendance] Requesting camera permission...");
           const permissionResult = await requestPermission();
-          // console.log(`[CameraAttendance] Permission result: ${permissionResult.granted}`);
-
           if (!permissionResult.granted) {
             Alert.alert(
               "Camera Permission Required",
@@ -122,9 +118,7 @@ const CameraAttendance = () => {
             );
           }
         } else if (!permission) {
-          // console.log("[CameraAttendance] Requesting initial camera permission...");
           const permissionResult = await requestPermission();
-          // console.log(`[CameraAttendance] Initial camera permission result: ${permissionResult.granted}`);
           if (!permissionResult.granted) {
             Alert.alert(
               "Camera Permission Required",
@@ -142,22 +136,27 @@ const CameraAttendance = () => {
 
     // Check location data
     if (
-      !locationData.userId ||
-      !locationData.latitude ||
-      !locationData.longitude
+      locationData.userId === null ||
+      locationData.latitude === null ||
+      locationData.longitude === null
     ) {
       Alert.alert(
         "Error",
-        "Location data is missing. Please go back and try again.",
+        "Data absensi tidak lengkap (ID pengguna atau lokasi tidak valid). Silakan kembali dan coba lagi.",
         [{ text: "OK", onPress: () => router.back() }],
       );
     }
-  }, [permission, requestPermission]);
+  }, [
+    permission,
+    requestPermission,
+    locationData.userId,
+    locationData.latitude,
+    locationData.longitude,
+    router,
+  ]);
 
   // Handle camera ready state
   const onCameraReady = useCallback(() => {
-    // console.log("CameraView onCameraReady fired!");
-    // console.log("Camera is ready!");
     setIsCameraReady(true);
   }, []);
 
@@ -195,7 +194,6 @@ const CameraAttendance = () => {
     setUploadProgress(0);
 
     try {
-      // console.log("Saving attendance data to Supabase...");
       setUploadProgress(10);
 
       // Check for network connectivity first
@@ -206,9 +204,8 @@ const CameraAttendance = () => {
             "Tidak ada koneksi internet. Silakan cek koneksi Anda.",
           );
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (netErr) {
-        // console.warn("NetInfo error (continuing anyway):", netErr);
+        console.warn("NetInfo error (continuing anyway):", netErr);
       }
 
       setUploadProgress(20);
@@ -220,19 +217,18 @@ const CameraAttendance = () => {
       const currentTimestamp = Date.now();
 
       // Create a reason for the attendance (could be customized based on your needs)
-      const reason = "Present";
+      const reason =
+        locationData.absenceType === "present" ? "Hadir" : "Pulang";
 
       setUploadProgress(30);
 
       // Prepare file for upload
-      // console.log("Processing image data...");
       if (!base64Data) {
         throw new Error("Received empty base64 data for upload");
       }
 
       // Generate unique filename
       const fileName = `${formattedDate}_${currentTimestamp}_${locationData.userId}.png`;
-      // console.log("Generated filename for storage:", fileName);
 
       setUploadProgress(40);
 
@@ -242,7 +238,6 @@ const CameraAttendance = () => {
       setUploadProgress(50);
 
       // Upload the buffer to Supabase storage with retry logic
-      // console.log("Uploading photo to storage...");
       let uploadAttempt = 0;
       let storageResult = null;
       let lastError: Error | null = null; // Store the last error
@@ -267,11 +262,9 @@ const CameraAttendance = () => {
             if (uploadAttempt < 3) {
               // Wait before retry (exponential backoff)
               const delay = Math.pow(2, uploadAttempt) * 1000;
-              // console.log(`Retrying upload in ${delay / 1000} seconds...`);
               await new Promise((resolve) => setTimeout(resolve, delay));
             }
           } else {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             storageResult = storageData;
             lastError = null; // Clear error on success
             break; // Exit loop on success
@@ -285,7 +278,6 @@ const CameraAttendance = () => {
           ); // Keep warning for failed attempts
           if (uploadAttempt < 3) {
             const delay = Math.pow(2, uploadAttempt) * 1000;
-            // console.log(`Retrying upload in ${delay / 1000} seconds...`);
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
         }
@@ -304,41 +296,50 @@ const CameraAttendance = () => {
         .from("attendance-photos")
         .getPublicUrl(fileName);
 
-      const photoUrl = urlData?.publicUrl;
-      if (!photoUrl) {
+      if (!urlData?.publicUrl) {
         throw new Error("Failed to get photo URL");
       }
 
-      // console.log("Photo uploaded successfully. URL:", photoUrl);
-
       setUploadProgress(80);
 
-      // Save attendance record with location, photo URL and other data
-      // console.log("Saving attendance record to database...");
-      const { data, error } = await supabase
-        .from("absences")
-        .insert([
-          {
-            user_id: locationData.userId,
-            date: currentDate,
-            reason,
-            created_at: now.toISOString(),
-            photo_url: photoUrl,
-            latitude: locationData.latitude,
-            longitude: locationData.longitude,
-          },
-        ])
-        .select();
+      // Insert attendance record into the database
+      const { error: insertError } = await supabase.from("absences").insert([
+        {
+          user_id: locationData.userId,
+          date: currentDate,
+          reason: reason, // Use the dynamic reason
+          photo_url: urlData.publicUrl,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          status: reason, // Use the dynamic reason for status as well
+        },
+      ]);
 
-      if (error) {
-        console.error("Error saving attendance record:", error); // Keep error log
-        throw error;
+      if (insertError) {
+        console.error("Error inserting attendance record:", insertError);
+        // Attempt to delete the uploaded photo if DB insert fails
+        try {
+          await supabase.storage.from("attendance-photos").remove([fileName]);
+        } catch (cleanupError) {
+          console.error("Error cleaning up photo from storage:", cleanupError);
+        }
+        throw new Error(
+          `Gagal menyimpan data absensi ke database: ${insertError.message}`,
+        );
       }
 
       setUploadProgress(100);
-      // console.log("Attendance record saved successfully:", data);
 
-      return data;
+      Alert.alert(
+        "Sukses",
+        `Absensi (${reason}) berhasil disimpan! Foto terkirim.`,
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/Dashboard"), // Navigate to Dashboard
+          },
+        ],
+      );
     } catch (error: any) {
       console.error("Error in saveAttendanceToSupabase:", error); // Keep error log
       throw new Error(error?.message || "Failed to save attendance data");
@@ -386,33 +387,19 @@ const CameraAttendance = () => {
 
           // Save attendance data using the BASE64 data from manipulation result
           await saveAttendanceToSupabase(manipResult.base64);
-
-          Alert.alert("Success", "Attendance recorded successfully!", [
-            {
-              text: "OK",
-              onPress: () => {
-                router.replace("/Dashboard");
-              },
-            },
-          ]);
         } else {
           Alert.alert("Error", "Failed to capture photo (no data returned).");
         }
       } catch (err) {
         console.error("Error taking picture or saving data:", err);
-        // Check if the error came from saveAttendanceToSupabase or manipulation
-        if (
-          err instanceof Error &&
-          (err.message === "Failed to upload photo" ||
-            err.message === "Failed to save attendance record" ||
-            err.message.includes("base64"))
-        ) {
+        if (err instanceof Error) {
           Alert.alert(
             "Error",
-            `Failed to process or save attendance: ${err.message}`,
+            err.message ||
+              "An unexpected error occurred while taking or saving the picture.",
           );
         } else {
-          Alert.alert("Error", "Failed to capture photo or process image.");
+          Alert.alert("Error", "An unexpected error occurred.");
         }
       } finally {
         setIsTakingPicture(false);
@@ -609,8 +596,13 @@ const CameraAttendance = () => {
                     <View className="flex-row items-center">
                       <Ionicons name="location" size={16} color="#0066FF" />
                       <Text className="text-white text-sm ml-1">
-                        {locationData.latitude.toFixed(4)},{" "}
-                        {locationData.longitude.toFixed(4)}
+                        {locationData.latitude !== null
+                          ? locationData.latitude.toFixed(4)
+                          : "N/A"}
+                        ,{" "}
+                        {locationData.longitude !== null
+                          ? locationData.longitude.toFixed(4)
+                          : "N/A"}
                       </Text>
                     </View>
                     <Text className="text-white/70 text-xs">

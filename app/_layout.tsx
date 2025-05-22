@@ -41,8 +41,7 @@ export default function RootLayout() {
     // Simulate loading for 1 second
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1000); // 1000 milliseconds = 1 second
-
+    }, 1);
     return () => clearTimeout(timer); // Cleanup timer on unmount
   }, []);
 
