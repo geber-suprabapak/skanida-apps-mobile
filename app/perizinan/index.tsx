@@ -289,10 +289,12 @@ export default function PerizinanScreen() {
         >
           <Card className="mb-5">
             <CardHeader>
-              <CardTitle
-                className={`${isDarkMode ? "text-white" : "text-black"} text-center`}
-              >
-                Pilih Kategori
+              <CardTitle>
+                <Text
+                  className={`${isDarkMode ? "text-white" : "text-black"} text-center`}
+                >
+                  Pilih Kategori
+                </Text>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -333,15 +335,19 @@ export default function PerizinanScreen() {
 
           <Card className="mb-5">
             <CardHeader>
-              <CardTitle
-                className={`${isDarkMode ? "text-white" : "text-foreground"}`}
-              >
-                Deskripsi
+              <CardTitle>
+                <Text
+                  className={`${isDarkMode ? "text-white" : "text-foreground"}`}
+                >
+                  Deskripsi
+                </Text>
               </CardTitle>
-              <CardDescription
-                className={`${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
-              >
-                Jelaskan alasan pengajuan izin Anda.
+              <CardDescription>
+                <Text
+                  className={`${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
+                >
+                  Jelaskan alasan pengajuan izin Anda.
+                </Text>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -365,10 +371,12 @@ export default function PerizinanScreen() {
 
           <Card className="mb-5">
             <CardHeader>
-              <CardTitle
-                className={`${isDarkMode ? "text-white" : "text-foreground"}`}
-              >
-                Lampiran Foto (Opsional)
+              <CardTitle>
+                <Text
+                  className={`${isDarkMode ? "text-white" : "text-foreground"}`}
+                >
+                  Lampiran Foto (Opsional)
+                </Text>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -444,8 +452,6 @@ export default function PerizinanScreen() {
 
           <Card>
             <CardContent className="pt-6">
-              {" "}
-              {/* Added pt-6 to CardContent for submit button spacing */}
               <Button // Using custom Button component
                 disabled={uploading || !description.trim()}
                 onPress={uploadPermit}
