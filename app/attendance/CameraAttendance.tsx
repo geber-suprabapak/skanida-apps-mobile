@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Dimensions,
   StatusBar,
   BackHandler,
 } from "react-native";
@@ -35,8 +34,6 @@ try {
     fetch: async () => ({ isConnected: true, isInternetReachable: true }),
   };
 }
-
-Dimensions.get("window");
 
 const CameraAttendance = () => {
   const cameraRef = useRef<CameraView>(null);
@@ -149,7 +146,14 @@ const CameraAttendance = () => {
         [{ text: "OK", onPress: () => router.back() }],
       );
     }
-  }, [permission, requestPermission, locationData.userId, locationData.latitude, locationData.longitude, router]);
+  }, [
+    permission,
+    requestPermission,
+    locationData.userId,
+    locationData.latitude,
+    locationData.longitude,
+    router,
+  ]);
 
   // Handle camera ready state
   const onCameraReady = useCallback(() => {
@@ -213,7 +217,8 @@ const CameraAttendance = () => {
       const currentTimestamp = Date.now();
 
       // Create a reason for the attendance (could be customized based on your needs)
-      const reason = locationData.absenceType === "present" ? "Hadir" : "Pulang";
+      const reason =
+        locationData.absenceType === "present" ? "Hadir" : "Pulang";
 
       setUploadProgress(30);
 
@@ -388,7 +393,11 @@ const CameraAttendance = () => {
       } catch (err) {
         console.error("Error taking picture or saving data:", err);
         if (err instanceof Error) {
-          Alert.alert("Error", err.message || "An unexpected error occurred while taking or saving the picture.");
+          Alert.alert(
+            "Error",
+            err.message ||
+              "An unexpected error occurred while taking or saving the picture.",
+          );
         } else {
           Alert.alert("Error", "An unexpected error occurred.");
         }
@@ -587,8 +596,13 @@ const CameraAttendance = () => {
                     <View className="flex-row items-center">
                       <Ionicons name="location" size={16} color="#0066FF" />
                       <Text className="text-white text-sm ml-1">
-                        {locationData.latitude !== null ? locationData.latitude.toFixed(4) : "N/A"},{" "}
-                        {locationData.longitude !== null ? locationData.longitude.toFixed(4) : "N/A"}
+                        {locationData.latitude !== null
+                          ? locationData.latitude.toFixed(4)
+                          : "N/A"}
+                        ,{" "}
+                        {locationData.longitude !== null
+                          ? locationData.longitude.toFixed(4)
+                          : "N/A"}
                       </Text>
                     </View>
                     <Text className="text-white/70 text-xs">
