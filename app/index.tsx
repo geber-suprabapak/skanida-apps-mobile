@@ -19,13 +19,13 @@ export default function Index() {
         setLoadingMessage("Loading...");
 
         // Show initial loading for 1 second
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1));
 
         // Update message to indicate checking session
         setLoadingMessage("Checking session...");
 
         // Wait another second before actual check
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1));
 
         // Memanggil Supabase untuk cek session
         const {
