@@ -1,3 +1,4 @@
+// filepath: app/index.tsx
 import { useRouter, Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
@@ -34,25 +35,22 @@ export default function Index() {
         } = await supabase.auth.getSession();
 
         if (error) {
-          console.log("Terjadi error saat mengambil session:", error.message);
+          // Error handling without console.log
+          setLoadingMessage(`Error: ${error.message}`);
         }
 
-        console.log("Session =>", session);
         if (session?.user) {
           // Jika ada user
           setLoadingMessage("Session found, redirecting...");
           setUser(session.user);
           router.replace("/Dashboard");
-          console.log("welcome back");
         } else {
           // Jika tidak ada session
           setLoadingMessage("No session found, redirecting...");
           router.replace("/auth/AuthSelector");
-          console.log("welcome to auth selector");
         }
       } catch (err) {
         // Tangani error tak terduga
-        console.log("Error tak terduga:", err);
         setLoadingMessage("Error occurred while checking session");
       } finally {
         setIsLoading(false);

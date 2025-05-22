@@ -1,5 +1,6 @@
 // app/pengaturan/pengaturan.tsx
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
@@ -11,7 +12,6 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -54,10 +54,7 @@ export default function Pengaturan() {
           .single();
 
         if (error && error.code !== "PGRST116") {
-          console.error(
-            "Error fetching profile in Pengaturan:",
-            error.message,
-          );
+          console.error("Error fetching profile in Pengaturan:", error.message);
         }
 
         if (data) {
@@ -65,10 +62,7 @@ export default function Pengaturan() {
           currentAvatar = data.avatar_url || currentAvatar;
         }
       } catch (err) {
-        console.error(
-          "Unexpected error fetching profile in Pengaturan:",
-          err,
-        );
+        console.error("Unexpected error fetching profile in Pengaturan:", err);
       }
       setProfileFullName(currentName);
       setProfileAvatarUrl(currentAvatar);
@@ -247,7 +241,8 @@ export default function Pengaturan() {
                   isDarkMode ? "text-white" : "text-card-foreground"
                 }`}
               >
-                Hey, {profileFullName || user?.email?.split("@")[0] || "Pengguna"}!
+                Hey,{" "}
+                {profileFullName || user?.email?.split("@")[0] || "Pengguna"}!
               </Text>
               <Text
                 className={`text-sm mt-1 ${

@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
-import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
+import { H1, H2, H3, H4, Large } from "~/components/ui/typography"; // Import typography components
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore"; // Import theme store
 import { supabase } from "~/utils/supabase";
@@ -77,7 +77,8 @@ export default function Dashboard() {
     "Pengguna";
 
   // Get user's avatar URL from profile data or from metadata
-  const avatarUrl = profileData?.avatar_url || user?.user_metadata?.avatar_url || null;
+  const avatarUrl =
+    profileData?.avatar_url || user?.user_metadata?.avatar_url || null;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
