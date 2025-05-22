@@ -113,6 +113,7 @@ export default function Dashboard() {
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
+  const navigateToPerizinan = () => router.push("/perizinan"); // New handler for Perizinan
 
   return (
     <>
@@ -134,7 +135,10 @@ export default function Dashboard() {
                 size="lg" // Use the 'lg' size defined in ui/avatar
                 fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
                 className="mb-2" // Add margin if needed
-                source={avatarUrl || Image.resolveAssetSource(fallbackProfileImage).uri} // Use the avatar URL from profile data or metadata
+                source={
+                  avatarUrl ||
+                  Image.resolveAssetSource(fallbackProfileImage).uri
+                } // Use the avatar URL from profile data or metadata
               />
               {/* Pencil icon positioned at bottom-right of avatar */}
               <TouchableOpacity
@@ -202,6 +206,21 @@ export default function Dashboard() {
                   <Ionicons name="settings-outline" size={28} color="white" />
                   <Large className="text-white font-medium ml-4">
                     Pengaturan
+                  </Large>
+                </View>
+              </Button>
+
+              {/* Perizinan Button */}
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full justify-center bg-black mb-5"
+                onPress={navigateToPerizinan}
+              >
+                <View className="flex-row items-center justify-center">
+                  <MaterialIcons name="assignment" size={28} color="white" />
+                  <Large className="text-white font-medium ml-4">
+                    Perizinan
                   </Large>
                 </View>
               </Button>
