@@ -15,18 +15,6 @@ export default function Index() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Initial loading message
-        setLoadingMessage("Loading...");
-
-        // Show initial loading for 1 second
-        await new Promise((resolve) => setTimeout(resolve, 1));
-
-        // Update message to indicate checking session
-        setLoadingMessage("Checking session...");
-
-        // Wait another second before actual check
-        await new Promise((resolve) => setTimeout(resolve, 1));
-
         // Memanggil Supabase untuk cek session
         const {
           data: { session },
@@ -39,14 +27,11 @@ export default function Index() {
 
         console.log("Session =>", session);
         if (session?.user) {
-          // Jika ada user
-          setLoadingMessage("Session found, redirecting...");
+          setLoadingMessage("Session found");
           setUser(session.user);
           router.replace("/Dashboard");
           console.log("welcome back");
         } else {
-          // Jika tidak ada session
-          setLoadingMessage("No session found, redirecting...");
           router.replace("/auth/AuthSelector");
           console.log("welcome to auth selector");
         }
