@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 import { useRouter, Stack, useNavigation } from "expo-router";
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -74,7 +74,8 @@ export default function EditProfile() {
       let currentEmail = user.email || "";
       let currentAbsenceNumber = user.user_metadata?.absence_number || "";
       let currentClassName = user.user_metadata?.class_name || "";
-      let currentAvatarUrl: string | null = user.user_metadata?.avatar_url || null;
+      let currentAvatarUrl: string | null =
+        user.user_metadata?.avatar_url || null;
 
       setEmail(currentEmail);
 
@@ -85,7 +86,7 @@ export default function EditProfile() {
           .eq("user_id", user.id)
           .single();
 
-        if (error && error.code !== 'PGRST116') {
+        if (error && error.code !== "PGRST116") {
           console.error("Error fetching profile:", error.message);
           setFetchProfileError(true);
         }
@@ -141,23 +142,39 @@ export default function EditProfile() {
             style: "destructive",
             onPress: () => navigation.dispatch(e.data.action),
           },
-        ]
+        ],
       );
     };
 
-    navigation.addListener('beforeRemove', onBeforeRemove);
+    navigation.addListener("beforeRemove", onBeforeRemove);
 
     return () => {
-      navigation.removeListener('beforeRemove', onBeforeRemove);
+      navigation.removeListener("beforeRemove", onBeforeRemove);
     };
-  }, [navigation, name, email, absenceNumber, className, avatarUrl, initialName, initialEmail, initialAbsenceNumber, initialClassName, initialAvatarUrl]);
+  }, [
+    navigation,
+    name,
+    email,
+    absenceNumber,
+    className,
+    avatarUrl,
+    initialName,
+    initialEmail,
+    initialAbsenceNumber,
+    initialClassName,
+    initialAvatarUrl,
+  ]);
 
   const pickImage = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'We need permission to access your photos');
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission denied",
+          "We need permission to access your photos",
+        );
         return;
       }
 
@@ -173,8 +190,8 @@ export default function EditProfile() {
         await uploadAvatar(imageUri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image");
     }
   };
 
@@ -184,49 +201,50 @@ export default function EditProfile() {
     setUploadingAvatar(true);
 
     try {
-      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileExt = uri.split(".").pop()?.toLowerCase() || "jpg";
       const fileNameInBucket = `avatar_${user.id}_${Date.now()}.${fileExt}`;
-      const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
+      const contentType = `image/${fileExt === "jpg" ? "jpeg" : fileExt}`;
 
       const formData = new FormData();
-      formData.append('file', {
+      formData.append("file", {
         uri: uri,
         name: fileNameInBucket,
         type: contentType,
       } as any);
 
-      const { data: storageData, error: storageError } = await supabase
-        .storage
-        .from('avatars')
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from("avatars")
         .upload(fileNameInBucket, formData, {
           contentType: contentType,
           upsert: true,
         });
 
       if (storageError) {
-        console.error('Supabase storage error details:', storageError);
+        console.error("Supabase storage error details:", storageError);
         throw new Error(`Supabase storage error: ${storageError.message}`);
       }
 
-      const { data: urlData } = supabase
-        .storage
-        .from('avatars')
+      const { data: urlData } = supabase.storage
+        .from("avatars")
         .getPublicUrl(fileNameInBucket);
 
       const newAvatarUrl = urlData?.publicUrl;
 
       if (!newAvatarUrl) {
-        console.error('Failed to get public URL. Storage data:', storageData);
-        throw new Error('Gagal mendapatkan URL publik avatar setelah unggah.');
+        console.error("Failed to get public URL. Storage data:", storageData);
+        throw new Error("Gagal mendapatkan URL publik avatar setelah unggah.");
       }
 
       setAvatarUrl(newAvatarUrl);
-      Alert.alert('Sukses', 'Avatar berhasil diperbarui. Klik Simpan untuk menyimpan perubahan profil Anda.');
-
+      Alert.alert(
+        "Sukses",
+        "Avatar berhasil diperbarui. Klik Simpan untuk menyimpan perubahan profil Anda.",
+      );
     } catch (error) {
-      console.error('Error in uploadAvatar function:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Gagal Unggah', `Gagal mengunggah avatar: ${errorMessage}`);
+      console.error("Error in uploadAvatar function:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      Alert.alert("Gagal Unggah", `Gagal mengunggah avatar: ${errorMessage}`);
     } finally {
       setUploadingAvatar(false);
     }
@@ -376,7 +394,9 @@ export default function EditProfile() {
         >
           <View className="relative">
             {uploadingAvatar ? (
-              <View className={`w-36 h-36 rounded-full items-center justify-center mb-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
+              <View
+                className={`w-36 h-36 rounded-full items-center justify-center mb-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-300"}`}
+              >
                 <ActivityIndicator
                   size="large"
                   color={isDarkMode ? "#fff" : "#000"}
@@ -390,19 +410,23 @@ export default function EditProfile() {
                     className="w-36 h-36 rounded-full"
                   />
                 ) : (
-                  <View className={`w-36 h-36 rounded-full items-center justify-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
-                    <Ionicons name="person-circle-outline" size={80} color={isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+                  <View
+                    className={`w-36 h-36 rounded-full items-center justify-center ${isDarkMode ? "bg-gray-700" : "bg-gray-300"}`}
+                  >
+                    <Ionicons
+                      name="person-circle-outline"
+                      size={80}
+                      color={
+                        isDarkMode ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)"
+                      }
+                    />
                   </View>
                 )}
                 <TouchableOpacity
                   className="absolute bottom-0 right-0 bg-primary rounded-full p-3"
                   onPress={pickImage}
                 >
-                  <Ionicons
-                    name="camera"
-                    size={20}
-                    color="#fff"
-                  />
+                  <Ionicons name="camera" size={20} color="#fff" />
                 </TouchableOpacity>
               </View>
             )}
