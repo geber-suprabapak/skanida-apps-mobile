@@ -69,38 +69,46 @@ export default function ChangePassword() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1 bg-background"
+      edges={["top", "left", "right"]}
+    >
       <Stack.Screen options={{ title: "Ubah Password" }} />
       <ScrollView contentContainerClassName="flex-grow">
         <View className="flex-1 p-6 justify-center">
-          <Text className="text-2xl font-bold mb-6 text-center">
+          <Text className="text-2xl font-bold mb-6 text-center text-foreground">
             Ubah Password
           </Text>
           <View className="mb-4">
-            <Text className="mb-2 text-gray-700">Password Lama</Text>
+            <Text className="mb-2 text-muted-foreground">Password Lama</Text>
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className="border border-border rounded-lg px-4 py-2.5 bg-background text-foreground"
               placeholder="Password lama"
+              placeholderTextColor="hsl(var(--muted-foreground))"
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry
             />
           </View>
           <View className="mb-4">
-            <Text className="mb-2 text-gray-700">Password Baru</Text>
+            <Text className="mb-2 text-muted-foreground">Password Baru</Text>
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className="border border-border rounded-lg px-4 py-2.5 bg-background text-foreground"
               placeholder="Password baru"
+              placeholderTextColor="hsl(var(--muted-foreground))"
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
             />
           </View>
           <View className="mb-6">
-            <Text className="mb-2 text-gray-700">Konfirmasi Password Baru</Text>
+            <Text className="mb-2 text-muted-foreground">
+              Konfirmasi Password Baru
+            </Text>
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-2.5"
+              className="border border-border rounded-lg px-4 py-2.5 bg-background text-foreground"
               placeholder="Konfirmasi password baru"
+              placeholderTextColor="hsl(var(--muted-foreground))"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry

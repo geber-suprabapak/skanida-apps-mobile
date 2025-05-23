@@ -1,6 +1,5 @@
 // app/register.tsx
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -80,12 +79,9 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white pt-10"
+      className="flex-1 bg-background pt-10"
       edges={["top", "left", "right"]}
     >
-      {/* Set status bar style to dark for light background */}
-      <StatusBar style="dark" />
-      {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
         <View>
           <H1 className="mb-2 text-center text-gray-700">Daftar Akun</H1>

@@ -16,6 +16,7 @@ import LoadingScreen from "./auth/LoadingScreen";
 
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
+import useThemeStore from "~/store/themeStore";
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -34,6 +35,7 @@ export {
 export default function RootLayout() {
   const hasMounted = React.useRef(false);
   const { isDarkColorScheme } = useColorScheme();
+  const { isDarkMode } = useThemeStore();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true); // Add loading state
 
@@ -63,19 +65,26 @@ export default function RootLayout() {
     return <LoadingScreen />;
   }
 
+  // Use the theme store state for more reliable dark mode detection
+  const isActuallyDark = isDarkMode || isDarkColorScheme;
+
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-        <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+      <ThemeProvider value={isActuallyDark ? DARK_THEME : LIGHT_THEME}>
+        <StatusBar
+          style={isActuallyDark ? "light" : "dark"}
+          backgroundColor="transparent"
+          translucent={Platform.OS === "android"}
+        />
         <Stack
           screenOptions={{
             headerStyle: {
-              backgroundColor: "transparent", 
+              backgroundColor: "transparent",
             },
-            headerTransparent: true, 
-            headerShadowVisible: false, 
+            headerTransparent: true,
+            headerShadowVisible: false,
             contentStyle: {
-              paddingTop: 0, 
+              paddingTop: 0,
             },
           }}
         >
