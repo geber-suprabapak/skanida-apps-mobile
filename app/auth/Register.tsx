@@ -5,6 +5,7 @@ import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "../../store/authStore";
+import useThemeStore from "../../store/themeStore";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -23,6 +24,7 @@ export default function RegisterScreen() {
   const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
+  const { isDarkMode } = useThemeStore();
 
   const handleRegister = async () => {
     setEmailError(false);
@@ -79,23 +81,22 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-background pt-10"
+      className="flex-1 pt-10 bg-white"
       edges={["top", "left", "right"]}
     >
-      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6 bg-white">
         <View>
-          <H1 className="mb-2 text-center text-gray-700">Daftar Akun</H1>
-        </View>
-
-        <View>
-          <P className="text-center mb-8 text-gray-600">
-            Buat akun baru untuk menggunakan aplikasi
-          </P>
+          <H1 className="mb-2 text-center text-foreground">Daftar Akun</H1>
+          <View>
+            <P className="text-center mb-8 text-muted-foreground">
+              Buat akun baru untuk menggunakan aplikasi
+            </P>
+          </View>
         </View>
 
         <View>
           <View className="mb-4">
-            <Text className="text-gray-700 mb-2">Email</Text>
+            <Text className="mb-2 text-foreground">Email</Text>
             <Input
               className={cn(emailError && "border-red-500")}
               placeholder="Masukkan email Anda"
@@ -112,7 +113,7 @@ export default function RegisterScreen() {
 
         <View>
           <View className="mb-4">
-            <Text className="text-gray-700 mb-2">Password</Text>
+            <Text className="mb-2 text-foreground">Password</Text>
             <Input
               className={cn(passwordError && "border-red-500")}
               placeholder="Masukkan password Anda"
@@ -131,7 +132,7 @@ export default function RegisterScreen() {
 
         <View>
           <View className="mb-6">
-            <Text className="text-gray-700 mb-2">Konfirmasi Password</Text>
+            <Text className="mb-2 text-foreground">Konfirmasi Password</Text>
             <Input
               className={cn(confirmPasswordError && "border-red-500")}
               placeholder="Masukkan kembali password Anda"
@@ -152,11 +153,13 @@ export default function RegisterScreen() {
           <Button
             variant="default"
             size="lg"
-            className="mb-4 w-full bg-black"
+            className={`mb-4 w-full ${
+              isDarkMode ? 'bg-white' : 'bg-black'
+            }`}
             onPress={handleRegister}
             disabled={loading}
           >
-            <H3 className="text-white font-medium">
+            <H3 className={`font-medium ${isDarkMode ? 'text-black' : 'text-white'}`}>
               {loading ? "Loading..." : "Daftar"}
             </H3>
           </Button>
@@ -164,9 +167,9 @@ export default function RegisterScreen() {
 
         <View>
           <View className="flex-row justify-center mt-4">
-            <Text className="text-gray-600">Sudah memiliki akun? </Text>
+            <Text className="text-muted-foreground">Sudah memiliki akun? </Text>
             <TouchableOpacity onPress={() => router.push("/auth/Login")}>
-              <Text className="text-gray-700 font-semibold">Masuk</Text>
+              <Text className="font-semibold text-foreground">Masuk</Text>
             </TouchableOpacity>
           </View>
         </View>
