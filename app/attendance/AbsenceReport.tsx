@@ -1,24 +1,24 @@
 // --- NECESSARY IMPORTS ---
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"; // Import icons
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { Stack, useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
-import { View, Alert, TouchableOpacity, ActivityIndicator } from "react-native"; // Added ActivityIndicator
-import { SafeAreaView } from "react-native-safe-area-context"; // Import SafeAreaView
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { View, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button } from "~/components/ui/button"; // Use the new button
+import { Button } from "~/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "~/components/ui/card"; // Import Card components
-import { Text } from "~/components/ui/text"; // Import Text from ui
+} from "~/components/ui/card";
+import { Text } from "~/components/ui/text";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
-// Import NetInfo with better type handling
+// --- TYPES AND INTERFACES ---
 interface NetInfoState {
   isConnected: boolean;
   isInternetReachable: boolean;
@@ -31,317 +31,511 @@ interface NetInfoType {
   fetch: () => Promise<NetInfoState>;
 }
 
+type AbsenceType = "present" | "home";
+type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
+
+// --- CONSTANTS ---
+const SCHOOL_COORDINATES = {
+  latitude: -7.4503,
+  longitude: 110.2241,
+} as const;
+
+const MAX_DISTANCE_METERS = 500;
+const AUTO_NAVIGATE_DELAY_MS = 1000;
+
+// Location optimization constants (removed caching)
+const LOCATION_CONFIG = {
+  FAST_ACCURACY: Location.Accuracy.Balanced,
+  FAST_TIMEOUT: 5000,
+  HIGH_ACCURACY: Location.Accuracy.High,
+  HIGH_TIMEOUT: 8000,
+} as const;
+
+// --- UTILITY FUNCTIONS ---
+const createLogger = (component: string) => ({
+  debug: (message: string, data?: any) => {
+    console.log(`🔍 [${component}] ${message}`, data || "");
+  },
+  info: (message: string, data?: any) => {
+    console.info(`ℹ️ [${component}] ${message}`, data || "");
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(`⚠️ [${component}] ${message}`, data || "");
+  },
+  error: (message: string, error?: any) => {
+    console.error(`❌ [${component}] ${message}`, error || "");
+  },
+});
+
+const logger = createLogger("AbsenceReport");
+
+// NetInfo setup with error handling
 let NetInfo: NetInfoType;
 try {
   NetInfo = require("@react-native-community/netinfo").default;
+  logger.debug("NetInfo loaded successfully");
 } catch (error) {
-  console.warn("Failed to import NetInfo:", error);
-  // Provide a fallback implementation with proper typing
+  logger.warn("Failed to import NetInfo, using fallback", error);
   NetInfo = {
     addEventListener: () => ({ remove: () => {} }),
     fetch: async () => ({ isConnected: true, isInternetReachable: true }),
   };
-} // Import the theme store
+}
 
-// --- Component Definition Starts Here ---
+// --- MAIN COMPONENT ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
-  const { isDarkMode } = useThemeStore(); // Get theme state
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [location, setLocation] = useState<Location.LocationObject | null>(
-    null,
-  );
-  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null);
-  const [statusMessage, setStatusMessage] = useState("");
+  const { isDarkMode } = useThemeStore();
   const router = useRouter();
-  const [currentAbsenceType, setCurrentAbsenceType] = useState<
-    "present" | "home" | null
-  >(null);
-  const [canProceed, setCanProceed] = useState<boolean>(false);
-  const [morningAbsenceDoneDate, setMorningAbsenceDoneDate] = useState<
+
+  // Core state
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] =
+    useState<Location.LocationObject | null>(null);
+  const [locationStatus, setLocationStatus] =
+    useState<LocationCheckStatus>("checking");
+  const [statusMessage, setStatusMessage] = useState("Initializing...");
+
+  // Absence state
+  const [currentAbsenceType, setCurrentAbsenceType] =
+    useState<AbsenceType | null>(null);
+  const [canProceedToCamera, setCanProceedToCamera] = useState(false);
+  const [morningAbsenceCompleted, setMorningAbsenceCompleted] = useState<
     string | null
-  >(null); // Added state
+  >(null);
 
-  // Auto-navigate to camera when location is verified and conditions met
-  useEffect(() => {
+  // --- MEMOIZED VALUES ---
+  const todayDateString = useMemo(
+    () => new Date().toISOString().split("T")[0],
+    [],
+  );
+
+  // --- UTILITY FUNCTIONS ---
+  const calculateDistance = useCallback(
+    (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371e3;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c;
+    },
+    [],
+  );
+
+  // Fast location with progressive accuracy (no caching)
+  const getLocationWithProgressiveAccuracy = useCallback(
+    async (): Promise<Location.LocationObject | null> => {
+      try {
+        logger.debug("Starting progressive location acquisition");
+        setStatusMessage("Mendapatkan lokasi dengan cepat...");
+
+        // Strategy 1: Fast location with balanced accuracy
+        logger.debug("Getting fast location with balanced accuracy");
+        try {
+          const fastLocationPromise = Location.getCurrentPositionAsync({
+            accuracy: LOCATION_CONFIG.FAST_ACCURACY,
+          });
+
+          const fastTimeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Fast location timeout")),
+              LOCATION_CONFIG.FAST_TIMEOUT,
+            ),
+          );
+
+          const fastLocation = await Promise.race([
+            fastLocationPromise,
+            fastTimeoutPromise,
+          ]);
+
+          logger.info("Fast location acquired successfully", {
+            accuracy: fastLocation.coords.accuracy,
+            time: LOCATION_CONFIG.FAST_TIMEOUT,
+          });
+
+          return fastLocation;
+        } catch (fastError) {
+          logger.warn("Fast location failed, trying high accuracy", fastError);
+          setStatusMessage("Mencoba lokasi akurasi tinggi...");
+
+          // Strategy 2: High accuracy fallback
+          const highLocationPromise = Location.getCurrentPositionAsync({
+            accuracy: LOCATION_CONFIG.HIGH_ACCURACY,
+          });
+
+          const highTimeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("High accuracy location timeout")),
+              LOCATION_CONFIG.HIGH_TIMEOUT,
+            ),
+          );
+
+          const highLocation = await Promise.race([
+            highLocationPromise,
+            highTimeoutPromise,
+          ]);
+
+          logger.info("High accuracy location acquired", {
+            accuracy: highLocation.coords.accuracy,
+          });
+
+          return highLocation;
+        }
+      } catch (error: any) {
+        logger.error("All location strategies failed", error);
+
+        if (error?.message?.includes("timeout")) {
+          setStatusMessage(
+            "Gagal mendapatkan lokasi: Waktu habis. Pastikan GPS aktif.",
+          );
+        } else {
+          setStatusMessage(
+            "Gagal mendapatkan lokasi. Pastikan GPS dan izin lokasi aktif.",
+          );
+        }
+        return null;
+      }
+    },
+    [],
+  );
+
+  const navigateToCamera = useCallback(() => {
     if (
-      isWithinRange === true &&
-      location &&
-      !loading &&
-      canProceed &&
-      currentAbsenceType
+      !currentLocation ||
+      !userId ||
+      !currentAbsenceType ||
+      !canProceedToCamera
     ) {
-      // If we are proceeding with a "present" type absence, mark it as done for today.
-      if (currentAbsenceType === "present") {
-        const todayString = new Date().toISOString().split("T")[0];
-        setMorningAbsenceDoneDate(todayString);
-      }
-
-      const timer = setTimeout(() => {
-        navigateToCameraWithLocation();
-      }, 1500); // 1.5 seconds delay
-
-      return () => clearTimeout(timer);
-    }
-  }, [isWithinRange, location, loading, canProceed, currentAbsenceType]);
-
-  // --- LOCATION CHECKING LOGIC ---
-  useEffect(() => {
-    // Wrap async logic in a function
-    const initialize = async () => {
-      await checkCurrentUserAndThenLocation();
-    };
-    initialize();
-  }, []); // Removed userId from dependency array to avoid re-triggering on userId set by checkCurrentUser
-
-  const checkCurrentUserAndThenLocation = async () => {
-    try {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUserId(data.user.id);
-        // Call requestAndCheckLocation only after userId is confirmed
-        await requestAndCheckLocation(data.user.id);
-      } else {
-        Alert.alert(
-          "Error",
-          "Pengguna tidak ditemukan. Silakan login kembali.",
-        );
-        setLoading(false);
-        router.replace("/auth/Login");
-      }
-    } catch (error) {
-      console.error("Error getting user:", error);
-      Alert.alert("Error", "Gagal mendapatkan data pengguna");
-      setLoading(false);
-    }
-  };
-
-  const requestAndCheckLocation = async (currentUserId: string) => {
-    // Reset state before re-checking
-    setLoading(true);
-    setLocation(null);
-    setIsWithinRange(null);
-    setCanProceed(false);
-    setStatusMessage("Memeriksa status absensi dan lokasi..."); // Updated initial message
-
-    let determinedAbsenceTypeThisCheck: "present" | "home" | null = null;
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-    // --- LOCAL STATE CHECK FIRST ---
-    let effectiveMorningAbsenceDoneDate = morningAbsenceDoneDate;
-    if (
-      effectiveMorningAbsenceDoneDate &&
-      effectiveMorningAbsenceDoneDate !== today
-    ) {
-      // If morningAbsenceDoneDate is for a previous day, reset it.
-      setMorningAbsenceDoneDate(null);
-      effectiveMorningAbsenceDoneDate = null;
-    }
-
-    if (effectiveMorningAbsenceDoneDate === today) {
-      determinedAbsenceTypeThisCheck = "home";
-      setCurrentAbsenceType("home");
-      setStatusMessage(
-        "Absen pagi telah dilakukan. Mempersiapkan absen pulang...",
-      );
-      setCanProceed(true); // Can proceed to location check for "Pulang"
-    } else {
-      // --- Supabase Check ---
-      const netInfoState = await NetInfo.fetch();
-      if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
-        setStatusMessage(
-          "Tidak ada koneksi internet. Silakan periksa koneksi Anda.",
-        );
-        setLoading(false);
-        return;
-      }
-
-      const { data: lastAbsenceData, error: lastAbsenceError } = await supabase
-        .from("absences")
-        .select("status")
-        .eq("user_id", currentUserId)
-        .eq("date", today)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (lastAbsenceError && lastAbsenceError.code !== "PGRST116") {
-        // PGRST116: No rows found
-        console.error("Error fetching last absence:", lastAbsenceError.message);
-        setStatusMessage(
-          `Gagal memeriksa status absensi terakhir: ${lastAbsenceError.message}`,
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (lastAbsenceData && lastAbsenceData.status === "Hadir") {
-        determinedAbsenceTypeThisCheck = "home";
-        setCurrentAbsenceType("home");
-        setStatusMessage(
-          "Absen pagi telah terdeteksi dari server. Mempersiapkan absen pulang...",
-        );
-        setCanProceed(true); // Can proceed to location check for "Pulang"
-      } else if (lastAbsenceData && lastAbsenceData.status === "Pulang") {
-        setStatusMessage(
-          "Anda sudah menyelesaikan absensi (Hadir dan Pulang) untuk hari ini.",
-        );
-        setCanProceed(false);
-        setCurrentAbsenceType(null);
-        setLoading(false);
-        return;
-      } else {
-        // No absence yet today, or last one was not "Hadir" (e.g. incomplete)
-        determinedAbsenceTypeThisCheck = "present";
-        setCurrentAbsenceType("present");
-        setStatusMessage("Mempersiapkan absen masuk...");
-        setCanProceed(true); // Can proceed to location check for "Hadir"
-      }
-    }
-    // --- End of Absence Type Determination ---
-
-    if (!determinedAbsenceTypeThisCheck) {
-      // If, after all checks, the absence type is not determined, stop.
-      // This might happen if "Pulang" was already done (which includes a return),
-      // or an error occurred preventing type determination.
-      // Status message should already be set by the logic above.
-      setLoading(false);
-      return;
-    }
-
-    // --- Location Permission and Check ---
-    const { status: locationPermissionStatus } =
-      await Location.requestForegroundPermissionsAsync();
-    if (locationPermissionStatus !== "granted") {
-      setStatusMessage(
-        "Izin lokasi ditolak. Aktifkan izin lokasi untuk melanjutkan.",
-      );
-      setCanProceed(false); // Cannot proceed without location permission
-      setLoading(false);
-      return;
-    }
-
-    setStatusMessage(
-      `Mendapatkan lokasi untuk ${determinedAbsenceTypeThisCheck === "present" ? "absen masuk" : "absen pulang"}...`,
-    );
-
-    let currentLocation: Location.LocationObject;
-    try {
-      const locationPromise = Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
+      logger.error("Cannot navigate to camera - missing required data", {
+        hasLocation: !!currentLocation,
+        hasUserId: !!userId,
+        hasAbsenceType: !!currentAbsenceType,
+        canProceed: canProceedToCamera,
       });
-
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Location request timed out")),
-          15000,
-        ),
-      );
-
-      currentLocation = await Promise.race([locationPromise, timeoutPromise]);
-      setLocation(currentLocation);
-    } catch (error: any) {
-      console.error("Error getting location:", error);
-      if (
-        error &&
-        typeof error === "object" &&
-        "message" in error &&
-        error.message === "Location request timed out"
-      ) {
-        setStatusMessage("Gagal mendapatkan lokasi: Waktu habis.");
-      } else {
-        setStatusMessage("Gagal mendapatkan lokasi. Coba lagi.");
-      }
-      setLocation(null);
-      setIsWithinRange(null);
-      setCanProceed(false); // Cannot proceed if location fails
-      setLoading(false);
-      return;
-    }
-
-    // SMKN 2 Magelang coordinates
-    const schoolLatitude = -7.4503;
-    const schoolLongitude = 110.2241;
-    const maxDistanceInMeters = 500;
-
-    const distance = calculateDistance(
-      currentLocation.coords.latitude,
-      currentLocation.coords.longitude,
-      schoolLatitude,
-      schoolLongitude,
-    );
-
-    const withinRange = distance <= maxDistanceInMeters;
-    setIsWithinRange(withinRange);
-
-    if (withinRange) {
-      setStatusMessage(
-        determinedAbsenceTypeThisCheck === "present"
-          ? `Absen Masuk: Anda berada dalam jangkauan (${Math.round(distance)}m). Lanjut ke kamera.`
-          : `Absen Pulang: Anda berada dalam jangkauan (${Math.round(distance)}m). Lanjut ke kamera.`,
-      );
-      // setCanProceed(true) is already set if we reached here and type is determined
-    } else {
-      setStatusMessage(
-        `Anda berada di luar jangkauan (${Math.round(distance)}m). Tidak dapat melanjutkan absensi.`,
-      );
-      setCanProceed(false); // User cannot proceed if out of range
-    }
-    setLoading(false);
-  };
-
-  // Function to calculate distance between two coordinates using Haversine formula
-  const calculateDistance = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ) => {
-    const R = 6371e3; // Earth radius in meters
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    return distance;
-  };
-
-  const navigateToCameraWithLocation = () => {
-    if (location && userId && currentAbsenceType && canProceed) {
-      router.push({
-        pathname: "/attendance/CameraAttendance",
-        params: {
-          latitude: location.coords.latitude.toString(),
-          longitude: location.coords.longitude.toString(),
-          userId,
-          absenceType: currentAbsenceType, // Pass the absence type
-        },
-      });
-    } else {
       Alert.alert(
         "Error",
         "Tidak dapat melanjutkan, data tidak lengkap atau kondisi tidak terpenuhi.",
       );
+      return;
     }
+
+    logger.info("Navigating to camera", { absenceType: currentAbsenceType });
+    router.push({
+      pathname: "/attendance/CameraAttendance",
+      params: {
+        latitude: currentLocation.coords.latitude.toString(),
+        longitude: currentLocation.coords.longitude.toString(),
+        userId,
+        absenceType: currentAbsenceType,
+      },
+    });
+  }, [currentLocation, userId, currentAbsenceType, canProceedToCamera, router]);
+
+  // --- CORE FUNCTIONS ---
+  const checkUserAuthentication = useCallback(async (): Promise<
+    string | null
+  > => {
+    try {
+      logger.debug("Checking user authentication");
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error) {
+        logger.error("Authentication error", error);
+        throw error;
+      }
+
+      if (!data?.user) {
+        logger.warn("No authenticated user found");
+        Alert.alert(
+          "Error",
+          "Pengguna tidak ditemukan. Silakan login kembali.",
+        );
+        router.replace("/auth/Login");
+        return null;
+      }
+
+      logger.info("User authenticated successfully", { userId: data.user.id });
+      return data.user.id;
+    } catch (error) {
+      logger.error("Error in user authentication check", error);
+      Alert.alert("Error", "Gagal mendapatkan data pengguna");
+      throw error;
+    }
+  }, [router]);
+
+  const determineAbsenceType = useCallback(
+    async (currentUserId: string): Promise<AbsenceType | null> => {
+      logger.debug("Determining absence type for user", {
+        userId: currentUserId,
+        date: todayDateString,
+      });
+
+      // Check local state first for performance
+      if (morningAbsenceCompleted === todayDateString) {
+        logger.info("Morning absence already completed (local state)");
+        return "home";
+      }
+
+      // Reset if date changed
+      if (
+        morningAbsenceCompleted &&
+        morningAbsenceCompleted !== todayDateString
+      ) {
+        logger.debug("Resetting morning absence state for new day");
+        setMorningAbsenceCompleted(null);
+      }
+
+      // Check network connectivity
+      try {
+        const netInfoState = await NetInfo.fetch();
+        if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
+          logger.warn("No internet connection available");
+          setStatusMessage(
+            "Tidak ada koneksi internet. Silakan periksa koneksi Anda.",
+          );
+          return null;
+        }
+      } catch (error) {
+        logger.warn("Network check failed", error);
+      }
+
+      // Query database for today's attendance
+      try {
+        const { data: lastAbsenceData, error: lastAbsenceError } =
+          await supabase
+            .from("absences")
+            .select("status")
+            .eq("user_id", currentUserId)
+            .eq("date", todayDateString)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+        if (lastAbsenceError && lastAbsenceError.code !== "PGRST116") {
+          logger.error("Database query failed", lastAbsenceError);
+          setStatusMessage(
+            `Gagal memeriksa status absensi: ${lastAbsenceError.message}`,
+          );
+          return null;
+        }
+
+        if (lastAbsenceData) {
+          logger.info("Found existing absence record", {
+            status: lastAbsenceData.status,
+          });
+
+          switch (lastAbsenceData.status) {
+            case "Hadir":
+              setMorningAbsenceCompleted(todayDateString);
+              return "home";
+            case "Pulang":
+              setStatusMessage(
+                "Anda sudah menyelesaikan absensi (Hadir dan Pulang) untuk hari ini.",
+              );
+              return null;
+            default:
+              logger.debug(
+                "Found incomplete absence record, proceeding with morning attendance",
+              );
+              return "present";
+          }
+        } else {
+          logger.info(
+            "No absence record found for today, proceeding with morning attendance",
+          );
+          return "present";
+        }
+      } catch (error) {
+        logger.error("Error querying absence data", error);
+        setStatusMessage("Gagal memeriksa status absensi dari database.");
+        return null;
+      }
+    },
+    [todayDateString, morningAbsenceCompleted],
+  );
+
+  const requestLocationPermissionAndGet =
+    useCallback(async (): Promise<Location.LocationObject | null> => {
+      try {
+        logger.debug("Checking location permission");
+
+        let { status } = await Location.getForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          logger.debug("Requesting location permission");
+          setStatusMessage("Meminta izin lokasi...");
+
+          const result = await Location.requestForegroundPermissionsAsync();
+          status = result.status;
+
+          if (status !== "granted") {
+            logger.warn("Location permission denied");
+            setStatusMessage(
+              "Izin lokasi ditolak. Aktifkan izin lokasi untuk melanjutkan.",
+            );
+            return null;
+          }
+        }
+
+        return await getLocationWithProgressiveAccuracy();
+      } catch (error: any) {
+        logger.error("Location permission or acquisition failed", error);
+        setStatusMessage(
+          "Gagal mendapatkan izin lokasi atau lokasi tidak tersedia.",
+        );
+        return null;
+      }
+    }, [getLocationWithProgressiveAccuracy]);
+
+  const performFullAbsenceCheck = useCallback(async () => {
+    logger.info("Starting optimized absence check");
+    setIsLoading(true);
+    setLocationStatus("checking");
+    setCanProceedToCamera(false);
+    setStatusMessage("Memeriksa status absensi dan lokasi...");
+
+    try {
+      const [authenticatedUserId, location] = await Promise.all([
+        checkUserAuthentication(),
+        requestLocationPermissionAndGet(),
+      ]);
+
+      if (!authenticatedUserId) {
+        setIsLoading(false);
+        return;
+      }
+      setUserId(authenticatedUserId);
+
+      if (!location) {
+        setLocationStatus("failed");
+        setIsLoading(false);
+        return;
+      }
+      setCurrentLocation(location);
+
+      setStatusMessage("Memeriksa status absensi...");
+      const absenceType = await determineAbsenceType(authenticatedUserId);
+      if (!absenceType) {
+        setIsLoading(false);
+        return;
+      }
+      setCurrentAbsenceType(absenceType);
+
+      const actionText =
+        absenceType === "present" ? "absen masuk" : "absen pulang";
+      setStatusMessage(`Memverifikasi lokasi untuk ${actionText}...`);
+
+      const distance = calculateDistance(
+        location.coords.latitude,
+        location.coords.longitude,
+        SCHOOL_COORDINATES.latitude,
+        SCHOOL_COORDINATES.longitude,
+      );
+
+      const withinRange = distance <= MAX_DISTANCE_METERS;
+
+      if (withinRange) {
+        logger.info("Location verified - within range", {
+          distance: Math.round(distance),
+          accuracy: location.coords.accuracy,
+        });
+        setLocationStatus("verified");
+        setCanProceedToCamera(true);
+        setStatusMessage(
+          `${absenceType === "present" ? "Absen Masuk" : "Absen Pulang"}: Lokasi terverifikasi (${Math.round(distance)}m). Lanjut ke kamera.`,
+        );
+
+        if (absenceType === "present") {
+          setMorningAbsenceCompleted(todayDateString);
+        }
+      } else {
+        logger.warn("Location verification failed - out of range", {
+          distance: Math.round(distance),
+          accuracy: location.coords.accuracy,
+        });
+        setLocationStatus("out_of_range");
+        setStatusMessage(
+          `Anda berada di luar jangkauan (${Math.round(distance)}m dari sekolah). Tidak dapat melanjutkan absensi.`,
+        );
+      }
+    } catch (error) {
+      logger.error("Error in optimized absence check", error);
+      setLocationStatus("failed");
+      setStatusMessage("Terjadi kesalahan saat memeriksa status absensi.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    checkUserAuthentication,
+    requestLocationPermissionAndGet,
+    determineAbsenceType,
+    calculateDistance,
+    todayDateString,
+  ]);
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    logger.info("Component mounted, starting initial check");
+    performFullAbsenceCheck();
+  }, [performFullAbsenceCheck]);
+
+  // Auto-navigate to camera when conditions are met (faster)
+  useEffect(() => {
+    if (
+      locationStatus === "verified" &&
+      currentLocation &&
+      !isLoading &&
+      canProceedToCamera &&
+      currentAbsenceType
+    ) {
+      logger.debug("Auto-navigating to camera", {
+        delay: AUTO_NAVIGATE_DELAY_MS,
+      });
+      const timer = setTimeout(navigateToCamera, AUTO_NAVIGATE_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    locationStatus,
+    currentLocation,
+    isLoading,
+    canProceedToCamera,
+    currentAbsenceType,
+    navigateToCamera,
+  ]);
+
+  // --- RENDER HELPERS ---
+  const getStatusIcon = () => {
+    if (locationStatus === "verified" && canProceedToCamera)
+      return "location-on";
+    if (locationStatus === "out_of_range" || locationStatus === "failed")
+      return "location-off";
+    return "help-outline";
   };
 
-  // --- RENDER UI ---
+  const getStatusColor = () => {
+    if (locationStatus === "verified" && canProceedToCamera) {
+      return isDarkMode ? "rgb(34, 197, 94)" : "rgb(22, 163, 74)";
+    }
+    if (locationStatus === "out_of_range" || locationStatus === "failed") {
+      return isDarkMode ? "rgb(239, 68, 68)" : "rgb(220, 38, 38)";
+    }
+    return isDarkMode ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)";
+  };
+
+  // --- RENDER ---
   return (
     <SafeAreaView
       className={`flex-1 ${isDarkMode ? "bg-gray-950" : "bg-gray-100"}`}
     >
-      <Stack.Screen
-        options={{
-          headerShown: false, // Hide the default header
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {/* Custom Header */}
       <View
@@ -365,7 +559,7 @@ const AbsenceReport = () => {
       <View
         className={`flex-1 px-4 py-6 justify-center items-center ${isDarkMode ? "bg-gray-950" : "bg-gray-100"}`}
       >
-        {loading ? (
+        {isLoading ? (
           <ActivityIndicator
             size="large"
             color={isDarkMode ? "white" : "black"}
@@ -376,27 +570,9 @@ const AbsenceReport = () => {
           >
             <CardHeader className="items-center">
               <MaterialIcons
-                name={
-                  isWithinRange === true && canProceed
-                    ? "location-on"
-                    : isWithinRange === false
-                      ? "location-off"
-                      : "help-outline" // More neutral icon when status is undetermined
-                }
-                size={72} // Slightly smaller for card context
-                color={
-                  isWithinRange === true && canProceed
-                    ? isDarkMode
-                      ? "rgb(34, 197, 94)"
-                      : "rgb(22, 163, 74)" // green-500 / green-600
-                    : isWithinRange === false
-                      ? isDarkMode
-                        ? "rgb(239, 68, 68)"
-                        : "rgb(220, 38, 38)" // red-500 / red-600
-                      : isDarkMode
-                        ? "rgb(156, 163, 175)"
-                        : "rgb(107, 114, 128)" // gray-400 / gray-500
-                }
+                name={getStatusIcon()}
+                size={72}
+                color={getStatusColor()}
               />
             </CardHeader>
             <CardContent className="items-center">
@@ -410,9 +586,10 @@ const AbsenceReport = () => {
               >
                 {statusMessage}
               </CardDescription>
-              {isWithinRange === true &&
-                location &&
-                canProceed &&
+
+              {/* Success State */}
+              {locationStatus === "verified" &&
+                canProceedToCamera &&
                 currentAbsenceType && (
                   <View
                     className={`p-3 rounded-md ${isDarkMode ? "bg-green-700" : "bg-green-100"} w-full items-center`}
@@ -431,7 +608,10 @@ const AbsenceReport = () => {
                     </Text>
                   </View>
                 )}
-              {isWithinRange === false && (
+
+              {/* Error State */}
+              {(locationStatus === "out_of_range" ||
+                locationStatus === "failed") && (
                 <View
                   className={`p-3 rounded-md ${isDarkMode ? "bg-red-700" : "bg-red-100"} w-full items-center`}
                 >
@@ -443,15 +623,17 @@ const AbsenceReport = () => {
                   <Text
                     className={`text-sm ${isDarkMode ? "text-red-200" : "text-red-600"}`}
                   >
-                    Anda berada di luar jangkauan atau kondisi lain tidak
-                    terpenuhi.
+                    {locationStatus === "out_of_range"
+                      ? "Anda berada di luar jangkauan sekolah."
+                      : "Terjadi kesalahan saat memverifikasi lokasi."}
                   </Text>
                 </View>
               )}
-              {!canProceed &&
-                !loading &&
-                !(isWithinRange === true && currentAbsenceType) &&
-                statusMessage.includes("Anda sudah menyelesaikan absensi") && (
+
+              {/* Completed State */}
+              {!canProceedToCamera &&
+                !isLoading &&
+                statusMessage.includes("sudah menyelesaikan absensi") && (
                   <View
                     className={`p-3 rounded-md ${isDarkMode ? "bg-sky-700" : "bg-sky-100"} w-full items-center`}
                   >
@@ -470,14 +652,16 @@ const AbsenceReport = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Refresh Button */}
         <Button
           variant="outline"
           className={`mt-8 w-full max-w-md ${isDarkMode ? "border-sky-600 bg-gray-800 hover:bg-gray-700" : "border-sky-500 bg-white hover:bg-gray-50"}`}
-          onPress={() => checkCurrentUserAndThenLocation()} // Re-check everything
-          disabled={loading}
+          onPress={performFullAbsenceCheck}
+          disabled={isLoading}
         >
           <Ionicons
-            name={loading ? "hourglass-outline" : "refresh-outline"}
+            name={isLoading ? "hourglass-outline" : "refresh-outline"}
             size={20}
             color={isDarkMode ? "#38bdf8" : "#0ea5e9"}
             style={{ marginRight: 8 }}
@@ -485,7 +669,7 @@ const AbsenceReport = () => {
           <Text
             className={`${isDarkMode ? "text-sky-400" : "text-sky-600"} font-medium`}
           >
-            {loading ? "Memeriksa..." : "Segarkan Status"}
+            {isLoading ? "Memeriksa..." : "Segarkan Status"}
           </Text>
         </Button>
       </View>
