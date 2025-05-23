@@ -13,9 +13,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "~/components/ui/card"; // Added import
-import { Input } from "~/components/ui/input"; // Added import
-import { Text } from "~/components/ui/text"; // Updated import
+} from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
@@ -109,7 +109,6 @@ export default function PerizinanScreen() {
       let publicUrl: string | null = null;
 
       if (imageBase64 && imageUri) {
-        console.log("Processing image (base64 available):", imageUri);
         let fileBuffer: Uint8Array;
         let determinedContentType = "application/octet-stream";
 
@@ -124,9 +123,6 @@ export default function PerizinanScreen() {
           }
 
           fileBuffer = base64ToUint8Array(imageBase64);
-          console.log("Uint8Array created from base64:", {
-            size: fileBuffer.byteLength,
-          });
         } catch (err: any) {
           throw new Error(`Failed to process image data: ${err.message}`);
         }
@@ -135,7 +131,6 @@ export default function PerizinanScreen() {
         const fileNameExt = fileNameParts.pop();
         const fileName = `${user.id}/${Date.now()}.${fileNameExt || "bin"}`;
 
-        console.log("Preparing to upload file (Uint8Array):", fileName);
         try {
           const { data, error: uploadError } = await supabase.storage
             .from("perizinan")
@@ -165,13 +160,11 @@ export default function PerizinanScreen() {
             );
           }
 
-          console.log("File uploaded successfully, getting public URL");
           const { data: urlData } = supabase.storage
             .from("perizinan")
             .getPublicUrl(data.path);
 
           publicUrl = urlData.publicUrl;
-          console.log("Public URL acquired:", publicUrl);
         } catch (networkErr: any) {
           if (
             networkErr.message?.includes("network") ||
@@ -186,7 +179,6 @@ export default function PerizinanScreen() {
         }
       }
 
-      console.log("Inserting record to database");
       try {
         const { error: insertError } = await supabase.from("perizinan").insert({
           user_id: user.id,
@@ -201,7 +193,6 @@ export default function PerizinanScreen() {
           console.error("Supabase insertError object:", insertError);
           // existing retry / throw logic
           if (insertError.message?.includes("boolean")) {
-            console.log("Retrying with boolean status due to type mismatch");
             const { error: retryError } = await supabase
               .from("perizinan")
               .insert({
@@ -230,7 +221,6 @@ export default function PerizinanScreen() {
         throw dbErr;
       }
 
-      console.log("Record inserted successfully");
       Alert.alert("Success", "Izin berhasil dikirim");
       setCategory("sakit");
       setDescription("");
