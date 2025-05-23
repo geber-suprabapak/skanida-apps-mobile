@@ -46,6 +46,12 @@ const AUTO_NAVIGATE_DELAY_MS = 1000;
 // Location optimization constants (removed fast location)
 const LOCATION_CONFIG = {
   HIGH_ACCURACY: Location.Accuracy.High,
+  // Timeout 10 detik untuk lokasi diperlukan karena:
+  // 1. GPS membutuhkan waktu untuk mendapatkan sinyal satelit yang akurat
+  // 2. High accuracy mode memerlukan triangulasi dari multiple satellites
+  // 3. Dalam ruangan atau area dengan sinyal GPS lemah butuh waktu lebih lama
+  // 4. Akurasi lokasi sangat penting untuk validasi absensi di area sekolah
+  // 5. Mencegah false negative pada kondisi sinyal GPS yang sedang loading
   HIGH_TIMEOUT: 10000,
 } as const;
 

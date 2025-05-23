@@ -41,6 +41,11 @@ export default function RootLayout() {
 
   React.useEffect(() => {
     // Simulate loading for 1 second
+    // Timeout 1ms (sangat singkat) karena:
+    // 1. Hanya untuk mencegah flash of unstyled content (FOUC)
+    // 2. Loading screen sudah di-handle oleh komponen LoadingScreen
+    // 3. Tidak memerlukan waktu lama karena ini hanya setup initial theme
+    // 4. User experience lebih baik dengan transisi yang cepat
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1);

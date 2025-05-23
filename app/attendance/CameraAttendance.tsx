@@ -39,6 +39,12 @@ const UPLOAD_CONFIG = {
   STORAGE_BUCKET: "attendance-photos",
   CHUNK_SIZE: 512 * 1024, // 512KB chunks for large files
   PROGRESSIVE_QUALITY_STEPS: [0.3, 0.5, 0.7], // Progressive quality fallback
+  // Timeout 30 detik diperlukan karena:
+  // 1. Foto attendance biasanya berukuran besar (high quality untuk verifikasi)
+  // 2. Koneksi mobile bisa tidak stabil, membutuhkan waktu lebih lama
+  // 3. Supabase storage perlu waktu untuk memproses dan generate public URL
+  // 4. Mencegah abort upload yang sebenarnya masih berlangsung
+  // 5. Memberikan buffer untuk retry mechanism jika ada gangguan sementara
   TIMEOUT_MS: 30000, // 30 seconds timeout
 } as const;
 
