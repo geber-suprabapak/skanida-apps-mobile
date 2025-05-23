@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,6 +19,10 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+
+// Helper function to format date
+
+// Helper function to format time
 
 // Type for today's attendance status
 type TodaysAttendance = {
@@ -66,22 +71,21 @@ export default function Riwayat() {
     null,
   );
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [showYearPicker, setShowYearPicker] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth(),
-  );
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear(),
-  );
+  // const [showMonthPicker, setShowMonthPicker] = useState(false);
+  // const [showYearPicker, setShowYearPicker] = useState(false);
+  // const [selectedMonth, setSelectedMonth] = useState<number>(
+  //   new Date().getMonth(),
+  // );
+  // const [selectedYear, setSelectedYear] = useState<number>(
+  //   new Date().getFullYear(),
+  // );
   useEffect(() => {
     if (activeView === "hariIni") {
       fetchTodaysAttendance();
     } else if (activeView === "bulanIni") {
       fetchAttendanceHistory();
     }
-  }, [activeView, user, selectedMonth, selectedYear]);
-
+  }, [activeView, user]);
   const fetchTodaysAttendance = async () => {
     setLoading(true);
     const today = new Date();
@@ -91,24 +95,26 @@ export default function Riwayat() {
     const todayDateString = `${year}-${month}-${day}`;
 
     try {
-      // Check for attendance records
-      const { data: absenceData, error: absenceError } = await supabase
-        .from("absences")
-        .select("status")
+      // Check for attendance records in the attendance table
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from("attendance")
+        .select("status, timestamp")
         .eq("user_id", user.id)
         .eq("date", todayDateString);
 
-      if (absenceError) throw absenceError;
+      if (attendanceError) throw attendanceError;
 
       let hasClockedIn = false;
       let hasClockedOut = false;
 
-      if (absenceData && absenceData.length > 0) {
-        for (const record of absenceData) {
+      if (attendanceData && attendanceData.length > 0) {
+        for (const record of attendanceData) {
           if (record.status === "Datang") hasClockedIn = true;
           else if (record.status === "Pulang") hasClockedOut = true;
         }
-      } // Check for leave requests (perizinan)
+      }
+
+      // Check for leave requests (perizinan)
       const { data: leaveData, error: leaveError } = await supabase
         .from("perizinan")
         .select("kategori_izin, approval_status")
@@ -148,28 +154,32 @@ export default function Riwayat() {
       setLoading(false);
     }
   };
-
   const fetchAttendanceHistory = async () => {
     setLoading(true);
     try {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth(); // Use current month
+      const currentYear = currentDate.getFullYear(); // Use current year
+
       // Format the month and year for filtering
-      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+      const startDate = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
 
       // Calculate end date (last day of month)
-      const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-      // Removed console log for production
+      const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const endDate = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-      // Get attendance records
-      const { data: absenceData, error: absenceError } = await supabase
-        .from("absences")
-        .select("id, date, status, reason, photo_url")
+      // Get attendance records from the attendance table
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from("attendance")
+        .select("id, timestamp, date, status, reason, photo_url")
         .eq("user_id", user.id)
         .gte("date", startDate)
         .lte("date", endDate)
-        .order("date", { ascending: false });
+        .order("timestamp", { ascending: true });
 
-      if (absenceError) throw absenceError; // Get leave requests
+      if (attendanceError) throw attendanceError;
+
+      // Get leave requests
       const { data: leaveData, error: leaveError } = await supabase
         .from("perizinan")
         .select(
@@ -182,9 +192,9 @@ export default function Riwayat() {
 
       if (leaveError) throw leaveError;
 
-      // Convert absence data to AttendanceRecord format
-      const absenceRecords: AttendanceRecord[] = absenceData
-        ? absenceData.map((item) => ({
+      // Convert attendance data to AttendanceRecord format
+      const attendanceRecords: AttendanceRecord[] = attendanceData
+        ? attendanceData.map((item) => ({
             id: item.id,
             date: item.date,
             type: "Masuk",
@@ -192,7 +202,9 @@ export default function Riwayat() {
             description: item.reason || "",
             photo_url: item.photo_url,
           }))
-        : []; // Convert leave data to AttendanceRecord format
+        : [];
+
+      // Convert leave data to AttendanceRecord format
       const leaveRecords: AttendanceRecord[] = leaveData
         ? leaveData.map((item) => ({
             id: item.id,
@@ -206,7 +218,7 @@ export default function Riwayat() {
         : [];
 
       // Combine and sort by date
-      const combinedRecords = [...absenceRecords, ...leaveRecords].sort(
+      const combinedRecords = [...attendanceRecords, ...leaveRecords].sort(
         (a, b) => {
           return new Date(b.date).getTime() - new Date(a.date).getTime();
         },
@@ -240,559 +252,700 @@ export default function Riwayat() {
       return () => subscription.remove();
     }, [router]),
   );
-
-  const getStatusColor = (type: AttendanceType) => {
-    if (isDarkMode) {
-      return type === "Masuk"
-        ? "#4ade80"
-        : type === "Sakit"
-          ? "#fcd34d"
-          : "#f87171";
-    }
-    return type === "Masuk"
-      ? "#22c55e"
-      : type === "Sakit"
-        ? "#eab308"
-        : "#ef4444";
-  };
-
   const renderHariIniView = () => (
     <ScrollView
       className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
-      contentContainerClassName="grow p-4"
+      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20 }}
     >
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator
-            size="large"
-            color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
-          />
-        </View>
-      ) : !todaysAttendance.hasClockedIn &&
-        !todaysAttendance.hasClockedOut &&
-        !todaysAttendance.hasLeaveRequest ? (
-        <View className="flex-1 items-center justify-center">
+        <View className="flex-1 items-center justify-center py-10">
+          <ActivityIndicator size="large" color="#0284c7" />
           <Text
-            className={`text-lg font-semibold ${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
+            className={`mt-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
           >
-            Belum Ada Data
+            Memuat data absensi...
           </Text>
         </View>
       ) : (
-        <View className="space-y-3">
-          {" "}
-          {todaysAttendance.hasLeaveRequest && (
-            <View
-              className={`flex-row justify-between items-center p-4 rounded-lg ${isDarkMode ? "bg-gray-800" : "bg-card shadow-sm"}`}
+        <View>
+          <View
+            className={`p-4 rounded-lg mb-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+          >
+            <Text
+              className={`text-lg font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-800"}`}
             >
-              <View>
-                <Text
-                  className={`text-base font-medium ${isDarkMode ? "text-gray-200" : "text-foreground"}`}
-                >
-                  {todaysAttendance.leaveType === "sakit" ? "Sakit" : "Izin"}
-                </Text>
-                <View className="flex-row items-center mt-1">
-                  <View
-                    className={`h-2 w-2 rounded-full mr-2 ${
-                      approvalStatus === "approved"
-                        ? "bg-green-500"
-                        : approvalStatus === "rejected"
-                          ? "bg-red-500"
-                          : "bg-yellow-500"
-                    }`}
+              Status Absensi Hari Ini
+            </Text>
+
+            {/* Today's date */}
+            <Text
+              className={`mb-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+            >
+              {new Date().toLocaleDateString("id-ID", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </Text>
+
+            {/* Attendance Status Cards */}
+            <View className="flex-row justify-between mb-3">
+              {/* Clock In Status */}
+              <View
+                className={`flex-1 mr-2 p-3 rounded-lg ${
+                  todaysAttendance.hasClockedIn ? "bg-green-100" : "bg-gray-100"
+                }`}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name={
+                      todaysAttendance.hasClockedIn
+                        ? "checkmark-circle"
+                        : "time-outline"
+                    }
+                    size={24}
+                    color={
+                      todaysAttendance.hasClockedIn ? "#16a34a" : "#9ca3af"
+                    }
                   />
                   <Text
-                    className={`text-sm ${
-                      approvalStatus === "approved"
-                        ? isDarkMode
-                          ? "text-green-400"
-                          : "text-green-600"
-                        : approvalStatus === "rejected"
-                          ? isDarkMode
-                            ? "text-red-400"
-                            : "text-red-600"
-                          : isDarkMode
-                            ? "text-yellow-400"
-                            : "text-yellow-600"
-                    }`}
+                    className={`ml-2 font-semibold ${todaysAttendance.hasClockedIn ? "text-green-700" : "text-gray-500"}`}
                   >
-                    {approvalStatus === "approved"
-                      ? "Disetujui"
-                      : approvalStatus === "rejected"
-                        ? "Ditolak"
-                        : "Menunggu persetujuan"}
+                    Absen Masuk
                   </Text>
                 </View>
+                <Text
+                  className={`text-xs mt-1 ${todaysAttendance.hasClockedIn ? "text-green-700" : "text-gray-500"}`}
+                >
+                  {todaysAttendance.hasClockedIn
+                    ? "Sudah Absen"
+                    : "Belum Absen"}
+                </Text>
               </View>
 
-              <View>
-                <Ionicons
-                  name={
-                    todaysAttendance.leaveType === "sakit"
-                      ? "medkit"
-                      : "document-text"
-                  }
-                  size={24}
-                  color={
-                    todaysAttendance.leaveType === "sakit"
-                      ? isDarkMode
-                        ? "#fcd34d"
-                        : "#eab308" // Yellow for sick
-                      : isDarkMode
-                        ? "#f87171"
-                        : "#ef4444"
-                  } // Red for permission
-                />
+              {/* Clock Out Status */}
+              <View
+                className={`flex-1 ml-2 p-3 rounded-lg ${
+                  todaysAttendance.hasClockedOut
+                    ? "bg-green-100"
+                    : "bg-gray-100"
+                }`}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name={
+                      todaysAttendance.hasClockedOut
+                        ? "checkmark-circle"
+                        : "time-outline"
+                    }
+                    size={24}
+                    color={
+                      todaysAttendance.hasClockedOut ? "#16a34a" : "#9ca3af"
+                    }
+                  />
+                  <Text
+                    className={`ml-2 font-semibold ${todaysAttendance.hasClockedOut ? "text-green-700" : "text-gray-500"}`}
+                  >
+                    Absen Pulang
+                  </Text>
+                </View>
+                <Text
+                  className={`text-xs mt-1 ${todaysAttendance.hasClockedOut ? "text-green-700" : "text-gray-500"}`}
+                >
+                  {todaysAttendance.hasClockedOut
+                    ? "Sudah Absen"
+                    : "Belum Absen"}
+                </Text>
               </View>
             </View>
-          )}
-          {todaysAttendance.hasClockedIn && (
-            <View
-              className={`flex-row justify-between items-center p-4 rounded-lg ${isDarkMode ? "bg-gray-800" : "bg-card shadow-sm"}`}
-            >
-              <Text
-                className={`text-base ${isDarkMode ? "text-gray-200" : "text-foreground"}`}
+
+            {/* Leave Request Status */}
+            {todaysAttendance.hasLeaveRequest && (
+              <View
+                className={`mt-3 p-3 rounded-lg ${
+                  approvalStatus === "approved"
+                    ? "bg-blue-100"
+                    : approvalStatus === "rejected"
+                      ? "bg-red-100"
+                      : "bg-yellow-100"
+                }`}
               >
-                Sudah Absen Datang
-              </Text>
-              <Ionicons
-                name="checkmark-circle"
-                size={24}
-                color={isDarkMode ? "#4ade80" : "#22c55e"}
-              />
-            </View>
-          )}
-          {todaysAttendance.hasClockedOut && (
-            <View
-              className={`flex-row justify-between items-center p-4 rounded-lg ${isDarkMode ? "bg-gray-800" : "bg-card shadow-sm"}`}
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name={
+                      approvalStatus === "approved"
+                        ? "checkmark-circle"
+                        : approvalStatus === "rejected"
+                          ? "close-circle"
+                          : "alert-circle"
+                    }
+                    size={24}
+                    color={
+                      approvalStatus === "approved"
+                        ? "#1e40af"
+                        : approvalStatus === "rejected"
+                          ? "#b91c1c"
+                          : "#d97706"
+                    }
+                  />
+                  <Text
+                    className={`ml-2 font-semibold ${
+                      approvalStatus === "approved"
+                        ? "text-blue-800"
+                        : approvalStatus === "rejected"
+                          ? "text-red-800"
+                          : "text-yellow-800"
+                    }`}
+                  >
+                    Perizinan ({todaysAttendance.leaveType})
+                  </Text>
+                </View>
+                <Text
+                  className={`text-xs mt-1 ${
+                    approvalStatus === "approved"
+                      ? "text-blue-800"
+                      : approvalStatus === "rejected"
+                        ? "text-red-800"
+                        : "text-yellow-800"
+                  }`}
+                >
+                  Status:{" "}
+                  {approvalStatus === "approved"
+                    ? "Disetujui"
+                    : approvalStatus === "rejected"
+                      ? "Ditolak"
+                      : "Menunggu Persetujuan"}
+                </Text>
+              </View>
+            )}
+
+            {/* Action Buttons */}
+            {!todaysAttendance.hasLeaveRequest && (
+              <View className="mt-4">
+                {!todaysAttendance.hasClockedIn && (
+                  <TouchableOpacity
+                    className="bg-blue-600 py-3 px-4 rounded-lg"
+                    onPress={() => router.push("/attendance/AbsenceReport")}
+                  >
+                    <Text className="text-white font-semibold text-center">
+                      Absen Masuk
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {todaysAttendance.hasClockedIn &&
+                  !todaysAttendance.hasClockedOut && (
+                    <TouchableOpacity
+                      className="bg-green-600 py-3 px-4 rounded-lg"
+                      onPress={() => router.push("/attendance/AbsenceReport")}
+                    >
+                      <Text className="text-white font-semibold text-center">
+                        Absen Pulang
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                {todaysAttendance.hasClockedIn &&
+                  todaysAttendance.hasClockedOut && (
+                    <View className="bg-gray-200 py-3 px-4 rounded-lg">
+                      <Text className="text-gray-500 font-semibold text-center">
+                        Absensi Hari Ini Selesai
+                      </Text>
+                    </View>
+                  )}
+              </View>
+            )}
+          </View>
+
+          {/* Create permission request link */}
+          {!todaysAttendance.hasLeaveRequest && (
+            <TouchableOpacity
+              className={`p-4 rounded-lg flex-row items-center justify-between mb-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+              onPress={() => router.push("/perizinan")}
             >
-              <Text
-                className={`text-base ${isDarkMode ? "text-gray-200" : "text-foreground"}`}
-              >
-                Sudah Absen Pulang
-              </Text>
+              <View className="flex-row items-center">
+                <Ionicons
+                  name="document-text-outline"
+                  size={24}
+                  color={isDarkMode ? "#60a5fa" : "#2563eb"}
+                />
+                <Text
+                  className={`ml-2 font-semibold ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                >
+                  Buat Perizinan
+                </Text>
+              </View>
               <Ionicons
-                name="checkmark-circle"
-                size={24}
-                color={isDarkMode ? "#4ade80" : "#22c55e"}
+                name="chevron-forward"
+                size={20}
+                color={isDarkMode ? "#9ca3af" : "#6b7280"}
               />
-            </View>
+            </TouchableOpacity>
           )}
         </View>
       )}
     </ScrollView>
-  );
+  ); // Function to group attendance records by date
+  const groupAttendanceByDate = (records: AttendanceRecord[]) => {
+    const groupedData: Record<string, AttendanceRecord[]> = {};
 
-  const renderBulanIniView = () => (
-    <>
-      {/* Filter Buttons */}
-      <View
-        className={`flex-row p-4 space-x-2 items-center ${
-          isDarkMode
-            ? "bg-gray-900 border-b border-gray-700"
-            : "bg-background border-b border-border"
-        }`}
-      >
-        <Button
-          variant="ghost"
-          className="flex-1"
-          onPress={() => setShowMonthPicker(true)}
-        >
-          <Text className={`${isDarkMode ? "text-white" : "text-foreground"}`}>
-            Bulan:{" "}
-            {new Date(selectedYear, selectedMonth).toLocaleString("id-ID", {
-              month: "long",
-            })}
-          </Text>
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex-1"
-          onPress={() => setShowYearPicker(true)}
-        >
-          <Text className={`${isDarkMode ? "text-white" : "text-foreground"}`}>
-            Tahun: {selectedYear}
-          </Text>
-        </Button>
-        <Button
-          variant="outline"
-          className="flex-1"
-          onPress={() => fetchAttendanceHistory()}
-        >
-          <Text className={`${isDarkMode ? "text-white" : "text-foreground"}`}>
-            Tampilkan data
-          </Text>
-        </Button>
-      </View>
-      <ScrollView
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
-        contentContainerClassName="grow p-4"
-      >
-        {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator
-              size="large"
-              color={isDarkMode ? "#fff" : "hsl(var(--primary))"}
-            />
-          </View>
-        ) : attendanceHistory.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text
-              className={`text-lg font-semibold ${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
-            >
-              Belum Ada Data
-            </Text>
-          </View>
-        ) : (
-          <View className="space-y-2">
-            {attendanceHistory.map((record) => (
-              <TouchableOpacity
-                key={record.id}
-                className={`flex-row justify-between items-center p-3 rounded-lg shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
-                onPress={() => {
-                  setSelectedRecord(record);
-                  setShowDetailModal(true);
-                }}
-              >
-                <View className="flex-1">
-                  <Text
-                    className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}
-                  >
-                    {new Date(record.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </Text>
-                  <Text
-                    className={`${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
-                  >
-                    {record.period
-                      ? `${record.type} - ${record.period}`
-                      : record.type}
-                  </Text>
-                  {/* Show approval status for leave requests */}
-                  {(record.type === "Izin" || record.type === "Sakit") &&
-                    record.approval_status && (
-                      <View className="flex-row items-center mt-1">
-                        <View
-                          className={`h-2 w-2 rounded-full mr-2 ${
-                            record.approval_status === "approved"
-                              ? "bg-green-500"
-                              : record.approval_status === "rejected"
-                                ? "bg-red-500"
-                                : "bg-yellow-500"
-                          }`}
-                        />
-                        <Text
-                          className={`text-xs ${
-                            record.approval_status === "approved"
-                              ? isDarkMode
-                                ? "text-green-400"
-                                : "text-green-600"
-                              : record.approval_status === "rejected"
-                                ? isDarkMode
-                                  ? "text-red-400"
-                                  : "text-red-600"
-                                : isDarkMode
-                                  ? "text-yellow-400"
-                                  : "text-yellow-600"
-                          }`}
-                        >
-                          {record.approval_status === "approved"
-                            ? "Disetujui"
-                            : record.approval_status === "rejected"
-                              ? "Ditolak"
-                              : "Menunggu persetujuan"}
-                        </Text>
-                      </View>
-                    )}
-                </View>
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth(); // Use current month
+    const currentYear = currentDate.getFullYear(); // Use current year
 
-                <View className="flex-row items-center">
-                  {record.photo_url && (
-                    <Ionicons
-                      name="image-outline"
-                      size={18}
-                      color={isDarkMode ? "#a3a3a3" : "#6b7280"}
-                      style={{ marginRight: 8 }}
-                    />
-                  )}
-                  <View
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: getStatusColor(record.type) }}
-                  />
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-      {/* Detail Modal */}
-      <Modal
-        visible={showDetailModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowDetailModal(false)}
+    // Get all dates in the month
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+      groupedData[dateStr] = [];
+    }
+
+    // Add records to their dates
+    records.forEach((record) => {
+      if (record.date in groupedData) {
+        groupedData[record.date].push(record);
+      } else {
+        groupedData[record.date] = [record];
+      }
+    });
+
+    return groupedData;
+  };
+
+  // Render attendance item
+  const renderAttendanceItem = ({
+    date,
+    records,
+  }: {
+    date: string;
+    records: AttendanceRecord[];
+  }) => {
+    // Sort records: Datang first, then Pulang, then leave requests
+    const sortedRecords = [...records].sort((a, b) => {
+      if (a.type === "Masuk" && a.period === "Datang") return -1;
+      if (b.type === "Masuk" && b.period === "Datang") return 1;
+      if (a.type === "Masuk" && a.period === "Pulang") return -1;
+      if (b.type === "Masuk" && b.period === "Pulang") return 1;
+      return 0;
+    });
+
+    // Find clock in and out records
+    const clockInRecord = sortedRecords.find(
+      (r) => r.type === "Masuk" && r.period === "Datang",
+    );
+    const clockOutRecord = sortedRecords.find(
+      (r) => r.type === "Masuk" && r.period === "Pulang",
+    );
+
+    // Find leave request
+    const leaveRecord = sortedRecords.find(
+      (r) => r.type === "Izin" || r.type === "Sakit",
+    );
+
+    const formattedDate = new Date(date).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+    });
+
+    const dayName = new Date(date).toLocaleDateString("id-ID", {
+      weekday: "short",
+    });
+
+    const isToday = date === new Date().toISOString().split("T")[0];
+
+    return (
+      <TouchableOpacity
+        className={`flex-row p-4 rounded-lg mb-2 ${isDarkMode ? "bg-gray-800" : "bg-white"} ${isToday ? (isDarkMode ? "border border-blue-700" : "border border-blue-500") : ""}`}
+        onPress={() => {
+          if (records.length > 0) {
+            setSelectedRecord(records[0]);
+            setShowDetailModal(true);
+          }
+        }}
       >
-        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-          <View
-            className={`w-11/12 max-w-md rounded-lg ${
-              isDarkMode ? "bg-gray-800" : "bg-white"
-            }`}
+        {/* Date column */}
+        <View
+          className="items-center justify-center pr-4 border-r border-gray-200 mr-4"
+          style={{ width: 60 }}
+        >
+          <Text
+            className={`font-bold text-lg ${isDarkMode ? "text-white" : "text-gray-800"} ${isToday ? "text-blue-600" : ""}`}
           >
-            <View className="flex-row justify-between items-center p-4 border-b">
-              <Text
-                className={`text-lg font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-800"
-                }`}
-              >
-                Detail Kehadiran
-              </Text>
-              <TouchableOpacity onPress={() => setShowDetailModal(false)}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={isDarkMode ? "white" : "black"}
-                />
-              </TouchableOpacity>
+            {formattedDate.split(" ")[0]}
+          </Text>
+          <Text
+            className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"} ${isToday ? "text-blue-600" : ""}`}
+          >
+            {formattedDate.split(" ")[1]}
+          </Text>
+          <Text
+            className={`text-xs mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"} ${isToday ? "text-blue-600" : ""}`}
+          >
+            {dayName}
+          </Text>
+        </View>
+
+        {/* Status column */}
+        <View className="flex-1">
+          {records.length === 0 ? (
+            <View className="flex-row items-center">
+              <Ionicons name="alert-circle-outline" size={18} color="#9ca3af" />
+              <Text className="ml-2 text-gray-500">Belum ada data</Text>
             </View>
+          ) : leaveRecord ? (
+            // If there's a leave request
+            <View>
+              <View className="flex-row items-center">
+                <Ionicons
+                  name={
+                    leaveRecord.type === "Sakit"
+                      ? "medical-outline"
+                      : "document-text-outline"
+                  }
+                  size={18}
+                  color={leaveRecord.type === "Sakit" ? "#e11d48" : "#2563eb"}
+                />
+                <Text
+                  className={`ml-2 font-semibold ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                >
+                  {leaveRecord.type === "Sakit" ? "Sakit" : "Izin"}
+                </Text>
 
-            {selectedRecord && (
-              <View className="p-4">
-                <View className="flex-row mb-4">
-                  <View className="flex-1">
+                {leaveRecord.approval_status && (
+                  <View
+                    className={`ml-2 px-2 py-1 rounded-full ${
+                      leaveRecord.approval_status === "approved"
+                        ? "bg-green-100"
+                        : leaveRecord.approval_status === "rejected"
+                          ? "bg-red-100"
+                          : "bg-yellow-100"
+                    }`}
+                  >
                     <Text
-                      className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                      className={`text-xs ${
+                        leaveRecord.approval_status === "approved"
+                          ? "text-green-800"
+                          : leaveRecord.approval_status === "rejected"
+                            ? "text-red-800"
+                            : "text-yellow-800"
+                      }`}
                     >
-                      Tanggal
+                      {leaveRecord.approval_status === "approved"
+                        ? "Disetujui"
+                        : leaveRecord.approval_status === "rejected"
+                          ? "Ditolak"
+                          : "Pending"}
                     </Text>
-                    <Text
-                      className={`text-base font-medium ${isDarkMode ? "text-white" : "text-gray-800"}`}
-                    >
-                      {new Date(selectedRecord.date).toLocaleDateString(
-                        "id-ID",
-                        {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        },
-                      )}
-                    </Text>
-                  </View>
-
-                  <View className="flex-1">
-                    <Text
-                      className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Status
-                    </Text>
-                    <Text
-                      className="text-base font-medium"
-                      style={{ color: getStatusColor(selectedRecord.type) }}
-                    >
-                      {selectedRecord.period
-                        ? `${selectedRecord.type} - ${selectedRecord.period}`
-                        : selectedRecord.type}
-                    </Text>
-                  </View>
-                </View>
-
-                {selectedRecord.description && (
-                  <View className="mb-4">
-                    <Text
-                      className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Keterangan
-                    </Text>
-                    <Text
-                      className={`text-base ${isDarkMode ? "text-white" : "text-gray-800"}`}
-                    >
-                      {selectedRecord.description}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Show approval status for leave requests */}
-                {(selectedRecord.type === "Izin" ||
-                  selectedRecord.type === "Sakit") && (
-                  <View className="mb-4">
-                    <Text
-                      className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Status Persetujuan
-                    </Text>
-                    <View className="flex-row items-center mt-1">
-                      <View
-                        className={`w-3 h-3 rounded-full mr-2 ${
-                          selectedRecord.approval_status === "approved"
-                            ? "bg-green-500"
-                            : selectedRecord.approval_status === "rejected"
-                              ? "bg-red-500"
-                              : "bg-yellow-500"
-                        }`}
-                      />
-                      <Text
-                        className={`${
-                          selectedRecord.approval_status === "approved"
-                            ? isDarkMode
-                              ? "text-green-400"
-                              : "text-green-600"
-                            : selectedRecord.approval_status === "rejected"
-                              ? isDarkMode
-                                ? "text-red-400"
-                                : "text-red-600"
-                              : isDarkMode
-                                ? "text-yellow-400"
-                                : "text-yellow-600"
-                        }`}
-                      >
-                        {selectedRecord.approval_status === "approved"
-                          ? "Disetujui"
-                          : selectedRecord.approval_status === "rejected"
-                            ? "Ditolak"
-                            : "Menunggu persetujuan"}
-                      </Text>
-                    </View>
                   </View>
                 )}
               </View>
-            )}
-          </View>
-        </View>
-      </Modal>
-      {/* Month Picker Modal */}
-      <Modal
-        visible={showMonthPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowMonthPicker(false)}
-      >
-        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-          <View
-            className={`w-11/12 max-w-md rounded-lg ${
-              isDarkMode ? "bg-gray-800" : "bg-white"
-            }`}
-          >
-            <View className="flex-row justify-between items-center p-4 border-b">
-              <Text
-                className={`text-lg font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-800"
-                }`}
-              >
-                Pilih Bulan
-              </Text>
-              <TouchableOpacity onPress={() => setShowMonthPicker(false)}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={isDarkMode ? "white" : "black"}
-                />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={Array.from({ length: 12 }, (_, i) => i)}
-              keyExtractor={(item) => item.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedMonth(item);
-                    setShowMonthPicker(false);
-                    fetchAttendanceHistory();
-                  }}
-                  className={`p-4 ${isDarkMode ? "bg-gray-700" : "bg-white"} ${
-                    item === selectedMonth ? "bg-primary bg-opacity-20" : ""
-                  } border-b`}
+
+              {leaveRecord.description && (
+                <Text
+                  className={`mt-1 text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+                  numberOfLines={1}
                 >
+                  {leaveRecord.description}
+                </Text>
+              )}
+            </View>
+          ) : (
+            // If there are attendance records
+            <View>
+              <View className="flex-row items-center">
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={18}
+                  color="#16a34a"
+                />
+                <Text
+                  className={`ml-2 font-semibold ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                >
+                  Hadir
+                </Text>
+              </View>
+
+              <View className="flex-row items-center mt-1">
+                {clockInRecord && (
+                  <View className="flex-row items-center">
+                    <Text
+                      className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+                    >
+                      Masuk:
+                    </Text>
+                    <Text
+                      className={`ml-1 text-xs font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+                    >
+                      {clockInRecord.date && clockInRecord.date.includes("T")
+                        ? new Date(clockInRecord.date).toLocaleTimeString(
+                            "id-ID",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )
+                        : "N/A"}
+                    </Text>
+                  </View>
+                )}
+
+                {clockOutRecord && (
+                  <View className="flex-row items-center ml-3">
+                    <Text
+                      className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+                    >
+                      Pulang:
+                    </Text>
+                    <Text
+                      className={`ml-1 text-xs font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+                    >
+                      {clockOutRecord.date && clockOutRecord.date.includes("T")
+                        ? new Date(clockOutRecord.date).toLocaleTimeString(
+                            "id-ID",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )
+                        : "N/A"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={isDarkMode ? "#9ca3af" : "#6b7280"}
+        />
+      </TouchableOpacity>
+    );
+  };
+
+  // Render detail modal
+  const renderDetailModal = () => {
+    if (!selectedRecord) return null;
+
+    return (
+      <Modal
+        visible={showDetailModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          className="bg-black bg-opacity-50 justify-end"
+          activeOpacity={1}
+          onPress={() => setShowDetailModal(false)}
+        >
+          <View
+            className={`p-4 rounded-t-3xl ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+            style={{ maxHeight: "80%" }}
+            onStartShouldSetResponder={() => true}
+          >
+            <View className="items-center mb-4">
+              <View className="w-10 h-1 bg-gray-300 rounded-full" />
+            </View>
+
+            <Text
+              className={`text-xl font-bold mb-4 ${isDarkMode ? "text-white" : "text-gray-800"}`}
+            >
+              Detail Absensi
+            </Text>
+
+            <View
+              className={`p-4 mb-3 rounded-lg ${isDarkMode ? "bg-gray-800" : "bg-gray-100"}`}
+            >
+              {/* Date */}
+              <View className="flex-row justify-between mb-3">
+                <Text
+                  className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                >
+                  Tanggal:
+                </Text>
+                <Text
+                  className={`font-medium ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                >
+                  {new Date(selectedRecord.date).toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </Text>
+              </View>
+
+              {/* Type */}
+              <View className="flex-row justify-between mb-3">
+                <Text
+                  className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                >
+                  Jenis:
+                </Text>
+                <Text
+                  className={`font-medium ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                >
+                  {selectedRecord.type === "Masuk"
+                    ? `Absensi ${selectedRecord.period}`
+                    : selectedRecord.type}
+                </Text>
+              </View>
+
+              {/* Status */}
+              {selectedRecord.approval_status && (
+                <View className="flex-row justify-between mb-3">
                   <Text
-                    className={`text-center ${
-                      item === selectedMonth
-                        ? isDarkMode
-                          ? "text-primary"
-                          : "text-primary"
-                        : isDarkMode
-                          ? "text-white"
-                          : "text-gray-800"
+                    className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                  >
+                    Status:
+                  </Text>
+                  <View
+                    className={`px-2 py-1 rounded-full ${
+                      selectedRecord.approval_status === "approved"
+                        ? "bg-green-100"
+                        : selectedRecord.approval_status === "rejected"
+                          ? "bg-red-100"
+                          : "bg-yellow-100"
                     }`}
                   >
-                    {new Date(selectedYear, item).toLocaleString("id-ID", {
-                      month: "long",
+                    <Text
+                      className={`text-xs ${
+                        selectedRecord.approval_status === "approved"
+                          ? "text-green-800"
+                          : selectedRecord.approval_status === "rejected"
+                            ? "text-red-800"
+                            : "text-yellow-800"
+                      }`}
+                    >
+                      {selectedRecord.approval_status === "approved"
+                        ? "Disetujui"
+                        : selectedRecord.approval_status === "rejected"
+                          ? "Ditolak"
+                          : "Menunggu Persetujuan"}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Timestamp */}
+              {selectedRecord.date && selectedRecord.date.includes("T") && (
+                <View className="flex-row justify-between mb-3">
+                  <Text
+                    className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                  >
+                    Waktu:
+                  </Text>
+                  <Text
+                    className={`font-medium ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                  >
+                    {new Date(selectedRecord.date).toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
                     })}
                   </Text>
-                </TouchableOpacity>
+                </View>
               )}
-            />
-          </View>
-        </View>
-      </Modal>
-      {/* Year Picker Modal */}
-      <Modal
-        visible={showYearPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowYearPicker(false)}
-      >
-        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-          <View
-            className={`w-11/12 max-w-md rounded-lg ${
-              isDarkMode ? "bg-gray-800" : "bg-white"
-            }`}
-          >
-            <View className="flex-row justify-between items-center p-4 border-b">
-              <Text
-                className={`text-lg font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-800"
-                }`}
-              >
-                Pilih Tahun
-              </Text>
-              <TouchableOpacity onPress={() => setShowYearPicker(false)}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={isDarkMode ? "white" : "black"}
-                />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={Array.from(
-                { length: 9 },
-                (_, i) => new Date().getFullYear() - 1 + i,
-              )}
-              keyExtractor={(item) => item.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedYear(item);
-                    setShowYearPicker(false);
-                    fetchAttendanceHistory();
-                  }}
-                  className={`p-4 ${isDarkMode ? "bg-gray-700" : "bg-white"} ${
-                    item === selectedYear ? "bg-primary bg-opacity-20" : ""
-                  } border-b`}
-                >
-                  <Text
-                    className={`text-center ${
-                      item === selectedYear
-                        ? isDarkMode
-                          ? "text-primary"
-                          : "text-primary"
-                        : isDarkMode
-                          ? "text-white"
-                          : "text-gray-800"
-                    }`}
-                  >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-    </>
-  );
 
+              {/* Description */}
+              {selectedRecord.description && (
+                <View className="mb-3">
+                  <Text
+                    className={`font-medium mb-1 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                  >
+                    Keterangan:
+                  </Text>
+                  <Text
+                    className={`${isDarkMode ? "text-white" : "text-gray-800"}`}
+                  >
+                    {selectedRecord.description}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Photo if available */}
+            {selectedRecord.photo_url && (
+              <View className="items-center mb-4">
+                <Text
+                  className={`font-medium mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                >
+                  Foto:
+                </Text>
+                <Image
+                  source={{ uri: selectedRecord.photo_url }}
+                  className="w-full h-56 rounded-lg"
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+
+            <Button
+              onPress={() => setShowDetailModal(false)}
+              variant="secondary"
+              className="mt-2"
+            >
+              Tutup
+            </Button>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  const renderBulanIniView = () => {
+    // Group attendance by date
+    const groupedAttendance = groupAttendanceByDate(attendanceHistory);
+
+    // Convert to array for rendering
+    const attendanceByDate = Object.entries(groupedAttendance)
+      .map(([date, records]) => ({ date, records }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return (
+      <View
+        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+      >
+        {/* Month/Year Selector */}
+        <View
+          className={`p-4 flex-row justify-between items-center ${isDarkMode ? "bg-gray-800" : "bg-white"} mb-2`}
+        >
+        </View>
+
+        {loading ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#0284c7" />
+            <Text
+              className={`mt-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+            >
+              Memuat riwayat absensi...
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={attendanceByDate}
+            keyExtractor={(item) => item.date}
+            renderItem={({ item }) => renderAttendanceItem(item)}
+            contentContainerStyle={{ padding: 16 }}
+            ListEmptyComponent={
+              <View className="items-center justify-center py-10">
+                <Ionicons name="calendar-outline" size={48} color="#9ca3af" />
+                <Text
+                  className={`mt-4 font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  Tidak ada data absensi
+                </Text>
+                <Text
+                  className={`mt-2 text-center ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
+                >
+                  Belum ada riwayat absensi untuk bulan ini
+                </Text>
+              </View>
+            }
+          />
+        )}
+      </View>
+    );
+  };
   return (
     <SafeAreaView
       className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
@@ -837,7 +990,60 @@ export default function Riwayat() {
         </View>
       </View>
 
+      {/* View Toggler */}
+      <View
+        className={`flex-row p-1 rounded-lg m-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
+      >
+        <TouchableOpacity
+          className={`flex-1 py-2 px-4 rounded-md items-center justify-center ${
+            activeView === "hariIni"
+              ? isDarkMode
+                ? "bg-blue-600"
+                : "bg-blue-500"
+              : ""
+          }`}
+          onPress={() => setActiveView("hariIni")}
+        >
+          <Text
+            className={`${
+              activeView === "hariIni"
+                ? "text-white"
+                : isDarkMode
+                  ? "text-gray-300"
+                  : "text-gray-700"
+            } font-medium`}
+          >
+            Hari Ini
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className={`flex-1 py-2 px-4 rounded-md items-center justify-center ${
+            activeView === "bulanIni"
+              ? isDarkMode
+                ? "bg-blue-600"
+                : "bg-blue-500"
+              : ""
+          }`}
+          onPress={() => setActiveView("bulanIni")}
+        >
+          <Text
+            className={`${
+              activeView === "bulanIni"
+                ? "text-white"
+                : isDarkMode
+                  ? "text-gray-300"
+                  : "text-gray-700"
+            } font-medium`}
+          >
+            Bulan Ini
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {activeView === "hariIni" ? renderHariIniView() : renderBulanIniView()}
+
+      {/* Detail modal */}
+      {renderDetailModal()}
     </SafeAreaView>
   );
 }

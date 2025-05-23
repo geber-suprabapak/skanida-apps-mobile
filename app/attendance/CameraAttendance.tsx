@@ -195,7 +195,7 @@ const CameraAttendance = () => {
             "Tidak ada koneksi internet. Silakan cek koneksi Anda.",
           );
         }
-      } catch (netErr) {
+      } catch {
         // Continue even if NetInfo fails
       }
 
@@ -229,18 +229,16 @@ const CameraAttendance = () => {
 
       // Upload the buffer to Supabase storage with retry logic
       let uploadAttempt = 0;
-      let storageResult = null;
       let lastError: Error | null = null; // Store the last error
 
       while (uploadAttempt < 3) {
         try {
-          const { data: storageData, error: storageError } =
-            await supabase.storage
-              .from("attendance-photos")
-              .upload(fileName, fileBuffer, {
-                contentType: "image/png",
-                upsert: true,
-              });
+          const { error: storageError } = await supabase.storage
+            .from("attendance-photos")
+            .upload(fileName, fileBuffer, {
+              contentType: "image/png",
+              upsert: true,
+            });
 
           if (storageError) {
             lastError = storageError; // Store the error
@@ -255,7 +253,6 @@ const CameraAttendance = () => {
               await new Promise((resolve) => setTimeout(resolve, delay));
             }
           } else {
-            storageResult = storageData;
             lastError = null; // Clear error on success
             break; // Exit loop on success
           }
@@ -290,19 +287,43 @@ const CameraAttendance = () => {
 
       setUploadProgress(85);
 
-      // Insert attendance record with the photo URL
-      const { data: attendanceData, error: attendanceError } =
-        await supabase.from("attendance").insert({
+      // Get current date (without time) for date filtering
+      const currentDateOnly = now.toISOString().split("T")[0];
+      // Check if this is the first attendance today (Pagi - Masuk) or second (Sore - Pulang)
+      const { data: todayAttendances, error: queryError } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("user_id", locationData.userId)
+        .gte("timestamp", `${currentDateOnly}T00:00:00`)
+        .lte("timestamp", `${currentDateOnly}T23:59:59`)
+        .order("timestamp", { ascending: true });
+
+      if (queryError) {
+        throw new Error(
+          `Failed to check existing attendance: ${queryError.message}`,
+        );
+      }
+
+      // Determine if this is morning (Datang) or afternoon (Pulang) attendance
+      const isPulang = todayAttendances && todayAttendances.length > 0;
+      const attendanceStatus = isPulang ? "Pulang" : "Datang"; // Insert attendance record with the photo URL
+      const { error: attendanceError } = await supabase
+        .from("attendance")
+        .insert({
           user_id: locationData.userId,
           timestamp: new Date().toISOString(),
+          date: currentDateOnly, // Store date without time for easier filtering
+          status: attendanceStatus, // "Datang" or "Pulang"
           location_latitude: locationData.latitude,
           location_longitude: locationData.longitude,
           photo_url: photoUrl || null,
-          reason: reason,
+          reason,
         });
 
       if (attendanceError) {
-        throw new Error(`Failed to save attendance: ${attendanceError.message}`);
+        throw new Error(
+          `Failed to save attendance: ${attendanceError.message}`,
+        );
       }
 
       setUploadProgress(100);
@@ -310,7 +331,7 @@ const CameraAttendance = () => {
       // Show success message and navigate back
       Alert.alert(
         "Success",
-        "Your attendance has been recorded successfully.",
+        `Absen ${isPulang ? "Pulang" : "Datang"} telah berhasil dicatat.`,
         [
           {
             text: "OK",
@@ -380,7 +401,11 @@ const CameraAttendance = () => {
         processedPhoto = await ImageManipulator.manipulateAsync(
           photo.uri,
           [{ resize: { width: 800 } }], // Resize to reasonable dimensions
-          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+          {
+            compress: 0.7,
+            format: ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          },
         );
       }
 
@@ -422,9 +447,9 @@ const CameraAttendance = () => {
             className="flex-1"
             facing={facing}
             onCameraReady={onCameraReady}
-            onError={(error) => {
-              setCameraError(error.message);
-              console.error("Camera error:", error);
+            onMountError={(errorMsg) => {
+              setCameraError(errorMsg.toString());
+              console.error("Camera error:", errorMsg);
             }}
           />
         )}
@@ -501,11 +526,12 @@ const CameraAttendance = () => {
                     className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center"
                     activeOpacity={0.8}
                   >
+                    {" "}
                     <View
                       className={`w-16 h-16 rounded-full bg-white ${
                         isTakingPicture ? "opacity-50" : ""
                       }`}
-                    ></View>
+                    />
                   </TouchableOpacity>
                 </Animated.View>
 
