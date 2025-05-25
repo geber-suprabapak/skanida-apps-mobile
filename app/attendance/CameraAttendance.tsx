@@ -23,6 +23,7 @@ import Animated,
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { supabase } from "~/utils/supabase";
+import useThemeStore from "~/store/themeStore";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
@@ -38,6 +39,12 @@ const UPLOAD_CONFIG = {
   STORAGE_BUCKET: "attendance-photos",
   CHUNK_SIZE: 512 * 1024, // 512KB chunks for large files
   PROGRESSIVE_QUALITY_STEPS: [0.3, 0.5, 0.7], // Progressive quality fallback
+  // Timeout 30 detik diperlukan karena:
+  // 1. Foto attendance biasanya berukuran besar (high quality untuk verifikasi)
+  // 2. Koneksi mobile bisa tidak stabil, membutuhkan waktu lebih lama
+  // 3. Supabase storage perlu waktu untuk memproses dan generate public URL
+  // 4. Mencegah abort upload yang sebenarnya masih berlangsung
+  // 5. Memberikan buffer untuk retry mechanism jika ada gangguan sementara
   TIMEOUT_MS: 30000, // 30 seconds timeout
 } as const;
 
@@ -121,6 +128,7 @@ const CameraAttendance = () => {
   const params = useLocalSearchParams();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const { isDarkMode } = useThemeStore();
 
   // --- STATE ---
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>("back");
@@ -915,7 +923,6 @@ const CameraAttendance = () => {
   // --- RENDER COMPONENTS ---
   const renderLoadingState = (message: string) => (
     <SafeAreaView className="flex-1 bg-black" edges={["top", "left", "right"]}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="#0066FF" />
@@ -1029,11 +1036,6 @@ const CameraAttendance = () => {
 
   return (
     <View className="flex-1 bg-black">
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-      />
       <Stack.Screen options={{ headerShown: false }} />
 
       <View className="flex-1">

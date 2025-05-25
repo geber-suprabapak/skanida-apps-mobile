@@ -150,6 +150,10 @@ export default function PerizinanScreen() {
             if (
               uploadError.message?.includes("network") ||
               uploadError.message?.includes("connection") ||
+              // Timeout yang tinggi diperlukan karena:
+              // 1. Upload foto bisa memakan waktu lama pada koneksi lambat
+              // 2. Supabase storage perlu waktu untuk memproses file besar
+              // 3. Mencegah gagal upload yang sebenarnya masih dalam proses
               uploadError.message?.toLowerCase().includes("timeout")
             ) {
               throw new Error(

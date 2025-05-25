@@ -43,12 +43,16 @@ const SCHOOL_COORDINATES = {
 const MAX_DISTANCE_METERS = 500;
 const AUTO_NAVIGATE_DELAY_MS = 1000;
 
-// Location optimization constants (removed caching)
+// Location optimization constants (removed fast location)
 const LOCATION_CONFIG = {
-  FAST_ACCURACY: Location.Accuracy.Balanced,
-  FAST_TIMEOUT: 5000,
   HIGH_ACCURACY: Location.Accuracy.High,
-  HIGH_TIMEOUT: 8000,
+  // Timeout 10 detik untuk lokasi diperlukan karena:
+  // 1. GPS membutuhkan waktu untuk mendapatkan sinyal satelit yang akurat
+  // 2. High accuracy mode memerlukan triangulasi dari multiple satellites
+  // 3. Dalam ruangan atau area dengan sinyal GPS lemah butuh waktu lebih lama
+  // 4. Akurasi lokasi sangat penting untuk validasi absensi di area sekolah
+  // 5. Mencegah false negative pada kondisi sinyal GPS yang sedang loading
+  HIGH_TIMEOUT: 10000,
 } as const;
 
 // --- UTILITY FUNCTIONS ---
@@ -130,67 +134,33 @@ const AbsenceReport = () => {
     [],
   );
 
-  // Fast location with progressive accuracy (no caching)
-  const getLocationWithProgressiveAccuracy = useCallback(
-    async (): Promise<Location.LocationObject | null> => {
+  // Get location with high accuracy only
+  const getLocationWithHighAccuracy =
+    useCallback(async (): Promise<Location.LocationObject | null> => {
       try {
-        logger.debug("Starting progressive location acquisition");
-        setStatusMessage("Mendapatkan lokasi dengan cepat...");
+        logger.debug("Getting location with high accuracy");
+        setStatusMessage("Mendapatkan lokasi dengan akurasi tinggi...");
 
-        // Strategy 1: Fast location with balanced accuracy
-        logger.debug("Getting fast location with balanced accuracy");
-        try {
-          const fastLocationPromise = Location.getCurrentPositionAsync({
-            accuracy: LOCATION_CONFIG.FAST_ACCURACY,
-          });
+        const locationPromise = Location.getCurrentPositionAsync({
+          accuracy: LOCATION_CONFIG.HIGH_ACCURACY,
+        });
 
-          const fastTimeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Fast location timeout")),
-              LOCATION_CONFIG.FAST_TIMEOUT,
-            ),
-          );
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Location timeout")),
+            LOCATION_CONFIG.HIGH_TIMEOUT,
+          ),
+        );
 
-          const fastLocation = await Promise.race([
-            fastLocationPromise,
-            fastTimeoutPromise,
-          ]);
+        const location = await Promise.race([locationPromise, timeoutPromise]);
 
-          logger.info("Fast location acquired successfully", {
-            accuracy: fastLocation.coords.accuracy,
-            time: LOCATION_CONFIG.FAST_TIMEOUT,
-          });
+        logger.info("High accuracy location acquired successfully", {
+          accuracy: location.coords.accuracy,
+        });
 
-          return fastLocation;
-        } catch (fastError) {
-          logger.warn("Fast location failed, trying high accuracy", fastError);
-          setStatusMessage("Mencoba lokasi akurasi tinggi...");
-
-          // Strategy 2: High accuracy fallback
-          const highLocationPromise = Location.getCurrentPositionAsync({
-            accuracy: LOCATION_CONFIG.HIGH_ACCURACY,
-          });
-
-          const highTimeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("High accuracy location timeout")),
-              LOCATION_CONFIG.HIGH_TIMEOUT,
-            ),
-          );
-
-          const highLocation = await Promise.race([
-            highLocationPromise,
-            highTimeoutPromise,
-          ]);
-
-          logger.info("High accuracy location acquired", {
-            accuracy: highLocation.coords.accuracy,
-          });
-
-          return highLocation;
-        }
+        return location;
       } catch (error: any) {
-        logger.error("All location strategies failed", error);
+        logger.error("High accuracy location failed", error);
 
         if (error?.message?.includes("timeout")) {
           setStatusMessage(
@@ -203,9 +173,7 @@ const AbsenceReport = () => {
         }
         return null;
       }
-    },
-    [],
-  );
+    }, []);
 
   const navigateToCamera = useCallback(() => {
     if (
@@ -385,7 +353,7 @@ const AbsenceReport = () => {
           }
         }
 
-        return await getLocationWithProgressiveAccuracy();
+        return await getLocationWithHighAccuracy();
       } catch (error: any) {
         logger.error("Location permission or acquisition failed", error);
         setStatusMessage(
@@ -393,7 +361,7 @@ const AbsenceReport = () => {
         );
         return null;
       }
-    }, [getLocationWithProgressiveAccuracy]);
+    }, [getLocationWithHighAccuracy]);
 
   const performFullAbsenceCheck = useCallback(async () => {
     logger.info("Starting optimized absence check");
