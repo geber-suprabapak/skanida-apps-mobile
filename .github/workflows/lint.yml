@@ -28,16 +28,14 @@ jobs:
           # super-linter needs the full git history to get the
           # list of files that changed across commits
           fetch-depth: 1
-      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'pnpm'
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

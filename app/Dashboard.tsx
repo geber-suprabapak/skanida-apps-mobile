@@ -2,13 +2,21 @@
 import {
   AntDesign,
   Ionicons,
-  MaterialIcons, // For profile icon
+  MaterialIcons,
+  Feather, // Untuk ikon pensil
 } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  BackHandler,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native"; // Import useIsFocused
 
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
@@ -16,31 +24,131 @@ import { Button } from "~/components/ui/button";
 import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore"; // Import theme store
+import { supabase } from "~/utils/supabase";
 
-// Import the icon image
-const profileImage = require("../assets/muflih.jpg"); // Import the new image
+// Fallback profile image in case avatar_url is not available
+const fallbackProfileImage = require("../assets/muflih.jpg");
+
+// Define interface for user profile data
+interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkMode } = useThemeStore(); // Get theme state
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const isFocused = useIsFocused(); // Add isFocused hook
 
   useEffect(() => {
     const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timerId);
   }, []);
 
+  // Fetch profile data from the user_profiles table
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) {
+        setProfileData(null); // Clear profile data if no user
+        return;
+      }
+
+      try {
+        // Fetching only full_name and avatar_url as those are used for display
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("full_name, avatar_url") // Specific fields
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          if (error.code === "PGRST116") {
+            // This means no profile row was found for the user_id.
+            // It's not an "error" in the sense of a failed query, but rather no data.
+            setProfileData(null);
+          } else {
+            // For other actual database errors during fetch
+            console.error(
+              "Dashboard: Error fetching profile data from user_profiles:",
+              error.message,
+            );
+            setProfileData(null);
+          }
+        } else if (data) {
+          // Successfully fetched data (which could include null for full_name or avatar_url if DB has them as null)
+          setProfileData(data as UserProfile); // Cast to UserProfile; only full_name and avatar_url will be populated
+        } else {
+          // This case (no error, but no data) should ideally be covered by PGRST116.
+          // Setting to null defensively.
+          setProfileData(null);
+        }
+      } catch (err: any) {
+        console.error(
+          "Dashboard: Exception during user_profiles data fetch:",
+          err.message,
+        );
+        setProfileData(null);
+      }
+    };
+
+    if (isFocused && user) {
+      // Fetch only when focused and user exists
+      fetchProfileData();
+    } else if (!user) {
+      setProfileData(null); // Ensure profileData is cleared if user logs out
+    }
+  }, [user, isFocused]); // Add isFocused to dependency array
+
   const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
+
+  // Get user's display name prioritizing profile data, then falling back to metadata
+  const displayName =
+    profileData?.full_name || // Uses profileData.full_name if it's a truthy string
+    user?.user_metadata?.name ||
+    user?.email ||
+    "Pengguna";
+
+  // Get user's avatar URL from profile data or from metadata
+  const avatarUrl =
+    profileData?.avatar_url || user?.user_metadata?.avatar_url || null;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
+  const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
+  const navigateToPerizinan = () => router.push("/perizinan"); // New handler for Perizinan
+
+  // Prevent back navigation
+  useEffect(() => {
+    const backAction = () => {
+      // Prevent going back to login screen
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen
+        options={{
+          headerShown: false,
+          gestureEnabled: false, // Disable swipe back on iOS
+        }}
+      />
       {/* Apply dynamic background based on theme */}
       <SafeAreaView
         className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -53,13 +161,28 @@ export default function Dashboard() {
           <View className="bg-black items-center py-5">
             {/* Reduced padding */}
             {/* Use the Avatar component from ui/avatar */}
-            <Avatar
-              size="lg" // Use the 'lg' size defined in ui/avatar
-              fallback={user?.email?.charAt(0).toUpperCase() || "?"} // Fallback initial
-              className="mb-2" // Add margin if needed
-              source={Image.resolveAssetSource(profileImage).uri} // Use the muflih_hitam.jpg as source
-            />
-            <H2 className="text-white mb-1">{user?.email || "eror"}</H2>
+            <View className="relative">
+              <Avatar
+                size="lg" // Use the 'lg' size defined in ui/avatar
+                fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
+                className="mb-2" // Add margin if needed
+                source={
+                  avatarUrl ||
+                  Image.resolveAssetSource(fallbackProfileImage).uri
+                } // Use the avatar URL from profile data or metadata
+              />
+              {/* Pencil icon positioned at bottom-right of avatar */}
+              <TouchableOpacity
+                className="absolute bottom-2 right-0"
+                onPress={navigateToEditProfile}
+                activeOpacity={0.7}
+              >
+                <View className="bg-white rounded-full p-1 border border-gray-300">
+                  <Feather name="edit-2" size={14} color="black" />
+                </View>
+              </TouchableOpacity>
+            </View>
+            <H2 className="text-white mb-1">{displayName}</H2>
             <H3 className="text-white">{formattedTime}</H3>
           </View>
 
@@ -88,7 +211,6 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
 
-            {/* --- Secondary Action Buttons (Using reusable Button component) --- */}
             <View>
               {/* Riwayat Button */}
               <Button
@@ -117,6 +239,21 @@ export default function Dashboard() {
                   </Large>
                 </View>
               </Button>
+
+              {/* Perizinan Button */}
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full justify-center bg-black mb-5"
+                onPress={navigateToPerizinan}
+              >
+                <View className="flex-row items-center justify-center">
+                  <MaterialIcons name="assignment" size={28} color="white" />
+                  <Large className="text-white font-medium ml-4">
+                    Perizinan
+                  </Large>
+                </View>
+              </Button>
             </View>
           </ScrollView>
 
@@ -129,7 +266,7 @@ export default function Dashboard() {
             } border-t`}
           >
             <H4 className={isDarkMode ? "text-white" : "text-foreground"}>
-              Version 0.3.0
+              Version 0.4.0
             </H4>
           </View>
         </View>

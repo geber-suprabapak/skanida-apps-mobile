@@ -16,6 +16,7 @@ import LoadingScreen from "./auth/LoadingScreen";
 
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
+import useThemeStore from "~/store/themeStore";
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -34,15 +35,20 @@ export {
 export default function RootLayout() {
   const hasMounted = React.useRef(false);
   const { isDarkColorScheme } = useColorScheme();
+  const { isDarkMode } = useThemeStore();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true); // Add loading state
 
   React.useEffect(() => {
     // Simulate loading for 1 second
+    // Timeout 1ms (sangat singkat) karena:
+    // 1. Hanya untuk mencegah flash of unstyled content (FOUC)
+    // 2. Loading screen sudah di-handle oleh komponen LoadingScreen
+    // 3. Tidak memerlukan waktu lama karena ini hanya setup initial theme
+    // 4. User experience lebih baik dengan transisi yang cepat
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1000); // 1000 milliseconds = 1 second
-
+    }, 1);
     return () => clearTimeout(timer); // Cleanup timer on unmount
   }, []);
 
@@ -61,41 +67,44 @@ export default function RootLayout() {
 
   // Show loading screen first
   if (isLoading || !isColorSchemeLoaded) {
-    // Also wait for color scheme to be loaded before showing the main stack
     return <LoadingScreen />;
   }
 
+  // Use the theme store state for more reliable dark mode detection
+  const isActuallyDark = isDarkMode || isDarkColorScheme;
+
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-        <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+      <ThemeProvider value={isActuallyDark ? DARK_THEME : LIGHT_THEME}>
+        <StatusBar
+          style={isActuallyDark ? "light" : "dark"}
+          backgroundColor="transparent"
+          translucent={Platform.OS === "android"}
+        />
         <Stack
           screenOptions={{
             headerStyle: {
-              backgroundColor: "transparent", // ✅ hanya backgroundColor yang valid
+              backgroundColor: "transparent",
             },
-            headerTransparent: true, // ✅ header transparan
-            headerShadowVisible: false, // ✅ hapus bayangan header
+            headerTransparent: true,
+            headerShadowVisible: false,
             contentStyle: {
-              paddingTop: 0, // ✅ isi screen mulai dari atas
+              paddingTop: 0,
             },
           }}
         >
-          {/* Default screen options */}
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="Dashboard" options={{ headerShown: false }} />
           <Stack.Screen
             name="auth/AuthSelector"
             options={{ headerShown: false }}
           />
-          {/* Hide default header for Login and Register */}
           <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
           <Stack.Screen name="auth/Register" options={{ headerShown: false }} />
           <Stack.Screen
             name="attendance/AbsenceReport"
             options={{ title: "Lapor Absensi" }}
           />
-          {/* ... rest of the screens ... */}
         </Stack>
       </ThemeProvider>
     </SafeAreaProvider>

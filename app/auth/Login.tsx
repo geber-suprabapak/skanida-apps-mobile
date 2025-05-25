@@ -1,17 +1,16 @@
-// app/Login.tsx
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "../../store/authStore";
 import { supabase } from "../../utils/supabase";
+import useThemeStore from "../../store/themeStore";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { H1, P, H3 } from "~/components/ui/typography"; // Import H1, H4, and H3 components
+import { H1, P, H3 } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
 
 export default function Login() {
@@ -22,6 +21,7 @@ export default function Login() {
   const [passwordError, setPasswordError] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
+  const { isDarkMode } = useThemeStore();
 
   const handleLogin = async () => {
     setEmailError(false);
@@ -50,7 +50,7 @@ export default function Login() {
 
       if (error) {
         console.error("Supabase login error:", error.message); // Keep console log for debugging
-        setLoginError("Login failed. Please check your email and password."); // Set user-facing error message
+        alert("Login failed. Please check your email and password."); // Set user-facing error message
         return;
       }
 
@@ -66,26 +66,26 @@ export default function Login() {
   };
 
   return (
-    // Add top padding (pt-10) directly to SafeAreaView
-    <SafeAreaView className="flex-1 bg- pt-10" edges={["top", "left", "right"]}>
-      {/* Set status bar style to dark for light background */}
-      <StatusBar style="dark" />
-      {/* Remove the spacer View */}
-      {/* Keep ScrollView padding as it was (or adjust if needed, removing pt-20) */}
-      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6">
+    <SafeAreaView
+      className="flex-1 pt-10 bg-background bg-white"
+      edges={["top", "left", "right"]}
+    >
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6 bg-white">
         <View>
-          <H1 className="mb-2 text-center text-gray-700">Selamat Datang</H1>
+          <H1 className="mb-2 text-center text-foreground">
+            Selamat Datang
+          </H1>
         </View>
 
         <View>
-          <P className="text-center mb-8 text-gray-600">
+          <P className="text-center mb-8 text-muted-foreground">
             Masuk ke akun Anda untuk melanjutkan
           </P>
         </View>
 
         <View>
           <View className="mb-4">
-            <Text className="text-gray-700 mb-2">Email</Text>
+            <Text className="mb-2 text-foreground">Email</Text>
             <Input
               className={cn(emailError && "border-red-500")}
               placeholder="Masukkan email Anda"
@@ -102,7 +102,7 @@ export default function Login() {
 
         <View>
           <View className="mb-6">
-            <Text className="text-gray-700 mb-2">Password</Text>
+            <Text className="mb-2 text-foreground">Password</Text>
             <Input
               className={cn(passwordError && "border-red-500")}
               placeholder="Masukkan password Anda"
@@ -120,11 +120,11 @@ export default function Login() {
           <Button
             variant="default"
             size="lg"
-            className="mb-4 w-full bg-black"
+            className={`mb-4 w-full ${isDarkMode ? 'bg-white' : 'bg-black'}`}
             onPress={handleLogin}
             disabled={loading}
           >
-            <H3 className="text-white font-medium text-center">
+            <H3 className={`font-medium text-center ${isDarkMode ? 'text-black' : 'text-white'}`}>
               {loading ? "Loading..." : "Masuk"}
             </H3>
           </Button>
@@ -132,9 +132,13 @@ export default function Login() {
 
         <View>
           <View className="flex-row justify-center mt-4">
-            <Text className="text-gray-600">Belum memiliki akun? </Text>
+            <Text className="text-muted-foreground">
+              Belum memiliki akun?{" "}
+            </Text>
             <TouchableOpacity onPress={() => router.push("/auth/Register")}>
-              <Text className="text-gray-700 font-semibold">Daftar</Text>
+              <Text className="font-semibold text-foreground">
+                Daftar
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

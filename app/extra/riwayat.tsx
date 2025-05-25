@@ -120,12 +120,16 @@ export default function Riwayat() {
         className={`pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       >
         <Button
-          variant="default"
+          variant="outline"
           size="sm"
-          className="mx-5 my-4"
+          className={`mx-5 my-4 ${
+            isDarkMode ? "bg-black" : "bg-black border-black"
+          }`}
           onPress={fetchAttendanceHistory}
         >
-          <Text>Refresh Data</Text>
+          <Text className="text-white">
+            Refresh Data
+          </Text>
         </Button>
 
         {loading && attendanceHistory.length === 0 ? (
