@@ -133,8 +133,8 @@ importers:
         specifier: ^8.57.1
         version: 8.57.1
       eslint-config-universe:
-        specifier: ^14.0.0
-        version: 14.3.0(eslint@8.57.1)(prettier@3.5.3)(typescript@5.8.3)
+        specifier: ^15.0.3
+        version: 15.0.3(eslint@8.57.1)(prettier@3.5.3)(typescript@5.8.3)
       prettier:
         specifier: ^3.5.3
         version: 3.5.3
@@ -1897,10 +1897,10 @@ packages:
     peerDependencies:
       eslint: '>=7.0.0'
 
-  eslint-config-universe@14.3.0:
-    resolution: {integrity: sha512-AQjW1QxwrJPq8CZjTAK7F5q5FeITXcCMwzzoB6pMiDBCEyuUjPE1RbpQNaF/7kpVnxgzgks6rxNwnNIpd50ALg==}
+  eslint-config-universe@15.0.3:
+    resolution: {integrity: sha512-fUMsNXp7GJBu7Sz9PXFBbXhkiixdQ5sbnViFIBbk6ORAfeokczJ+eVv5HQ2gwxPQdbfJarpkO9WZDtxIvJnEGw==}
     peerDependencies:
-      eslint: '>=9'
+      eslint: '>=8.10'
       prettier: '>=3'
     peerDependenciesMeta:
       prettier:
@@ -2389,8 +2389,8 @@ packages:
     resolution: {integrity: sha512-7ACyT3wmyp3I61S4fG682L0VA2RGD9otkqGJIwNUMF1SWUombIIk+af1unuDYgMm082aHYwD+mzJvv9Iu8dsgg==}
     engines: {node: '>=18'}
 
-  globals@16.1.0:
-    resolution: {integrity: sha512-aibexHNbb/jiUSObBgpHLj+sIuUmJnYcgXBlrfsiDZ9rt4aF2TFRbyLgZ2iFQuVZ1K5Mx3FVkbKRSgKrbK3K2g==}
+  globals@16.2.0:
+    resolution: {integrity: sha512-O+7l9tPdHCU320IigZZPj5zmRCFG9xHmx9cU8FqU2Rp+JN714seHV+2S9+JslCpY4gJwU2vOGox0wzgae/MCEg==}
     engines: {node: '>=18'}
 
   globalthis@1.0.4:
@@ -6673,7 +6673,7 @@ snapshots:
     dependencies:
       eslint: 8.57.1
 
-  eslint-config-universe@14.3.0(eslint@8.57.1)(prettier@3.5.3)(typescript@5.8.3):
+  eslint-config-universe@15.0.3(eslint@8.57.1)(prettier@3.5.3)(typescript@5.8.3):
     dependencies:
       '@typescript-eslint/eslint-plugin': 8.32.1(@typescript-eslint/parser@8.32.1(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1)(typescript@5.8.3)
       '@typescript-eslint/parser': 8.32.1(eslint@8.57.1)(typescript@5.8.3)
@@ -6685,7 +6685,7 @@ snapshots:
       eslint-plugin-prettier: 5.4.0(eslint-config-prettier@9.1.0(eslint@8.57.1))(eslint@8.57.1)(prettier@3.5.3)
       eslint-plugin-react: 7.37.5(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.2.0(eslint@8.57.1)
-      globals: 16.1.0
+      globals: 16.2.0
     optionalDependencies:
       prettier: 3.5.3
     transitivePeerDependencies:
@@ -7303,7 +7303,7 @@ snapshots:
 
   globals@15.15.0: {}
 
-  globals@16.1.0: {}
+  globals@16.2.0: {}
 
   globalthis@1.0.4:
     dependencies:
