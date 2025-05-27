@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { Text, View } from "react-native";
