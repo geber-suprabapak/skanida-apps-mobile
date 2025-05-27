@@ -141,11 +141,19 @@ const useTodaysAttendance = (userId: string) => {
         });
       }
 
-      console.log("Final status - hasClockedIn:", hasClockedIn, "hasClockedOut:", hasClockedOut);
+      console.log(
+        "Final status - hasClockedIn:",
+        hasClockedIn,
+        "hasClockedOut:",
+        hasClockedOut,
+      );
 
       // Process leave data
-      const hasLeaveRequest = leaveResponse.data && leaveResponse.data.length > 0;
-      const leaveType = hasLeaveRequest ? leaveResponse.data[0].kategori_izin : null;
+      const hasLeaveRequest =
+        leaveResponse.data && leaveResponse.data.length > 0;
+      const leaveType = hasLeaveRequest
+        ? leaveResponse.data[0].kategori_izin
+        : null;
       const approvalStatus = hasLeaveRequest
         ? (leaveResponse.data[0].approval_status as ApprovalStatus)
         : null;
@@ -207,8 +215,8 @@ const useAttendanceHistory = (userId: string) => {
       if (leaveResponse.error) throw leaveResponse.error;
 
       // Transform and combine data
-      const attendanceRecords: AttendanceRecord[] = attendanceResponse.data?.map(
-        (item) => ({
+      const attendanceRecords: AttendanceRecord[] = attendanceResponse.data
+        ?.map((item) => ({
           id: item.id,
           date: item.date,
           type: "Masuk" as AttendanceType,
@@ -216,23 +224,29 @@ const useAttendanceHistory = (userId: string) => {
           description: item.reason || "",
           photo_url: item.photo_url,
           timestamp: item.created_at,
-        }),
-      )?.reverse();
+        }))
+        ?.reverse();
 
-      const leaveRecords: AttendanceRecord[] = leaveResponse.data?.map((item) => ({
-        id: item.id,
-        date: item.tanggal,
-        type:
-          item.kategori_izin === "sakit" ? "Sakit" : "Izin" as AttendanceType,
-        period: null,
-        description: item.deskripsi || "",
-        photo_url: item.link_foto,
-        approval_status: item.approval_status || "pending" as ApprovalStatus,
-      }));
+      const leaveRecords: AttendanceRecord[] = leaveResponse.data?.map(
+        (item) => ({
+          id: item.id,
+          date: item.tanggal,
+          type:
+            item.kategori_izin === "sakit"
+              ? "Sakit"
+              : ("Izin" as AttendanceType),
+          period: null,
+          description: item.deskripsi || "",
+          photo_url: item.link_foto,
+          approval_status:
+            item.approval_status || ("pending" as ApprovalStatus),
+        }),
+      );
 
       // Sort by date descending
-      const combinedRecords = [...attendanceRecords, ...leaveRecords]
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const combinedRecords = [...attendanceRecords, ...leaveRecords].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
 
       setData(combinedRecords);
     } catch (error) {
@@ -341,8 +355,8 @@ const LeaveStatusCard = ({
             approvalStatus === "approved"
               ? "checkmark-circle"
               : approvalStatus === "rejected"
-              ? "close-circle"
-              : "alert-circle"
+                ? "close-circle"
+                : "alert-circle"
           }
           size={24}
           color={colors.icon}
@@ -376,7 +390,9 @@ const AttendanceItem = ({
   const clockOutRecord = records.find(
     (r) => r.type === "Masuk" && r.period === "Pulang",
   );
-  const leaveRecord = records.find((r) => r.type === "Izin" || r.type === "Sakit");
+  const leaveRecord = records.find(
+    (r) => r.type === "Izin" || r.type === "Sakit",
+  );
 
   const formattedDate = new Date(date).toLocaleDateString("id-ID", {
     day: "numeric",
@@ -455,8 +471,8 @@ const AttendanceItem = ({
                     leaveRecord.approval_status === "approved"
                       ? "bg-green-100"
                       : leaveRecord.approval_status === "rejected"
-                      ? "bg-red-100"
-                      : "bg-yellow-100"
+                        ? "bg-red-100"
+                        : "bg-yellow-100"
                   }`}
                 >
                   <Text
@@ -464,15 +480,15 @@ const AttendanceItem = ({
                       leaveRecord.approval_status === "approved"
                         ? "text-green-800"
                         : leaveRecord.approval_status === "rejected"
-                        ? "text-red-800"
-                        : "text-yellow-800"
+                          ? "text-red-800"
+                          : "text-yellow-800"
                     }`}
                   >
                     {leaveRecord.approval_status === "approved"
                       ? "Disetujui"
                       : leaveRecord.approval_status === "rejected"
-                      ? "Ditolak"
-                      : "Pending"}
+                        ? "Ditolak"
+                        : "Pending"}
                   </Text>
                 </View>
               )}
@@ -492,7 +508,11 @@ const AttendanceItem = ({
         ) : (
           <View>
             <View className="flex-row items-center">
-              <Ionicons name="checkmark-circle-outline" size={18} color="#16a34a" />
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color="#16a34a"
+              />
               <Text
                 className={`ml-2 font-semibold ${
                   isDarkMode ? "text-white" : "text-gray-800"
@@ -672,8 +692,8 @@ const DetailModal = ({
                     record.approval_status === "approved"
                       ? "bg-green-100"
                       : record.approval_status === "rejected"
-                      ? "bg-red-100"
-                      : "bg-yellow-100"
+                        ? "bg-red-100"
+                        : "bg-yellow-100"
                   }`}
                 >
                   <Text
@@ -681,15 +701,15 @@ const DetailModal = ({
                       record.approval_status === "approved"
                         ? "text-green-800"
                         : record.approval_status === "rejected"
-                        ? "text-red-800"
-                        : "text-yellow-800"
+                          ? "text-red-800"
+                          : "text-yellow-800"
                     }`}
                   >
                     {record.approval_status === "approved"
                       ? "Disetujui"
                       : record.approval_status === "rejected"
-                      ? "Ditolak"
-                      : "Menunggu Persetujuan"}
+                        ? "Ditolak"
+                        : "Menunggu Persetujuan"}
                   </Text>
                 </View>
               </View>
@@ -782,41 +802,36 @@ export default function Riwayat() {
   const attendanceHistory = useAttendanceHistory(user?.id || "");
 
   // Memoized grouped attendance data
-  const groupedAttendance = useMemo(
-    () => {
-      const grouped: Record<string, AttendanceRecord[]> = {};
-      const currentDate = new Date();
-      const daysInMonth = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-        0,
-      ).getDate();
+  const groupedAttendance = useMemo(() => {
+    const grouped: Record<string, AttendanceRecord[]> = {};
+    const currentDate = new Date();
+    const daysInMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      0,
+    ).getDate();
 
-      // Initialize all dates in month
-      for (let i = 1; i <= daysInMonth; i++) {
-        const dateStr = formatDate(
-          new Date(currentDate.getFullYear(), currentDate.getMonth(), i),
-        );
-        grouped[dateStr] = [];
+    // Initialize all dates in month
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = formatDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth(), i),
+      );
+      grouped[dateStr] = [];
+    }
+
+    // Group records by date
+    attendanceHistory.data.forEach((record) => {
+      if (record.date in grouped) {
+        grouped[record.date].push(record);
+      } else {
+        grouped[record.date] = [record];
       }
+    });
 
-      // Group records by date
-      attendanceHistory.data.forEach((record) => {
-        if (record.date in grouped) {
-          grouped[record.date].push(record);
-        } else {
-          grouped[record.date] = [record];
-        }
-      });
-
-      return Object.entries(grouped)
-        .map(([date, records]) => ({ date, records }))
-        .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-    },
-    [attendanceHistory.data],
-  );
+    return Object.entries(grouped)
+      .map(([date, records]) => ({ date, records }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [attendanceHistory.data]);
 
   // Effects
   useEffect(() => {
@@ -885,16 +900,32 @@ export default function Riwayat() {
             {/* Status Cards */}
             <View className="flex-row justify-between mb-3">
               <StatusCard
-                icon={todaysAttendance.data.hasClockedIn ? "checkmark-circle" : "time-outline"}
+                icon={
+                  todaysAttendance.data.hasClockedIn
+                    ? "checkmark-circle"
+                    : "time-outline"
+                }
                 title="Absen Masuk"
-                status={todaysAttendance.data.hasClockedIn ? "Sudah Absen" : "Belum Absen"}
+                status={
+                  todaysAttendance.data.hasClockedIn
+                    ? "Sudah Absen"
+                    : "Belum Absen"
+                }
                 isActive={todaysAttendance.data.hasClockedIn}
                 color="#16a34a"
               />
               <StatusCard
-                icon={todaysAttendance.data.hasClockedOut ? "checkmark-circle" : "time-outline"}
+                icon={
+                  todaysAttendance.data.hasClockedOut
+                    ? "checkmark-circle"
+                    : "time-outline"
+                }
                 title="Absen Pulang"
-                status={todaysAttendance.data.hasClockedOut ? "Sudah Absen" : "Belum Absen"}
+                status={
+                  todaysAttendance.data.hasClockedOut
+                    ? "Sudah Absen"
+                    : "Belum Absen"
+                }
                 isActive={todaysAttendance.data.hasClockedOut}
                 color="#16a34a"
               />
@@ -1008,8 +1039,7 @@ export default function Riwayat() {
                 }
               }}
             />
-          )
-          }
+          )}
           contentContainerStyle={{ padding: 16 }}
           ListEmptyComponent={
             <View className="items-center justify-center py-10">
@@ -1077,8 +1107,8 @@ export default function Riwayat() {
               activeView === "hariIni"
                 ? "text-white"
                 : isDarkMode
-                ? "text-gray-300"
-                : "text-gray-700"
+                  ? "text-gray-300"
+                  : "text-gray-700"
             } font-medium`}
           >
             Hari Ini
@@ -1099,8 +1129,8 @@ export default function Riwayat() {
               activeView === "bulanIni"
                 ? "text-white"
                 : isDarkMode
-                ? "text-gray-300"
-                : "text-gray-700"
+                  ? "text-gray-300"
+                  : "text-gray-700"
             } font-medium`}
           >
             Bulan Ini

@@ -291,7 +291,7 @@ const AbsenceReport = () => {
           if (lastAbsenceError.code === "PGRST116") {
             // No data found for today - check if there's any record from previous days
             logger.info("No absence record found for today (PGRST116)");
-            
+
             // Query for the most recent absence record regardless of date
             const { data: lastAnyAbsenceData, error: lastAnyAbsenceError } =
               await supabase
@@ -302,8 +302,14 @@ const AbsenceReport = () => {
                 .limit(1)
                 .single();
 
-            if (lastAnyAbsenceError && lastAnyAbsenceError.code !== "PGRST116") {
-              logger.error("Error querying previous absence records", lastAnyAbsenceError);
+            if (
+              lastAnyAbsenceError &&
+              lastAnyAbsenceError.code !== "PGRST116"
+            ) {
+              logger.error(
+                "Error querying previous absence records",
+                lastAnyAbsenceError,
+              );
               setStatusMessage(
                 `Gagal memeriksa riwayat absensi: ${lastAnyAbsenceError.message}`,
               );
@@ -311,7 +317,9 @@ const AbsenceReport = () => {
             }
 
             if (lastAnyAbsenceData) {
-              const lastAbsenceDate = new Date(lastAnyAbsenceData.created_at).toISOString().split("T")[0];
+              const lastAbsenceDate = new Date(lastAnyAbsenceData.created_at)
+                .toISOString()
+                .split("T")[0];
               logger.info("Found previous absence record", {
                 status: lastAnyAbsenceData.status,
                 date: lastAnyAbsenceData.date,
@@ -321,7 +329,9 @@ const AbsenceReport = () => {
 
               // If the last record is from a previous day, allow morning attendance
               if (lastAbsenceDate !== todayDateString) {
-                logger.info("Last absence record is from previous day, allowing morning attendance");
+                logger.info(
+                  "Last absence record is from previous day, allowing morning attendance",
+                );
                 return "present";
               }
             }
@@ -340,8 +350,10 @@ const AbsenceReport = () => {
 
         if (lastAbsenceData) {
           // Check if the record is actually from today by comparing created_at date
-          const recordDate = new Date(lastAbsenceData.created_at).toISOString().split("T")[0];
-          
+          const recordDate = new Date(lastAbsenceData.created_at)
+            .toISOString()
+            .split("T")[0];
+
           logger.info("Found existing absence record", {
             status: lastAbsenceData.status,
             recordDate,
@@ -350,7 +362,9 @@ const AbsenceReport = () => {
 
           // If the record is from a previous day, allow morning attendance
           if (recordDate !== todayDateString) {
-            logger.info("Found record is from previous day, allowing morning attendance");
+            logger.info(
+              "Found record is from previous day, allowing morning attendance",
+            );
             return "present";
           }
 
