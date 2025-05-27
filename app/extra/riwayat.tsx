@@ -109,10 +109,10 @@ const useTodaysAttendance = (userId: string) => {
       const [attendanceResponse, leaveResponse] = await Promise.all([
         supabase
           .from("absences")
-          .select("status, created_at")
+          .select("status, date")
           .eq("user_id", userId)
           .eq("date", todayDateString)
-          .order("created_at", { ascending: true }),
+          .order("date", { ascending: true }),
         supabase
           .from("perizinan")
           .select("kategori_izin, approval_status")
@@ -187,11 +187,11 @@ const useAttendanceHistory = (userId: string) => {
       const [attendanceResponse, leaveResponse] = await Promise.all([
         supabase
           .from("absences")
-          .select("id, created_at, date, status, reason, photo_url")
+          .select("id, date, status, reason, photo_url, created_at")
           .eq("user_id", userId)
           .gte("date", startDate)
           .lte("date", endDate)
-          .order("created_at", { ascending: false }),
+          .order("date", { ascending: false }),
         supabase
           .from("perizinan")
           .select(
@@ -500,6 +500,17 @@ const AttendanceItem = ({
               >
                 Hadir
               </Text>
+              {clockInRecord && (
+                <>
+                  <Text
+                    className={`ml-2 text-sm ${
+                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    ({formatTime(clockInRecord.timestamp || "")})
+                  </Text>
+                </>
+              )}
             </View>
             <View className="flex-row items-center mt-1">
               {clockInRecord && (
