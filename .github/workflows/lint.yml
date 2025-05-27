@@ -36,7 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: develop
           FILTER_REGEX_INCLUDE: \.(ts|tsx)$
-          VALIDATE_TSX: false # ada error eslint di tsx, idk why so disable dlu
+          VALIDATE_TSX: true # ada error eslint di tsx, idk why so disable dlu
           VALIDATE_TYPESCRIPT_ES: false
           VALIDATE_TYPESCRIPT_STANDARD: false
           VALIDATE_CHECKOV: false
