@@ -1,6 +1,6 @@
 {
-  "name": "skanida-apps-mobile-rebuild",
-  "version": "1.0.0",
+  "name": "skanida-apps-mobile",
+  "version": "0.3.0",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
@@ -10,8 +10,7 @@
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "prettier:format": "prettier --write \"**/*.{ts,tsx,js,md,mdx,css,yaml}\"",
-    "prettier:check": "prettier --check \"**/*.{ts,tsx,js,md,mdx,css,yaml}\"",
-    "web": "expo start --web"
+    "prettier:check": "prettier --check \"**/*.{ts,tsx,js,md,mdx,css,yaml}\""
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",
