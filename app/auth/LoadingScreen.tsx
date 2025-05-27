@@ -6,7 +6,7 @@ import useThemeStore from "~/store/themeStore";
 
 const LoadingScreen = () => {
   const { isDarkMode } = useThemeStore();
-  
+
   return (
     <View className="flex-1 justify-center items-center bg-background">
       <Image
@@ -15,7 +15,9 @@ const LoadingScreen = () => {
         resizeMode="contain"
       />
       <Text className="text-4xl font-bold text-foreground">SKANIDA</Text>
-      <Text className="text-lg tracking-widest text-muted-foreground">APPS</Text>
+      <Text className="text-lg tracking-widest text-muted-foreground">
+        APPS
+      </Text>
     </View>
   );
 };

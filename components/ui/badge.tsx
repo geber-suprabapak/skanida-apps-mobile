@@ -5,23 +5,20 @@ import { Text, View } from "react-native";
 
 import { cn } from "~/lib/utils";
 
-const badgeVariants = cva(
-  "flex-row items-center rounded-full px-2.5 py-1",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary",
-        secondary: "bg-secondary",
-        destructive: "bg-destructive",
-        outline: "border border-input bg-background",
-        warning: "bg-yellow-500",
-      },
+const badgeVariants = cva("flex-row items-center rounded-full px-2.5 py-1", {
+  variants: {
+    variant: {
+      default: "bg-primary",
+      secondary: "bg-secondary",
+      destructive: "bg-destructive",
+      outline: "border border-input bg-background",
+      warning: "bg-yellow-500",
     },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-);
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
 
 const badgeTextVariants = cva("text-xs font-semibold", {
   variants: {

@@ -127,9 +127,7 @@ export default function Riwayat() {
           }`}
           onPress={fetchAttendanceHistory}
         >
-          <Text className="text-white">
-            Refresh Data
-          </Text>
+          <Text className="text-white">Refresh Data</Text>
         </Button>
 
         {loading && attendanceHistory.length === 0 ? (

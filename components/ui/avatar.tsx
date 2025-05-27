@@ -36,7 +36,9 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
           />
         ) : (
           <View className="flex h-full w-full items-center justify-center bg-muted">
-            <Text className={`font-medium text-muted-foreground ${size === 'lg' || size === 'xl' ? 'text-3xl' : 'text-sm'}`}>
+            <Text
+              className={`font-medium text-muted-foreground ${size === "lg" || size === "xl" ? "text-3xl" : "text-sm"}`}
+            >
               {fallback || "?"}
             </Text>
           </View>

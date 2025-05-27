@@ -12,8 +12,7 @@ import {
   StatusBar,
   BackHandler,
 } from "react-native";
-import Animated,
-{
+import Animated, {
   useSharedValue,
   useAnimatedStyle,
   FadeIn,
@@ -382,10 +381,7 @@ const CameraAttendance = () => {
             ),
           );
 
-          const { error } = await Promise.race([
-            uploadPromise,
-            timeoutPromise,
-          ]);
+          const { error } = await Promise.race([uploadPromise, timeoutPromise]);
 
           if (error) throw error;
 
