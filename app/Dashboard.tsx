@@ -171,16 +171,6 @@ export default function Dashboard() {
                   Image.resolveAssetSource(fallbackProfileImage).uri
                 } // Use the avatar URL from profile data or metadata
               />
-              {/* Pencil icon positioned at bottom-right of avatar */}
-              <TouchableOpacity
-                className="absolute bottom-2 right-0"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.7}
-              >
-                <View className="bg-white rounded-full p-1 border border-gray-300">
-                  <Feather name="edit-2" size={14} color="black" />
-                </View>
-              </TouchableOpacity>
             </View>
             <H2 className="text-white mb-1">{displayName}</H2>
             <H3 className="text-white">{formattedTime}</H3>
