@@ -984,7 +984,7 @@ export default function Riwayat() {
               className={`p-4 rounded-lg flex-row items-center justify-between mb-4 ${
                 isDarkMode ? "bg-gray-800" : "bg-white"
               }`}
-              onPress={() => router.push("/perizinan")}
+              onPress={() => router.push("/perizinan/izin")}
             >
               <View className="flex-row items-center">
                 <Ionicons

@@ -123,8 +123,7 @@ export default function Dashboard() {
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
-  const navigateToPerizinan = () => router.push("/perizinan"); // New handler for Perizinan
+  const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
 
   // Prevent back navigation
   useEffect(() => {
