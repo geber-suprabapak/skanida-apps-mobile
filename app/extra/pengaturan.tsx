@@ -29,55 +29,52 @@ export default function Pengaturan() {
   const setDarkMode = useThemeStore((state) => state.setDarkMode);
 
   const [profileFullName, setProfileFullName] = useState(
-    user?.user_metadata?.name || "",
+    user?.user_metadata?.name || user?.email || "Pengguna Skanida",
   );
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(
     user?.user_metadata?.avatar_url || null,
   );
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileDataAndUpdateState = async () => {
       if (!user) {
-        setProfileFullName("");
+        setProfileFullName("Pengguna Skanida");
         setProfileAvatarUrl(null);
         return;
       }
 
-      let currentName = user.user_metadata?.name || "";
-      let currentAvatar = user?.user_metadata?.avatar_url || null;
+      let currentName =
+        user.user_metadata?.name || user.email || "Pengguna Skanida";
+      let currentAvatar = user.user_metadata?.avatar_url || null;
 
       try {
-        const { data, error } = await supabase
+        const { data: userProfile, error: profileError } = await supabase
           .from("user_profiles")
           .select("full_name, avatar_url")
           .eq("user_id", user.id)
           .single();
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching profile in Pengaturan:", error.message);
-        }
-
-        if (data) {
-          currentName = data.full_name || currentName;
-          currentAvatar = data.avatar_url || currentAvatar;
+        if (profileError && profileError.code !== "PGRST116") {
+          console.error(
+            "Pengaturan: Error fetching from user_profiles:",
+            profileError.message,
+          );
+        } else if (userProfile) {
+          currentName = userProfile.full_name || currentName;
+          currentAvatar = userProfile.avatar_url || currentAvatar;
         }
       } catch (err) {
-        console.error("Unexpected error fetching profile in Pengaturan:", err);
+        console.error("Pengaturan: Unexpected error fetching profile:", err);
       }
       setProfileFullName(currentName);
       setProfileAvatarUrl(currentAvatar);
     };
 
-    if (isFocused) {
-      fetchProfile();
-    } else {
-      if (!user) {
-        setProfileFullName("");
-        setProfileAvatarUrl(null);
-      } else {
-        setProfileFullName(user.user_metadata?.name || "");
-        setProfileAvatarUrl(user.user_metadata?.avatar_url || null);
-      }
+    if (isFocused && user) {
+      fetchProfileDataAndUpdateState();
+    } else if (!user) {
+      setProfileFullName("Pengguna Skanida");
+      setProfileAvatarUrl(null);
     }
   }, [user, isFocused]);
 

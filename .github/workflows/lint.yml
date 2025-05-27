@@ -2,11 +2,6 @@
 name: Lint
 
 on:
-  push:
-    branches:
-      - develop
-  pull_request:
-    types: [opened]
   workflow_dispatch:
 
 permissions: {}
@@ -15,10 +10,10 @@ jobs:
   build:
     name: Lint
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: read
+      # To report GitHub Actions status checks
       statuses: write
 
     steps:
@@ -28,19 +23,9 @@ jobs:
           # super-linter needs the full git history to get the
           # list of files that changed across commits
           fetch-depth: 1
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Super-linter
-        uses: super-linter/super-linter@v7.3.0 # x-release-please-version
+        uses: super-linter/super-linter/slim@v7.4.0 # x-release-please-version
         env:
           # To report GitHub Actions status checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -145,6 +145,10 @@ export default function PerizinanScreen() {
             if (
               uploadError.message?.includes("network") ||
               uploadError.message?.includes("connection") ||
+              // Timeout yang tinggi diperlukan karena:
+              // 1. Upload foto bisa memakan waktu lama pada koneksi lambat
+              // 2. Supabase storage perlu waktu untuk memproses file besar
+              // 3. Mencegah gagal upload yang sebenarnya masih dalam proses
               uploadError.message?.toLowerCase().includes("timeout")
             ) {
               throw new Error(
@@ -279,10 +283,12 @@ export default function PerizinanScreen() {
         >
           <Card className="mb-5">
             <CardHeader>
-              <CardTitle
-                className={`${isDarkMode ? "text-white" : "text-black"} text-center`}
-              >
-                Pilih Kategori
+              <CardTitle>
+                <Text
+                  className={`${isDarkMode ? "text-white" : "text-black"} text-center`}
+                >
+                  Pilih Kategori
+                </Text>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -323,15 +329,19 @@ export default function PerizinanScreen() {
 
           <Card className="mb-5">
             <CardHeader>
-              <CardTitle
-                className={`${isDarkMode ? "text-white" : "text-foreground"}`}
-              >
-                Deskripsi
+              <CardTitle>
+                <Text
+                  className={`${isDarkMode ? "text-white" : "text-foreground"}`}
+                >
+                  Deskripsi
+                </Text>
               </CardTitle>
-              <CardDescription
-                className={`${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
-              >
-                Jelaskan alasan pengajuan izin Anda.
+              <CardDescription>
+                <Text
+                  className={`${isDarkMode ? "text-gray-400" : "text-muted-foreground"}`}
+                >
+                  Jelaskan alasan pengajuan izin Anda.
+                </Text>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -355,10 +365,12 @@ export default function PerizinanScreen() {
 
           <Card className="mb-5">
             <CardHeader>
-              <CardTitle
-                className={`${isDarkMode ? "text-white" : "text-foreground"}`}
-              >
-                Lampiran Foto
+              <CardTitle>
+                <Text
+                  className={`${isDarkMode ? "text-white" : "text-foreground"}`}
+                >
+                  Lampiran Foto (Opsional)
+                </Text>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -434,7 +446,6 @@ export default function PerizinanScreen() {
 
           <Card>
             <CardContent className="pt-6">
-              {/* Added pt-6 to CardContent for submit button spacing */}
               <Button // Using custom Button component
                 disabled={uploading || !description.trim()}
                 onPress={uploadPermit}

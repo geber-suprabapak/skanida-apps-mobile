@@ -8,8 +8,15 @@ import {
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  BackHandler,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native"; // Import useIsFocused
 
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
@@ -38,6 +45,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const isFocused = useIsFocused(); // Add isFocused hook
 
   useEffect(() => {
     const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -47,31 +55,62 @@ export default function Dashboard() {
   // Fetch profile data from the user_profiles table
   useEffect(() => {
     const fetchProfileData = async () => {
-      if (!user) return;
+      if (!user) {
+        setProfileData(null); // Clear profile data if no user
+        return;
+      }
 
       try {
+        // Fetching only full_name and avatar_url as those are used for display
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("*")
+          .select("full_name, avatar_url") // Specific fields
           .eq("user_id", user.id)
           .single();
 
-        if (data && !error) {
-          setProfileData(data);
+        if (error) {
+          if (error.code === "PGRST116") {
+            // This means no profile row was found for the user_id.
+            // It's not an "error" in the sense of a failed query, but rather no data.
+            setProfileData(null);
+          } else {
+            // For other actual database errors during fetch
+            console.error(
+              "Dashboard: Error fetching profile data from user_profiles:",
+              error.message,
+            );
+            setProfileData(null);
+          }
+        } else if (data) {
+          // Successfully fetched data (which could include null for full_name or avatar_url if DB has them as null)
+          setProfileData(data as UserProfile); // Cast to UserProfile; only full_name and avatar_url will be populated
+        } else {
+          // This case (no error, but no data) should ideally be covered by PGRST116.
+          // Setting to null defensively.
+          setProfileData(null);
         }
-      } catch (err) {
-        console.error("Error fetching profile data:", err);
+      } catch (err: any) {
+        console.error(
+          "Dashboard: Exception during user_profiles data fetch:",
+          err.message,
+        );
+        setProfileData(null);
       }
     };
 
-    fetchProfileData();
-  }, [user]);
+    if (isFocused && user) {
+      // Fetch only when focused and user exists
+      fetchProfileData();
+    } else if (!user) {
+      setProfileData(null); // Ensure profileData is cleared if user logs out
+    }
+  }, [user, isFocused]); // Add isFocused to dependency array
 
   const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   const displayName =
-    profileData?.full_name ||
+    profileData?.full_name || // Uses profileData.full_name if it's a truthy string
     user?.user_metadata?.name ||
     user?.email ||
     "Pengguna";
@@ -87,9 +126,29 @@ export default function Dashboard() {
   const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
   const navigateToPerizinan = () => router.push("/perizinan"); // New handler for Perizinan
 
+  // Prevent back navigation
+  useEffect(() => {
+    const backAction = () => {
+      // Prevent going back to login screen
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen
+        options={{
+          headerShown: false,
+          gestureEnabled: false, // Disable swipe back on iOS
+        }}
+      />
       {/* Apply dynamic background based on theme */}
       <SafeAreaView
         className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -152,7 +211,6 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
 
-            {/* --- Secondary Action Buttons (Using reusable Button component) --- */}
             <View>
               {/* Riwayat Button */}
               <Button
