@@ -1,24 +1,25 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Stack, useRouter, useFocusEffect } from "expo-router";
-import { useState, useCallback, useEffect, useMemo } from "react";
+/* eslint-disable prettier/prettier */
+// ========== IMPORTS ==========
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
+  Text,
+  TouchableOpacity,
   ScrollView,
+  FlatList,
   ActivityIndicator,
   Alert,
-  BackHandler,
-  TouchableOpacity,
   Modal,
-  FlatList,
   Image,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import { Button } from "~/components/ui/button";
-import { Text } from "~/components/ui/text";
-import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter, useFocusEffect, Stack } from "expo-router";
+import { supabase } from "../../utils/supabase";
+import useAuthStore from "../../store/authStore";
+import useThemeStore from "../../store/themeStore";
+import { Button } from "../../components/ui/button";
 
 // ========== TYPES ==========
 type AttendanceType = "Masuk" | "Izin" | "Sakit";
@@ -47,20 +48,7 @@ interface TodaysAttendance {
 type ViewType = "hariIni" | "bulanIni";
 
 // ========== CONSTANTS ==========
-const MONTHS = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
+// (removed unused MONTHS constant)
 
 // ========== UTILS ==========
 const formatDate = (date: Date): string => {
@@ -121,32 +109,19 @@ const useTodaysAttendance = (userId: string) => {
       ]);
 
       if (attendanceResponse.error) throw attendanceResponse.error;
-      if (leaveResponse.error) throw leaveResponse.error;
-
-      // Process attendance data - check all records
+      if (leaveResponse.error) throw leaveResponse.error;      // Process attendance data - check all records
       let hasClockedIn = false;
       let hasClockedOut = false;
 
-      console.log("Today's attendance records:", attendanceResponse.data);
-
       if (attendanceResponse.data && attendanceResponse.data.length > 0) {
         attendanceResponse.data.forEach((record) => {
-          console.log("Processing record:", record);
           // Check for various possible status values
           if (record.status === "Hadir") {
             hasClockedIn = true;
           } else if (record.status === "Pulang") {
             hasClockedOut = true;
           }
-        });
-      }
-
-      console.log(
-        "Final status - hasClockedIn:",
-        hasClockedIn,
-        "hasClockedOut:",
-        hasClockedOut,
-      );
+        });      }
 
       // Process leave data
       const hasLeaveRequest =
@@ -519,23 +494,23 @@ const AttendanceItem = ({
                 }`}
               >
                 Hadir
-              </Text>
-              {clockInRecord && (
+              </Text>              {clockInRecord && (
                 <>
                   <Text
                     className={`ml-2 text-sm ${
                       isDarkMode ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    ({formatTime(clockInRecord.timestamp || "")})
+                    ({formatTime(clockInRecord.timestamp || "") !== "N/A" 
+                      ? formatTime(clockInRecord.timestamp || "")
+                      : "Waktu tidak tersedia"})
                   </Text>
                 </>
               )}
             </View>
             <View className="flex-row items-center mt-1">
               {clockInRecord && (
-                <View className="flex-row items-center">
-                  <Text
+                <View className="flex-row items-center">                  <Text
                     className={`text-xs ${
                       isDarkMode ? "text-gray-400" : "text-gray-600"
                     }`}
@@ -547,14 +522,15 @@ const AttendanceItem = ({
                       isDarkMode ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
-                    {formatTime(clockInRecord.timestamp || "")}
+                    {formatTime(clockInRecord.timestamp || "") !== "N/A"
+                      ? formatTime(clockInRecord.timestamp || "")
+                      : "Tidak tersedia"}
                   </Text>
                 </View>
               )}
 
               {clockOutRecord && (
-                <View className="flex-row items-center ml-3">
-                  <Text
+                <View className="flex-row items-center ml-3">                  <Text
                     className={`text-xs ${
                       isDarkMode ? "text-gray-400" : "text-gray-600"
                     }`}
@@ -566,7 +542,9 @@ const AttendanceItem = ({
                       isDarkMode ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
-                    {formatTime(clockOutRecord.timestamp || "")}
+                    {formatTime(clockOutRecord.timestamp || "") !== "N/A"
+                      ? formatTime(clockOutRecord.timestamp || "")
+                      : "Tidak tersedia"}
                   </Text>
                 </View>
               )}
@@ -647,8 +625,7 @@ const DetailModal = ({
                 className={`font-medium ${
                   isDarkMode ? "text-white" : "text-gray-800"
                 }`}
-              >
-                {new Date(record.date).toLocaleDateString("id-ID", {
+              >                {new Date(record.date).toLocaleDateString("id-ID", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
@@ -672,10 +649,33 @@ const DetailModal = ({
                 }`}
               >
                 {record.type === "Masuk"
-                  ? `Absensi ${record.period}`
+                  ? `Absensi ${record.period || "Tidak diketahui"}`
                   : record.type}
               </Text>
             </View>
+
+            {/* Attendance Period (if applicable) */}
+            {record.type === "Masuk" && record.period && (
+              <View className="flex-row justify-between mb-3">
+                <Text
+                  className={`font-medium ${
+                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
+                  Periode:
+                </Text>                <Text
+                  className={`font-medium ${
+                    isDarkMode ? "text-white" : "text-gray-800"
+                  }`}
+                >
+                  {record.period === "Datang" 
+                    ? "Masuk" 
+                    : record.period === "Pulang" 
+                      ? "Pulang" 
+                      : record.period || "Tidak diketahui"}
+                </Text>
+              </View>
+            )}
 
             {/* Status */}
             {record.approval_status && (
@@ -713,9 +713,7 @@ const DetailModal = ({
                   </Text>
                 </View>
               </View>
-            )}
-
-            {/* Timestamp */}
+            )}            {/* Timestamp */}
             {record.timestamp && (
               <View className="flex-row justify-between mb-3">
                 <Text
@@ -730,11 +728,13 @@ const DetailModal = ({
                     isDarkMode ? "text-white" : "text-gray-800"
                   }`}
                 >
-                  {new Date(record.timestamp).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })}
+                  {record.timestamp && record.timestamp.includes("T")
+                    ? new Date(record.timestamp).toLocaleTimeString("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })
+                    : "Waktu tidak tersedia"}
                 </Text>
               </View>
             )}
@@ -786,9 +786,8 @@ const DetailModal = ({
 };
 
 // ========== MAIN COMPONENT ==========
-export default function Riwayat() {
-  const user = useAuthStore((state) => state.user);
-  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+export default function Riwayat() {  const user = useAuthStore((state: any) => state.user);
+  const isDarkMode = useThemeStore((state: any) => state.isDarkMode);
   const router = useRouter();
 
   const [activeView, setActiveView] = useState<ViewType>("hariIni");
@@ -831,16 +830,15 @@ export default function Riwayat() {
     return Object.entries(grouped)
       .map(([date, records]) => ({ date, records }))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [attendanceHistory.data]);
-
-  // Effects
+  }, [attendanceHistory.data]);  // Effects
   useEffect(() => {
     if (activeView === "hariIni") {
       todaysAttendance.refetch();
     } else {
       attendanceHistory.refetch();
     }
-  }, [activeView, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView, user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -859,6 +857,32 @@ export default function Riwayat() {
       return () => subscription.remove();
     }, [router]),
   );
+  // ====================================================================
+  // ⚠️ DEBUG BUTTONS - JANGAN LUPA HAPUS PAS PRODUCTION! ⚠️
+  // ====================================================================
+  const debugUpdateApprovalStatus = async (status: ApprovalStatus) => {
+    if (!user?.id) return;
+    
+    const todayDateString = formatDate(new Date());
+    
+    try {
+      const { error } = await supabase
+        .from("perizinan")
+        .update({ approval_status: status })
+        .eq("user_id", user.id)
+        .eq("tanggal", todayDateString);
+        
+      if (error) throw error;
+        Alert.alert(
+        "Debug Success",
+        `Approval status berhasil diubah ke: ${status}`,
+      );
+      todaysAttendance.refetch();
+    } catch (error) {
+      console.error("Debug error:", error);
+      Alert.alert("Debug Error", "Gagal mengubah approval status");
+    }
+  };
 
   // Render functions
   const renderTodayView = () => (
@@ -866,6 +890,53 @@ export default function Riwayat() {
       className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
       contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20 }}
     >
+      {/* ⚠️ DEBUG PANEL - HAPUS PAS PRODUCTION! ⚠️ */}
+      <View className={`p-4 rounded-lg mb-4 border-2 border-red-500 ${isDarkMode ? "bg-red-900" : "bg-red-50"}`}>
+        <Text className={`text-center font-bold mb-3 ${isDarkMode ? "text-red-300" : "text-red-800"}`}>
+          🚨 DEBUG PANEL - HAPUS PAS PRODUCTION! 🚨
+        </Text>
+        
+        <View className="flex-row justify-between mb-3">
+          <TouchableOpacity
+            className="bg-yellow-500 py-2 px-3 rounded flex-1 mr-1"
+            onPress={() => debugUpdateApprovalStatus("pending")}
+          >
+            <Text className="text-white text-center text-xs font-bold">PENDING</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="bg-green-500 py-2 px-3 rounded flex-1 mx-1"
+            onPress={() => debugUpdateApprovalStatus("approved")}
+          >
+            <Text className="text-white text-center text-xs font-bold">APPROVED</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="bg-red-500 py-2 px-3 rounded flex-1 ml-1"
+            onPress={() => debugUpdateApprovalStatus("rejected")}
+          >
+            <Text className="text-white text-center text-xs font-bold">REJECTED</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity
+          className="bg-blue-500 py-2 px-4 rounded-lg flex-row items-center justify-center"
+          onPress={() => {
+            todaysAttendance.refetch();
+            Alert.alert(
+              "Data diperbarui",
+              "Riwayat absensi telah diperbarui."
+            );
+          }}
+        >
+          <Ionicons
+            name="refresh"
+            size={20}
+            color="white"
+            className="mr-2"
+          />
+          <Text className="text-white font-bold ml-2">REFRESH DATA</Text>
+        </TouchableOpacity>
+      </View>
+
       {todaysAttendance.loading ? (
         <View className="flex-1 items-center justify-center py-10">
           <ActivityIndicator size="large" color="#0284c7" />
@@ -1006,6 +1077,35 @@ export default function Riwayat() {
                 color={isDarkMode ? "#9ca3af" : "#6b7280"}
               />
             </TouchableOpacity>
+          )}
+
+          {/* Debug and Refresh Buttons - DEBUG MODE ONLY */}
+          {__DEV__ && (
+            <View className="flex-row justify-between mt-4">
+              <TouchableOpacity
+                className="bg-red-600 py-2 px-4 rounded-lg flex-row items-center"
+                onPress={() => {
+                  // Debug: Force error
+                  throw new Error("Debug: Forced error");
+                }}
+              >
+                <Ionicons name="bug" size={20} color="white" className="mr-2" />
+                <Text className="text-white font-semibold">Force Error</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="bg-yellow-600 py-2 px-4 rounded-lg flex-row items-center"
+                onPress={() => {
+                  // Refresh: Re-fetch data
+                  todaysAttendance.refetch();
+                  attendanceHistory.refetch();
+                  Alert.alert("Data diperbarui", "Riwayat absensi telah diperbarui.");
+                }}
+              >
+                <Ionicons name="refresh" size={20} color="white" className="mr-2" />
+                <Text className="text-white font-semibold">Segarkan Data</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       )}
