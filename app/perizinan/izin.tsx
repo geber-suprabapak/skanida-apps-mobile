@@ -186,6 +186,7 @@ export default function PerizinanScreen() {
           deskripsi: description,
           status: false,
           link_foto: publicUrl,
+          tanggal: new Date().toISOString(),
         });
 
         if (insertError) {
@@ -201,6 +202,7 @@ export default function PerizinanScreen() {
                 deskripsi: description,
                 status: false,
                 link_foto: publicUrl,
+                tanggal: new Date().toISOString(),
               });
             if (retryError) {
               console.error("Supabase retryError object:", retryError);
