@@ -42,6 +42,7 @@ To only run the development server
 
 ## Documentation
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/geber-suprabapak/skanida-apps-mobile)
 [Documentation by DeepWiki](https://deepwiki.com/geber-suprabapak/skanida-apps-mobile)
 
 
