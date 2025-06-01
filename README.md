@@ -9,7 +9,7 @@ Aplikasi absensi siswa SMK Negeri 2 Kota Magelang
 Clone the project
 
 ```bash
-  git clone https://https://github.com/geber-suprabapak/skanida-apps-mobile
+  git clone https://github.com/geber-suprabapak/skanida-apps-mobile
 ```
 
 Go to the project directory
