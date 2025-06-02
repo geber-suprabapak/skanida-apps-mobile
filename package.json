@@ -20,7 +20,7 @@
     "@rn-primitives/slot": "^1.1.0",
     "@rn-primitives/table": "^1.2.0",
     "@rn-primitives/types": "^1.1.0",
-    "@supabase/supabase-js": "2.49.5-next.5",
+    "@supabase/supabase-js": "2.49.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
