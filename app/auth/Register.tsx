@@ -153,13 +153,13 @@ export default function RegisterScreen() {
           <Button
             variant="default"
             size="lg"
-            className={`mb-4 w-full ${
-              isDarkMode ? 'bg-white' : 'bg-black'
-            }`}
+            className={`mb-4 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
             onPress={handleRegister}
             disabled={loading}
           >
-            <H3 className={`font-medium ${isDarkMode ? 'text-black' : 'text-white'}`}>
+            <H3
+              className={`font-medium ${isDarkMode ? "text-black" : "text-white"}`}
+            >
               {loading ? "Loading..." : "Daftar"}
             </H3>
           </Button>

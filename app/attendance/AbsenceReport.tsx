@@ -280,26 +280,95 @@ const AbsenceReport = () => {
         const { data: lastAbsenceData, error: lastAbsenceError } =
           await supabase
             .from("absences")
-            .select("status")
+            .select("status, created_at")
             .eq("user_id", currentUserId)
             .eq("date", todayDateString)
             .order("created_at", { ascending: false })
             .limit(1)
             .single();
 
-        if (lastAbsenceError && lastAbsenceError.code !== "PGRST116") {
-          logger.error("Database query failed", lastAbsenceError);
-          setStatusMessage(
-            `Gagal memeriksa status absensi: ${lastAbsenceError.message}`,
-          );
-          return null;
+        if (lastAbsenceError) {
+          if (lastAbsenceError.code === "PGRST116") {
+            // No data found for today - check if there's any record from previous days
+            logger.info("No absence record found for today (PGRST116)");
+
+            // Query for the most recent absence record regardless of date
+            const { data: lastAnyAbsenceData, error: lastAnyAbsenceError } =
+              await supabase
+                .from("absences")
+                .select("status, created_at, date")
+                .eq("user_id", currentUserId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+
+            if (
+              lastAnyAbsenceError &&
+              lastAnyAbsenceError.code !== "PGRST116"
+            ) {
+              logger.error(
+                "Error querying previous absence records",
+                lastAnyAbsenceError,
+              );
+              setStatusMessage(
+                `Gagal memeriksa riwayat absensi: ${lastAnyAbsenceError.message}`,
+              );
+              return null;
+            }
+
+            if (lastAnyAbsenceData) {
+              const lastAbsenceDate = new Date(lastAnyAbsenceData.created_at)
+                .toISOString()
+                .split("T")[0];
+              logger.info("Found previous absence record", {
+                status: lastAnyAbsenceData.status,
+                date: lastAnyAbsenceData.date,
+                createdDate: lastAbsenceDate,
+                today: todayDateString,
+              });
+
+              // If the last record is from a previous day, allow morning attendance
+              if (lastAbsenceDate !== todayDateString) {
+                logger.info(
+                  "Last absence record is from previous day, allowing morning attendance",
+                );
+                return "present";
+              }
+            }
+
+            // No previous records or same day record, default to morning attendance
+            logger.info("Defaulting to morning attendance (present)");
+            return "present";
+          } else {
+            logger.error("Database query failed", lastAbsenceError);
+            setStatusMessage(
+              `Gagal memeriksa status absensi: ${lastAbsenceError.message}`,
+            );
+            return null;
+          }
         }
 
         if (lastAbsenceData) {
+          // Check if the record is actually from today by comparing created_at date
+          const recordDate = new Date(lastAbsenceData.created_at)
+            .toISOString()
+            .split("T")[0];
+
           logger.info("Found existing absence record", {
             status: lastAbsenceData.status,
+            recordDate,
+            today: todayDateString,
           });
 
+          // If the record is from a previous day, allow morning attendance
+          if (recordDate !== todayDateString) {
+            logger.info(
+              "Found record is from previous day, allowing morning attendance",
+            );
+            return "present";
+          }
+
+          // Record is from today, check status
           switch (lastAbsenceData.status) {
             case "Hadir":
               setMorningAbsenceCompleted(todayDateString);
@@ -316,6 +385,7 @@ const AbsenceReport = () => {
               return "present";
           }
         } else {
+          // This should not happen after handling PGRST116, but keeping as fallback
           logger.info(
             "No absence record found for today, proceeding with morning attendance",
           );
@@ -420,10 +490,6 @@ const AbsenceReport = () => {
         setStatusMessage(
           `${absenceType === "present" ? "Absen Masuk" : "Absen Pulang"}: Lokasi terverifikasi (${Math.round(distance)}m). Lanjut ke kamera.`,
         );
-
-        if (absenceType === "present") {
-          setMorningAbsenceCompleted(todayDateString);
-        }
       } else {
         logger.warn("Location verification failed - out of range", {
           distance: Math.round(distance),

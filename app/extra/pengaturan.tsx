@@ -1,5 +1,6 @@
 // app/pengaturan/pengaturan.tsx
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
@@ -11,7 +12,6 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -38,12 +38,13 @@ export default function Pengaturan() {
   useEffect(() => {
     const fetchProfileDataAndUpdateState = async () => {
       if (!user) {
-        setProfileFullName("Pengguna Skanida"); 
+        setProfileFullName("Pengguna Skanida");
         setProfileAvatarUrl(null);
         return;
       }
 
-      let currentName = user.user_metadata?.name || user.email || "Pengguna Skanida";
+      let currentName =
+        user.user_metadata?.name || user.email || "Pengguna Skanida";
       let currentAvatar = user.user_metadata?.avatar_url || null;
 
       try {
@@ -59,14 +60,11 @@ export default function Pengaturan() {
             profileError.message,
           );
         } else if (userProfile) {
-          currentName = userProfile.full_name || currentName; 
-          currentAvatar = userProfile.avatar_url || currentAvatar; 
+          currentName = userProfile.full_name || currentName;
+          currentAvatar = userProfile.avatar_url || currentAvatar;
         }
       } catch (err) {
-        console.error(
-          "Pengaturan: Unexpected error fetching profile:",
-          err,
-        );
+        console.error("Pengaturan: Unexpected error fetching profile:", err);
       }
       setProfileFullName(currentName);
       setProfileAvatarUrl(currentAvatar);
@@ -74,7 +72,7 @@ export default function Pengaturan() {
 
     if (isFocused && user) {
       fetchProfileDataAndUpdateState();
-    } else if (!user) { 
+    } else if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
     }
@@ -240,7 +238,8 @@ export default function Pengaturan() {
                   isDarkMode ? "text-white" : "text-card-foreground"
                 }`}
               >
-                Hey, {profileFullName || user?.email?.split("@")[0] || "Pengguna"}!
+                Hey,{" "}
+                {profileFullName || user?.email?.split("@")[0] || "Pengguna"}!
               </Text>
               <Text
                 className={`text-sm mt-1 ${

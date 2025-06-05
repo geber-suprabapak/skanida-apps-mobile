@@ -72,9 +72,7 @@ export default function Login() {
     >
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6 bg-white">
         <View>
-          <H1 className="mb-2 text-center text-foreground">
-            Selamat Datang
-          </H1>
+          <H1 className="mb-2 text-center text-foreground">Selamat Datang</H1>
         </View>
 
         <View>
@@ -120,11 +118,13 @@ export default function Login() {
           <Button
             variant="default"
             size="lg"
-            className={`mb-4 w-full ${isDarkMode ? 'bg-white' : 'bg-black'}`}
+            className={`mb-4 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
             onPress={handleLogin}
             disabled={loading}
           >
-            <H3 className={`font-medium text-center ${isDarkMode ? 'text-black' : 'text-white'}`}>
+            <H3
+              className={`font-medium text-center ${isDarkMode ? "text-black" : "text-white"}`}
+            >
               {loading ? "Loading..." : "Masuk"}
             </H3>
           </Button>
@@ -132,13 +132,9 @@ export default function Login() {
 
         <View>
           <View className="flex-row justify-center mt-4">
-            <Text className="text-muted-foreground">
-              Belum memiliki akun?{" "}
-            </Text>
+            <Text className="text-muted-foreground">Belum memiliki akun? </Text>
             <TouchableOpacity onPress={() => router.push("/auth/Register")}>
-              <Text className="font-semibold text-foreground">
-                Daftar
-              </Text>
+              <Text className="font-semibold text-foreground">Daftar</Text>
             </TouchableOpacity>
           </View>
         </View>

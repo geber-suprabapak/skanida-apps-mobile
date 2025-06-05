@@ -21,7 +21,7 @@ import { useIsFocused } from "@react-navigation/native"; // Import useIsFocused
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
-import { H1, H2, H3, Large, H4 } from "~/components/ui/typography"; // Import Large and H4, removed Small
+import { H1, H2, H3, H4, Large } from "~/components/ui/typography"; // Import typography components
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore"; // Import theme store
 import { supabase } from "~/utils/supabase";
@@ -123,8 +123,7 @@ export default function Dashboard() {
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToEditProfile = () => router.push("/profile/EditProfile"); // New handler for EditProfile
-  const navigateToPerizinan = () => router.push("/perizinan"); // New handler for Perizinan
+  const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
 
   // Prevent back navigation
   useEffect(() => {
@@ -171,16 +170,6 @@ export default function Dashboard() {
                   Image.resolveAssetSource(fallbackProfileImage).uri
                 } // Use the avatar URL from profile data or metadata
               />
-              {/* Pencil icon positioned at bottom-right of avatar */}
-              <TouchableOpacity
-                className="absolute bottom-2 right-0"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.7}
-              >
-                <View className="bg-white rounded-full p-1 border border-gray-300">
-                  <Feather name="edit-2" size={14} color="black" />
-                </View>
-              </TouchableOpacity>
             </View>
             <H2 className="text-white mb-1">{displayName}</H2>
             <H3 className="text-white">{formattedTime}</H3>

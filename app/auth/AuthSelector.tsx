@@ -34,20 +34,24 @@ export default function LoginScreen() {
           <Button
             variant="default"
             size="lg"
-            className={`mb-5 w-full ${isDarkMode ? 'bg-white' : 'bg-black'}`}
+            className={`mb-5 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
             onPress={() => router.push("/auth/Login")}
           >
-            <H3 className={`font-bold ${isDarkMode ? 'text-black' : 'text-white'}`}>
+            <H3
+              className={`font-bold ${isDarkMode ? "text-black" : "text-white"}`}
+            >
               Masuk
             </H3>
           </Button>
           <Button
             variant="default"
             size="lg"
-            className={`mb-5 w-full ${isDarkMode ? 'bg-white' : 'bg-black'}`}
+            className={`mb-5 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
             onPress={() => router.push("/auth/Register")}
           >
-            <H3 className={`font-bold ${isDarkMode ? 'text-black' : 'text-white'}`}>
+            <H3
+              className={`font-bold ${isDarkMode ? "text-black" : "text-white"}`}
+            >
               Daftar
             </H3>
           </Button>

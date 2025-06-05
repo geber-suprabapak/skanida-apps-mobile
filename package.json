@@ -1,6 +1,6 @@
 {
-  "name": "skanida-apps-mobile-rebuild",
-  "version": "1.0.0",
+  "name": "skanida-apps-mobile",
+  "version": "0.3.0",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
@@ -9,9 +9,8 @@
     "prebuild": "expo prebuild",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
-    "prettier:format": "prettier --write \"**/*.{ts,tsx,js,md,mdx,css,yaml}\"",
-    "prettier:check": "prettier --check \"**/*.{ts,tsx,js,md,mdx,css,yaml}\"",
-    "web": "expo start --web"
+    "prettier:format": "prettier --write \"**/*.{tsx,css}\"",
+    "prettier:check": "prettier --check \"**/*.{tsx,css}\""
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",
@@ -19,9 +18,9 @@
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/native": "^7.1.6",
     "@rn-primitives/slot": "^1.1.0",
+    "@rn-primitives/table": "^1.2.0",
     "@rn-primitives/types": "^1.1.0",
     "@supabase/supabase-js": "2.49.5-next.5",
-    "@types/react-navigation": "^3.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -38,13 +37,13 @@
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "~5.0.7",
     "expo-web-browser": "~14.1.6",
-    "nativewind": "latest",
+    "nativewind": "4.1.21",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
     "react-native-gesture-handler": "~2.25.0",
     "react-native-reanimated": "3.17.5",
-    "react-native-safe-area-context": "5.4.0",
+    "react-native-safe-area-context": "5.4.1",
     "react-native-screens": "~4.10.0",
     "react-native-web": "~0.20.0",
     "tailwind-merge": "^3.2.0",
@@ -54,18 +53,15 @@
   "devDependencies": {
     "@babel/core": "^7.26.10",
     "@types/react": "~19.0.14",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "eslint": "^8.57.1",
-    "eslint-config-universe": "^14.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.27.0",
+    "eslint-config-expo": "~9.2.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
     "prettier": "^3.5.3",
-    "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.3"
-  },
-  "eslintConfig": {
-    "extends": "universe/native",
-    "root": true
   },
   "private": true,
   "packageManager": "pnpm@10.8.1"
