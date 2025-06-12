@@ -12,6 +12,7 @@ import { Text } from "~/components/ui/text";
 import { H1, P, H3 } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
+import { ChevronLeft } from "../../lib/icons/ChevronLeft";
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState("");
@@ -85,6 +86,14 @@ export default function RegisterScreen() {
         className="flex-1 pt-10 bg-white"
         edges={["top", "left", "right"]}
       >
+        <View className="absolute left-0 top-0 z-10 p-4">
+          <TouchableOpacity onPress={() => router.back()}>
+            <ChevronLeft
+              size={28}
+              color={isDarkColorScheme ? "black" : "black"}
+            />
+          </TouchableOpacity>
+        </View>
         <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6 bg-white">
           <View>
             <H1 className="mb-2 text-center text-foreground">Daftar Akun</H1>
