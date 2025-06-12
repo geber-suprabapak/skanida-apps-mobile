@@ -23,9 +23,8 @@ import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
 import { H1, H2, H3, H4, Large } from "~/components/ui/typography"; // Import typography components
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore"; // Import theme store
 import { supabase } from "~/utils/supabase";
-
+import { useColorScheme } from "~/lib/useColorScheme";
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
 
@@ -41,7 +40,7 @@ interface UserProfile {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const { isDarkMode } = useThemeStore(); // Get theme state
+  const { isDarkColorScheme, setColorScheme } = useColorScheme();
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
@@ -150,11 +149,13 @@ export default function Dashboard() {
       />
       {/* Apply dynamic background based on theme */}
       <SafeAreaView
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
         edges={["top"]}
       >
         {/* Main container with theme-based background */}
-        <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+        <View
+          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
+        >
           {/* --- Header Section (Black Background) --- */}
           {/* Header can stay black in both themes */}
           <View className="bg-black items-center py-5">
@@ -177,7 +178,7 @@ export default function Dashboard() {
 
           {/* --- Content Section (Scrollable, Theme-based Background) --- */}
           <ScrollView
-            className={`flex-1 px-5 pt-6 ${isDarkMode ? "bg-gray-900" : "bg-white"}`} // Added theme colors
+            className={`flex-1 px-5 pt-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`} // Added theme colors
             contentContainerStyle={{ paddingBottom: 20 }} // Ensure padding at the bottom
             showsVerticalScrollIndicator={false}
           >
@@ -193,7 +194,7 @@ export default function Dashboard() {
                   <AntDesign name="login" size={40} color="white" />
                 </View>
                 <H1
-                  className={`font-semibold text-center ${isDarkMode ? "text-white" : "text-black"}`}
+                  className={`font-semibold text-center ${isDarkColorScheme ? "text-white" : "text-black"}`}
                 >
                   Presensi
                 </H1>
@@ -249,12 +250,14 @@ export default function Dashboard() {
           {/* --- Footer Section with theme colors --- */}
           <View
             className={`items-start px-5 py-4 ${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-background border-border"
             } border-t`}
           >
-            <H4 className={isDarkMode ? "text-white" : "text-foreground"}>
+            <H4
+              className={isDarkColorScheme ? "text-white" : "text-foreground"}
+            >
               Version 0.4.0
             </H4>
           </View>

@@ -127,7 +127,6 @@ const CameraAttendance = () => {
   const params = useLocalSearchParams();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const { isDarkMode } = useThemeStore();
 
   // --- STATE ---
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>("back");

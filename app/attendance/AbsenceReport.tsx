@@ -17,6 +17,7 @@ import {
 import { Text } from "~/components/ui/text";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+import { useColorScheme } from "~/lib/useColorScheme";
 
 // --- TYPES AND INTERFACES ---
 interface NetInfoState {
@@ -35,6 +36,7 @@ type AbsenceType = "present" | "home";
 type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
 
 // --- CONSTANTS ---
+
 const SCHOOL_COORDINATES = {
   latitude: -7.4503,
   longitude: 110.2241,
@@ -89,7 +91,7 @@ try {
 // --- MAIN COMPONENT ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
-  const { isDarkMode } = useThemeStore();
+  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
 
   // Core state
@@ -556,34 +558,34 @@ const AbsenceReport = () => {
 
   const getStatusColor = () => {
     if (locationStatus === "verified" && canProceedToCamera) {
-      return isDarkMode ? "rgb(34, 197, 94)" : "rgb(22, 163, 74)";
+      return isDarkColorScheme ? "rgb(34, 197, 94)" : "rgb(22, 163, 74)";
     }
     if (locationStatus === "out_of_range" || locationStatus === "failed") {
-      return isDarkMode ? "rgb(239, 68, 68)" : "rgb(220, 38, 38)";
+      return isDarkColorScheme ? "rgb(239, 68, 68)" : "rgb(220, 38, 38)";
     }
-    return isDarkMode ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)";
+    return isDarkColorScheme ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)";
   };
 
   // --- RENDER ---
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkMode ? "bg-gray-950" : "bg-gray-100"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-950" : "bg-gray-100"}`}
     >
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Custom Header */}
       <View
-        className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-gray-300 bg-white"}`}
+        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-gray-300 bg-white"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
           <Ionicons
             name="arrow-back"
             size={24}
-            color={isDarkMode ? "white" : "black"}
+            color={isDarkColorScheme ? "white" : "black"}
           />
         </TouchableOpacity>
         <Text
-          className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-black"}`}
+          className={`text-xl font-semibold ${isDarkColorScheme ? "text-white" : "text-black"}`}
         >
           Lapor Absensi
         </Text>
@@ -591,16 +593,16 @@ const AbsenceReport = () => {
 
       {/* Main Content */}
       <View
-        className={`flex-1 px-4 py-6 justify-center items-center ${isDarkMode ? "bg-gray-950" : "bg-gray-100"}`}
+        className={`flex-1 px-4 py-6 justify-center items-center ${isDarkColorScheme ? "bg-gray-950" : "bg-gray-100"}`}
       >
         {isLoading ? (
           <ActivityIndicator
             size="large"
-            color={isDarkMode ? "white" : "black"}
+            color={isDarkColorScheme ? "white" : "black"}
           />
         ) : (
           <Card
-            className={`w-full max-w-md ${isDarkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+            className={`w-full max-w-md ${isDarkColorScheme ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
           >
             <CardHeader className="items-center">
               <MaterialIcons
@@ -611,12 +613,12 @@ const AbsenceReport = () => {
             </CardHeader>
             <CardContent className="items-center">
               <CardTitle
-                className={`text-xl text-center mb-2 ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                className={`text-xl text-center mb-2 ${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
               >
                 Status Absensi
               </CardTitle>
               <CardDescription
-                className={`text-base text-center mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+                className={`text-base text-center mb-4 ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
               >
                 {statusMessage}
               </CardDescription>
@@ -626,17 +628,17 @@ const AbsenceReport = () => {
                 canProceedToCamera &&
                 currentAbsenceType && (
                   <View
-                    className={`p-3 rounded-md ${isDarkMode ? "bg-green-700" : "bg-green-100"} w-full items-center`}
+                    className={`p-3 rounded-md ${isDarkColorScheme ? "bg-green-700" : "bg-green-100"} w-full items-center`}
                   >
                     <Text
-                      className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-green-700"}`}
+                      className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-green-700"}`}
                     >
                       {currentAbsenceType === "present"
                         ? "Siap untuk Absen Masuk"
                         : "Siap untuk Absen Pulang"}
                     </Text>
                     <Text
-                      className={`text-sm ${isDarkMode ? "text-green-200" : "text-green-600"}`}
+                      className={`text-sm ${isDarkColorScheme ? "text-green-200" : "text-green-600"}`}
                     >
                       Anda akan diarahkan ke kamera.
                     </Text>
@@ -647,15 +649,15 @@ const AbsenceReport = () => {
               {(locationStatus === "out_of_range" ||
                 locationStatus === "failed") && (
                 <View
-                  className={`p-3 rounded-md ${isDarkMode ? "bg-red-700" : "bg-red-100"} w-full items-center`}
+                  className={`p-3 rounded-md ${isDarkColorScheme ? "bg-red-700" : "bg-red-100"} w-full items-center`}
                 >
                   <Text
-                    className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-red-700"}`}
+                    className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-red-700"}`}
                   >
                     Tidak Dapat Melanjutkan
                   </Text>
                   <Text
-                    className={`text-sm ${isDarkMode ? "text-red-200" : "text-red-600"}`}
+                    className={`text-sm ${isDarkColorScheme ? "text-red-200" : "text-red-600"}`}
                   >
                     {locationStatus === "out_of_range"
                       ? "Anda berada di luar jangkauan sekolah."
@@ -669,15 +671,15 @@ const AbsenceReport = () => {
                 !isLoading &&
                 statusMessage.includes("sudah menyelesaikan absensi") && (
                   <View
-                    className={`p-3 rounded-md ${isDarkMode ? "bg-sky-700" : "bg-sky-100"} w-full items-center`}
+                    className={`p-3 rounded-md ${isDarkColorScheme ? "bg-sky-700" : "bg-sky-100"} w-full items-center`}
                   >
                     <Text
-                      className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-sky-700"}`}
+                      className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-sky-700"}`}
                     >
                       Absensi Selesai
                     </Text>
                     <Text
-                      className={`text-sm ${isDarkMode ? "text-sky-200" : "text-sky-600"}`}
+                      className={`text-sm ${isDarkColorScheme ? "text-sky-200" : "text-sky-600"}`}
                     >
                       Tidak ada tindakan lebih lanjut untuk hari ini.
                     </Text>
@@ -690,18 +692,18 @@ const AbsenceReport = () => {
         {/* Refresh Button */}
         <Button
           variant="outline"
-          className={`mt-8 w-full max-w-md ${isDarkMode ? "border-sky-600 bg-gray-800 hover:bg-gray-700" : "border-sky-500 bg-white hover:bg-gray-50"}`}
+          className={`mt-8 w-full max-w-md ${isDarkColorScheme ? "border-sky-600 bg-gray-800 hover:bg-gray-700" : "border-sky-500 bg-white hover:bg-gray-50"}`}
           onPress={performFullAbsenceCheck}
           disabled={isLoading}
         >
           <Ionicons
             name={isLoading ? "hourglass-outline" : "refresh-outline"}
             size={20}
-            color={isDarkMode ? "#38bdf8" : "#0ea5e9"}
+            color={isDarkColorScheme ? "#38bdf8" : "#0ea5e9"}
             style={{ marginRight: 8 }}
           />
           <Text
-            className={`${isDarkMode ? "text-sky-400" : "text-sky-600"} font-medium`}
+            className={`${isDarkColorScheme ? "text-sky-400" : "text-sky-600"} font-medium`}
           >
             {isLoading ? "Memeriksa..." : "Segarkan Status"}
           </Text>

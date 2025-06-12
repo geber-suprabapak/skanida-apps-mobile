@@ -5,8 +5,6 @@ import { Text } from "~/components/ui/text";
 import useThemeStore from "~/store/themeStore";
 
 const LoadingScreen = () => {
-  const { isDarkMode } = useThemeStore();
-
   return (
     <View className="flex-1 justify-center items-center bg-background">
       <Image

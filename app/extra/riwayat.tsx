@@ -20,6 +20,7 @@ import { supabase } from "../../utils/supabase";
 import useAuthStore from "../../store/authStore";
 import useThemeStore from "../../store/themeStore";
 import { Button } from "../../components/ui/button";
+import { useColorScheme } from "~/lib/useColorScheme";
 
 // ========== TYPES ==========
 type AttendanceType = "Masuk" | "Izin" | "Sakit";
@@ -47,8 +48,6 @@ interface TodaysAttendance {
 
 type ViewType = "hariIni" | "bulanIni";
 
-// ========== CONSTANTS ==========
-// (removed unused MONTHS constant)
 
 // ========== UTILS ==========
 const formatDate = (date: Date): string => {
@@ -350,12 +349,12 @@ const LeaveStatusCard = ({
 const AttendanceItem = ({
   date,
   records,
-  isDarkMode,
+  isDarkColorScheme,
   onPress,
 }: {
   date: string;
   records: AttendanceRecord[];
-  isDarkMode: boolean;
+  isDarkColorScheme: boolean;
   onPress: () => void;
 }) => {
   const isToday = date === formatDate(new Date());
@@ -381,8 +380,8 @@ const AttendanceItem = ({
   return (
     <TouchableOpacity
       className={`flex-row p-4 rounded-lg mb-2 ${
-        isDarkMode ? "bg-gray-800" : "bg-white"
-      } ${isToday ? (isDarkMode ? "border border-blue-700" : "border border-blue-500") : ""}`}
+        isDarkColorScheme ? "bg-gray-800" : "bg-white"
+      } ${isToday ? (isDarkColorScheme ? "border border-blue-700" : "border border-blue-500") : ""}`}
       onPress={onPress}
     >
       {/* Date column */}
@@ -392,21 +391,21 @@ const AttendanceItem = ({
       >
         <Text
           className={`font-bold text-lg ${
-            isDarkMode ? "text-white" : "text-gray-800"
+            isDarkColorScheme ? "text-white" : "text-gray-800"
           } ${isToday ? "text-blue-600" : ""}`}
         >
           {formattedDate.split(" ")[0]}
         </Text>
         <Text
           className={`text-xs ${
-            isDarkMode ? "text-gray-400" : "text-gray-600"
+            isDarkColorScheme ? "text-gray-400" : "text-gray-600"
           } ${isToday ? "text-blue-600" : ""}`}
         >
           {formattedDate.split(" ")[1]}
         </Text>
         <Text
           className={`text-xs mt-1 ${
-            isDarkMode ? "text-gray-400" : "text-gray-600"
+            isDarkColorScheme ? "text-gray-400" : "text-gray-600"
           } ${isToday ? "text-blue-600" : ""}`}
         >
           {dayName}
@@ -434,7 +433,7 @@ const AttendanceItem = ({
               />
               <Text
                 className={`ml-2 font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-800"
+                  isDarkColorScheme ? "text-white" : "text-gray-800"
                 }`}
               >
                 {leaveRecord.type}
@@ -472,7 +471,7 @@ const AttendanceItem = ({
             {leaveRecord.description && (
               <Text
                 className={`mt-1 text-xs ${
-                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                  isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                 }`}
                 numberOfLines={1}
               >
@@ -490,7 +489,7 @@ const AttendanceItem = ({
               />
               <Text
                 className={`ml-2 font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-800"
+                  isDarkColorScheme ? "text-white" : "text-gray-800"
                 }`}
               >
                 Hadir
@@ -498,7 +497,7 @@ const AttendanceItem = ({
                 <>
                   <Text
                     className={`ml-2 text-sm ${
-                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
                     ({formatTime(clockInRecord.timestamp || "") !== "N/A" 
@@ -512,14 +511,14 @@ const AttendanceItem = ({
               {clockInRecord && (
                 <View className="flex-row items-center">                  <Text
                     className={`text-xs ${
-                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
                     Masuk:
                   </Text>
                   <Text
                     className={`ml-1 text-xs font-medium ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
                     {formatTime(clockInRecord.timestamp || "") !== "N/A"
@@ -532,14 +531,14 @@ const AttendanceItem = ({
               {clockOutRecord && (
                 <View className="flex-row items-center ml-3">                  <Text
                     className={`text-xs ${
-                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
                     Pulang:
                   </Text>
                   <Text
                     className={`ml-1 text-xs font-medium ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
                     {formatTime(clockOutRecord.timestamp || "") !== "N/A"
@@ -556,7 +555,7 @@ const AttendanceItem = ({
       <Ionicons
         name="chevron-forward"
         size={18}
-        color={isDarkMode ? "#9ca3af" : "#6b7280"}
+        color={isDarkColorScheme ? "#9ca3af" : "#6b7280"}
       />
     </TouchableOpacity>
   );
@@ -565,12 +564,12 @@ const AttendanceItem = ({
 const DetailModal = ({
   record,
   visible,
-  isDarkMode,
+  isDarkColorScheme,
   onClose,
 }: {
   record: AttendanceRecord | null;
   visible: boolean;
-  isDarkMode: boolean;
+  isDarkColorScheme: boolean;
   onClose: () => void;
 }) => {
   if (!record) return null;
@@ -590,7 +589,7 @@ const DetailModal = ({
       >
         <View
           className={`p-4 rounded-t-3xl ${
-            isDarkMode ? "bg-gray-900" : "bg-white"
+            isDarkColorScheme ? "bg-gray-900" : "bg-white"
           }`}
           style={{ maxHeight: "80%" }}
           onStartShouldSetResponder={() => true}
@@ -601,7 +600,7 @@ const DetailModal = ({
 
           <Text
             className={`text-xl font-bold mb-4 ${
-              isDarkMode ? "text-white" : "text-gray-800"
+              isDarkColorScheme ? "text-white" : "text-gray-800"
             }`}
           >
             Detail Absensi
@@ -609,21 +608,21 @@ const DetailModal = ({
 
           <View
             className={`p-4 mb-3 rounded-lg ${
-              isDarkMode ? "bg-gray-800" : "bg-gray-100"
+              isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"
             }`}
           >
             {/* Date */}
             <View className="flex-row justify-between mb-3">
               <Text
                 className={`font-medium ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
+                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                 }`}
               >
                 Tanggal:
               </Text>
               <Text
                 className={`font-medium ${
-                  isDarkMode ? "text-white" : "text-gray-800"
+                  isDarkColorScheme ? "text-white" : "text-gray-800"
                 }`}
               >                {new Date(record.date).toLocaleDateString("id-ID", {
                   weekday: "long",
@@ -638,14 +637,14 @@ const DetailModal = ({
             <View className="flex-row justify-between mb-3">
               <Text
                 className={`font-medium ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
+                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                 }`}
               >
                 Jenis:
               </Text>
               <Text
                 className={`font-medium ${
-                  isDarkMode ? "text-white" : "text-gray-800"
+                  isDarkColorScheme ? "text-white" : "text-gray-800"
                 }`}
               >
                 {record.type === "Masuk"
@@ -659,13 +658,13 @@ const DetailModal = ({
               <View className="flex-row justify-between mb-3">
                 <Text
                   className={`font-medium ${
-                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                   }`}
                 >
                   Periode:
                 </Text>                <Text
                   className={`font-medium ${
-                    isDarkMode ? "text-white" : "text-gray-800"
+                    isDarkColorScheme ? "text-white" : "text-gray-800"
                   }`}
                 >
                   {record.period === "Datang" 
@@ -682,7 +681,7 @@ const DetailModal = ({
               <View className="flex-row justify-between mb-3">
                 <Text
                   className={`font-medium ${
-                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                   }`}
                 >
                   Status:
@@ -718,14 +717,14 @@ const DetailModal = ({
               <View className="flex-row justify-between mb-3">
                 <Text
                   className={`font-medium ${
-                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                   }`}
                 >
                   Waktu:
                 </Text>
                 <Text
                   className={`font-medium ${
-                    isDarkMode ? "text-white" : "text-gray-800"
+                    isDarkColorScheme ? "text-white" : "text-gray-800"
                   }`}
                 >
                   {record.timestamp && record.timestamp.includes("T")
@@ -744,13 +743,13 @@ const DetailModal = ({
               <View className="mb-3">
                 <Text
                   className={`font-medium mb-1 ${
-                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                   }`}
                 >
                   Keterangan:
                 </Text>
                 <Text
-                  className={`${isDarkMode ? "text-white" : "text-gray-800"}`}
+                  className={`${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
                 >
                   {record.description}
                 </Text>
@@ -763,7 +762,7 @@ const DetailModal = ({
             <View className="items-center mb-4">
               <Text
                 className={`font-medium mb-2 ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
+                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                 }`}
               >
                 Foto:
@@ -787,7 +786,8 @@ const DetailModal = ({
 
 // ========== MAIN COMPONENT ==========
 export default function Riwayat() {  const user = useAuthStore((state: any) => state.user);
-  const isDarkMode = useThemeStore((state: any) => state.isDarkMode);
+    const { isDarkColorScheme } = useColorScheme();
+
   const router = useRouter();
 
   const [activeView, setActiveView] = useState<ViewType>("hariIni");
@@ -887,12 +887,12 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
   // Render functions
   const renderTodayView = () => (
     <ScrollView
-      className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
       contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20 }}
     >
       {/* ⚠️ DEBUG PANEL - HAPUS PAS PRODUCTION! ⚠️ */}
-      <View className={`p-4 rounded-lg mb-4 border-2 border-red-500 ${isDarkMode ? "bg-red-900" : "bg-red-50"}`}>
-        <Text className={`text-center font-bold mb-3 ${isDarkMode ? "text-red-300" : "text-red-800"}`}>
+      <View className={`p-4 rounded-lg mb-4 border-2 border-red-500 ${isDarkColorScheme ? "bg-red-900" : "bg-red-50"}`}>
+        <Text className={`text-center font-bold mb-3 ${isDarkColorScheme ? "text-red-300" : "text-red-800"}`}>
           🚨 DEBUG PANEL - HAPUS PAS PRODUCTION! 🚨
         </Text>
         
@@ -941,7 +941,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
         <View className="flex-1 items-center justify-center py-10">
           <ActivityIndicator size="large" color="#0284c7" />
           <Text
-            className={`mt-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+            className={`mt-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
           >
             Memuat data absensi...
           </Text>
@@ -949,16 +949,16 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
       ) : (
         <View>
           <View
-            className={`p-4 rounded-lg mb-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            className={`p-4 rounded-lg mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-white"}`}
           >
             <Text
-              className={`text-lg font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-800"}`}
+              className={`text-lg font-bold mb-2 ${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
             >
               Status Absensi Hari Ini
             </Text>
 
             <Text
-              className={`mb-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+              className={`mb-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
             >
               {new Date().toLocaleDateString("id-ID", {
                 weekday: "long",
@@ -1053,7 +1053,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
           {!todaysAttendance.data.hasLeaveRequest && (
             <TouchableOpacity
               className={`p-4 rounded-lg flex-row items-center justify-between mb-4 ${
-                isDarkMode ? "bg-gray-800" : "bg-white"
+                isDarkColorScheme ? "bg-gray-800" : "bg-white"
               }`}
               onPress={() => router.push("/perizinan/izin")}
             >
@@ -1061,11 +1061,11 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
                 <Ionicons
                   name="document-text-outline"
                   size={24}
-                  color={isDarkMode ? "#60a5fa" : "#2563eb"}
+                  color={isDarkColorScheme ? "#60a5fa" : "#2563eb"}
                 />
                 <Text
                   className={`ml-2 font-semibold ${
-                    isDarkMode ? "text-white" : "text-gray-800"
+                    isDarkColorScheme ? "text-white" : "text-gray-800"
                   }`}
                 >
                   Buat Perizinan
@@ -1074,7 +1074,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={isDarkMode ? "#9ca3af" : "#6b7280"}
+                color={isDarkColorScheme ? "#9ca3af" : "#6b7280"}
               />
             </TouchableOpacity>
           )}
@@ -1113,12 +1113,12 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
   );
 
   const renderHistoryView = () => (
-    <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}>
+    <View className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}>
       {attendanceHistory.loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#0284c7" />
           <Text
-            className={`mt-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+            className={`mt-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
           >
             Memuat riwayat absensi...
           </Text>
@@ -1131,7 +1131,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
             <AttendanceItem
               date={item.date}
               records={item.records}
-              isDarkMode={isDarkMode}
+              isDarkColorScheme={isDarkColorScheme}
               onPress={() => {
                 if (item.records.length > 0) {
                   setSelectedRecord(item.records[0]);
@@ -1146,14 +1146,14 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
               <Ionicons name="calendar-outline" size={48} color="#9ca3af" />
               <Text
                 className={`mt-4 font-medium ${
-                  isDarkMode ? "text-gray-400" : "text-gray-500"
+                  isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                 }`}
               >
                 Tidak ada data absensi
               </Text>
               <Text
                 className={`mt-2 text-center ${
-                  isDarkMode ? "text-gray-500" : "text-gray-400"
+                  isDarkColorScheme ? "text-gray-500" : "text-gray-400"
                 }`}
               >
                 Belum ada riwayat absensi untuk bulan ini
@@ -1167,12 +1167,12 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
     >
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className={`p-4 ${isDarkMode ? "bg-gray-800" : "bg-black"}`}>
+      <View className={`p-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-black"}`}>
         <View className="flex-row items-center mb-4">
           <TouchableOpacity onPress={() => router.back()} className="p-1 mr-2">
             <Ionicons name="arrow-back-outline" size={24} color="white" />
@@ -1189,13 +1189,13 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
       {/* View Toggle */}
       <View
         className={`flex-row p-1 rounded-lg m-4 ${
-          isDarkMode ? "bg-gray-700" : "bg-gray-200"
+          isDarkColorScheme ? "bg-gray-700" : "bg-gray-200"
         }`}
       >
         <TouchableOpacity
           className={`flex-1 py-2 px-4 rounded-md items-center justify-center ${
             activeView === "hariIni"
-              ? isDarkMode
+              ? isDarkColorScheme
                 ? "bg-blue-600"
                 : "bg-blue-500"
               : ""
@@ -1206,7 +1206,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
             className={`${
               activeView === "hariIni"
                 ? "text-white"
-                : isDarkMode
+                : isDarkColorScheme
                   ? "text-gray-300"
                   : "text-gray-700"
             } font-medium`}
@@ -1217,7 +1217,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
         <TouchableOpacity
           className={`flex-1 py-2 px-4 rounded-md items-center justify-center ${
             activeView === "bulanIni"
-              ? isDarkMode
+              ? isDarkColorScheme
                 ? "bg-blue-600"
                 : "bg-blue-500"
               : ""
@@ -1228,7 +1228,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
             className={`${
               activeView === "bulanIni"
                 ? "text-white"
-                : isDarkMode
+                : isDarkColorScheme
                   ? "text-gray-300"
                   : "text-gray-700"
             } font-medium`}
@@ -1245,7 +1245,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
       <DetailModal
         record={selectedRecord}
         visible={showDetailModal}
-        isDarkMode={isDarkMode}
+        isDarkColorScheme={isDarkColorScheme}
         onClose={() => setShowDetailModal(false)}
       />
     </SafeAreaView>
