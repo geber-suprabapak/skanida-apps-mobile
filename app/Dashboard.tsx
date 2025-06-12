@@ -1,5 +1,4 @@
 // app/Dashboard.tsx
-import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
@@ -21,6 +20,9 @@ import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { History } from "~/lib/icons/History";
+import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
+import { Settings } from "~/lib/icons/Setings";
+import { UserCheck } from "~/lib/icons/UserCheck";
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
 
@@ -187,7 +189,7 @@ export default function Dashboard() {
                 activeOpacity={0.7}
               >
                 <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
-                  <AntDesign name="login" size={40} color="white" />
+                  <UserCheck size={40} color="white" />
                 </View>
                 <H1
                   className={`font-semibold text-center ${isDarkColorScheme ? "text-white" : "text-black"}`}
@@ -219,7 +221,7 @@ export default function Dashboard() {
                 onPress={navigateToSettings}
               >
                 <View className="flex-row items-center justify-center">
-                  <Ionicons name="settings-outline" size={28} color="white" />
+                  <Settings size={28} color="white" />
                   <Large className="text-white font-medium ml-4">
                     Pengaturan
                   </Large>
@@ -234,7 +236,7 @@ export default function Dashboard() {
                 onPress={navigateToPerizinan}
               >
                 <View className="flex-row items-center justify-center">
-                  <MaterialIcons name="assignment" size={28} color="white" />
+                  <ClipboardPenLine size={28} color="white" />
                   <Large className="text-white font-medium ml-4">
                     Perizinan
                   </Large>
