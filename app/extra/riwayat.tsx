@@ -18,7 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect, Stack } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import useAuthStore from "../../store/authStore";
-import useThemeStore from "../../store/themeStore";
 import { Button } from "../../components/ui/button";
 import { useColorScheme } from "~/lib/useColorScheme";
 

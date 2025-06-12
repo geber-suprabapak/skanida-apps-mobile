@@ -7,7 +7,6 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { H1, H3 } from "~/components/ui/typography";
 import { useColorScheme } from "~/lib/useColorScheme";
-import useThemeStore from "~/store/themeStore";
 
 const SkanidaLogo = require("../../assets/skanida.png");
 

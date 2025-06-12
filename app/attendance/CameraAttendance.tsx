@@ -22,7 +22,6 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { supabase } from "~/utils/supabase";
-import useThemeStore from "~/store/themeStore";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {

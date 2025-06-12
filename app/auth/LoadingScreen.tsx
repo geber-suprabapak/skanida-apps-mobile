@@ -2,7 +2,6 @@ import React from "react";
 import { View, Image } from "react-native";
 
 import { Text } from "~/components/ui/text";
-import useThemeStore from "~/store/themeStore";
 
 const LoadingScreen = () => {
   return (
