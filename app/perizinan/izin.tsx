@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -11,6 +10,12 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
+import { ChevronLeft } from "../../lib/icons/ChevronLeft";
+import { ClipboardPenLine } from "../../lib/icons/ClipboardPenLine";
+import { FileText } from "../../lib/icons/FileText";
+import { Camera } from "../../lib/icons/Camera";
+import { AlertCircle } from "../../lib/icons/AlertCircle";
+import { Trash2, Image as ImageIcon } from "lucide-react-native";
 
 // Types
 type PermitCategory = "sakit" | "pergi";
@@ -526,8 +531,7 @@ export default function PerizinanScreen() {
                 : "bg-gray-100 hover:bg-gray-200"
             }`}
           >
-            <Ionicons
-              name="arrow-back-outline"
+            <ChevronLeft
               size={22}
               color={isDarkColorScheme ? "#fff" : "#374151"}
             />
@@ -570,8 +574,7 @@ export default function PerizinanScreen() {
                     isDarkColorScheme ? "bg-blue-900" : "bg-blue-100"
                   }`}
                 >
-                  <Ionicons
-                    name="options-outline"
+                  <ClipboardPenLine
                     size={20}
                     color={isDarkColorScheme ? "#60A5FA" : "#3B82F6"}
                   />
@@ -624,23 +627,33 @@ export default function PerizinanScreen() {
                               : "bg-gray-200"
                         }`}
                       >
-                        <Ionicons
-                          name={
-                            catValue === "sakit"
-                              ? "medical-outline"
-                              : "airplane-outline"
-                          }
-                          size={24}
-                          color={
-                            category === catValue
-                              ? isDarkColorScheme
-                                ? "#60A5FA"
-                                : "#3B82F6"
-                              : isDarkColorScheme
-                                ? "#9CA3AF"
-                                : "#6B7280"
-                          }
-                        />
+                        {catValue === "sakit" ? (
+                          <AlertCircle
+                            size={24}
+                            color={
+                              category === catValue
+                                ? isDarkColorScheme
+                                  ? "#60A5FA"
+                                  : "#3B82F6"
+                                : isDarkColorScheme
+                                  ? "#9CA3AF"
+                                  : "#6B7280"
+                            }
+                          />
+                        ) : (
+                          <ClipboardPenLine
+                            size={24}
+                            color={
+                              category === catValue
+                                ? isDarkColorScheme
+                                  ? "#60A5FA"
+                                  : "#3B82F6"
+                                : isDarkColorScheme
+                                  ? "#9CA3AF"
+                                  : "#6B7280"
+                            }
+                          />
+                        )}
                       </View>
                       <Text
                         className={`font-semibold text-center ${
@@ -691,8 +704,7 @@ export default function PerizinanScreen() {
                     isDarkColorScheme ? "bg-green-900" : "bg-green-100"
                   }`}
                 >
-                  <Ionicons
-                    name="document-text-outline"
+                  <FileText
                     size={20}
                     color={isDarkColorScheme ? "#34D399" : "#10B981"}
                   />
@@ -781,8 +793,7 @@ export default function PerizinanScreen() {
                     isDarkColorScheme ? "bg-purple-900" : "bg-purple-100"
                   }`}
                 >
-                  <Ionicons
-                    name="camera-outline"
+                  <Camera
                     size={20}
                     color={isDarkColorScheme ? "#A78BFA" : "#8B5CF6"}
                   />
@@ -840,8 +851,7 @@ export default function PerizinanScreen() {
                             isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
                           }`}
                         >
-                          <Ionicons
-                            name="camera-outline"
+                          <Camera
                             size={24}
                             color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                           />
@@ -881,8 +891,7 @@ export default function PerizinanScreen() {
                             isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
                           }`}
                         >
-                          <Ionicons
-                            name="image-outline"
+                          <ImageIcon
                             size={24}
                             color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                           />
@@ -931,8 +940,7 @@ export default function PerizinanScreen() {
                         isDarkColorScheme ? "bg-red-900/80" : "bg-red-100/80"
                       } backdrop-blur-sm`}
                     >
-                      <Ionicons
-                        name="trash-outline"
+                      <Trash2
                         size={20}
                         color={isDarkColorScheme ? "#F87171" : "#EF4444"}
                       />
@@ -1017,8 +1025,7 @@ export default function PerizinanScreen() {
                   </>
                 ) : (
                   <>
-                    <Ionicons
-                      name="paper-plane-outline"
+                    <ClipboardPenLine
                       size={20}
                       color={
                         !description.trim() || description.length < 10
