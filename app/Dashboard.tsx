@@ -1,10 +1,5 @@
 // app/Dashboard.tsx
-import {
-  AntDesign,
-  Ionicons,
-  MaterialIcons,
-  Feather, // Untuk ikon pensil
-} from "@expo/vector-icons";
+import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
@@ -40,7 +35,7 @@ interface UserProfile {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const { isDarkColorScheme, setColorScheme } = useColorScheme();
+  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
