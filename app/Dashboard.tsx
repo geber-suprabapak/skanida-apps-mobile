@@ -20,6 +20,7 @@ import { H1, H2, H3, H4, Large } from "~/components/ui/typography"; // Import ty
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { History } from "~/lib/icons/History";
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
 
@@ -205,7 +206,7 @@ export default function Dashboard() {
                 onPress={navigateToHistory}
               >
                 <View className="flex-row items-center justify-center">
-                  <MaterialIcons name="history" size={28} color="white" />
+                  <History size={28} color="white" />
                   <Large className="text-white font-medium ml-4">Riwayat</Large>
                 </View>
               </Button>
