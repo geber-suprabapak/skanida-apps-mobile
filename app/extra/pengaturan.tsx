@@ -27,8 +27,8 @@ export default function Pengaturan() {
 
   const { isDarkColorScheme, setColorScheme } = useColorScheme();
   // Color Scheme Toggle
-  function toggleColorScheme() {
-    const newTheme = isDarkColorScheme ? "light" : "dark";
+  function toggleColorScheme(): void {
+    const newTheme: 'light' | 'dark' = isDarkColorScheme ? "light" : "dark";
     setColorScheme(newTheme);
   }
 
