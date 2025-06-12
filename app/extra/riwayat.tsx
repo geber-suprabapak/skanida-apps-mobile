@@ -1060,35 +1060,6 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
               />
             </TouchableOpacity>
           )}
-
-          {/* Debug and Refresh Buttons - DEBUG MODE ONLY */}
-          {__DEV__ && (
-            <View className="flex-row justify-between mt-4">
-              <TouchableOpacity
-                className="bg-red-600 py-2 px-4 rounded-lg flex-row items-center"
-                onPress={() => {
-                  // Debug: Force error
-                  throw new Error("Debug: Forced error");
-                }}
-              >
-                <AlertCircle size={20} color="white" className="mr-2" />
-                <Text className="text-white font-semibold">Force Error</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-yellow-600 py-2 px-4 rounded-lg flex-row items-center"
-                onPress={() => {
-                  // Refresh: Re-fetch data
-                  todaysAttendance.refetch();
-                  attendanceHistory.refetch();
-                  Alert.alert("Data diperbarui", "Riwayat absensi telah diperbarui.");
-                }}
-              >
-                <RefreshCw size={20} color="white" className="mr-2" />
-                <Text className="text-white font-semibold">Segarkan Data</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       )}
     </ScrollView>
