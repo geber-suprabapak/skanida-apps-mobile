@@ -14,12 +14,20 @@ import {
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronLeft } from "../../lib/icons/ChevronLeft";
+import { CheckCircle } from "../../lib/icons/CheckCircle";
+import { Clock } from "../../lib/icons/Clock";
+import { FileText } from "../../lib/icons/FileText";
+import { AlertCircle } from "../../lib/icons/AlertCircle";
+import { Calendar } from "../../lib/icons/Calendar";
+import { ChevronRight } from "../../lib/icons/ChevronRight";
+import { RefreshCw } from "../../lib/icons/RefreshCw";
 import { useRouter, useFocusEffect, Stack } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import useAuthStore from "../../store/authStore";
 import { Button } from "../../components/ui/button";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { XCircle } from "lucide-react-native";
 
 // ========== TYPES ==========
 type AttendanceType = "Masuk" | "Izin" | "Sakit";
@@ -254,11 +262,13 @@ const StatusCard = ({
     } mx-1`}
   >
     <View className="flex-row items-center">
-      <Ionicons
-        name={icon as any}
-        size={24}
-        color={isActive ? color : "#9ca3af"}
-      />
+      {icon === "checkmark-circle" ? (
+        <CheckCircle size={24} color={isActive ? color : "#9ca3af"} />
+      ) : icon === "time-outline" ? (
+        <Clock size={24} color={isActive ? color : "#9ca3af"} />
+      ) : (
+        <AlertCircle size={24} color={isActive ? color : "#9ca3af"} />
+      )}
       <Text
         className={`ml-2 font-semibold ${
           isActive ? "text-green-700" : "text-gray-500"
@@ -323,17 +333,13 @@ const LeaveStatusCard = ({
   return (
     <View className={`mt-3 p-3 rounded-lg ${colors.bg}`}>
       <View className="flex-row items-center">
-        <Ionicons
-          name={
-            approvalStatus === "approved"
-              ? "checkmark-circle"
-              : approvalStatus === "rejected"
-                ? "close-circle"
-                : "alert-circle"
-          }
-          size={24}
-          color={colors.icon}
-        />
+        {approvalStatus === "approved" ? (
+          <CheckCircle size={24} color={colors.icon} />
+        ) : approvalStatus === "rejected" ? (
+          <XCircle size={24} color={colors.icon} />
+        ) : (
+          <AlertCircle size={24} color={colors.icon} />
+        )}
         <Text className={`ml-2 font-semibold ${colors.text}`}>
           Perizinan ({leaveType})
         </Text>
@@ -415,21 +421,13 @@ const AttendanceItem = ({
       <View className="flex-1">
         {records.length === 0 ? (
           <View className="flex-row items-center">
-            <Ionicons name="alert-circle-outline" size={18} color="#9ca3af" />
+            <AlertCircle size={18} color="#9ca3af" />
             <Text className="ml-2 text-gray-500">Belum ada data</Text>
           </View>
         ) : leaveRecord ? (
           <View>
             <View className="flex-row items-center">
-              <Ionicons
-                name={
-                  leaveRecord.type === "Sakit"
-                    ? "medical-outline"
-                    : "document-text-outline"
-                }
-                size={18}
-                color={leaveRecord.type === "Sakit" ? "#e11d48" : "#2563eb"}
-              />
+              <FileText size={18} color={leaveRecord.type === "Sakit" ? "#e11d48" : "#2563eb"} />
               <Text
                 className={`ml-2 font-semibold ${
                   isDarkColorScheme ? "text-white" : "text-gray-800"
@@ -481,11 +479,7 @@ const AttendanceItem = ({
         ) : (
           <View>
             <View className="flex-row items-center">
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={18}
-                color="#16a34a"
-              />
+              <CheckCircle size={18} color="#16a34a" />
               <Text
                 className={`ml-2 font-semibold ${
                   isDarkColorScheme ? "text-white" : "text-gray-800"
@@ -551,11 +545,7 @@ const AttendanceItem = ({
         )}
       </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={18}
-        color={isDarkColorScheme ? "#9ca3af" : "#6b7280"}
-      />
+      <ChevronRight size={18} color={isDarkColorScheme ? "#9ca3af" : "#6b7280"} />
     </TouchableOpacity>
   );
 };
@@ -926,12 +916,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
             );
           }}
         >
-          <Ionicons
-            name="refresh"
-            size={20}
-            color="white"
-            className="mr-2"
-          />
+          <RefreshCw size={20} color="white" className="mr-2" />
           <Text className="text-white font-bold ml-2">REFRESH DATA</Text>
         </TouchableOpacity>
       </View>
@@ -1057,8 +1042,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
               onPress={() => router.push("/perizinan/izin")}
             >
               <View className="flex-row items-center">
-                <Ionicons
-                  name="document-text-outline"
+                <FileText
                   size={24}
                   color={isDarkColorScheme ? "#60a5fa" : "#2563eb"}
                 />
@@ -1070,8 +1054,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
                   Buat Perizinan
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
+              <ChevronRight
                 size={20}
                 color={isDarkColorScheme ? "#9ca3af" : "#6b7280"}
               />
@@ -1088,7 +1071,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
                   throw new Error("Debug: Forced error");
                 }}
               >
-                <Ionicons name="bug" size={20} color="white" className="mr-2" />
+                <AlertCircle size={20} color="white" className="mr-2" />
                 <Text className="text-white font-semibold">Force Error</Text>
               </TouchableOpacity>
 
@@ -1101,7 +1084,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
                   Alert.alert("Data diperbarui", "Riwayat absensi telah diperbarui.");
                 }}
               >
-                <Ionicons name="refresh" size={20} color="white" className="mr-2" />
+                <RefreshCw size={20} color="white" className="mr-2" />
                 <Text className="text-white font-semibold">Segarkan Data</Text>
               </TouchableOpacity>
             </View>
@@ -1142,7 +1125,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
           contentContainerStyle={{ padding: 16 }}
           ListEmptyComponent={
             <View className="items-center justify-center py-10">
-              <Ionicons name="calendar-outline" size={48} color="#9ca3af" />
+              <Calendar size={48} color="#9ca3af" />
               <Text
                 className={`mt-4 font-medium ${
                   isDarkColorScheme ? "text-gray-400" : "text-gray-500"
@@ -1174,7 +1157,7 @@ export default function Riwayat() {  const user = useAuthStore((state: any) => s
       <View className={`p-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-black"}`}>
         <View className="flex-row items-center mb-4">
           <TouchableOpacity onPress={() => router.back()} className="p-1 mr-2">
-            <Ionicons name="arrow-back-outline" size={24} color="white" />
+            <ChevronLeft size={24} color="white" />
           </TouchableOpacity>
           <View className="flex-1">
             <Text className="text-xl font-bold text-white text-center">
