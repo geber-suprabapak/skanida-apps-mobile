@@ -16,7 +16,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
+import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
 
 // Define interface for user profile data
@@ -35,7 +35,7 @@ interface UserProfile {
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -360,7 +360,7 @@ export default function EditProfile() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
     >
       <Stack.Screen
         options={{
@@ -369,37 +369,37 @@ export default function EditProfile() {
       />
 
       <View
-        className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
           <Ionicons
             name="arrow-back-outline"
             size={24}
-            color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
+            color={isDarkColorScheme ? "#fff" : "hsl(var(--foreground))"}
           />
         </TouchableOpacity>
         <Text
-          className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-foreground"}`}
+          className={`text-lg font-bold ${isDarkColorScheme ? "text-white" : "text-foreground"}`}
         >
           Edit Profil
         </Text>
       </View>
 
       <ScrollView
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
         contentContainerStyle={{ padding: 24 }}
       >
         <View
-          className={`rounded-xl p-5 shadow-sm mb-4 items-center ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl p-5 shadow-sm mb-4 items-center ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <View className="relative">
             {uploadingAvatar ? (
               <View
-                className={`w-36 h-36 rounded-full items-center justify-center mb-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-300"}`}
+                className={`w-36 h-36 rounded-full items-center justify-center mb-4 ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-300"}`}
               >
                 <ActivityIndicator
                   size="large"
-                  color={isDarkMode ? "#fff" : "#000"}
+                  color={isDarkColorScheme ? "#fff" : "#000"}
                 />
               </View>
             ) : (
@@ -411,13 +411,15 @@ export default function EditProfile() {
                   />
                 ) : (
                   <View
-                    className={`w-36 h-36 rounded-full items-center justify-center ${isDarkMode ? "bg-gray-700" : "bg-gray-300"}`}
+                    className={`w-36 h-36 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-300"}`}
                   >
                     <Ionicons
                       name="person-circle-outline"
                       size={80}
                       color={
-                        isDarkMode ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)"
+                        isDarkColorScheme
+                          ? "rgba(255,255,255,0.4)"
+                          : "rgba(0,0,0,0.4)"
                       }
                     />
                   </View>
@@ -432,17 +434,19 @@ export default function EditProfile() {
             )}
           </View>
 
-          <Text className={isDarkMode ? "text-gray-300" : "text-gray-700"}>
+          <Text
+            className={isDarkColorScheme ? "text-gray-300" : "text-gray-700"}
+          >
             Ketuk ikon kamera untuk mengubah foto profil
           </Text>
         </View>
 
         <View
-          className={`rounded-xl p-5 shadow-sm mb-4 ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl p-5 shadow-sm mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <View className="mb-4">
             <Text
-              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
             >
               Nama
             </Text>
@@ -451,13 +455,15 @@ export default function EditProfile() {
               value={name}
               onChangeText={setName}
               className={
-                isDarkMode ? "border-gray-600 bg-gray-700 text-white " : ""
+                isDarkColorScheme
+                  ? "border-gray-600 bg-gray-700 text-white "
+                  : ""
               }
             />
           </View>
           <View className="mb-4">
             <Text
-              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
             >
               Email
             </Text>
@@ -468,13 +474,15 @@ export default function EditProfile() {
               keyboardType="email-address"
               autoCapitalize="none"
               className={
-                isDarkMode ? "border-gray-600 bg-gray-700 text-white " : ""
+                isDarkColorScheme
+                  ? "border-gray-600 bg-gray-700 text-white "
+                  : ""
               }
             />
           </View>
           <View className="mb-4">
             <Text
-              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
             >
               No. Absen
             </Text>
@@ -484,13 +492,15 @@ export default function EditProfile() {
               onChangeText={setAbsenceNumber}
               keyboardType="numeric"
               className={
-                isDarkMode ? "border-gray-600 bg-gray-700 text-white " : ""
+                isDarkColorScheme
+                  ? "border-gray-600 bg-gray-700 text-white "
+                  : ""
               }
             />
           </View>
           <View className="mb-6">
             <Text
-              className={`mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
             >
               Kelas
             </Text>
@@ -499,32 +509,34 @@ export default function EditProfile() {
               value={className}
               onChangeText={setClassName}
               className={
-                isDarkMode ? "border-gray-600 bg-gray-700 text-white " : ""
+                isDarkColorScheme
+                  ? "border-gray-600 bg-gray-700 text-white "
+                  : ""
               }
             />
           </View>
         </View>
 
         <View
-          className={`rounded-xl p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <Button
             variant="default"
             size="lg"
             disabled={loading}
             onPress={handleSave}
-            className={`mb-4 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
+            className={`mb-4 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
           >
             {loading ? (
               <View className="flex-row items-center justify-center">
                 <ActivityIndicator
                   size="small"
-                  color={isDarkMode ? "#000" : "#fff"}
+                  color={isDarkColorScheme ? "#000" : "#fff"}
                   style={{ marginRight: 8 }}
                 />
                 <Text
                   className={
-                    isDarkMode
+                    isDarkColorScheme
                       ? "text-black font-medium"
                       : "text-white font-medium"
                   }
@@ -535,7 +547,7 @@ export default function EditProfile() {
             ) : (
               <Text
                 className={
-                  isDarkMode
+                  isDarkColorScheme
                     ? "text-black font-medium"
                     : "text-white font-medium"
                 }
