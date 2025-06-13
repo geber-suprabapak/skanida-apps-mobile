@@ -1,9 +1,8 @@
 // --- NECESSARY IMPORTS ---
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Alert, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
@@ -17,6 +16,12 @@ import {
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { RefreshCw } from "~/lib/icons/RefreshCw";
+import { Loader2 } from "~/lib/icons/Loader2";
+import { ChevronLeft } from "../../lib/icons/ChevronLeft";
+import { MapPin } from "~/lib/icons/MapPin";
+import { MapPinOff } from "~/lib/icons/MapPinOff";
+import { HelpCircle } from "~/lib/icons/HelpCircle";
 
 // --- TYPES AND INTERFACES ---
 interface NetInfoState {
@@ -513,7 +518,6 @@ const AbsenceReport = () => {
     requestLocationPermissionAndGet,
     determineAbsenceType,
     calculateDistance,
-    todayDateString,
   ]);
 
   // --- EFFECTS ---
@@ -547,14 +551,6 @@ const AbsenceReport = () => {
   ]);
 
   // --- RENDER HELPERS ---
-  const getStatusIcon = () => {
-    if (locationStatus === "verified" && canProceedToCamera)
-      return "location-on";
-    if (locationStatus === "out_of_range" || locationStatus === "failed")
-      return "location-off";
-    return "help-outline";
-  };
-
   const getStatusColor = () => {
     if (locationStatus === "verified" && canProceedToCamera) {
       return isDarkColorScheme ? "rgb(34, 197, 94)" : "rgb(22, 163, 74)";
@@ -577,8 +573,7 @@ const AbsenceReport = () => {
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-gray-300 bg-white"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-          <Ionicons
-            name="arrow-back"
+          <ChevronLeft
             size={24}
             color={isDarkColorScheme ? "white" : "black"}
           />
@@ -595,20 +590,24 @@ const AbsenceReport = () => {
         className={`flex-1 px-4 py-6 justify-center items-center ${isDarkColorScheme ? "bg-gray-950" : "bg-gray-100"}`}
       >
         {isLoading ? (
-          <ActivityIndicator
-            size="large"
+          <Loader2
+            size={32}
             color={isDarkColorScheme ? "white" : "black"}
+            className="animate-spin"
           />
         ) : (
           <Card
             className={`w-full max-w-md ${isDarkColorScheme ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
           >
             <CardHeader className="items-center">
-              <MaterialIcons
-                name={getStatusIcon()}
-                size={72}
-                color={getStatusColor()}
-              />
+              {locationStatus === "verified" && canProceedToCamera ? (
+                <MapPin size={72} color={getStatusColor()} />
+              ) : locationStatus === "out_of_range" ||
+                locationStatus === "failed" ? (
+                <MapPinOff size={72} color={getStatusColor()} />
+              ) : (
+                <HelpCircle size={72} color={getStatusColor()} />
+              )}
             </CardHeader>
             <CardContent className="items-center">
               <CardTitle
@@ -695,8 +694,7 @@ const AbsenceReport = () => {
           onPress={performFullAbsenceCheck}
           disabled={isLoading}
         >
-          <Ionicons
-            name={isLoading ? "hourglass-outline" : "refresh-outline"}
+          <RefreshCw
             size={20}
             color={isDarkColorScheme ? "#38bdf8" : "#0ea5e9"}
             style={{ marginRight: 8 }}

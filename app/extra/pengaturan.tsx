@@ -1,5 +1,4 @@
 // app/pengaturan/pengaturan.tsx
-import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
@@ -18,6 +17,13 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { User } from "~/lib/icons/User";
+import { Key } from "~/lib/icons/Key";
+import { Moon } from "~/lib/icons/Moon";
+import { Bell } from "~/lib/icons/Bell";
+import { LogOut } from "~/lib/icons/LogOut";
+import { ChevronRight } from "~/lib/icons/ChevronRight";
 
 export default function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -174,13 +180,7 @@ export default function Pengaturan() {
       ) : (
         rightElement
       )}
-      {!rightElement && onPress && (
-        <AntDesign
-          name="right"
-          size={16}
-          color={isDarkColorScheme ? "#fff" : "hsl(var(--muted-foreground))"}
-        />
-      )}
+      {!rightElement && onPress && <ChevronRight size={16} color="#000" />}
     </TouchableOpacity>
   );
 
@@ -197,11 +197,7 @@ export default function Pengaturan() {
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons
-            name="arrow-back-outline"
-            size={24}
-            color={isDarkColorScheme ? "#fff" : "hsl(var(--foreground))"}
-          />
+          <ChevronLeft size={24} color="#000" />
         </TouchableOpacity>
         <Text
           className={`text-lg font-bold ${isDarkColorScheme ? "text-white" : "text-foreground"}`}
@@ -263,29 +259,13 @@ export default function Pengaturan() {
           </View>
 
           <ListItem
-            icon={
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={
-                  isDarkColorScheme ? "#fff" : "hsl(var(--accent-foreground))"
-                }
-              />
-            }
+            icon={<User size={20} color="#000" />}
             title="Edit Profil"
             onPress={() => router.push("/profile/EditProfile")}
           />
 
           <ListItem
-            icon={
-              <Ionicons
-                name="key-outline"
-                size={20}
-                color={
-                  isDarkColorScheme ? "#fff" : "hsl(var(--accent-foreground))"
-                }
-              />
-            }
+            icon={<Key size={20} color="#000" />}
             title="Ubah Password"
             onPress={() => router.push("/profile/ChangePassword")}
             showBorder={false}
@@ -299,15 +279,7 @@ export default function Pengaturan() {
           <SectionHeader title="Preferensi" />
           {/* DarkMode Handler */}
           <ListItem
-            icon={
-              <Ionicons
-                name={isDarkColorScheme ? "moon" : "moon-outline"}
-                size={20}
-                color={
-                  isDarkColorScheme ? "#fff" : "hsl(var(--accent-foreground))"
-                }
-              />
-            }
+            icon={<Moon size={20} color="#000" />}
             title="Mode Gelap"
             rightElement={
               <Switch
@@ -323,15 +295,7 @@ export default function Pengaturan() {
           />
 
           <ListItem
-            icon={
-              <Ionicons
-                name="notifications-outline"
-                size={20}
-                color={
-                  isDarkColorScheme ? "#fff" : "hsl(var(--accent-foreground))"
-                }
-              />
-            }
+            icon={<Bell size={20} color="#000" />}
             title="Notifikasi"
             onPress={() => {}}
             showBorder={false}
@@ -350,12 +314,7 @@ export default function Pengaturan() {
             className="w-full rounded-lg py-3 bg-red-600"
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons
-                name="log-out-outline"
-                size={20}
-                color="#fff"
-                style={{ marginRight: 8 }}
-              />
+              <LogOut size={20} color="#000" style={{ marginRight: 8 }} />
               <Text className="text-white">Keluar</Text>
             </View>
           </Button>
