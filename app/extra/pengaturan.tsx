@@ -17,13 +17,13 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
-import { ChevronLeft } from "../../lib/icons/ChevronLeft";
-import { User } from "../../lib/icons/User";
-import { Key } from "../../lib/icons/Key";
-import { Moon } from "../../lib/icons/Moon";
-import { Bell } from "../../lib/icons/Bell";
-import { LogOut } from "../../lib/icons/LogOut";
-import { ChevronRight } from "../../lib/icons/ChevronRight";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { User } from "~/lib/icons/User";
+import { Key } from "~/lib/icons/Key";
+import { Moon } from "~/lib/icons/Moon";
+import { Bell } from "~/lib/icons/Bell";
+import { LogOut } from "~/lib/icons/LogOut";
+import { ChevronRight } from "~/lib/icons/ChevronRight";
 
 export default function Pengaturan() {
   const user = useAuthStore((state) => state.user);

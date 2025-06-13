@@ -10,11 +10,11 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "../../lib/icons/ChevronLeft";
-import { ClipboardPenLine } from "../../lib/icons/ClipboardPenLine";
-import { FileText } from "../../lib/icons/FileText";
-import { Camera } from "../../lib/icons/Camera";
-import { AlertCircle } from "../../lib/icons/AlertCircle";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
+import { FileText } from "~/lib/icons/FileText";
+import { Camera } from "~/lib/icons/Camera";
+import { AlertCircle } from "~/lib/icons/AlertCircle";
 import { Trash2, Image as ImageIcon } from "lucide-react-native";
 
 // Types

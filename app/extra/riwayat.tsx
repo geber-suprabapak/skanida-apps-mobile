@@ -14,18 +14,18 @@ import {
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft } from "../../lib/icons/ChevronLeft";
-import { CheckCircle } from "../../lib/icons/CheckCircle";
-import { Clock } from "../../lib/icons/Clock";
-import { FileText } from "../../lib/icons/FileText";
-import { AlertCircle } from "../../lib/icons/AlertCircle";
-import { Calendar } from "../../lib/icons/Calendar";
-import { ChevronRight } from "../../lib/icons/ChevronRight";
-import { RefreshCw } from "../../lib/icons/RefreshCw";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { CheckCircle } from "~/lib/icons/CheckCircle";
+import { Clock } from "~/lib/icons/Clock";
+import { FileText } from "~/lib/icons/FileText";
+import { AlertCircle } from "~/lib/icons/AlertCircle";
+import { Calendar } from "~/lib/icons/Calendar";
+import { ChevronRight } from "~/lib/icons/ChevronRight";
+import { RefreshCw } from "~/lib/icons/RefreshCw";
 import { useRouter, useFocusEffect, Stack } from "expo-router";
-import { supabase } from "../../utils/supabase";
-import useAuthStore from "../../store/authStore";
-import { Button } from "../../components/ui/button";
+import { supabase } from "~/utils/supabase";
+import useAuthStore from "~/store/authStore";
+import { Button } from "~/components/ui/button";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { XCircle } from "lucide-react-native";
 

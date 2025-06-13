@@ -4,7 +4,7 @@ import { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import useAuthStore from "../../store/authStore";
+import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -12,7 +12,7 @@ import { Text } from "~/components/ui/text";
 import { H1, P, H3 } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "../../lib/icons/ChevronLeft";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState("");
