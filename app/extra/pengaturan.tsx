@@ -1,21 +1,4 @@
-// app/pengaturan/pengaturan.tsx
-/**
- * Performance Optimized Settings Page
- * 
- * Optimizations implemented:
- * 1. useCallback for memoizing functions to prevent re-creation on renders
- * 2. useMemo for expensive calculations and initial data processing
- * 3. React.memo to prevent unnecessary component re-renders
- * 4. InteractionManager for deferring non-critical operations
- * 5. requestAnimationFrame for smooth navigation transitions
- * 6. Image caching and loading optimizations
- * 7. ScrollView performance props (removeClippedSubviews, scrollEventThrottle)
- * 8. Prefetching utilities for background data loading
- * 9. Debouncing for preventing excessive function calls
- * 10. Optimized state management with minimal re-renders
- * 11. AsyncStorage local caching for profile data with automatic expiry
- * 12. Cache-first loading strategy for instant UI updates
- */
+
 import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
@@ -92,17 +75,17 @@ const getProfileFromCache = async (userId: string): Promise<CachedProfileData | 
     if (!cached) return null;
 
     const cacheData: CachedProfileData = JSON.parse(cached);
-    
+
     // Check if cache is for the same user and not expired
     if (cacheData.userId !== userId) return null;
-    
+
     const hoursSinceCache = (Date.now() - cacheData.timestamp) / (1000 * 60 * 60);
     if (hoursSinceCache > CACHE_EXPIRY_HOURS) {
       // Cache expired, remove it
       await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
       return null;
     }
-    
+
     return cacheData;
   } catch (error) {
     console.log("Failed to get profile from cache:", error);
@@ -138,7 +121,7 @@ function Pengaturan() {
   const isFocused = useIsFocused();
 
   const { isDarkColorScheme, setColorScheme } = useColorScheme();
-  
+
   // Memoize initial profile data to avoid recalculations
   const initialProfileData = useMemo(() => ({
     name: user?.user_metadata?.name || user?.email || "Pengguna Skanida",
@@ -210,10 +193,10 @@ function Pengaturan() {
         } else if (userProfile) {
           const updatedName = userProfile.full_name || user.user_metadata?.name || user.email || "Pengguna Skanida";
           const updatedAvatar = userProfile.avatar_url || user.user_metadata?.avatar_url || null;
-          
+
           // Update cache with fresh data
           await saveProfileToCache(user.id, updatedName, updatedAvatar);
-          
+
           // Only update state if data actually changed to avoid unnecessary re-renders
           if (updatedName !== profileFullName) {
             setProfileFullName(updatedName);
@@ -224,7 +207,8 @@ function Pengaturan() {
         }
       } catch (err) {
         console.error("Pengaturan: Unexpected error fetching profile:", err);
-      }    });
+      }
+    });
   }, [user, profileFullName, profileAvatarUrl]);
 
   // Optimized useEffect with proper dependency management
@@ -237,7 +221,8 @@ function Pengaturan() {
       setIsDataLoaded(true);
     }
   }, [user, isFocused, fetchProfileDataAndUpdateState]);
-  // Optimized logout handler with useCallback and cache clearing
+
+  // Corrected logout handler
   const handleLogout = useCallback(async () => {
     Alert.alert(
       "Logout",
@@ -252,9 +237,14 @@ function Pengaturan() {
           style: "destructive",
           onPress: async () => {
             try {
+              // Sign out from Supabase
               await supabase.auth.signOut();
-              // Clear cached profile data on logout
+              
+              // Clear all local data for a clean logout
               await clearProfileCache();
+              await AsyncStorage.clear(); 
+              
+              // Update state and redirect
               setUser(null);
               router.replace("/auth/AuthSelector");
             } catch (error) {
@@ -317,7 +307,8 @@ function Pengaturan() {
         className={`w-9 h-9 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-accent"} justify-center items-center mr-3`}
       >
         {icon}
-      </View>      <View className="flex-1">
+      </View>
+      <View className="flex-1">
         <Text
           className={`text-base ${
             isDarkColorScheme ? "text-white" : "text-card-foreground"
@@ -334,7 +325,8 @@ function Pengaturan() {
             {subtitle}
           </Text>
         )}
-      </View>      {rightElement && typeof rightElement === "string" ? (
+      </View>
+      {rightElement && typeof rightElement === "string" ? (
         <Text className={isDarkColorScheme ? "text-white" : "text-foreground"}>
           {rightElement}
         </Text>
@@ -342,9 +334,9 @@ function Pengaturan() {
         <>{rightElement}</>
       )}
       {!rightElement && onPress && (
-        <ChevronRight 
-          size={16} 
-          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"} 
+        <ChevronRight
+          size={16}
+          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
         />
       )}
     </TouchableOpacity>
@@ -358,13 +350,14 @@ function Pengaturan() {
         options={{
           headerShown: false,
         }}
-      />      <View
+      />
+      <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft 
-            size={24} 
-            color={isDarkColorScheme ? "#ffffff" : "#000000"} 
+          <ChevronLeft
+            size={24}
+            color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
         <Text
@@ -372,7 +365,8 @@ function Pengaturan() {
         >
           Pengaturan
         </Text>
-      </View>      <ScrollView
+      </View>
+      <ScrollView
         className={`flex-1 pb-32 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
@@ -381,11 +375,13 @@ function Pengaturan() {
         <View
           key="profile-section"
           className={`rounded-xl mx-5 mt-6 mb-6 p-6 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >          <SectionHeader title="Profil" />
+        >
+          <SectionHeader title="Profil" />
           {/* Profile Header */}
-          <View className="flex-row items-center mb-6">            {profileAvatarUrl ? (
+          <View className="flex-row items-center mb-6">
+            {profileAvatarUrl ? (
               <Image
-                source={{ 
+                source={{
                   uri: profileAvatarUrl,
                   cache: 'force-cache' // Enable caching for better performance
                 }}
@@ -415,7 +411,8 @@ function Pengaturan() {
                 }`}
               >
                 {user?.email || "Tidak ada email"}
-              </Text>              <TouchableOpacity
+              </Text>
+              <TouchableOpacity
                 onPress={handleCopyId}
                 className={`inline-flex self-start px-3 py-2 rounded-full mt-2 ${
                   isDarkColorScheme ? "bg-gray-700" : "bg-accent"
@@ -424,8 +421,8 @@ function Pengaturan() {
               >
                 <Text
                   className={`text-xs font-medium ${
-                    copiedId 
-                      ? "text-white" 
+                    copiedId
+                      ? "text-white"
                       : isDarkColorScheme ? "text-gray-300" : "text-muted-foreground"
                   }`}
                 >
@@ -437,7 +434,8 @@ function Pengaturan() {
 
           {/* Section Divider */}
           <View className={`border-b mb-4 ${isDarkColorScheme ? "border-gray-700" : "border-border"}`} />
-          <SectionHeader title="Pengaturan Akun" />          <ListItem
+          <SectionHeader title="Pengaturan Akun" />
+          <ListItem
             icon={<User size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
             title="Edit Profil"
             subtitle="Ubah nama dan foto profil"
@@ -451,7 +449,8 @@ function Pengaturan() {
             onPress={navigateToChangePassword}
             showBorder={false}
           />
-        </View>        <View
+        </View>
+        <View
           key="preferences-section"
           className={`rounded-xl mx-5 mb-6 p-6 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
@@ -487,7 +486,8 @@ function Pengaturan() {
           key="account-section"
           className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
-          <SectionHeader title="Akun" />          <Button
+          <SectionHeader title="Akun" />
+          <Button
             size="default"
             onPress={handleLogout}
             className="w-full rounded-lg py-4 bg-red-600 hover:bg-red-700"
@@ -518,7 +518,7 @@ function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
-              0.4.0
+              Version 1.4.5-alpha.1
             </Text>
           </View>
 
@@ -540,7 +540,8 @@ function Pengaturan() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>  );
+    </SafeAreaView>
+  );
 }
 
 // Export the memoized component for better performance
