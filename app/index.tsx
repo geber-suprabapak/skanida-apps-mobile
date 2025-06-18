@@ -1,7 +1,7 @@
 // filepath: app/index.tsx
 import { useRouter, Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Alert } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase } from "../utils/supabase";
@@ -14,6 +14,12 @@ export default function Index() {
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
+    Alert.alert(
+      "🚧 Alpha Release",
+      "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      [{ text: "Saya Mengerti", style: "default" }],
+      { cancelable: true },
+    );
     const checkAuth = async () => {
       try {
         // Memanggil Supabase untuk cek session
@@ -34,7 +40,7 @@ export default function Index() {
         } else {
           router.replace("/auth/AuthSelector");
         }
-      } catch (err) {
+      } catch {
         // Tangani error tak terduga
         setLoadingMessage("Error occurred while checking session");
       } finally {
