@@ -256,45 +256,53 @@ export default function ChangePassword() {
                   )}
                 </TouchableOpacity>              </View>
             </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View className="mt-8 space-y-4">
+          </View>          {/* Action Buttons */}
+          <View className="mt-8">
             <Button
               variant="default"
               size="lg"
               disabled={loading}
               onPress={handleChangePassword}
-              className="w-full bg-black h-14 rounded-xl"
+              className={`mb-4 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
             >
-              <View className="flex-row items-center justify-center">
-                {loading && (
+              {loading ? (
+                <View className="flex-row items-center justify-center">
                   <ActivityIndicator
                     size="small"
-                    color="white"
-                    className="mr-2"
+                    color={isDarkColorScheme ? "#000" : "#fff"}
+                    style={{ marginRight: 8 }}
                   />
-                )}
-                <Text className="text-white font-semibold text-base">
-                  {loading ? "Menyimpan..." : "Simpan Password"}
+                  <Text
+                    className={
+                      isDarkColorScheme
+                        ? "text-black font-medium"
+                        : "text-white font-medium"
+                    }
+                  >
+                    Sedang menyimpan...
+                  </Text>
+                </View>
+              ) : (
+                <Text
+                  className={
+                    isDarkColorScheme
+                      ? "text-black font-medium"
+                      : "text-white font-medium"
+                  }
+                >
+                  Simpan Password
                 </Text>
-              </View>
+              )}
             </Button>
-
             <Button
-              variant="outline"
-              size="lg"
+              size="default"
               onPress={() => router.back()}
               disabled={loading}
-              className={`w-full h-14 rounded-xl ${
-                isDarkColorScheme 
-                  ? "border-gray-600 bg-gray-800" 
-                  : "border-border bg-card"
-              }`}
+              className="w-full rounded-lg py-3 bg-red-600"
             >
-              <Text className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-foreground"}`}>
-                Batal
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text className="text-white">Batal</Text>
+              </View>
             </Button>
           </View>
         </View>{/* Security Tips Card */}
