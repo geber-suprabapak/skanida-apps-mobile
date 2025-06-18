@@ -16,6 +16,8 @@ import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Key } from "~/lib/icons/Key";
+import { Eye } from "~/lib/icons/Eye";
+import { EyeOff } from "~/lib/icons/EyeOff";
 
 export default function ChangePassword() {
   const router = useRouter();
@@ -24,6 +26,9 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -154,19 +159,28 @@ export default function ChangePassword() {
               >
                 Password Lama
               </Text>
-              <TextInput
-                className={`border rounded-lg px-4 py-3 text-base ${
-                  isDarkColorScheme 
-                    ? "border-gray-700 bg-gray-700 text-white placeholder:text-gray-400" 
-                    : "border-border bg-background text-foreground placeholder:text-muted-foreground"
-                }`}
-                placeholder="Masukkan password lama"
-                placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View className="flex-row items-center border rounded-lg px-4 py-3">
+                <TextInput
+                  className={`flex-1 text-base ${
+                    isDarkColorScheme 
+                      ? "bg-gray-700 text-white placeholder:text-gray-400" 
+                      : "bg-background text-foreground placeholder:text-muted-foreground"
+                  }`}
+                  placeholder="Masukkan password lama"
+                  placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  secureTextEntry={!showCurrentPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
+                  {showCurrentPassword ? (
+                    <EyeOff size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
+                  ) : (
+                    <Eye size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* New Password */}
@@ -178,19 +192,28 @@ export default function ChangePassword() {
               >
                 Password Baru
               </Text>
-              <TextInput
-                className={`border rounded-lg px-4 py-3 text-base ${
-                  isDarkColorScheme 
-                    ? "border-gray-700 bg-gray-700 text-white placeholder:text-gray-400" 
-                    : "border-border bg-background text-foreground placeholder:text-muted-foreground"
-                }`}
-                placeholder="Masukkan password baru"
-                placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View className="flex-row items-center border rounded-lg px-4 py-3">
+                <TextInput
+                  className={`flex-1 text-base ${
+                    isDarkColorScheme 
+                      ? "bg-gray-700 text-white placeholder:text-gray-400" 
+                      : "bg-background text-foreground placeholder:text-muted-foreground"
+                  }`}
+                  placeholder="Masukkan password baru"
+                  placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+                  {showNewPassword ? (
+                    <EyeOff size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
+                  ) : (
+                    <Eye size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
+                  )}
+                </TouchableOpacity>
+              </View>
               <Text
                 className={`text-xs mt-1 ${
                   isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
@@ -209,19 +232,28 @@ export default function ChangePassword() {
               >
                 Konfirmasi Password Baru
               </Text>
-              <TextInput
-                className={`border rounded-lg px-4 py-3 text-base ${
-                  isDarkColorScheme 
-                    ? "border-gray-700 bg-gray-700 text-white placeholder:text-gray-400" 
-                    : "border-border bg-background text-foreground placeholder:text-muted-foreground"
-                }`}
-                placeholder="Ulangi password baru"
-                placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View className="flex-row items-center border rounded-lg px-4 py-3">
+                <TextInput
+                  className={`flex-1 text-base ${
+                    isDarkColorScheme 
+                      ? "bg-gray-700 text-white placeholder:text-gray-400" 
+                      : "bg-background text-foreground placeholder:text-muted-foreground"
+                  }`}
+                  placeholder="Ulangi password baru"
+                  placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
+                  ) : (
+                    <Eye size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
