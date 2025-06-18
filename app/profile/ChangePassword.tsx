@@ -6,15 +6,20 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
+import { useColorScheme } from "~/lib/useColorScheme";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { Key } from "~/lib/icons/Key";
 
 export default function ChangePassword() {
   const router = useRouter();
+  const { isDarkColorScheme } = useColorScheme();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,78 +71,237 @@ export default function ChangePassword() {
     } finally {
       setLoading(false);
     }
-  };
-
-  return (
+  };  return (
     <SafeAreaView
-      className="flex-1 bg-background"
-      edges={["top", "left", "right"]}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
     >
-      <Stack.Screen options={{ title: "Ubah Password" }} />
-      <ScrollView contentContainerClassName="flex-grow">
-        <View className="flex-1 p-6 justify-center">
-          <Text className="text-2xl font-bold mb-6 text-center text-foreground">
-            Ubah Password
-          </Text>
-          <View className="mb-4">
-            <Text className="mb-2 text-muted-foreground">Password Lama</Text>
-            <TextInput
-              className="border border-border rounded-lg px-4 py-2.5 bg-background text-foreground"
-              placeholder="Password lama"
-              placeholderTextColor="hsl(var(--muted-foreground))"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-            />
-          </View>
-          <View className="mb-4">
-            <Text className="mb-2 text-muted-foreground">Password Baru</Text>
-            <TextInput
-              className="border border-border rounded-lg px-4 py-2.5 bg-background text-foreground"
-              placeholder="Password baru"
-              placeholderTextColor="hsl(var(--muted-foreground))"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-          </View>
-          <View className="mb-6">
-            <Text className="mb-2 text-muted-foreground">
-              Konfirmasi Password Baru
-            </Text>
-            <TextInput
-              className="border border-border rounded-lg px-4 py-2.5 bg-background text-foreground"
-              placeholder="Konfirmasi password baru"
-              placeholderTextColor="hsl(var(--muted-foreground))"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-          </View>
-          <Button
-            variant="default"
-            size="lg"
-            disabled={loading}
-            onPress={handleChangePassword}
-            className="mb-4"
-          >
-            {loading ? (
-              <ActivityIndicator
-                size="small"
-                color="hsl(var(--primary-foreground))"
-                className="mr-2"
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      
+      {/* Custom Header */}
+      <View
+        className={`flex-row items-center p-4 border-b ${
+          isDarkColorScheme 
+            ? "border-gray-700 bg-gray-900" 
+            : "border-border bg-background"
+        }`}
+      >
+        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <ChevronLeft 
+            size={24} 
+            color={isDarkColorScheme ? "#ffffff" : "#000000"} 
+          />
+        </TouchableOpacity>
+        <Text
+          className={`text-lg font-bold ${
+            isDarkColorScheme ? "text-white" : "text-foreground"
+          }`}
+        >
+          Ubah Password
+        </Text>
+      </View>
+
+      <ScrollView 
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+        contentContainerStyle={{ padding: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Main Card */}
+        <View
+          className={`rounded-xl p-5 shadow-sm ${
+            isDarkColorScheme ? "bg-gray-800" : "bg-card"
+          }`}
+        >
+          {/* Header Icon */}
+          <View className="items-center mb-6">
+            <View
+              className={`w-16 h-16 rounded-full ${
+                isDarkColorScheme ? "bg-gray-700" : "bg-accent"
+              } justify-center items-center mb-3`}
+            >
+              <Key 
+                size={32} 
+                color={isDarkColorScheme ? "#ffffff" : "#000000"} 
               />
-            ) : null}
-            <Text>Simpan</Text>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onPress={() => router.back()}
-            disabled={loading}
+            </View>
+            <Text
+              className={`text-xl font-bold text-center ${
+                isDarkColorScheme ? "text-white" : "text-card-foreground"
+              }`}
+            >
+              Keamanan Akun
+            </Text>
+            <Text
+              className={`text-sm text-center mt-1 ${
+                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+              }`}
+            >
+              Pastikan password baru Anda aman dan mudah diingat
+            </Text>
+          </View>
+
+          {/* Form Fields */}
+          <View className="space-y-4">
+            {/* Current Password */}
+            <View>
+              <Text
+                className={`text-sm font-medium mb-2 ${
+                  isDarkColorScheme ? "text-white" : "text-card-foreground"
+                }`}
+              >
+                Password Lama
+              </Text>
+              <TextInput
+                className={`border rounded-lg px-4 py-3 text-base ${
+                  isDarkColorScheme 
+                    ? "border-gray-700 bg-gray-700 text-white placeholder:text-gray-400" 
+                    : "border-border bg-background text-foreground placeholder:text-muted-foreground"
+                }`}
+                placeholder="Masukkan password lama"
+                placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* New Password */}
+            <View>
+              <Text
+                className={`text-sm font-medium mb-2 ${
+                  isDarkColorScheme ? "text-white" : "text-card-foreground"
+                }`}
+              >
+                Password Baru
+              </Text>
+              <TextInput
+                className={`border rounded-lg px-4 py-3 text-base ${
+                  isDarkColorScheme 
+                    ? "border-gray-700 bg-gray-700 text-white placeholder:text-gray-400" 
+                    : "border-border bg-background text-foreground placeholder:text-muted-foreground"
+                }`}
+                placeholder="Masukkan password baru"
+                placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+              <Text
+                className={`text-xs mt-1 ${
+                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+                }`}
+              >
+                Minimal 6 karakter
+              </Text>
+            </View>
+
+            {/* Confirm Password */}
+            <View>
+              <Text
+                className={`text-sm font-medium mb-2 ${
+                  isDarkColorScheme ? "text-white" : "text-card-foreground"
+                }`}
+              >
+                Konfirmasi Password Baru
+              </Text>
+              <TextInput
+                className={`border rounded-lg px-4 py-3 text-base ${
+                  isDarkColorScheme 
+                    ? "border-gray-700 bg-gray-700 text-white placeholder:text-gray-400" 
+                    : "border-border bg-background text-foreground placeholder:text-muted-foreground"
+                }`}
+                placeholder="Ulangi password baru"
+                placeholderTextColor={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View className="mt-8 space-y-3">
+            <Button
+              variant="default"
+              size="lg"
+              disabled={loading}
+              onPress={handleChangePassword}
+              className="w-full bg-black"
+            >
+              <View className="flex-row items-center justify-center">
+                {loading && (
+                  <ActivityIndicator
+                    size="small"
+                    color="white"
+                    className="mr-2"
+                  />
+                )}
+                <Text className="text-white font-medium">
+                  {loading ? "Menyimpan..." : "Simpan Password"}
+                </Text>
+              </View>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onPress={() => router.back()}
+              disabled={loading}
+              className={`w-full ${
+                isDarkColorScheme 
+                  ? "border-gray-600" 
+                  : "border-border"
+              }`}
+            >
+              <Text className={isDarkColorScheme ? "text-white" : "text-foreground"}>
+                Batal
+              </Text>
+            </Button>
+          </View>
+        </View>
+
+        {/* Security Tips Card */}
+        <View
+          className={`rounded-xl p-4 mt-4 ${
+            isDarkColorScheme ? "bg-gray-800" : "bg-card"
+          }`}
+        >
+          <Text
+            className={`text-sm font-medium mb-3 ${
+              isDarkColorScheme ? "text-white" : "text-card-foreground"
+            }`}
           >
-            <Text>Batal</Text>
-          </Button>
+            Tips Keamanan
+          </Text>
+          <View className="space-y-2">
+            <Text
+              className={`text-xs ${
+                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+              }`}
+            >
+              • Gunakan kombinasi huruf besar, kecil, angka, dan simbol
+            </Text>
+            <Text
+              className={`text-xs ${
+                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+              }`}
+            >
+              • Hindari menggunakan informasi personal yang mudah ditebak
+            </Text>
+            <Text
+              className={`text-xs ${
+                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+              }`}
+            >
+              • Jangan gunakan password yang sama di platform lain
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
