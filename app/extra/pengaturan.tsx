@@ -11,6 +11,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -103,6 +104,7 @@ export default function Pengaturan() {
           onPress: async () => {
             try {
               await supabase.auth.signOut();
+              await AsyncStorage.clear(); // clear persisted session storage
               setUser(null);
               router.replace("/auth/AuthSelector");
             } catch (error) {
@@ -339,7 +341,7 @@ export default function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
-              0.4.0
+              Version 1.4.5-alpha.1
             </Text>
           </View>
 
