@@ -21,6 +21,6 @@ export * from './MapPin';
 export * from './MapPinOff';
 export * from './Moon';
 export * from './RefreshCw';
-export * from './Setings';
+export * from './Settings';
 export * from './User';
 export * from './UserCheck';
