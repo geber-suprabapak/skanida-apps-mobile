@@ -21,7 +21,7 @@ import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
-import { Settings } from "~/lib/icons/Setings";
+import { Settings } from "~/lib/icons/Settings";
 import { UserCheck } from "~/lib/icons/UserCheck";
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
