@@ -165,42 +165,9 @@ pnpm start
 ## 👥 Contributors
 
 <div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/hfzrk">
-          <img src="https://avatars.githubusercontent.com/u/63831260?v=4" width="100" height="100" style="border-radius: 50%; border: 3px solid #4F46E5;" alt="hfzrk"/>
-          <br />
-          <sub><b>hfzrk</b></sub>
-          <br />
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://github.com/muflih2024">
-          <img src="https://avatars.githubusercontent.com/u/191471809?v=4" width="100" height="100" style="border-radius: 50%; border: 3px solid #059669;" alt="muflih2024"/>
-          <br />
-          <sub><b>muflih2024</b></sub>
-          <br />
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://github.com/ComplexMaJa">
-          <img src="https://avatars.githubusercontent.com/u/181100695?v=4" width="100" height="100" style="border-radius: 50%; border: 3px solid #DC2626;" alt="ComplexMaJa"/>
-          <br />
-          <sub><b>ComplexMaJa</b></sub>
-          <br />
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://github.com/RajaYappingg">
-          <img src="https://avatars.githubusercontent.com/u/191817334?v=4" width="100" height="100" style="border-radius: 50%; border: 3px solid #7C3AED;" alt="RajaYappingg"/>
-          <br />
-          <sub><b>RajaYappingg</b></sub>
-          <br />
-        </a>
-      </td>
-    </tr>
-  </table>
+  <a href="https://github.com/geber-suprabapak/skanida-apps-mobile/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=geber-suprabapak/skanida-apps-mobile" />
+  </a>
 </div>
 
 ---
