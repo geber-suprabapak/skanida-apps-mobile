@@ -1,8 +1,7 @@
-// app/pengaturan/pengaturan.tsx
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+
 import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -10,43 +9,175 @@ import {
   Switch,
   Alert,
   Image,
+  Clipboard,
+  InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+import { useColorScheme } from "~/lib/useColorScheme";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { User } from "~/lib/icons/User";
+import { Key } from "~/lib/icons/Key";
+import { Moon } from "~/lib/icons/Moon";
+import { Bell } from "~/lib/icons/Bell";
+import { LogOut } from "~/lib/icons/LogOut";
+import { ChevronRight } from "~/lib/icons/ChevronRight";
 
-export default function Pengaturan() {
+// Performance optimization utilities
+const prefetchProfileData = async (userId: string) => {
+  try {
+    // Prefetch user profile data in background
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("full_name, avatar_url")
+      .eq("user_id", userId)
+      .single();
+    return data;
+  } catch (error) {
+    console.log("Prefetch failed silently:", error);
+    return null;
+  }
+};
+
+// Local storage utilities for caching profile data
+const PROFILE_CACHE_KEY = "user_profile_cache";
+const CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
+
+interface CachedProfileData {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  timestamp: number;
+}
+
+const saveProfileToCache = async (userId: string, fullName: string, avatarUrl: string | null) => {
+  try {
+    const cacheData: CachedProfileData = {
+      userId,
+      fullName,
+      avatarUrl,
+      timestamp: Date.now(),
+    };
+    await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.log("Failed to save profile to cache:", error);
+  }
+};
+
+const getProfileFromCache = async (userId: string): Promise<CachedProfileData | null> => {
+  try {
+    const cached = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+    if (!cached) return null;
+
+    const cacheData: CachedProfileData = JSON.parse(cached);
+
+    // Check if cache is for the same user and not expired
+    if (cacheData.userId !== userId) return null;
+
+    const hoursSinceCache = (Date.now() - cacheData.timestamp) / (1000 * 60 * 60);
+    if (hoursSinceCache > CACHE_EXPIRY_HOURS) {
+      // Cache expired, remove it
+      await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+      return null;
+    }
+
+    return cacheData;
+  } catch (error) {
+    console.log("Failed to get profile from cache:", error);
+    return null;
+  }
+};
+
+const clearProfileCache = async () => {
+  try {
+    await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch (error) {
+    console.log("Failed to clear profile cache:", error);
+  }
+};
+
+// Debounce utility for performance
+const debounce = (func: Function, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
+function Pengaturan() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
   const isFocused = useIsFocused();
 
-  const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  const setDarkMode = useThemeStore((state) => state.setDarkMode);
+  const { isDarkColorScheme, setColorScheme } = useColorScheme();
 
-  const [profileFullName, setProfileFullName] = useState(
-    user?.user_metadata?.name || user?.email || "Pengguna Skanida",
-  );
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(
-    user?.user_metadata?.avatar_url || null,
-  );
+  // Memoize initial profile data to avoid recalculations
+  const initialProfileData = useMemo(() => ({
+    name: user?.user_metadata?.name || user?.email || "Pengguna Skanida",
+    avatar: user?.user_metadata?.avatar_url || null,
+  }), [user?.user_metadata?.name, user?.email, user?.user_metadata?.avatar_url]);
 
-  useEffect(() => {
-    const fetchProfileDataAndUpdateState = async () => {
-      if (!user) {
-        setProfileFullName("Pengguna Skanida");
-        setProfileAvatarUrl(null);
-        return;
-      }
+  const [profileFullName, setProfileFullName] = useState(initialProfileData.name);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(initialProfileData.avatar);
+  const [copiedId, setCopiedId] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-      let currentName =
-        user.user_metadata?.name || user.email || "Pengguna Skanida";
-      let currentAvatar = user.user_metadata?.avatar_url || null;
+  // Optimized color scheme toggle with useCallback
+  const toggleColorScheme = useCallback((): void => {
+    const newTheme: "light" | "dark" = isDarkColorScheme ? "light" : "dark";
+    setColorScheme(newTheme);
+  }, [isDarkColorScheme, setColorScheme]);
 
+  // Optimized navigation handlers with useCallback
+  const navigateToEditProfile = useCallback(() => {
+    // Preload the destination with a slight delay to improve perceived performance
+    requestAnimationFrame(() => {
+      router.push("/profile/EditProfile");
+    });
+  }, [router]);
+
+  const navigateToChangePassword = useCallback(() => {
+    requestAnimationFrame(() => {
+      router.push("/profile/ChangePassword");
+    });
+  }, [router]);
+  // Optimized profile data fetching with local cache
+  const fetchProfileDataAndUpdateState = useCallback(async () => {
+    if (!user) {
+      setProfileFullName("Pengguna Skanida");
+      setProfileAvatarUrl(null);
+      setIsDataLoaded(true);
+      return;
+    }
+
+    // First, try to load from cache for immediate display
+    const cachedProfile = await getProfileFromCache(user.id);
+    if (cachedProfile) {
+      setProfileFullName(cachedProfile.fullName);
+      setProfileAvatarUrl(cachedProfile.avatarUrl);
+      setIsDataLoaded(true);
+    } else {
+      // Use user metadata as fallback if no cache
+      const fallbackName = user.user_metadata?.name || user.email || "Pengguna Skanida";
+      const fallbackAvatar = user.user_metadata?.avatar_url || null;
+      setProfileFullName(fallbackName);
+      setProfileAvatarUrl(fallbackAvatar);
+      setIsDataLoaded(true);
+    }
+
+    // Fetch fresh data in background using InteractionManager
+    InteractionManager.runAfterInteractions(async () => {
       try {
         const { data: userProfile, error: profileError } = await supabase
           .from("user_profiles")
@@ -60,25 +191,39 @@ export default function Pengaturan() {
             profileError.message,
           );
         } else if (userProfile) {
-          currentName = userProfile.full_name || currentName;
-          currentAvatar = userProfile.avatar_url || currentAvatar;
+          const updatedName = userProfile.full_name || user.user_metadata?.name || user.email || "Pengguna Skanida";
+          const updatedAvatar = userProfile.avatar_url || user.user_metadata?.avatar_url || null;
+
+          // Update cache with fresh data
+          await saveProfileToCache(user.id, updatedName, updatedAvatar);
+
+          // Only update state if data actually changed to avoid unnecessary re-renders
+          if (updatedName !== profileFullName) {
+            setProfileFullName(updatedName);
+          }
+          if (updatedAvatar !== profileAvatarUrl) {
+            setProfileAvatarUrl(updatedAvatar);
+          }
         }
       } catch (err) {
         console.error("Pengaturan: Unexpected error fetching profile:", err);
       }
-      setProfileFullName(currentName);
-      setProfileAvatarUrl(currentAvatar);
-    };
+    });
+  }, [user, profileFullName, profileAvatarUrl]);
 
+  // Optimized useEffect with proper dependency management
+  useEffect(() => {
     if (isFocused && user) {
       fetchProfileDataAndUpdateState();
     } else if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
+      setIsDataLoaded(true);
     }
-  }, [user, isFocused]);
+  }, [user, isFocused, fetchProfileDataAndUpdateState]);
 
-  const handleLogout = async () => {
+  // Corrected logout handler
+  const handleLogout = useCallback(async () => {
     Alert.alert(
       "Logout",
       "Apakah Anda yakin ingin keluar?",
@@ -92,7 +237,14 @@ export default function Pengaturan() {
           style: "destructive",
           onPress: async () => {
             try {
+              // Sign out from Supabase
               await supabase.auth.signOut();
+              
+              // Clear all local data for a clean logout
+              await clearProfileCache();
+              await AsyncStorage.clear(); 
+              
+              // Update state and redirect
               setUser(null);
               router.replace("/auth/AuthSelector");
             } catch (error) {
@@ -107,15 +259,24 @@ export default function Pengaturan() {
       ],
       { cancelable: true },
     );
-  };
+  }, [setUser, router]);
 
-  const SectionHeader = ({ title }: { title: string }) => (
+  // Optimized copy ID handler with useCallback
+  const handleCopyId = useCallback(async () => {
+    if (user?.id) {
+      Clipboard.setString(user.id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000); // Reset after 2 seconds
+    }
+  }, [user?.id]);
+  // Memoized components for better performance
+  const SectionHeader = useCallback(({ title }: { title: string }) => (
     <Text
-      className={`text-sm font-medium mb-4 ${isDarkMode ? "text-white" : "text-muted-foreground"}`}
+      className={`text-sm font-medium mb-4 ${isDarkColorScheme ? "text-white" : "text-muted-foreground"}`}
     >
       {title}
     </Text>
-  );
+  ), [isDarkColorScheme]);
 
   const ListItem = ({
     icon,
@@ -135,7 +296,7 @@ export default function Pengaturan() {
     <TouchableOpacity
       className={`flex-row items-center py-3 ${
         showBorder
-          ? `border-b ${isDarkMode ? "border-gray-700" : "border-border"}`
+          ? `border-b ${isDarkColorScheme ? "border-gray-700" : "border-border"}`
           : ""
       }`}
       onPress={onPress}
@@ -143,38 +304,39 @@ export default function Pengaturan() {
       disabled={!onPress}
     >
       <View
-        className={`w-9 h-9 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-accent"} justify-center items-center mr-3`}
+        className={`w-9 h-9 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-accent"} justify-center items-center mr-3`}
       >
         {icon}
       </View>
       <View className="flex-1">
         <Text
           className={`text-base ${
-            isDarkMode ? "text-white" : "text-card-foreground"
+            isDarkColorScheme ? "text-white" : "text-card-foreground"
           }`}
         >
-          {typeof title === "string" ? title : <>{title}</>}
+          {title}
         </Text>
         {subtitle && (
           <Text
             className={`text-xs mt-1 ${
-              isDarkMode ? "text-gray-400" : "text-muted-foreground"
+              isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
             }`}
           >
-            {typeof subtitle === "string" ? subtitle : <>{subtitle}</>}
+            {subtitle}
           </Text>
         )}
       </View>
       {rightElement && typeof rightElement === "string" ? (
-        <Text>{rightElement}</Text>
+        <Text className={isDarkColorScheme ? "text-white" : "text-foreground"}>
+          {rightElement}
+        </Text>
       ) : (
-        rightElement
+        <>{rightElement}</>
       )}
       {!rightElement && onPress && (
-        <AntDesign
-          name="right"
+        <ChevronRight
           size={16}
-          color={isDarkMode ? "#fff" : "hsl(var(--muted-foreground))"}
+          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
         />
       )}
     </TouchableOpacity>
@@ -182,7 +344,7 @@ export default function Pengaturan() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
     >
       <Stack.Screen
         options={{
@@ -190,43 +352,46 @@ export default function Pengaturan() {
         }}
       />
       <View
-        className={`flex-row items-center p-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons
-            name="arrow-back-outline"
+          <ChevronLeft
             size={24}
-            color={isDarkMode ? "#fff" : "hsl(var(--foreground))"}
+            color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
         <Text
-          className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-foreground"}`}
+          className={`text-lg font-bold ${isDarkColorScheme ? "text-white" : "text-foreground"}`}
         >
           Pengaturan
         </Text>
       </View>
-
       <ScrollView
-        className={`flex-1 pb-32 ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+        className={`flex-1 pb-32 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        scrollEventThrottle={16}
       >
         <View
           key="profile-section"
-          className={`rounded-xl mx-5 mt-4 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl mx-5 mt-6 mb-6 p-6 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Profil" />
-          <View
-            className={`flex-row items-center mb-4 pb-4 border-b ${
-              isDarkMode ? "border-gray-700" : "border-border"
-            }`}
-          >
+          {/* Profile Header */}
+          <View className="flex-row items-center mb-6">
             {profileAvatarUrl ? (
               <Image
-                source={{ uri: profileAvatarUrl }}
-                className="w-16 h-16 rounded-full mr-4"
+                source={{
+                  uri: profileAvatarUrl,
+                  cache: 'force-cache' // Enable caching for better performance
+                }}
+                className="w-20 h-20 rounded-full mr-4 border-2 border-opacity-10"
+                defaultSource={undefined} // Prevent default image flashing
+                fadeDuration={200} // Smooth transition
               />
             ) : (
-              <View className="w-16 h-16 rounded-full bg-primary justify-center items-center mr-4">
-                <Text className="text-2xl font-bold text-primary-foreground">
+              <View className={`w-20 h-20 rounded-full ${isDarkColorScheme ? "bg-blue-600" : "bg-primary"} justify-center items-center mr-4 shadow-md`}>
+                <Text className="text-2xl font-bold text-white">
                   {(profileFullName || user?.email)?.charAt(0).toUpperCase() ||
                     "U"}
                 </Text>
@@ -234,93 +399,84 @@ export default function Pengaturan() {
             )}
             <View className="flex-1">
               <Text
-                className={`text-lg font-bold ${
-                  isDarkMode ? "text-white" : "text-card-foreground"
+                className={`text-xl font-bold ${
+                  isDarkColorScheme ? "text-white" : "text-card-foreground"
                 }`}
               >
-                Hey,{" "}
-                {profileFullName || user?.email?.split("@")[0] || "Pengguna"}!
+                {profileFullName || user?.email?.split("@")[0] || "Pengguna"}
               </Text>
               <Text
                 className={`text-sm mt-1 ${
-                  isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
                 }`}
               >
                 {user?.email || "Tidak ada email"}
               </Text>
-              <Text
-                className={`text-xs mt-1 ${
-                  isDarkMode ? "text-gray-400" : "text-muted-foreground"
-                }`}
+              <TouchableOpacity
+                onPress={handleCopyId}
+                className={`inline-flex self-start px-3 py-2 rounded-full mt-2 ${
+                  isDarkColorScheme ? "bg-gray-700" : "bg-accent"
+                } ${copiedId ? "bg-green-600" : ""}`}
+                activeOpacity={0.7}
               >
-                User ID: {user?.id?.substring(0, 8) || "Unknown"}
-              </Text>
+                <Text
+                  className={`text-xs font-medium ${
+                    copiedId
+                      ? "text-white"
+                      : isDarkColorScheme ? "text-gray-300" : "text-muted-foreground"
+                  }`}
+                >
+                  {copiedId ? "✓ Tersalin!" : `ID: ${user?.id?.substring(0, 8) || "Unknown"}`}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
+          {/* Section Divider */}
+          <View className={`border-b mb-4 ${isDarkColorScheme ? "border-gray-700" : "border-border"}`} />
+          <SectionHeader title="Pengaturan Akun" />
           <ListItem
-            icon={
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
-              />
-            }
+            icon={<User size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
             title="Edit Profil"
-            onPress={() => router.push("/profile/EditProfile")}
+            subtitle="Ubah nama dan foto profil"
+            onPress={navigateToEditProfile}
           />
 
           <ListItem
-            icon={
-              <Ionicons
-                name="key-outline"
-                size={20}
-                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
-              />
-            }
+            icon={<Key size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
             title="Ubah Password"
-            onPress={() => router.push("/profile/ChangePassword")}
+            subtitle="Perbarui kata sandi akun"
+            onPress={navigateToChangePassword}
             showBorder={false}
           />
         </View>
-
         <View
           key="preferences-section"
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-6 p-6 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Preferensi" />
-
+          {/* DarkMode Handler */}
           <ListItem
-            icon={
-              <Ionicons
-                name={isDarkMode ? "moon" : "moon-outline"}
-                size={20}
-                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
-              />
-            }
+            icon={<Moon size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
             title="Mode Gelap"
+            subtitle="Tampilan gelap untuk mata"
             rightElement={
               <Switch
-                value={isDarkMode}
-                onValueChange={setDarkMode}
+                value={isDarkColorScheme}
+                onValueChange={toggleColorScheme}
                 trackColor={{
-                  false: "hsl(var(--muted))",
-                  true: isDarkMode ? "#3b82f6" : "hsl(var(--primary))",
+                  false: isDarkColorScheme ? "#374151" : "hsl(var(--muted))",
+                  true: "#3b82f6",
                 }}
-                thumbColor={isDarkMode ? "#fff" : "#f4f3f4"}
+                thumbColor={isDarkColorScheme ? "#fff" : "#f4f3f4"}
               />
             }
           />
 
           <ListItem
-            icon={
-              <Ionicons
-                name="notifications-outline"
-                size={20}
-                color={isDarkMode ? "#fff" : "hsl(var(--accent-foreground))"}
-              />
-            }
+            icon={<Bell size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
             title="Notifikasi"
+            subtitle="Pengaturan pemberitahuan"
             onPress={() => {}}
             showBorder={false}
           />
@@ -328,61 +484,55 @@ export default function Pengaturan() {
 
         <View
           key="account-section"
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Akun" />
-
           <Button
             size="default"
             onPress={handleLogout}
-            className="w-full rounded-lg py-3 bg-red-600"
+            className="w-full rounded-lg py-4 bg-red-600 hover:bg-red-700"
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons
-                name="log-out-outline"
-                size={20}
-                color="#fff"
-                style={{ marginRight: 8 }}
-              />
-              <Text className="text-white">Keluar</Text>
+              <LogOut size={20} color="#ffffff" style={{ marginRight: 8 }} />
+              <Text className="text-white font-medium">Keluar dari Akun</Text>
             </View>
           </Button>
         </View>
 
         <View
           key="appinfo-section"
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-card"}`}
+          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
         >
           <SectionHeader title="Informasi Aplikasi" />
 
           <View className="py-2">
             <Text
               className={`text-sm ${
-                isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
               }`}
             >
               Versi Aplikasi
             </Text>
             <Text
               className={`mt-1 ${
-                isDarkMode ? "text-white" : "text-card-foreground"
+                isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
-              0.4.0
+              Version 1.4.5-alpha.1
             </Text>
           </View>
 
           <View className="py-2 mt-2">
             <Text
               className={`text-sm ${
-                isDarkMode ? "text-gray-400" : "text-muted-foreground"
+                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
               }`}
             >
               © 2025 Skanida Apps
             </Text>
             <Text
               className={`mt-1 ${
-                isDarkMode ? "text-white" : "text-card-foreground"
+                isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
               Semua hak dilindungi tuhan
@@ -393,3 +543,6 @@ export default function Pengaturan() {
     </SafeAreaView>
   );
 }
+
+// Export the memoized component for better performance
+export default memo(Pengaturan);

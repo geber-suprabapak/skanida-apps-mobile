@@ -1,10 +1,4 @@
 // app/Dashboard.tsx
-import {
-  AntDesign,
-  Ionicons,
-  MaterialIcons,
-  Feather, // Untuk ikon pensil
-} from "@expo/vector-icons";
 import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
@@ -14,6 +8,7 @@ import {
   TouchableOpacity,
   Image,
   BackHandler,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native"; // Import useIsFocused
@@ -23,9 +18,12 @@ import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
 import { Button } from "~/components/ui/button";
 import { H1, H2, H3, H4, Large } from "~/components/ui/typography"; // Import typography components
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore"; // Import theme store
 import { supabase } from "~/utils/supabase";
-
+import { useColorScheme } from "~/lib/useColorScheme";
+import { History } from "~/lib/icons/History";
+import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
+import { Settings } from "~/lib/icons/Settings";
+import { UserCheck } from "~/lib/icons/UserCheck";
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
 
@@ -41,11 +39,20 @@ interface UserProfile {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const { isDarkMode } = useThemeStore(); // Get theme state
+  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const isFocused = useIsFocused(); // Add isFocused hook
+  // Alpha alert on dashboard open
+  useEffect(() => {
+    Alert.alert(
+      "🚧 Alpha Release",
+      "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      [{ text: "Saya Mengerti", style: "default" }],
+      { cancelable: true },
+    );
+  }, []);
 
   useEffect(() => {
     const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -150,11 +157,13 @@ export default function Dashboard() {
       />
       {/* Apply dynamic background based on theme */}
       <SafeAreaView
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
         edges={["top"]}
       >
         {/* Main container with theme-based background */}
-        <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+        <View
+          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
+        >
           {/* --- Header Section (Black Background) --- */}
           {/* Header can stay black in both themes */}
           <View className="bg-black items-center py-5">
@@ -177,7 +186,7 @@ export default function Dashboard() {
 
           {/* --- Content Section (Scrollable, Theme-based Background) --- */}
           <ScrollView
-            className={`flex-1 px-5 pt-6 ${isDarkMode ? "bg-gray-900" : "bg-white"}`} // Added theme colors
+            className={`flex-1 px-5 pt-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`} // Added theme colors
             contentContainerStyle={{ paddingBottom: 20 }} // Ensure padding at the bottom
             showsVerticalScrollIndicator={false}
           >
@@ -190,10 +199,10 @@ export default function Dashboard() {
                 activeOpacity={0.7}
               >
                 <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
-                  <AntDesign name="login" size={40} color="white" />
+                  <UserCheck size={40} color="white" />
                 </View>
                 <H1
-                  className={`font-semibold text-center ${isDarkMode ? "text-white" : "text-black"}`}
+                  className={`font-semibold text-center ${isDarkColorScheme ? "text-white" : "text-black"}`}
                 >
                   Presensi
                 </H1>
@@ -209,7 +218,7 @@ export default function Dashboard() {
                 onPress={navigateToHistory}
               >
                 <View className="flex-row items-center justify-center">
-                  <MaterialIcons name="history" size={28} color="white" />
+                  <History size={28} color="white" />
                   <Large className="text-white font-medium ml-4">Riwayat</Large>
                 </View>
               </Button>
@@ -222,7 +231,7 @@ export default function Dashboard() {
                 onPress={navigateToSettings}
               >
                 <View className="flex-row items-center justify-center">
-                  <Ionicons name="settings-outline" size={28} color="white" />
+                  <Settings size={28} color="white" />
                   <Large className="text-white font-medium ml-4">
                     Pengaturan
                   </Large>
@@ -237,7 +246,7 @@ export default function Dashboard() {
                 onPress={navigateToPerizinan}
               >
                 <View className="flex-row items-center justify-center">
-                  <MaterialIcons name="assignment" size={28} color="white" />
+                  <ClipboardPenLine size={28} color="white" />
                   <Large className="text-white font-medium ml-4">
                     Perizinan
                   </Large>
@@ -249,13 +258,15 @@ export default function Dashboard() {
           {/* --- Footer Section with theme colors --- */}
           <View
             className={`items-start px-5 py-4 ${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-background border-border"
             } border-t`}
           >
-            <H4 className={isDarkMode ? "text-white" : "text-foreground"}>
-              Version 0.4.0
+            <H4
+              className={isDarkColorScheme ? "text-white" : "text-foreground"}
+            >
+              Version 1.4.5-alpha.1
             </H4>
           </View>
         </View>

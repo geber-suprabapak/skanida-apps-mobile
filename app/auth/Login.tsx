@@ -1,17 +1,19 @@
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import useAuthStore from "../../store/authStore";
-import { supabase } from "../../utils/supabase";
-import useThemeStore from "../../store/themeStore";
-
+import useAuthStore from "~/store/authStore";
+import { supabase } from "~/utils/supabase";
+import { useColorScheme } from "~/lib/useColorScheme";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { H1, P, H3 } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { Eye } from "~/lib/icons/Eye";
+import { EyeOff } from "~/lib/icons/EyeOff";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -19,9 +21,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
-  const { isDarkMode } = useThemeStore();
+  const { isDarkColorScheme } = useColorScheme();
 
   const handleLogin = async () => {
     setEmailError(false);
@@ -66,79 +69,104 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView
-      className="flex-1 pt-10 bg-background bg-white"
-      edges={["top", "left", "right"]}
-    >
-      <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6 bg-white">
-        <View>
-          <H1 className="mb-2 text-center text-foreground">Selamat Datang</H1>
-        </View>
-
-        <View>
-          <P className="text-center mb-8 text-muted-foreground">
-            Masuk ke akun Anda untuk melanjutkan
-          </P>
-        </View>
-
-        <View>
-          <View className="mb-4">
-            <Text className="mb-2 text-foreground">Email</Text>
-            <Input
-              className={cn(emailError && "border-red-500")}
-              placeholder="Masukkan email Anda"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (emailError) setEmailError(false);
-              }}
+    <>
+      <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
+      <SafeAreaView
+        className="flex-1 pt-10 bg-background"
+        edges={["top", "left", "right"]}
+      >
+        <View className="absolute left-0 top-0 z-10 p-4">
+          <TouchableOpacity onPress={() => router.back()}>
+            <ChevronLeft
+              size={28}
+              color={isDarkColorScheme ? "black" : "black"}
             />
-          </View>
+          </TouchableOpacity>
         </View>
-
-        <View>
-          <View className="mb-6">
-            <Text className="mb-2 text-foreground">Password</Text>
-            <Input
-              className={cn(passwordError && "border-red-500")}
-              placeholder="Masukkan password Anda"
-              secureTextEntry
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (passwordError) setPasswordError(false);
-              }}
-            />
+        <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-6 bg-white">
+          <View>
+            <H1 className="mb-2 text-center text-foreground">Selamat Datang</H1>
           </View>
-        </View>
 
-        <View>
-          <Button
-            variant="default"
-            size="lg"
-            className={`mb-4 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            <H3
-              className={`font-medium text-center ${isDarkMode ? "text-black" : "text-white"}`}
+          <View>
+            <P className="text-center mb-8 text-muted-foreground">
+              Masuk ke akun Anda untuk melanjutkan
+            </P>
+          </View>
+
+          <View>
+            <View className="mb-4">
+              <Text className="mb-2 text-foreground">Email</Text>
+              <Input
+                className={cn(emailError && "border-red-500")}
+                placeholder="Masukkan email Anda"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (emailError) setEmailError(false);
+                }}
+              />
+            </View>
+          </View>
+
+          <View>
+            <View className="mb-6">
+              <Text className="mb-2 text-foreground">Password</Text>
+              <View className="relative">
+                <Input
+                  className={cn(passwordError && "border-red-500", "pr-10")}
+                  placeholder="Masukkan password Anda"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (passwordError) setPasswordError(false);
+                  }}
+                />
+                <TouchableOpacity
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color="#6b7280" />
+                  ) : (
+                    <Eye size={20} color="#6b7280" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          <View>
+            <Button
+              variant="default"
+              size="lg"
+              className={`mb-4 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
+              onPress={handleLogin}
+              disabled={loading}
             >
-              {loading ? "Loading..." : "Masuk"}
-            </H3>
-          </Button>
-        </View>
-
-        <View>
-          <View className="flex-row justify-center mt-4">
-            <Text className="text-muted-foreground">Belum memiliki akun? </Text>
-            <TouchableOpacity onPress={() => router.push("/auth/Register")}>
-              <Text className="font-semibold text-foreground">Daftar</Text>
-            </TouchableOpacity>
+              <H3
+                className={`font-medium text-center ${isDarkColorScheme ? "text-black" : "text-white"}`}
+              >
+                {loading ? "Loading..." : "Masuk"}
+              </H3>
+            </Button>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          <View>
+            <View className="flex-row justify-center mt-4">
+              <Text className="text-muted-foreground">
+                Belum memiliki akun?{" "}
+              </Text>
+              <TouchableOpacity onPress={() => router.push("/auth/Register")}>
+                <Text className="font-semibold text-foreground">Daftar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }

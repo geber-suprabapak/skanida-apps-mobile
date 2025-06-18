@@ -6,13 +6,13 @@ import { View, ScrollView, Image } from "react-native";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { H1, H3 } from "~/components/ui/typography";
-import useThemeStore from "~/store/themeStore";
+import { useColorScheme } from "~/lib/useColorScheme";
 
 const SkanidaLogo = require("../../assets/skanida.png");
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { isDarkMode } = useThemeStore();
+  const { isDarkColorScheme } = useColorScheme();
 
   return (
     <View className="flex-1 bg-background">
@@ -34,11 +34,11 @@ export default function LoginScreen() {
           <Button
             variant="default"
             size="lg"
-            className={`mb-5 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
+            className={`mb-5 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
             onPress={() => router.push("/auth/Login")}
           >
             <H3
-              className={`font-bold ${isDarkMode ? "text-black" : "text-white"}`}
+              className={`font-bold ${isDarkColorScheme ? "text-black" : "text-white"}`}
             >
               Masuk
             </H3>
@@ -46,11 +46,11 @@ export default function LoginScreen() {
           <Button
             variant="default"
             size="lg"
-            className={`mb-5 w-full ${isDarkMode ? "bg-white" : "bg-black"}`}
+            className={`mb-5 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
             onPress={() => router.push("/auth/Register")}
           >
             <H3
-              className={`font-bold ${isDarkMode ? "text-black" : "text-white"}`}
+              className={`font-bold ${isDarkColorScheme ? "text-black" : "text-white"}`}
             >
               Daftar
             </H3>

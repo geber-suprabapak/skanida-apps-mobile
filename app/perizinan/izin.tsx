@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -9,8 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
+import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
+import { FileText } from "~/lib/icons/FileText";
+import { Camera } from "~/lib/icons/Camera";
+import { AlertCircle } from "~/lib/icons/AlertCircle";
+import { Trash2, Image as ImageIcon } from "lucide-react-native";
 
 // Types
 type PermitCategory = "sakit" | "pergi";
@@ -114,10 +119,10 @@ const getImageContentType = (uri: string): string => {
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const { isDarkMode } = useThemeStore();
+  const { isDarkColorScheme } = useColorScheme();
   logger.info("PerizinanScreen component mounted", {
     userId: user?.id,
-    isDarkMode,
+    isDarkColorScheme,
   });
 
   // State management
@@ -508,12 +513,12 @@ export default function PerizinanScreen() {
         }}
       />
       <SafeAreaView
-        className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
       >
         {/* Modern Header with Shadow */}
         <View
           className={`flex-row items-center px-6 py-4 ${
-            isDarkMode
+            isDarkColorScheme
               ? "bg-gray-800 border-b border-gray-700 shadow-lg"
               : "bg-white border-b border-gray-200 shadow-sm"
           }`}
@@ -521,28 +526,27 @@ export default function PerizinanScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             className={`mr-4 p-2 rounded-full ${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-700 hover:bg-gray-600"
                 : "bg-gray-100 hover:bg-gray-200"
             }`}
           >
-            <Ionicons
-              name="arrow-back-outline"
+            <ChevronLeft
               size={22}
-              color={isDarkMode ? "#fff" : "#374151"}
+              color={isDarkColorScheme ? "#fff" : "#374151"}
             />
           </TouchableOpacity>
           <View className="flex-1">
             <Text
               className={`text-xl font-bold ${
-                isDarkMode ? "text-white" : "text-gray-900"
+                isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Pengajuan Izin
             </Text>
             <Text
               className={`text-sm ${
-                isDarkMode ? "text-gray-400" : "text-gray-500"
+                isDarkColorScheme ? "text-gray-400" : "text-gray-500"
               }`}
             >
               Isi formulir dengan lengkap
@@ -558,7 +562,7 @@ export default function PerizinanScreen() {
           {/* Category Selection Card */}
           <Card
             className={`mb-6 ${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
@@ -567,20 +571,19 @@ export default function PerizinanScreen() {
               <View className="flex-row items-center">
                 <View
                   className={`mr-3 p-2 rounded-lg ${
-                    isDarkMode ? "bg-blue-900" : "bg-blue-100"
+                    isDarkColorScheme ? "bg-blue-900" : "bg-blue-100"
                   }`}
                 >
-                  <Ionicons
-                    name="options-outline"
+                  <ClipboardPenLine
                     size={20}
-                    color={isDarkMode ? "#60A5FA" : "#3B82F6"}
+                    color={isDarkColorScheme ? "#60A5FA" : "#3B82F6"}
                   />
                 </View>
                 <View>
                   <CardTitle>
                     <Text
                       className={`text-lg font-bold ${
-                        isDarkMode ? "text-white" : "text-gray-900"
+                        isDarkColorScheme ? "text-white" : "text-gray-900"
                       }`}
                     >
                       Kategori Izin
@@ -588,7 +591,7 @@ export default function PerizinanScreen() {
                   </CardTitle>
                   <Text
                     className={`text-sm ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
                     Pilih jenis izin yang sesuai
@@ -604,10 +607,10 @@ export default function PerizinanScreen() {
                     onPress={() => setCategory(catValue)}
                     className={`flex-1 p-4 rounded-xl border-2 ${
                       category === catValue
-                        ? isDarkMode
+                        ? isDarkColorScheme
                           ? "bg-blue-900 border-blue-500"
                           : "bg-blue-50 border-blue-500"
-                        : isDarkMode
+                        : isDarkColorScheme
                           ? "bg-gray-700 border-gray-600"
                           : "bg-gray-50 border-gray-200"
                     }`}
@@ -616,39 +619,49 @@ export default function PerizinanScreen() {
                       <View
                         className={`mb-2 p-3 rounded-full ${
                           category === catValue
-                            ? isDarkMode
+                            ? isDarkColorScheme
                               ? "bg-blue-800"
                               : "bg-blue-100"
-                            : isDarkMode
+                            : isDarkColorScheme
                               ? "bg-gray-600"
                               : "bg-gray-200"
                         }`}
                       >
-                        <Ionicons
-                          name={
-                            catValue === "sakit"
-                              ? "medical-outline"
-                              : "airplane-outline"
-                          }
-                          size={24}
-                          color={
-                            category === catValue
-                              ? isDarkMode
-                                ? "#60A5FA"
-                                : "#3B82F6"
-                              : isDarkMode
-                                ? "#9CA3AF"
-                                : "#6B7280"
-                          }
-                        />
+                        {catValue === "sakit" ? (
+                          <AlertCircle
+                            size={24}
+                            color={
+                              category === catValue
+                                ? isDarkColorScheme
+                                  ? "#60A5FA"
+                                  : "#3B82F6"
+                                : isDarkColorScheme
+                                  ? "#9CA3AF"
+                                  : "#6B7280"
+                            }
+                          />
+                        ) : (
+                          <ClipboardPenLine
+                            size={24}
+                            color={
+                              category === catValue
+                                ? isDarkColorScheme
+                                  ? "#60A5FA"
+                                  : "#3B82F6"
+                                : isDarkColorScheme
+                                  ? "#9CA3AF"
+                                  : "#6B7280"
+                            }
+                          />
+                        )}
                       </View>
                       <Text
                         className={`font-semibold text-center ${
                           category === catValue
-                            ? isDarkMode
+                            ? isDarkColorScheme
                               ? "text-blue-300"
                               : "text-blue-600"
-                            : isDarkMode
+                            : isDarkColorScheme
                               ? "text-gray-300"
                               : "text-gray-700"
                         }`}
@@ -658,10 +671,10 @@ export default function PerizinanScreen() {
                       <Text
                         className={`text-xs text-center mt-1 ${
                           category === catValue
-                            ? isDarkMode
+                            ? isDarkColorScheme
                               ? "text-blue-400"
                               : "text-blue-500"
-                            : isDarkMode
+                            : isDarkColorScheme
                               ? "text-gray-400"
                               : "text-gray-500"
                         }`}
@@ -679,7 +692,7 @@ export default function PerizinanScreen() {
           {/* Description Card */}
           <Card
             className={`mb-6 ${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
@@ -688,20 +701,19 @@ export default function PerizinanScreen() {
               <View className="flex-row items-center">
                 <View
                   className={`mr-3 p-2 rounded-lg ${
-                    isDarkMode ? "bg-green-900" : "bg-green-100"
+                    isDarkColorScheme ? "bg-green-900" : "bg-green-100"
                   }`}
                 >
-                  <Ionicons
-                    name="document-text-outline"
+                  <FileText
                     size={20}
-                    color={isDarkMode ? "#34D399" : "#10B981"}
+                    color={isDarkColorScheme ? "#34D399" : "#10B981"}
                   />
                 </View>
                 <View>
                   <CardTitle>
                     <Text
                       className={`text-lg font-bold ${
-                        isDarkMode ? "text-white" : "text-gray-900"
+                        isDarkColorScheme ? "text-white" : "text-gray-900"
                       }`}
                     >
                       Deskripsi
@@ -709,7 +721,7 @@ export default function PerizinanScreen() {
                   </CardTitle>
                   <Text
                     className={`text-sm ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
                     Jelaskan alasan pengajuan izin Anda
@@ -721,17 +733,17 @@ export default function PerizinanScreen() {
               <View
                 className={`p-4 rounded-xl border-2 ${
                   description.trim()
-                    ? isDarkMode
+                    ? isDarkColorScheme
                       ? "border-green-600 bg-green-900/20"
                       : "border-green-300 bg-green-50"
-                    : isDarkMode
+                    : isDarkColorScheme
                       ? "border-gray-600 bg-gray-700/50"
                       : "border-gray-200 bg-gray-50"
                 }`}
               >
                 <Input
                   className={`min-h-[120px] text-base border-0 p-0 ${
-                    isDarkMode
+                    isDarkColorScheme
                       ? "bg-transparent text-white placeholder-gray-400"
                       : "bg-transparent text-foreground placeholder-muted-foreground"
                   }`}
@@ -745,7 +757,7 @@ export default function PerizinanScreen() {
               <View className="flex-row justify-between items-center mt-3">
                 <Text
                   className={`text-xs ${
-                    isDarkMode ? "text-gray-400" : "text-gray-500"
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
                   Minimal 10 karakter
@@ -753,10 +765,10 @@ export default function PerizinanScreen() {
                 <Text
                   className={`text-xs ${
                     description.length >= 10
-                      ? isDarkMode
+                      ? isDarkColorScheme
                         ? "text-green-400"
                         : "text-green-600"
-                      : isDarkMode
+                      : isDarkColorScheme
                         ? "text-gray-400"
                         : "text-gray-500"
                   }`}
@@ -769,7 +781,7 @@ export default function PerizinanScreen() {
           {/* Photo Upload Card */}
           <Card
             className={`mb-6 ${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
@@ -778,20 +790,19 @@ export default function PerizinanScreen() {
               <View className="flex-row items-center">
                 <View
                   className={`mr-3 p-2 rounded-lg ${
-                    isDarkMode ? "bg-purple-900" : "bg-purple-100"
+                    isDarkColorScheme ? "bg-purple-900" : "bg-purple-100"
                   }`}
                 >
-                  <Ionicons
-                    name="camera-outline"
+                  <Camera
                     size={20}
-                    color={isDarkMode ? "#A78BFA" : "#8B5CF6"}
+                    color={isDarkColorScheme ? "#A78BFA" : "#8B5CF6"}
                   />
                 </View>
                 <View className="flex-1">
                   <CardTitle>
                     <Text
                       className={`text-lg font-bold ${
-                        isDarkMode ? "text-white" : "text-gray-900"
+                        isDarkColorScheme ? "text-white" : "text-gray-900"
                       }`}
                     >
                       Lampiran Foto
@@ -799,7 +810,7 @@ export default function PerizinanScreen() {
                   </CardTitle>
                   <Text
                     className={`text-sm ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
                     Opsional - Tambahkan bukti pendukung
@@ -808,12 +819,12 @@ export default function PerizinanScreen() {
                 {imageData && (
                   <View
                     className={`px-3 py-1 rounded-full ${
-                      isDarkMode ? "bg-green-900" : "bg-green-100"
+                      isDarkColorScheme ? "bg-green-900" : "bg-green-100"
                     }`}
                   >
                     <Text
                       className={`text-xs font-medium ${
-                        isDarkMode ? "text-green-300" : "text-green-700"
+                        isDarkColorScheme ? "text-green-300" : "text-green-700"
                       }`}
                     >
                       ✓ Foto dipilih
@@ -829,7 +840,7 @@ export default function PerizinanScreen() {
                     <TouchableOpacity
                       onPress={pickFromCamera}
                       className={`flex-1 p-4 rounded-xl border-2 border-dashed ${
-                        isDarkMode
+                        isDarkColorScheme
                           ? "border-gray-600 bg-gray-700/50"
                           : "border-gray-300 bg-gray-50"
                       }`}
@@ -837,25 +848,28 @@ export default function PerizinanScreen() {
                       <View className="items-center">
                         <View
                           className={`mb-2 p-3 rounded-full ${
-                            isDarkMode ? "bg-gray-600" : "bg-gray-200"
+                            isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
                           }`}
                         >
-                          <Ionicons
-                            name="camera-outline"
+                          <Camera
                             size={24}
-                            color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+                            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                           />
                         </View>
                         <Text
                           className={`font-medium text-center ${
-                            isDarkMode ? "text-gray-300" : "text-gray-700"
+                            isDarkColorScheme
+                              ? "text-gray-300"
+                              : "text-gray-700"
                           }`}
                         >
                           Ambil Foto
                         </Text>
                         <Text
                           className={`text-xs text-center mt-1 ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                            isDarkColorScheme
+                              ? "text-gray-400"
+                              : "text-gray-500"
                           }`}
                         >
                           Kamera
@@ -866,7 +880,7 @@ export default function PerizinanScreen() {
                     <TouchableOpacity
                       onPress={pickFromLibrary}
                       className={`flex-1 p-4 rounded-xl border-2 border-dashed ${
-                        isDarkMode
+                        isDarkColorScheme
                           ? "border-gray-600 bg-gray-700/50"
                           : "border-gray-300 bg-gray-50"
                       }`}
@@ -874,25 +888,28 @@ export default function PerizinanScreen() {
                       <View className="items-center">
                         <View
                           className={`mb-2 p-3 rounded-full ${
-                            isDarkMode ? "bg-gray-600" : "bg-gray-200"
+                            isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
                           }`}
                         >
-                          <Ionicons
-                            name="image-outline"
+                          <ImageIcon
                             size={24}
-                            color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+                            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                           />
                         </View>
                         <Text
                           className={`font-medium text-center ${
-                            isDarkMode ? "text-gray-300" : "text-gray-700"
+                            isDarkColorScheme
+                              ? "text-gray-300"
+                              : "text-gray-700"
                           }`}
                         >
                           Pilih File
                         </Text>
                         <Text
                           className={`text-xs text-center mt-1 ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                            isDarkColorScheme
+                              ? "text-gray-400"
+                              : "text-gray-500"
                           }`}
                         >
                           Galeri
@@ -902,7 +919,7 @@ export default function PerizinanScreen() {
                   </View>
                   <Text
                     className={`text-xs text-center ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
                     Format: JPG, PNG • Maksimal 5MB
@@ -920,20 +937,19 @@ export default function PerizinanScreen() {
                     <TouchableOpacity
                       onPress={clearImage}
                       className={`absolute top-3 right-3 p-2 rounded-full ${
-                        isDarkMode ? "bg-red-900/80" : "bg-red-100/80"
+                        isDarkColorScheme ? "bg-red-900/80" : "bg-red-100/80"
                       } backdrop-blur-sm`}
                     >
-                      <Ionicons
-                        name="trash-outline"
+                      <Trash2
                         size={20}
-                        color={isDarkMode ? "#F87171" : "#EF4444"}
+                        color={isDarkColorScheme ? "#F87171" : "#EF4444"}
                       />
                     </TouchableOpacity>
                   </View>
                   <View className="flex-row justify-between items-center">
                     <Text
                       className={`text-sm font-medium ${
-                        isDarkMode ? "text-green-300" : "text-green-600"
+                        isDarkColorScheme ? "text-green-300" : "text-green-600"
                       }`}
                     >
                       ✓ Foto berhasil dipilih
@@ -947,12 +963,12 @@ export default function PerizinanScreen() {
                         }, 100);
                       }}
                       className={`px-3 py-1 rounded-lg ${
-                        isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                        isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
                       }`}
                     >
                       <Text
                         className={`text-xs font-medium ${
-                          isDarkMode ? "text-gray-300" : "text-gray-600"
+                          isDarkColorScheme ? "text-gray-300" : "text-gray-600"
                         }`}
                       >
                         Ganti Foto
@@ -967,7 +983,7 @@ export default function PerizinanScreen() {
           {/* Submit Button Card */}
           <Card
             className={`${
-              isDarkMode
+              isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
@@ -980,10 +996,10 @@ export default function PerizinanScreen() {
                 onPress={uploadPermit}
                 className={`w-full p-4 rounded-xl flex-row items-center justify-center ${
                   uploading || !description.trim() || description.length < 10
-                    ? isDarkMode
+                    ? isDarkColorScheme
                       ? "bg-gray-700"
                       : "bg-gray-300"
-                    : isDarkMode
+                    : isDarkColorScheme
                       ? "bg-blue-600 hover:bg-blue-700"
                       : "bg-blue-500 hover:bg-blue-600"
                 } ${uploading ? "opacity-80" : ""}`}
@@ -993,13 +1009,15 @@ export default function PerizinanScreen() {
                     <View className="mr-3">
                       <View
                         className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${
-                          isDarkMode ? "border-gray-400" : "border-blue-200"
+                          isDarkColorScheme
+                            ? "border-gray-400"
+                            : "border-blue-200"
                         }`}
                       />
                     </View>
                     <Text
                       className={`font-semibold text-base ${
-                        isDarkMode ? "text-gray-300" : "text-blue-100"
+                        isDarkColorScheme ? "text-gray-300" : "text-blue-100"
                       }`}
                     >
                       Mengirim Pengajuan...
@@ -1007,12 +1025,11 @@ export default function PerizinanScreen() {
                   </>
                 ) : (
                   <>
-                    <Ionicons
-                      name="paper-plane-outline"
+                    <ClipboardPenLine
                       size={20}
                       color={
                         !description.trim() || description.length < 10
-                          ? isDarkMode
+                          ? isDarkColorScheme
                             ? "#6B7280"
                             : "#9CA3AF"
                           : "#FFFFFF"
@@ -1022,7 +1039,7 @@ export default function PerizinanScreen() {
                     <Text
                       className={`font-bold text-base ${
                         !description.trim() || description.length < 10
-                          ? isDarkMode
+                          ? isDarkColorScheme
                             ? "text-gray-400"
                             : "text-gray-500"
                           : "text-white"
@@ -1038,7 +1055,7 @@ export default function PerizinanScreen() {
               {!description.trim() && (
                 <Text
                   className={`text-xs text-center mt-3 ${
-                    isDarkMode ? "text-red-400" : "text-red-500"
+                    isDarkColorScheme ? "text-red-400" : "text-red-500"
                   }`}
                 >
                   ⚠️ Deskripsi tidak boleh kosong
@@ -1047,7 +1064,7 @@ export default function PerizinanScreen() {
               {description.trim() && description.length < 10 && (
                 <Text
                   className={`text-xs text-center mt-3 ${
-                    isDarkMode ? "text-yellow-400" : "text-yellow-600"
+                    isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
                   }`}
                 >
                   ⚠️ Deskripsi minimal 10 karakter
@@ -1056,7 +1073,7 @@ export default function PerizinanScreen() {
               {description.trim() && description.length >= 10 && (
                 <Text
                   className={`text-xs text-center mt-3 ${
-                    isDarkMode ? "text-green-400" : "text-green-600"
+                    isDarkColorScheme ? "text-green-400" : "text-green-600"
                   }`}
                 >
                   ✓ Siap untuk dikirim
