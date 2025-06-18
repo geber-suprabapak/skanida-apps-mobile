@@ -12,6 +12,8 @@ import { Text } from "~/components/ui/text";
 import { H1, P, H3 } from "~/components/ui/typography";
 import { cn } from "~/lib/utils";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { Eye } from "~/lib/icons/Eye";
+import { EyeOff } from "~/lib/icons/EyeOff";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -19,6 +21,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
   const { isDarkColorScheme } = useColorScheme();
@@ -111,16 +114,28 @@ export default function Login() {
           <View>
             <View className="mb-6">
               <Text className="mb-2 text-foreground">Password</Text>
-              <Input
-                className={cn(passwordError && "border-red-500")}
-                placeholder="Masukkan password Anda"
-                secureTextEntry
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (passwordError) setPasswordError(false);
-                }}
-              />
+              <View className="relative">
+                <Input
+                  className={cn(passwordError && "border-red-500", "pr-10")}
+                  placeholder="Masukkan password Anda"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (passwordError) setPasswordError(false);
+                  }}
+                />
+                <TouchableOpacity
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color="#6b7280" />
+                  ) : (
+                    <Eye size={20} color="#6b7280" />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
