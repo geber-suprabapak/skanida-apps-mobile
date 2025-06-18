@@ -11,6 +11,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -32,6 +33,17 @@ interface UserProfile {
   created_at?: string;
   updated_at?: string;
 }
+
+// Cache management utility
+const PROFILE_CACHE_KEY = "user_profile_cache";
+
+const clearProfileCache = async () => {
+  try {
+    await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch (error) {
+    console.log("Failed to clear profile cache:", error);
+  }
+};
 
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
@@ -330,9 +342,10 @@ export default function EditProfile() {
 
       if (refreshedProfile) {
         setProfileData(refreshedProfile);
-      }
+      }      setUser(userData.user);
 
-      setUser(userData.user);
+      // Clear profile cache to ensure fresh data is loaded in other screens
+      await clearProfileCache();
 
       setInitialName(name);
       setInitialEmail(email);

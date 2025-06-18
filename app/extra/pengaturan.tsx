@@ -13,6 +13,8 @@
  * 8. Prefetching utilities for background data loading
  * 9. Debouncing for preventing excessive function calls
  * 10. Optimized state management with minimal re-renders
+ * 11. AsyncStorage local caching for profile data with automatic expiry
+ * 12. Cache-first loading strategy for instant UI updates
  */
 import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
@@ -28,6 +30,7 @@ import {
   InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -55,6 +58,63 @@ const prefetchProfileData = async (userId: string) => {
   } catch (error) {
     console.log("Prefetch failed silently:", error);
     return null;
+  }
+};
+
+// Local storage utilities for caching profile data
+const PROFILE_CACHE_KEY = "user_profile_cache";
+const CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
+
+interface CachedProfileData {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  timestamp: number;
+}
+
+const saveProfileToCache = async (userId: string, fullName: string, avatarUrl: string | null) => {
+  try {
+    const cacheData: CachedProfileData = {
+      userId,
+      fullName,
+      avatarUrl,
+      timestamp: Date.now(),
+    };
+    await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.log("Failed to save profile to cache:", error);
+  }
+};
+
+const getProfileFromCache = async (userId: string): Promise<CachedProfileData | null> => {
+  try {
+    const cached = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+    if (!cached) return null;
+
+    const cacheData: CachedProfileData = JSON.parse(cached);
+    
+    // Check if cache is for the same user and not expired
+    if (cacheData.userId !== userId) return null;
+    
+    const hoursSinceCache = (Date.now() - cacheData.timestamp) / (1000 * 60 * 60);
+    if (hoursSinceCache > CACHE_EXPIRY_HOURS) {
+      // Cache expired, remove it
+      await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+      return null;
+    }
+    
+    return cacheData;
+  } catch (error) {
+    console.log("Failed to get profile from cache:", error);
+    return null;
+  }
+};
+
+const clearProfileCache = async () => {
+  try {
+    await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch (error) {
+    console.log("Failed to clear profile cache:", error);
   }
 };
 
@@ -109,8 +169,7 @@ function Pengaturan() {
       router.push("/profile/ChangePassword");
     });
   }, [router]);
-
-  // Optimized profile data fetching
+  // Optimized profile data fetching with local cache
   const fetchProfileDataAndUpdateState = useCallback(async () => {
     if (!user) {
       setProfileFullName("Pengguna Skanida");
@@ -119,16 +178,22 @@ function Pengaturan() {
       return;
     }
 
-    // Use cached data initially for immediate display
-    let currentName = user.user_metadata?.name || user.email || "Pengguna Skanida";
-    let currentAvatar = user.user_metadata?.avatar_url || null;
+    // First, try to load from cache for immediate display
+    const cachedProfile = await getProfileFromCache(user.id);
+    if (cachedProfile) {
+      setProfileFullName(cachedProfile.fullName);
+      setProfileAvatarUrl(cachedProfile.avatarUrl);
+      setIsDataLoaded(true);
+    } else {
+      // Use user metadata as fallback if no cache
+      const fallbackName = user.user_metadata?.name || user.email || "Pengguna Skanida";
+      const fallbackAvatar = user.user_metadata?.avatar_url || null;
+      setProfileFullName(fallbackName);
+      setProfileAvatarUrl(fallbackAvatar);
+      setIsDataLoaded(true);
+    }
 
-    // Set initial data immediately
-    setProfileFullName(currentName);
-    setProfileAvatarUrl(currentAvatar);
-    setIsDataLoaded(true);
-
-    // Fetch updated data in background using InteractionManager
+    // Fetch fresh data in background using InteractionManager
     InteractionManager.runAfterInteractions(async () => {
       try {
         const { data: userProfile, error: profileError } = await supabase
@@ -143,21 +208,24 @@ function Pengaturan() {
             profileError.message,
           );
         } else if (userProfile) {
-          const updatedName = userProfile.full_name || currentName;
-          const updatedAvatar = userProfile.avatar_url || currentAvatar;
+          const updatedName = userProfile.full_name || user.user_metadata?.name || user.email || "Pengguna Skanida";
+          const updatedAvatar = userProfile.avatar_url || user.user_metadata?.avatar_url || null;
           
-          // Only update if data actually changed to avoid unnecessary re-renders
-          if (updatedName !== currentName) {
+          // Update cache with fresh data
+          await saveProfileToCache(user.id, updatedName, updatedAvatar);
+          
+          // Only update state if data actually changed to avoid unnecessary re-renders
+          if (updatedName !== profileFullName) {
             setProfileFullName(updatedName);
           }
-          if (updatedAvatar !== currentAvatar) {
+          if (updatedAvatar !== profileAvatarUrl) {
             setProfileAvatarUrl(updatedAvatar);
           }
         }
       } catch (err) {
         console.error("Pengaturan: Unexpected error fetching profile:", err);
       }    });
-  }, [user]);
+  }, [user, profileFullName, profileAvatarUrl]);
 
   // Optimized useEffect with proper dependency management
   useEffect(() => {
@@ -169,8 +237,7 @@ function Pengaturan() {
       setIsDataLoaded(true);
     }
   }, [user, isFocused, fetchProfileDataAndUpdateState]);
-
-  // Optimized logout handler with useCallback
+  // Optimized logout handler with useCallback and cache clearing
   const handleLogout = useCallback(async () => {
     Alert.alert(
       "Logout",
@@ -186,6 +253,8 @@ function Pengaturan() {
           onPress: async () => {
             try {
               await supabase.auth.signOut();
+              // Clear cached profile data on logout
+              await clearProfileCache();
               setUser(null);
               router.replace("/auth/AuthSelector");
             } catch (error) {
