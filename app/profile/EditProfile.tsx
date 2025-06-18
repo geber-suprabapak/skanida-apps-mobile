@@ -18,6 +18,7 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -366,16 +367,13 @@ export default function EditProfile() {
         options={{
           headerShown: false,
         }}
-      />
-
-      <View
+      />      <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons
-            name="arrow-back-outline"
-            size={24}
-            color={isDarkColorScheme ? "#fff" : "hsl(var(--foreground))"}
+          <ChevronLeft 
+            size={24} 
+            color={isDarkColorScheme ? "#ffffff" : "#000000"} 
           />
         </TouchableOpacity>
         <Text
