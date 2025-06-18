@@ -11,6 +11,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -18,6 +19,7 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
+import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -31,6 +33,17 @@ interface UserProfile {
   created_at?: string;
   updated_at?: string;
 }
+
+// Cache management utility
+const PROFILE_CACHE_KEY = "user_profile_cache";
+
+const clearProfileCache = async () => {
+  try {
+    await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch (error) {
+    console.log("Failed to clear profile cache:", error);
+  }
+};
 
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
@@ -329,9 +342,10 @@ export default function EditProfile() {
 
       if (refreshedProfile) {
         setProfileData(refreshedProfile);
-      }
+      }      setUser(userData.user);
 
-      setUser(userData.user);
+      // Clear profile cache to ensure fresh data is loaded in other screens
+      await clearProfileCache();
 
       setInitialName(name);
       setInitialEmail(email);
@@ -366,16 +380,13 @@ export default function EditProfile() {
         options={{
           headerShown: false,
         }}
-      />
-
-      <View
+      />      <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons
-            name="arrow-back-outline"
-            size={24}
-            color={isDarkColorScheme ? "#fff" : "hsl(var(--foreground))"}
+          <ChevronLeft 
+            size={24} 
+            color={isDarkColorScheme ? "#ffffff" : "#000000"} 
           />
         </TouchableOpacity>
         <Text
