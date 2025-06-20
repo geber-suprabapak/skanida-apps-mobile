@@ -161,7 +161,10 @@ export default function RegisterScreen() {
               <Text className="mb-2 text-foreground">Konfirmasi Password</Text>
               <View className="relative">
                 <Input
-                  className={cn(confirmPasswordError && "border-red-500", "pr-10")}
+                  className={cn(
+                    confirmPasswordError && "border-red-500",
+                    "pr-10",
+                  )}
                   placeholder="Masukkan kembali password Anda"
                   secureTextEntry={!showConfirmPassword}
                   value={confirmPassword}

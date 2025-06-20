@@ -342,7 +342,8 @@ export default function EditProfile() {
 
       if (refreshedProfile) {
         setProfileData(refreshedProfile);
-      }      setUser(userData.user);
+      }
+      setUser(userData.user);
 
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
@@ -380,13 +381,14 @@ export default function EditProfile() {
         options={{
           headerShown: false,
         }}
-      />      <View
+      />{" "}
+      <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft 
-            size={24} 
-            color={isDarkColorScheme ? "#ffffff" : "#000000"} 
+          <ChevronLeft
+            size={24}
+            color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
         <Text
@@ -395,7 +397,6 @@ export default function EditProfile() {
           Edit Profil
         </Text>
       </View>
-
       <ScrollView
         className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
         contentContainerStyle={{ padding: 24 }}
