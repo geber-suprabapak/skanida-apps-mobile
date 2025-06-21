@@ -1,7 +1,7 @@
 // app/register.tsx
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
-import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { useState, useEffect } from "react";
+import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -27,10 +27,20 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState(false);
   const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter();
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);  const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
   const { isDarkColorScheme } = useColorScheme();
+  // Handle hardware back button for Android
+  useEffect(() => {
+    const backAction = () => {
+      router.back();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => backHandler.remove();
+  }, [router]);
 
   const handleRegister = async () => {
     setEmailError(false);

@@ -1,6 +1,6 @@
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
-import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { useState, useEffect } from "react";
+import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -23,10 +23,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);  const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
   const { isDarkColorScheme } = useColorScheme();
+  // Handle hardware back button for Android
+  useEffect(() => {
+    const backAction = () => {
+      router.back();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => backHandler.remove();
+  }, [router]);
 
   const handleLogin = async () => {
     setEmailError(false);
@@ -79,8 +89,7 @@ export default function Login() {
             : ['#f8fafc', '#f1f5f9', '#e2e8f0']
         }
         className="flex-1"
-      >
-        {/* Header with Back Button */}
+      >        {/* Header with Back Button */}
         <View className="flex-row items-center p-6 pt-4">
           <TouchableOpacity
             onPress={() => router.back()}
