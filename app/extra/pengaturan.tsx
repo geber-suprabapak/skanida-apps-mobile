@@ -527,7 +527,12 @@ function Pengaturan() {
             }
             title="Notifikasi"
             subtitle="Pengaturan pemberitahuan"
-            onPress={() => {}}
+            onPress={() => {
+              Alert.alert(
+                "Belum tersedia",
+                "Fitur ini belum diimplementasikan.",
+              );
+            }}
             showBorder={false}
           />
         </View>
