@@ -9,6 +9,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -129,7 +130,6 @@ export default function EditProfile() {
 
     fetchAndSetInitialProfileData();
   }, [user]);
-
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
       const hasUnsavedChanges =
@@ -166,6 +166,48 @@ export default function EditProfile() {
     };
   }, [
     navigation,
+    name,
+    email,
+    absenceNumber,
+    className,
+    avatarUrl,
+    initialName,
+    initialEmail,
+    initialAbsenceNumber,
+    initialClassName,
+    initialAvatarUrl,
+  ]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      const hasUnsavedChanges =
+        name !== initialName ||
+        email !== initialEmail ||
+        absenceNumber !== initialAbsenceNumber ||
+        className !== initialClassName ||
+        avatarUrl !== initialAvatarUrl;
+
+      if (hasUnsavedChanges) {
+        Alert.alert(
+          "Perubahan Belum Disimpan",
+          "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
+          [
+            { text: "Tetap di Sini", style: "cancel" },
+            { text: "Tinggalkan", style: "destructive", onPress: () => router.back() },
+          ],
+        );
+      } else {
+        router.back();
+      }
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => backHandler.remove();
+  }, [
+    router,
     name,
     email,
     absenceNumber,

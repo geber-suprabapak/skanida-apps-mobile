@@ -1,7 +1,8 @@
 // filepath: e:\skanida-apps-mobile\app\auth\AuthSelector.tsx
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
-import { View, ScrollView, Image } from "react-native";
+import { useEffect } from "react";
+import { View, ScrollView, Image, BackHandler, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -15,6 +16,25 @@ const SkanidaLogo = require("../../assets/skanidatransparan.png");
 export default function LoginScreen() {
   const router = useRouter();
   const { isDarkColorScheme } = useColorScheme();
+
+  // Handle hardware back button - show exit confirmation
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert(
+        "Keluar Aplikasi",
+        "Apakah Anda yakin ingin keluar dari aplikasi?",
+        [
+          { text: "Batal", style: "cancel" },
+          { text: "Keluar", style: "destructive", onPress: () => BackHandler.exitApp() }
+        ]
+      );
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => backHandler.remove();
+  }, []);
 
   return (
     <SafeAreaView className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}>

@@ -131,12 +131,19 @@ export default function Dashboard() {
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
-
   // Prevent back navigation
   useEffect(() => {
     const backAction = () => {
-      // Prevent going back to login screen
-      return true;
+      // For Dashboard, show exit confirmation instead of navigating back
+      Alert.alert(
+        "Keluar Aplikasi",
+        "Apakah Anda yakin ingin keluar dari aplikasi?",
+        [
+          { text: "Batal", style: "cancel" },
+          { text: "Keluar", style: "destructive", onPress: () => BackHandler.exitApp() }
+        ]
+      );
+      return true; // Prevent default behavior
     };
 
     const backHandler = BackHandler.addEventListener(

@@ -10,6 +10,7 @@ import {
   Image,
   Clipboard,
   InteractionManager,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -159,11 +160,22 @@ function Pengaturan() {
       router.push("/profile/EditProfile");
     });
   }, [router]);
-
   const navigateToChangePassword = useCallback(() => {
     requestAnimationFrame(() => {
       router.push("/profile/ChangePassword");
     });
+  }, [router]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      router.back();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => backHandler.remove();
   }, [router]);
   // Optimized profile data fetching with local cache
   const fetchProfileDataAndUpdateState = useCallback(async () => {
