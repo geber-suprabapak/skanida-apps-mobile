@@ -4,7 +4,6 @@ import { useRouter, Stack } from "expo-router";
 import { useEffect, useCallback } from "react";
 import { View, ScrollView, Image, BackHandler, Alert, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -41,24 +40,15 @@ export default function LoginScreen() {
 
     return () => backHandler.remove();
   }, []);
-
   return (
     <SafeAreaView className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <LinearGradient
-        colors={
-          isDarkColorScheme
-            ? ['#111827', '#1f2937', '#374151']
-            : ['#f8fafc', '#f1f5f9', '#e2e8f0']
-        }
+      <ScrollView
         className="flex-1"
-      >
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-        >          <View className="flex-1 justify-center items-center px-8 py-16">            {/* Logo Section */}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+      ><View className="flex-1 justify-center items-center px-8 py-16">            {/* Logo Section */}
             <View className="items-center mb-16">
               <TouchableOpacity
                 onPress={toggleColorScheme}
@@ -111,9 +101,7 @@ export default function LoginScreen() {
                   Daftar
                 </H3>
               </Button>
-            </View>
-
-            {/* Footer */}
+            </View>            {/* Footer */}
             <View className="mt-20">
               <Text className={`text-center text-sm ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}>
                 © 2025 Skanida Apps
@@ -121,7 +109,6 @@ export default function LoginScreen() {
             </View>
           </View>
         </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
-  );
+      </SafeAreaView>
+    );
 }

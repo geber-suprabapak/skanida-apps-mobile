@@ -2,7 +2,6 @@ import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
@@ -82,25 +81,18 @@ export default function Login() {
     <SafeAreaView className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}>
       <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
 
-      <LinearGradient
-        colors={
-          isDarkColorScheme
-            ? ['#111827', '#1f2937', '#374151']
-            : ['#f8fafc', '#f1f5f9', '#e2e8f0']
-        }
-        className="flex-1"
-      >        {/* Header with Back Button */}
-        <View className="flex-row items-center p-6 pt-4">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className={`w-12 h-12 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} shadow-lg`}
-          >
-            <ChevronLeft
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            />
-          </TouchableOpacity>
-        </View>
+      {/* Header with Back Button */}
+      <View className="flex-row items-center p-6 pt-4">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className={`w-12 h-12 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} shadow-lg`}
+        >
+          <ChevronLeft
+            size={20}
+            color={isDarkColorScheme ? "#ffffff" : "#000000"}
+          />
+        </TouchableOpacity>
+      </View>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -220,13 +212,11 @@ export default function Login() {
                     <Text className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
                       Daftar sekarang
                     </Text>
-                  </TouchableOpacity>
-                </View>
+                  </TouchableOpacity>                </View>
               </View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </LinearGradient>
-    </SafeAreaView>
-  );
+      </SafeAreaView>
+    );
 }
