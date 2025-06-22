@@ -1,8 +1,8 @@
 // filepath: e:\skanida-apps-mobile\app\auth\AuthSelector.tsx
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
-import { useEffect } from "react";
-import { View, ScrollView, Image, BackHandler, Alert } from "react-native";
+import { useEffect, useCallback } from "react";
+import { View, ScrollView, Image, BackHandler, Alert, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -15,7 +15,13 @@ const SkanidaLogo = require("../../assets/skanidatransparan.png");
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { isDarkColorScheme } = useColorScheme();
+  const { isDarkColorScheme, setColorScheme } = useColorScheme();
+
+  // Optimized color scheme toggle with useCallback
+  const toggleColorScheme = useCallback((): void => {
+    const newTheme: "light" | "dark" = isDarkColorScheme ? "light" : "dark";
+    setColorScheme(newTheme);
+  }, [isDarkColorScheme, setColorScheme]);
 
   // Handle hardware back button - show exit confirmation
   useEffect(() => {
@@ -54,21 +60,24 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >          <View className="flex-1 justify-center items-center px-8 py-16">            {/* Logo Section */}
             <View className="items-center mb-16">
-              <View className={`w-52 h-52 rounded-full shadow-lg mb-10 ${isDarkColorScheme ? "bg-white" : "bg-white/80"} items-center justify-center`}>
+              <TouchableOpacity
+                onPress={toggleColorScheme}
+                className={`w-52 h-52 rounded-full shadow-lg mb-10 ${isDarkColorScheme ? "bg-white" : "bg-white/80"} items-center justify-center`}
+                activeOpacity={0.8}
+              >
                 <Image
                   source={SkanidaLogo}
                   className="w-36 h-36"
                   resizeMode="contain"
                 />
-              </View>
+              </TouchableOpacity>
 
               <H1 className={`text-4xl font-bold text-center mb-4 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
                 Skanida Apps
-              </H1>
-
-              <Text className={`text-center text-lg leading-relaxed max-w-sm px-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}>
+              </H1>              <Text className={`text-center text-lg leading-relaxed max-w-sm px-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}>
                 Sistem Absensi SMKN2 Magelang
               </Text>
+
             </View>
 
             {/* Action Buttons */}
