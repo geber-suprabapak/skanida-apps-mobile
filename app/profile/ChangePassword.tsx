@@ -371,41 +371,16 @@ export default function ChangePassword() {
               </Button>
             </View>
           </View>
-          {/* Security Tips Card */}
-          <View
-            className={`rounded-xl p-6 mt-6 ${
-              isDarkColorScheme ? "bg-gray-800" : "bg-card"
-            }`}
-          >
-            <Text
-              className={`text-sm font-medium mb-4 ${
-                isDarkColorScheme ? "text-white" : "text-card-foreground"
-              }`}
-            >
-              Tips Keamanan
-            </Text>
-            <View className="space-y-3">
+          {/* Footer */}
+          <View className="mt-8">
+            <View className="items-center">
               <Text
-                className={`text-xs leading-5 ${
-                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+                className={`text-sm ${
+                  isDarkColorScheme ? "text-gray-500" : "text-gray-400"
                 }`}
               >
-                • Gunakan kombinasi huruf besar, kecil, angka, dan simbol
+                © 2025 Skanida Apps
               </Text>
-              <Text
-                className={`text-xs leading-5 ${
-                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
-                }`}
-              >
-                • Hindari menggunakan informasi personal yang mudah ditebak
-              </Text>
-              <Text
-                className={`text-xs leading-5 ${
-                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
-                }`}
-              >
-                • Jangan gunakan password yang sama di platform lain
-              </Text>{" "}
             </View>
           </View>
         </ScrollView>

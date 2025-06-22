@@ -273,7 +273,7 @@ export default function Dashboard() {
             <H4
               className={isDarkColorScheme ? "text-white" : "text-foreground"}
             >
-              Version 1.4.5-alpha.1
+              Version 1.5.0-beta.1
             </H4>
           </View>
         </View>
