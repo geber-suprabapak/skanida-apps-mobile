@@ -44,11 +44,11 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const isFocused = useIsFocused(); // Add isFocused hook
-  // Alpha alert on dashboard open
+  // Beta alert on dashboard open
   useEffect(() => {
     Alert.alert(
-      "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      "🚧 Beta Release",
+      "Aplikasi ini masih dalam tahap pengembangan (Beta). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
       [{ text: "Saya Mengerti", style: "default" }],
       { cancelable: true },
     );
