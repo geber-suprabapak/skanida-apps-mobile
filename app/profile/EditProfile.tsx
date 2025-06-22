@@ -194,7 +194,11 @@ export default function EditProfile() {
           "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
           [
             { text: "Tetap di Sini", style: "cancel" },
-            { text: "Tinggalkan", style: "destructive", onPress: () => router.back() },
+            {
+              text: "Tinggalkan",
+              style: "destructive",
+              onPress: () => router.back(),
+            },
           ],
         );
       } else {
@@ -203,7 +207,10 @@ export default function EditProfile() {
       return true; // Prevent default behavior
     };
 
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
 
     return () => backHandler.remove();
   }, [

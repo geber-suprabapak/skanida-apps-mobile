@@ -110,7 +110,8 @@ const AbsenceReport = () => {
   // Absence state
   const [currentAbsenceType, setCurrentAbsenceType] =
     useState<AbsenceType | null>(null);
-  const [canProceedToCamera, setCanProceedToCamera] = useState(false);  const [morningAbsenceCompleted, setMorningAbsenceCompleted] = useState<
+  const [canProceedToCamera, setCanProceedToCamera] = useState(false);
+  const [morningAbsenceCompleted, setMorningAbsenceCompleted] = useState<
     string | null
   >(null);
 
@@ -121,7 +122,10 @@ const AbsenceReport = () => {
       return true; // Prevent default behavior
     };
 
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
 
     return () => backHandler.remove();
   }, [router]);

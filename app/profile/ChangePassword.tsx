@@ -36,7 +36,10 @@ export default function ChangePassword() {
       return true; // Prevent default behavior
     };
 
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
 
     return () => backHandler.remove();
   }, [router]);

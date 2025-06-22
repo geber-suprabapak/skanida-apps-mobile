@@ -140,8 +140,12 @@ export default function Dashboard() {
         "Apakah Anda yakin ingin keluar dari aplikasi?",
         [
           { text: "Batal", style: "cancel" },
-          { text: "Keluar", style: "destructive", onPress: () => BackHandler.exitApp() }
-        ]
+          {
+            text: "Keluar",
+            style: "destructive",
+            onPress: () => BackHandler.exitApp(),
+          },
+        ],
       );
       return true; // Prevent default behavior
     };
