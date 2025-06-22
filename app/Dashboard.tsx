@@ -47,8 +47,8 @@ export default function Dashboard() {
   // Beta alert on dashboard open
   useEffect(() => {
     Alert.alert(
-      "🚧 Beta Release",
-      "Aplikasi ini masih dalam tahap pengembangan (Beta). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      "🚧 Alpha Release",
+      "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
       [{ text: "Saya Mengerti", style: "default" }],
       { cancelable: true },
     );
@@ -273,7 +273,7 @@ export default function Dashboard() {
             <H4
               className={isDarkColorScheme ? "text-white" : "text-foreground"}
             >
-              Version 1.5.0-beta.1
+              Version 1.5.0-alpha.1
             </H4>
           </View>
         </View>

@@ -580,7 +580,7 @@ function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
-              Version 1.5.0-beta.1
+              Version 1.5.0-alpha.1
             </Text>
           </View>
 
