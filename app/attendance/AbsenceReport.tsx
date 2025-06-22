@@ -2,7 +2,7 @@
 import * as Location from "expo-location";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Alert, TouchableOpacity } from "react-native";
+import { View, Alert, TouchableOpacity, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
@@ -110,10 +110,21 @@ const AbsenceReport = () => {
   // Absence state
   const [currentAbsenceType, setCurrentAbsenceType] =
     useState<AbsenceType | null>(null);
-  const [canProceedToCamera, setCanProceedToCamera] = useState(false);
-  const [morningAbsenceCompleted, setMorningAbsenceCompleted] = useState<
+  const [canProceedToCamera, setCanProceedToCamera] = useState(false);  const [morningAbsenceCompleted, setMorningAbsenceCompleted] = useState<
     string | null
   >(null);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      router.back();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => backHandler.remove();
+  }, [router]);
 
   // --- MEMOIZED VALUES ---
   const todayDateString = useMemo(

@@ -44,11 +44,11 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const isFocused = useIsFocused(); // Add isFocused hook
-  // Alpha alert on dashboard open
+  // Beta alert on dashboard open
   useEffect(() => {
     Alert.alert(
       "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
       [{ text: "Saya Mengerti", style: "default" }],
       { cancelable: true },
     );
@@ -131,12 +131,19 @@ export default function Dashboard() {
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
-
   // Prevent back navigation
   useEffect(() => {
     const backAction = () => {
-      // Prevent going back to login screen
-      return true;
+      // For Dashboard, show exit confirmation instead of navigating back
+      Alert.alert(
+        "Keluar Aplikasi",
+        "Apakah Anda yakin ingin keluar dari aplikasi?",
+        [
+          { text: "Batal", style: "cancel" },
+          { text: "Keluar", style: "destructive", onPress: () => BackHandler.exitApp() }
+        ]
+      );
+      return true; // Prevent default behavior
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -266,7 +273,7 @@ export default function Dashboard() {
             <H4
               className={isDarkColorScheme ? "text-white" : "text-foreground"}
             >
-              Version 1.4.5-alpha.1
+              Version 1.5.0-alpha.1
             </H4>
           </View>
         </View>
