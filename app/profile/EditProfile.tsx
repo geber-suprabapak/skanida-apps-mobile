@@ -9,6 +9,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -129,7 +130,6 @@ export default function EditProfile() {
 
     fetchAndSetInitialProfileData();
   }, [user]);
-
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
       const hasUnsavedChanges =
@@ -166,6 +166,55 @@ export default function EditProfile() {
     };
   }, [
     navigation,
+    name,
+    email,
+    absenceNumber,
+    className,
+    avatarUrl,
+    initialName,
+    initialEmail,
+    initialAbsenceNumber,
+    initialClassName,
+    initialAvatarUrl,
+  ]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      const hasUnsavedChanges =
+        name !== initialName ||
+        email !== initialEmail ||
+        absenceNumber !== initialAbsenceNumber ||
+        className !== initialClassName ||
+        avatarUrl !== initialAvatarUrl;
+
+      if (hasUnsavedChanges) {
+        Alert.alert(
+          "Perubahan Belum Disimpan",
+          "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
+          [
+            { text: "Tetap di Sini", style: "cancel" },
+            {
+              text: "Tinggalkan",
+              style: "destructive",
+              onPress: () => router.back(),
+            },
+          ],
+        );
+      } else {
+        router.back();
+      }
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [
+    router,
     name,
     email,
     absenceNumber,
@@ -342,7 +391,8 @@ export default function EditProfile() {
 
       if (refreshedProfile) {
         setProfileData(refreshedProfile);
-      }      setUser(userData.user);
+      }
+      setUser(userData.user);
 
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
@@ -380,13 +430,14 @@ export default function EditProfile() {
         options={{
           headerShown: false,
         }}
-      />      <View
+      />{" "}
+      <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft 
-            size={24} 
-            color={isDarkColorScheme ? "#ffffff" : "#000000"} 
+          <ChevronLeft
+            size={24}
+            color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
         <Text
@@ -395,7 +446,6 @@ export default function EditProfile() {
           Edit Profil
         </Text>
       </View>
-
       <ScrollView
         className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
         contentContainerStyle={{ padding: 24 }}

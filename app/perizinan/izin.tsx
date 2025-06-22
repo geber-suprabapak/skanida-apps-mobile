@@ -1,7 +1,14 @@
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { View, TouchableOpacity, Image, Alert, ScrollView } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ScrollView,
+  BackHandler,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -130,6 +137,21 @@ export default function PerizinanScreen() {
   const [description, setDescription] = useState("");
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      router.back();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [router]);
   // Image handling functions
   const clearImage = (): void => {
     logger.debug("Clearing image data");

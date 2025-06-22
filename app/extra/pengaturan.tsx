@@ -1,4 +1,3 @@
-
 import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
@@ -11,6 +10,7 @@ import {
   Image,
   Clipboard,
   InteractionManager,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -55,7 +55,11 @@ interface CachedProfileData {
   timestamp: number;
 }
 
-const saveProfileToCache = async (userId: string, fullName: string, avatarUrl: string | null) => {
+const saveProfileToCache = async (
+  userId: string,
+  fullName: string,
+  avatarUrl: string | null,
+) => {
   try {
     const cacheData: CachedProfileData = {
       userId,
@@ -69,7 +73,9 @@ const saveProfileToCache = async (userId: string, fullName: string, avatarUrl: s
   }
 };
 
-const getProfileFromCache = async (userId: string): Promise<CachedProfileData | null> => {
+const getProfileFromCache = async (
+  userId: string,
+): Promise<CachedProfileData | null> => {
   try {
     const cached = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
     if (!cached) return null;
@@ -79,7 +85,8 @@ const getProfileFromCache = async (userId: string): Promise<CachedProfileData | 
     // Check if cache is for the same user and not expired
     if (cacheData.userId !== userId) return null;
 
-    const hoursSinceCache = (Date.now() - cacheData.timestamp) / (1000 * 60 * 60);
+    const hoursSinceCache =
+      (Date.now() - cacheData.timestamp) / (1000 * 60 * 60);
     if (hoursSinceCache > CACHE_EXPIRY_HOURS) {
       // Cache expired, remove it
       await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
@@ -123,13 +130,20 @@ function Pengaturan() {
   const { isDarkColorScheme, setColorScheme } = useColorScheme();
 
   // Memoize initial profile data to avoid recalculations
-  const initialProfileData = useMemo(() => ({
-    name: user?.user_metadata?.name || user?.email || "Pengguna Skanida",
-    avatar: user?.user_metadata?.avatar_url || null,
-  }), [user?.user_metadata?.name, user?.email, user?.user_metadata?.avatar_url]);
+  const initialProfileData = useMemo(
+    () => ({
+      name: user?.user_metadata?.name || user?.email || "Pengguna Skanida",
+      avatar: user?.user_metadata?.avatar_url || null,
+    }),
+    [user?.user_metadata?.name, user?.email, user?.user_metadata?.avatar_url],
+  );
 
-  const [profileFullName, setProfileFullName] = useState(initialProfileData.name);
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(initialProfileData.avatar);
+  const [profileFullName, setProfileFullName] = useState(
+    initialProfileData.name,
+  );
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(
+    initialProfileData.avatar,
+  );
   const [copiedId, setCopiedId] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
@@ -146,11 +160,25 @@ function Pengaturan() {
       router.push("/profile/EditProfile");
     });
   }, [router]);
-
   const navigateToChangePassword = useCallback(() => {
     requestAnimationFrame(() => {
       router.push("/profile/ChangePassword");
     });
+  }, [router]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backAction = () => {
+      router.back();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
   }, [router]);
   // Optimized profile data fetching with local cache
   const fetchProfileDataAndUpdateState = useCallback(async () => {
@@ -169,7 +197,8 @@ function Pengaturan() {
       setIsDataLoaded(true);
     } else {
       // Use user metadata as fallback if no cache
-      const fallbackName = user.user_metadata?.name || user.email || "Pengguna Skanida";
+      const fallbackName =
+        user.user_metadata?.name || user.email || "Pengguna Skanida";
       const fallbackAvatar = user.user_metadata?.avatar_url || null;
       setProfileFullName(fallbackName);
       setProfileAvatarUrl(fallbackAvatar);
@@ -191,8 +220,13 @@ function Pengaturan() {
             profileError.message,
           );
         } else if (userProfile) {
-          const updatedName = userProfile.full_name || user.user_metadata?.name || user.email || "Pengguna Skanida";
-          const updatedAvatar = userProfile.avatar_url || user.user_metadata?.avatar_url || null;
+          const updatedName =
+            userProfile.full_name ||
+            user.user_metadata?.name ||
+            user.email ||
+            "Pengguna Skanida";
+          const updatedAvatar =
+            userProfile.avatar_url || user.user_metadata?.avatar_url || null;
 
           // Update cache with fresh data
           await saveProfileToCache(user.id, updatedName, updatedAvatar);
@@ -239,11 +273,11 @@ function Pengaturan() {
             try {
               // Sign out from Supabase
               await supabase.auth.signOut();
-              
+
               // Clear all local data for a clean logout
               await clearProfileCache();
-              await AsyncStorage.clear(); 
-              
+              await AsyncStorage.clear();
+
               // Update state and redirect
               setUser(null);
               router.replace("/auth/AuthSelector");
@@ -270,13 +304,16 @@ function Pengaturan() {
     }
   }, [user?.id]);
   // Memoized components for better performance
-  const SectionHeader = useCallback(({ title }: { title: string }) => (
-    <Text
-      className={`text-sm font-medium mb-4 ${isDarkColorScheme ? "text-white" : "text-muted-foreground"}`}
-    >
-      {title}
-    </Text>
-  ), [isDarkColorScheme]);
+  const SectionHeader = useCallback(
+    ({ title }: { title: string }) => (
+      <Text
+        className={`text-sm font-medium mb-4 ${isDarkColorScheme ? "text-white" : "text-muted-foreground"}`}
+      >
+        {title}
+      </Text>
+    ),
+    [isDarkColorScheme],
+  );
 
   const ListItem = ({
     icon,
@@ -383,14 +420,16 @@ function Pengaturan() {
               <Image
                 source={{
                   uri: profileAvatarUrl,
-                  cache: 'force-cache' // Enable caching for better performance
+                  cache: "force-cache", // Enable caching for better performance
                 }}
                 className="w-20 h-20 rounded-full mr-4 border-2 border-opacity-10"
                 defaultSource={undefined} // Prevent default image flashing
                 fadeDuration={200} // Smooth transition
               />
             ) : (
-              <View className={`w-20 h-20 rounded-full ${isDarkColorScheme ? "bg-blue-600" : "bg-primary"} justify-center items-center mr-4 shadow-md`}>
+              <View
+                className={`w-20 h-20 rounded-full ${isDarkColorScheme ? "bg-blue-600" : "bg-primary"} justify-center items-center mr-4 shadow-md`}
+              >
                 <Text className="text-2xl font-bold text-white">
                   {(profileFullName || user?.email)?.charAt(0).toUpperCase() ||
                     "U"}
@@ -423,27 +462,43 @@ function Pengaturan() {
                   className={`text-xs font-medium ${
                     copiedId
                       ? "text-white"
-                      : isDarkColorScheme ? "text-gray-300" : "text-muted-foreground"
+                      : isDarkColorScheme
+                        ? "text-gray-300"
+                        : "text-muted-foreground"
                   }`}
                 >
-                  {copiedId ? "✓ Tersalin!" : `ID: ${user?.id?.substring(0, 8) || "Unknown"}`}
+                  {copiedId
+                    ? "✓ Tersalin!"
+                    : `ID: ${user?.id?.substring(0, 8) || "Unknown"}`}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Section Divider */}
-          <View className={`border-b mb-4 ${isDarkColorScheme ? "border-gray-700" : "border-border"}`} />
+          <View
+            className={`border-b mb-4 ${isDarkColorScheme ? "border-gray-700" : "border-border"}`}
+          />
           <SectionHeader title="Pengaturan Akun" />
           <ListItem
-            icon={<User size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
+            icon={
+              <User
+                size={20}
+                color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              />
+            }
             title="Edit Profil"
             subtitle="Ubah nama dan foto profil"
             onPress={navigateToEditProfile}
           />
 
           <ListItem
-            icon={<Key size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
+            icon={
+              <Key
+                size={20}
+                color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              />
+            }
             title="Ubah Password"
             subtitle="Perbarui kata sandi akun"
             onPress={navigateToChangePassword}
@@ -457,7 +512,12 @@ function Pengaturan() {
           <SectionHeader title="Preferensi" />
           {/* DarkMode Handler */}
           <ListItem
-            icon={<Moon size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
+            icon={
+              <Moon
+                size={20}
+                color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              />
+            }
             title="Mode Gelap"
             subtitle="Tampilan gelap untuk mata"
             rightElement={
@@ -474,10 +534,20 @@ function Pengaturan() {
           />
 
           <ListItem
-            icon={<Bell size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />}
+            icon={
+              <Bell
+                size={20}
+                color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              />
+            }
             title="Notifikasi"
             subtitle="Pengaturan pemberitahuan"
-            onPress={() => {}}
+            onPress={() => {
+              Alert.alert(
+                "Belum tersedia",
+                "Fitur ini belum diimplementasikan.",
+              );
+            }}
             showBorder={false}
           />
         </View>
@@ -518,7 +588,7 @@ function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
-              Version 1.4.5-alpha.1
+              Version 1.5.0-alpha.1
             </Text>
           </View>
 
