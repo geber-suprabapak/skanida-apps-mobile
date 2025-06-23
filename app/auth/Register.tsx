@@ -127,7 +127,6 @@ export default function RegisterScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        {" "}
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ flexGrow: 1 }}
@@ -135,7 +134,6 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 justify-center items-center px-8 py-8">
-            {" "}
             {/* Logo and Title Section */}
             <View className="items-center mb-10">
               <View
@@ -164,7 +162,6 @@ export default function RegisterScreen() {
               <View
                 className={`rounded-2xl p-8 shadow-xl ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"}`}
               >
-                {" "}
                 {/* Email Field */}
                 <View className="mb-6">
                   <Text
@@ -198,7 +195,7 @@ export default function RegisterScreen() {
                       if (emailError) setEmailError(false);
                     }}
                   />
-                </View>{" "}
+                </View>
                 {/* Password Field */}
                 <View className="mb-6">
                   <Text
@@ -252,7 +249,7 @@ export default function RegisterScreen() {
                       )}
                     </TouchableOpacity>
                   </View>
-                </View>{" "}
+                </View>
                 {/* Confirm Password Field */}
                 <View className="mb-8">
                   <Text
@@ -309,7 +306,7 @@ export default function RegisterScreen() {
                       )}
                     </TouchableOpacity>
                   </View>
-                </View>{" "}
+                </View>
                 {/* Register Button */}
                 <Button
                   variant="default"
@@ -335,7 +332,7 @@ export default function RegisterScreen() {
                 <Text
                   className={`text-base ${isDarkColorScheme ? "text-gray-400" : "text-gray-500"}`}
                 >
-                  Sudah memiliki akun?{" "}
+                  Sudah memiliki akun?
                 </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Login")}>
                   <Text
