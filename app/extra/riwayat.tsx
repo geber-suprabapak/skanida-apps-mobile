@@ -486,7 +486,9 @@ const AttendanceItem = ({
                 }`}
               >
                 Hadir
-              </Text>              {clockInRecord && (
+              </Text>
+
+              {clockInRecord && (
                 <>
                   <Text
                     className={`ml-2 text-sm ${
@@ -502,7 +504,8 @@ const AttendanceItem = ({
             </View>
             <View className="flex-row items-center mt-1">
               {clockInRecord && (
-                <View className="flex-row items-center">                  <Text
+                <View className="flex-row items-center">
+                  <Text
                     className={`text-xs ${
                       isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
@@ -522,7 +525,8 @@ const AttendanceItem = ({
               )}
 
               {clockOutRecord && (
-                <View className="flex-row items-center ml-3">                  <Text
+                <View className="flex-row items-center ml-3">
+                  <Text
                     className={`text-xs ${
                       isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
@@ -613,7 +617,8 @@ const DetailModal = ({
                 className={`font-medium ${
                   isDarkColorScheme ? "text-white" : "text-gray-800"
                 }`}
-              >                {new Date(record.date).toLocaleDateString("id-ID", {
+              >
+                {new Date(record.date).toLocaleDateString("id-ID", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
@@ -651,7 +656,8 @@ const DetailModal = ({
                   }`}
                 >
                   Periode:
-                </Text>                <Text
+                </Text>
+                <Text
                   className={`font-medium ${
                     isDarkColorScheme ? "text-white" : "text-gray-800"
                   }`}
@@ -701,7 +707,9 @@ const DetailModal = ({
                   </Text>
                 </View>
               </View>
-            )}            {/* Timestamp */}
+            )}
+
+            {/* Timestamp */}
             {record.timestamp && (
               <View className="flex-row justify-between mb-3">
                 <Text
