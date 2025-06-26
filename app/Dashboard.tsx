@@ -57,14 +57,6 @@ interface AttendanceStatus {
   todayStatus: 'present' | 'absent' | 'leave' | 'pending';
 }
 
-// Define interface for stats
-interface AttendanceStats {
-  monthlyPresent: number;
-  monthlyAbsent: number;
-  monthlyLeave: number;
-  attendanceRate: number;
-}
-
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkColorScheme } = useColorScheme();
@@ -75,12 +67,6 @@ export default function Dashboard() {
     hasCheckedIn: false,
     hasCheckedOut: false,
     todayStatus: 'pending'
-  });
-  const [attendanceStats, setAttendanceStats] = useState<AttendanceStats>({
-    monthlyPresent: 0,
-    monthlyAbsent: 0,
-    monthlyLeave: 0,
-    attendanceRate: 0
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
@@ -201,56 +187,6 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Fetch monthly stats
-  const fetchMonthlyStats = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
-      const endOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'yyyy-MM-dd');
-
-      // Fetch monthly attendance
-      const { data: monthlyAttendance } = await supabase
-        .from('absences')
-        .select('date, status')
-        .eq('user_id', user.id)
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth);
-
-      // Fetch monthly leave requests
-      const { data: monthlyLeave } = await supabase
-        .from('perizinan')
-        .select('tanggal, approval_status')
-        .eq('user_id', user.id)
-        .eq('approval_status', 'approved')
-        .gte('tanggal', startOfMonth)
-        .lte('tanggal', endOfMonth);
-
-      const presentDays = new Set();
-      monthlyAttendance?.forEach(record => {
-        if (record.status === 'Hadir' || record.status === 'Datang') {
-          presentDays.add(record.date);
-        }
-      });
-
-      const monthlyPresent = presentDays.size;
-      const monthlyLeaveCount = monthlyLeave?.length || 0;
-      const workingDays = new Date().getDate(); // Simplified - should be actual working days
-      const monthlyAbsent = Math.max(0, workingDays - monthlyPresent - monthlyLeaveCount);
-      const attendanceRate = workingDays > 0 ? Math.round((monthlyPresent / workingDays) * 100) : 0;
-
-      setAttendanceStats({
-        monthlyPresent,
-        monthlyAbsent,
-        monthlyLeave: monthlyLeaveCount,
-        attendanceRate
-      });
-
-    } catch (error) {
-      console.error('Error fetching monthly stats:', error);
-    }
-  }, [user]);
-
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
     try {
@@ -270,22 +206,20 @@ export default function Dashboard() {
     setRefreshing(true);
     await Promise.all([
       fetchProfileData(),
-      fetchAttendanceData(),
-      fetchMonthlyStats()
+      fetchAttendanceData()
     ]);
     setRefreshing(false);
-  }, [fetchProfileData, fetchAttendanceData, fetchMonthlyStats]);
+  }, [fetchProfileData, fetchAttendanceData]);
 
   // Effects
   useEffect(() => {
     if (isFocused && user) {
       fetchProfileData();
       fetchAttendanceData();
-      fetchMonthlyStats();
     } else if (!user) {
       setProfileData(null);
     }
-  }, [user, isFocused, fetchProfileData, fetchAttendanceData, fetchMonthlyStats]);
+  }, [user, isFocused, fetchProfileData, fetchAttendanceData]);
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   const displayName =
@@ -391,27 +325,28 @@ export default function Dashboard() {
                   </Text>
                 </View>
               </View>
+              
+              {/* Waktu Sekarang - In header row */}
+              <View className="flex-row items-center mr-3">
+                <View className={`px-3 py-2 rounded-lg ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <View className="flex-row items-center">
+                    <Clock size={16} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
+                    <Text className={`ml-1 text-xs font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                      Waktu Sekarang
+                    </Text>
+                  </View>
+                  <Text className={`text-sm font-bold text-center mt-1 ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}>
+                    {format(currentTime, "HH:mm:ss")}
+                  </Text>
+                </View>
+              </View>
+
               <TouchableOpacity
                 onPress={() => {/* Handle notifications */}}
                 className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
               >
                 <Bell size={20} color={isDarkColorScheme ? "#ffffff" : "#374151"} />
               </TouchableOpacity>
-            </View>
-
-            {/* Current Time Display */}
-            <View className={`p-4 rounded-xl ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <Clock size={20} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
-                  <Text className={`ml-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
-                    Waktu Sekarang
-                  </Text>
-                </View>
-                <Text className={`text-lg font-bold ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}>
-                  {format(currentTime, "HH:mm:ss")}
-                </Text>
-              </View>
             </View>
           </View>
 
@@ -486,94 +421,34 @@ export default function Dashboard() {
             </Card>
           </View>
 
-          {/* --- Monthly Stats --- */}
-          <View className="px-6 mb-6">
-            <Text className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
-              Statistik Bulan Ini
-            </Text>
-            <View className="flex-row space-x-3">
-              <Card className={`flex-1 p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <Text className={`text-2xl font-bold text-green-600 mb-1`}>
-                  {attendanceStats.monthlyPresent}
-                </Text>
-                <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
-                  Hari Hadir
-                </Text>
-              </Card>
-              <Card className={`flex-1 p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <Text className={`text-2xl font-bold text-blue-600 mb-1`}>
-                  {attendanceStats.monthlyLeave}
-                </Text>
-                <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
-                  Hari Izin
-                </Text>
-              </Card>
-              <Card className={`flex-1 p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <Text className={`text-2xl font-bold text-red-600 mb-1`}>
-                  {attendanceStats.monthlyAbsent}
-                </Text>
-                <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
-                  Tidak Hadir
-                </Text>
-              </Card>
-            </View>
-
-            {/* Attendance Rate */}
-            <Card className={`mt-3 p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-              <View className="flex-row items-center justify-between">
-                <Text className={`font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
-                  Tingkat Kehadiran
-                </Text>
-                <Text className={`text-xl font-bold ${
-                  attendanceStats.attendanceRate >= 90 ? "text-green-600" :
-                  attendanceStats.attendanceRate >= 75 ? "text-yellow-600" : "text-red-600"
-                }`}>
-                  {attendanceStats.attendanceRate}%
-                </Text>
-              </View>
-              <View className={`mt-2 h-2 rounded-full ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-200"}`}>
-                <View
-                  className={`h-full rounded-full ${
-                    attendanceStats.attendanceRate >= 90 ? "bg-green-600" :
-                    attendanceStats.attendanceRate >= 75 ? "bg-yellow-600" : "bg-red-600"
-                  }`}
-                  style={{ width: `${attendanceStats.attendanceRate}%` }}
-                />
-              </View>
-            </Card>
-          </View>
-
-          {/* --- Quick Actions --- */}
+          {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
             <Text className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
               Aksi Cepat
             </Text>
 
-            {/* Primary Action - Attendance */}
-            <TouchableOpacity
-              onPress={navigateToCheckIn}
-              className="mb-4"
-              activeOpacity={0.8}
-            >
-              <Card className={`p-4 ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}>
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <UserCheck size={24} color="white" />
-                    <View className="ml-3">
-                      <Text className="text-white font-semibold text-lg">
-                        {!attendanceStatus.hasCheckedIn ? "Absen Masuk" :
-                         !attendanceStatus.hasCheckedOut ? "Absen Pulang" : "Lihat Absensi"}
-                      </Text>
-                      <Text className="text-blue-100 text-sm">
-                        {!attendanceStatus.hasCheckedIn ? "Mulai hari sekolah Anda" :
-                         !attendanceStatus.hasCheckedOut ? "Selesaikan hari sekolah" : "Absensi hari ini selesai"}
-                      </Text>
-                    </View>
+            {/* Large Square Primary Action - Attendance (Centered) */}
+            <View className="items-center mb-4">
+              <TouchableOpacity
+                onPress={navigateToCheckIn}
+                className="w-48"
+                activeOpacity={0.8}
+              >
+                <Card className={`aspect-square ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}>
+                  <View className="flex-1 items-center justify-center p-4">
+                    <UserCheck size={32} color="white" />
+                    <Text className="text-white font-semibold text-lg mt-2 text-center">
+                      {!attendanceStatus.hasCheckedIn ? "Absen Masuk" :
+                       !attendanceStatus.hasCheckedOut ? "Absen Pulang" : "Lihat Absensi"}
+                    </Text>
+                    <Text className="text-blue-100 text-sm text-center mt-1">
+                      {!attendanceStatus.hasCheckedIn ? "Mulai hari sekolah" :
+                       !attendanceStatus.hasCheckedOut ? "Selesaikan hari" : "Absensi selesai"}
+                    </Text>
                   </View>
-                  <ChevronRight size={20} color="white" />
-                </View>
-              </Card>
-            </TouchableOpacity>
+                </Card>
+              </TouchableOpacity>
+            </View>
 
             {/* Secondary Actions Grid */}
             <View className="flex-row space-x-3">
