@@ -1,7 +1,7 @@
 // app/Dashboard.tsx
-import { format } from "date-fns"; // Ensure installed: pnpm add date-fns
+import { format } from "date-fns";
 import { Stack, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -9,14 +9,17 @@ import {
   Image,
   BackHandler,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native"; // Import useIsFocused
+import { useIsFocused } from "@react-navigation/native";
 
 // Import your reusable shadcn/ui components
-import { Avatar } from "~/components/ui/avatar"; // Import Avatar component
+import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
-import { H1, H2, H3, H4, Large } from "~/components/ui/typography"; // Import typography components
+import { Text } from "~/components/ui/text";
+import { Card } from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -24,6 +27,13 @@ import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
 import { Settings } from "~/lib/icons/Settings";
 import { UserCheck } from "~/lib/icons/UserCheck";
+import { Calendar } from "~/lib/icons/Calendar";
+import { Clock } from "~/lib/icons/Clock";
+import { CheckCircle } from "~/lib/icons/CheckCircle";
+import { AlertCircle } from "~/lib/icons/AlertCircle";
+import { Bell } from "~/lib/icons/Bell";
+import { ChevronRight } from "~/lib/icons/ChevronRight";
+
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
 
@@ -37,12 +47,28 @@ interface UserProfile {
   updated_at?: string;
 }
 
+// Define interface for attendance data
+interface AttendanceStatus {
+  hasCheckedIn: boolean;
+  hasCheckedOut: boolean;
+  checkInTime?: string;
+  checkOutTime?: string;
+  totalWorkHours?: string;
+  todayStatus: 'present' | 'absent' | 'leave' | 'pending';
+}
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
+    hasCheckedIn: false,
+    hasCheckedOut: false,
+    todayStatus: 'pending'
+  });
+  const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
   // Beta alert on dashboard open
   useEffect(() => {
@@ -59,61 +85,141 @@ export default function Dashboard() {
     return () => clearInterval(timerId);
   }, []);
 
-  // Fetch profile data from the user_profiles table
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!user) {
-        setProfileData(null); // Clear profile data if no user
-        return;
-      }
+  // Fetch profile data from Supabase
+  const fetchProfileData = useCallback(async () => {
+    if (!user) return;
 
-      try {
-        // Fetching only full_name and avatar_url as those are used for display
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("full_name, avatar_url") // Specific fields
-          .eq("user_id", user.id)
-          .single();
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("full_name, avatar_url")
+        .eq("user_id", user.id)
+        .single();
 
-        if (error) {
-          if (error.code === "PGRST116") {
-            // This means no profile row was found for the user_id.
-            // It's not an "error" in the sense of a failed query, but rather no data.
-            setProfileData(null);
-          } else {
-            // For other actual database errors during fetch
-            console.error(
-              "Dashboard: Error fetching profile data from user_profiles:",
-              error.message,
-            );
-            setProfileData(null);
-          }
-        } else if (data) {
-          // Successfully fetched data (which could include null for full_name or avatar_url if DB has them as null)
-          setProfileData(data as UserProfile); // Cast to UserProfile; only full_name and avatar_url will be populated
+      if (error) {
+        if (error.code === "PGRST116") {
+          setProfileData(null);
         } else {
-          // This case (no error, but no data) should ideally be covered by PGRST116.
-          // Setting to null defensively.
+          console.error("Dashboard: Error fetching profile data:", error.message);
           setProfileData(null);
         }
-      } catch (err: any) {
-        console.error(
-          "Dashboard: Exception during user_profiles data fetch:",
-          err.message,
-        );
+      } else if (data) {
+        setProfileData(data as UserProfile);
+      } else {
         setProfileData(null);
       }
-    };
-
-    if (isFocused && user) {
-      // Fetch only when focused and user exists
-      fetchProfileData();
-    } else if (!user) {
-      setProfileData(null); // Ensure profileData is cleared if user logs out
+    } catch (err: any) {
+      console.error("Dashboard: Exception during user_profiles data fetch:", err.message);
+      setProfileData(null);
     }
-  }, [user, isFocused]); // Add isFocused to dependency array
+  }, [user]);
 
-  const formattedTime = format(currentTime, "dd-MM-yyyy | HH:mm:ss");
+  // Fetch attendance data for today
+  const fetchAttendanceData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+
+      // Fetch today's attendance
+      const { data: todayAttendance } = await supabase
+        .from('absences')
+        .select('status, created_at')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .order('created_at', { ascending: true });
+
+      // Fetch leave requests for today
+      const { data: leaveRequests } = await supabase
+        .from('perizinan')
+        .select('approval_status, kategori_izin')
+        .eq('user_id', user.id)
+        .eq('tanggal', today);
+
+      let hasCheckedIn = false;
+      let hasCheckedOut = false;
+      let checkInTime = '';
+      let checkOutTime = '';
+      let todayStatus: 'present' | 'absent' | 'leave' | 'pending' = 'pending';
+
+      if (todayAttendance && todayAttendance.length > 0) {
+        todayAttendance.forEach(record => {
+          if (record.status === 'Hadir' || record.status === 'Datang') {
+            hasCheckedIn = true;
+            checkInTime = record.created_at;
+          } else if (record.status === 'Pulang') {
+            hasCheckedOut = true;
+            checkOutTime = record.created_at;
+          }
+        });
+
+        if (hasCheckedIn) {
+          todayStatus = 'present';
+        }
+      }
+
+      if (leaveRequests && leaveRequests.length > 0) {
+        const approvedLeave = leaveRequests.find(req => req.approval_status === 'approved');
+        if (approvedLeave) {
+          todayStatus = 'leave';
+        }
+      }
+
+      if (!hasCheckedIn && !leaveRequests?.length) {
+        todayStatus = 'absent';
+      }
+
+      const totalWorkHours = hasCheckedIn && hasCheckedOut
+        ? calculateWorkHours(checkInTime, checkOutTime)
+        : undefined;
+
+      setAttendanceStatus({
+        hasCheckedIn,
+        hasCheckedOut,
+        checkInTime,
+        checkOutTime,
+        totalWorkHours,
+        todayStatus
+      });
+
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+    }
+  }, [user]);
+
+  // Helper function to calculate work hours
+  const calculateWorkHours = (checkIn: string, checkOut: string): string => {
+    try {
+      const checkInTime = new Date(checkIn);
+      const checkOutTime = new Date(checkOut);
+      const diffMs = checkOutTime.getTime() - checkInTime.getTime();
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hours}j ${minutes}m`;
+    } catch {
+      return '0j 0m';
+    }
+  };
+
+  // Refresh function
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchProfileData(),
+      fetchAttendanceData()
+    ]);
+    setRefreshing(false);
+  }, [fetchProfileData, fetchAttendanceData]);
+
+  // Effects
+  useEffect(() => {
+    if (isFocused && user) {
+      fetchProfileData();
+      fetchAttendanceData();
+    } else if (!user) {
+      setProfileData(null);
+    }
+  }, [user, isFocused, fetchProfileData, fetchAttendanceData]);
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   const displayName =
@@ -131,6 +237,7 @@ export default function Dashboard() {
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
+
   // Prevent back navigation
   useEffect(() => {
     const backAction = () => {
@@ -158,6 +265,22 @@ export default function Dashboard() {
     return () => backHandler.remove();
   }, []);
 
+  // Get status badge color and text
+  const getStatusBadge = () => {
+    switch (attendanceStatus.todayStatus) {
+      case 'present':
+        return { color: 'bg-green-500', text: 'Hadir', textColor: 'text-white' };
+      case 'leave':
+        return { color: 'bg-blue-500', text: 'Izin', textColor: 'text-white' };
+      case 'absent':
+        return { color: 'bg-red-500', text: 'Tidak Hadir', textColor: 'text-white' };
+      default:
+        return { color: 'bg-gray-500', text: 'Pending', textColor: 'text-white' };
+    }
+  };
+
+  const statusBadge = getStatusBadge();
+
   return (
     <>
       <Stack.Screen
@@ -168,118 +291,229 @@ export default function Dashboard() {
       />
       {/* Apply dynamic background based on theme */}
       <SafeAreaView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
         edges={["top"]}
       >
         {/* Main container with theme-based background */}
-        <View
-          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
+        <ScrollView
+          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {/* --- Header Section (Black Background) --- */}
-          {/* Header can stay black in both themes */}
-          <View className="bg-black items-center py-5">
-            {/* Reduced padding */}
-            {/* Use the Avatar component from ui/avatar */}
-            <View className="relative">
-              <Avatar
-                size="lg" // Use the 'lg' size defined in ui/avatar
-                fallback={displayName.charAt(0).toUpperCase() || "?"} // Fallback initial from name instead of email
-                className="mb-2" // Add margin if needed
-                source={
-                  avatarUrl ||
-                  Image.resolveAssetSource(fallbackProfileImage).uri
-                } // Use the avatar URL from profile data or metadata
-              />
+          {/* --- Header Section --- */}
+          <View className={`px-6 pt-4 pb-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}>
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center flex-1">
+                <Avatar
+                  size="md"
+                  fallback={displayName.charAt(0).toUpperCase() || "?"}
+                  className="mr-3"
+                  source={
+                    avatarUrl ||
+                    Image.resolveAssetSource(fallbackProfileImage).uri
+                  }
+                />
+                <View className="flex-1">
+                  <Text className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                    {displayName}
+                  </Text>
+                  <Text className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                    {format(currentTime, "EEEE, dd MMMM yyyy")}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Waktu Sekarang - In header row */}
+              <View className="flex-row items-center mr-3">
+                <View className={`px-3 py-2 rounded-lg ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <View className="flex-row items-center">
+                    <Clock size={16} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
+                    <Text className={`ml-1 text-xs font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                      Waktu Sekarang
+                    </Text>
+                  </View>
+                  <Text className={`text-sm font-bold text-center mt-1 ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}>
+                    {format(currentTime, "HH:mm:ss")}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => {/* Handle notifications */}}
+                className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
+              >
+                <Bell size={20} color={isDarkColorScheme ? "#ffffff" : "#374151"} />
+              </TouchableOpacity>
             </View>
-            <H2 className="text-white mb-1">{displayName}</H2>
-            <H3 className="text-white">{formattedTime}</H3>
           </View>
 
-          {/* --- Content Section (Scrollable, Theme-based Background) --- */}
-          <ScrollView
-            className={`flex-1 px-5 pt-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`} // Added theme colors
-            contentContainerStyle={{ paddingBottom: 20 }} // Ensure padding at the bottom
-            showsVerticalScrollIndicator={false}
-          >
-            {/* --- Main Action Buttons (TouchableOpacity for custom layout) --- */}
-            <View className="items-center justify-center mb-8">
-              {/* Presensi Datang */}
-              <TouchableOpacity
-                className="items-center w-[45%]"
-                onPress={navigateToCheckIn}
-                activeOpacity={0.7}
-              >
-                <View className="w-full aspect-square bg-black rounded-lg items-center justify-center mb-2 border border-border shadow-sm">
-                  <UserCheck size={40} color="white" />
+          {/* --- Today's Status Card --- */}
+          <View className="px-6 mb-6">
+            <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                  Status Hari Ini
+                </Text>
+                <Badge className={`${statusBadge.color} ${statusBadge.textColor}`}>
+                  {statusBadge.text}
+                </Badge>
+              </View>
+
+              <View className="space-y-3">
+                {/* Check In Status */}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    {attendanceStatus.hasCheckedIn ? (
+                      <CheckCircle size={20} color="#16a34a" />
+                    ) : (
+                      <AlertCircle size={20} color="#dc2626" />
+                    )}
+                    <Text className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                      Absen Masuk
+                    </Text>
+                  </View>
+                  <Text className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                    {attendanceStatus.checkInTime
+                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
+                      : "Belum absen"
+                    }
+                  </Text>
                 </View>
-                <H1
-                  className={`font-semibold text-center ${isDarkColorScheme ? "text-white" : "text-black"}`}
-                >
-                  Presensi
-                </H1>
+
+                {/* Check Out Status */}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    {attendanceStatus.hasCheckedOut ? (
+                      <CheckCircle size={20} color="#16a34a" />
+                    ) : (
+                      <AlertCircle size={20} color="#dc2626" />
+                    )}
+                    <Text className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                      Absen Pulang
+                    </Text>
+                  </View>
+                  <Text className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                    {attendanceStatus.checkOutTime
+                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
+                      : "Belum absen"
+                    }
+                  </Text>
+                </View>
+
+                {/* Work Hours */}
+                {attendanceStatus.totalWorkHours && (
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Clock size={20} color="#3b82f6" />
+                      <Text className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                        Total Jam Kerja
+                      </Text>
+                    </View>
+                    <Text className={`text-sm font-medium ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}>
+                      {attendanceStatus.totalWorkHours}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
+          </View>
+
+          {/* --- Quick Actions (Moved up from Statistics location) --- */}
+          <View className="px-6 mb-6">
+            <Text className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+              Aksi Cepat
+            </Text>
+
+            {/* Large Square Primary Action - Attendance (Centered) */}
+            <View className="items-center mb-4">
+              <TouchableOpacity
+                onPress={navigateToCheckIn}
+                className="w-48"
+                activeOpacity={0.8}
+              >
+                <Card className={`aspect-square ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}>
+                  <View className="flex-1 items-center justify-center p-4">
+                    <UserCheck size={32} color="white" />
+                    <Text className="text-white font-semibold text-lg mt-2 text-center">
+                      {!attendanceStatus.hasCheckedIn ? "Absen Masuk" :
+                       !attendanceStatus.hasCheckedOut ? "Absen Pulang" : "Lihat Absensi"}
+                    </Text>
+                    <Text className="text-blue-100 text-sm text-center mt-1">
+                      {!attendanceStatus.hasCheckedIn ? "Mulai hari sekolah" :
+                       !attendanceStatus.hasCheckedOut ? "Selesaikan hari" : "Absensi selesai"}
+                    </Text>
+                  </View>
+                </Card>
               </TouchableOpacity>
             </View>
 
-            <View>
-              {/* Riwayat Button */}
-              <Button
-                variant="default"
-                size="lg"
-                className="w-full justify-center bg-black mb-5"
+            {/* Secondary Actions Grid */}
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
                 onPress={navigateToHistory}
+                className="flex-1"
+                activeOpacity={0.8}
               >
-                <View className="flex-row items-center justify-center">
-                  <History size={28} color="white" />
-                  <Large className="text-white font-medium ml-4">Riwayat</Large>
-                </View>
-              </Button>
+                <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <History size={24} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
+                  <Text className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                    Riwayat
+                  </Text>
+                  <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                    Lihat absensi
+                  </Text>
+                </Card>
+              </TouchableOpacity>
 
-              {/* Pengaturan Button */}
-              <Button
-                variant="default"
-                size="lg"
-                className="w-full justify-center bg-black mb-5"
-                onPress={navigateToSettings}
-              >
-                <View className="flex-row items-center justify-center">
-                  <Settings size={28} color="white" />
-                  <Large className="text-white font-medium ml-4">
-                    Pengaturan
-                  </Large>
-                </View>
-              </Button>
-
-              {/* Perizinan Button */}
-              <Button
-                variant="default"
-                size="lg"
-                className="w-full justify-center bg-black mb-5"
+              <TouchableOpacity
                 onPress={navigateToPerizinan}
+                className="flex-1"
+                activeOpacity={0.8}
               >
-                <View className="flex-row items-center justify-center">
-                  <ClipboardPenLine size={28} color="white" />
-                  <Large className="text-white font-medium ml-4">
+                <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <ClipboardPenLine size={24} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
+                  <Text className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
                     Perizinan
-                  </Large>
-                </View>
-              </Button>
-            </View>
-          </ScrollView>
+                  </Text>
+                  <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                    Ajukan izin
+                  </Text>
+                </Card>
+              </TouchableOpacity>
 
-          {/* --- Footer Section with theme colors --- */}
-          <View
-            className={`items-start px-5 py-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-background border-border"
-            } border-t`}
-          >
-            <H4
-              className={isDarkColorScheme ? "text-white" : "text-foreground"}
-            >
-              Version 1.5.0-alpha.1
-            </H4>
+              <TouchableOpacity
+                onPress={navigateToSettings}
+                className="flex-1"
+                activeOpacity={0.8}
+              >
+                <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <Settings size={24} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
+                  <Text className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                    Pengaturan
+                  </Text>
+                  <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                    Kelola akun
+                  </Text>
+                </Card>
+              </TouchableOpacity>
+            </View>
           </View>
+        </ScrollView>
+
+        {/* --- Footer Section --- */}
+        <View
+          className={`items-center px-6 py-3 border-t ${
+            isDarkColorScheme
+              ? "bg-gray-900 border-gray-700"
+              : "bg-white border-gray-200"
+          }`}
+        >
+          <Text className={`text-xs ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}>
+            Skanida Apps v1.5.0-alpha.1
+          </Text>
         </View>
       </SafeAreaView>
     </>
