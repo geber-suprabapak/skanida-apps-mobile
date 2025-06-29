@@ -120,8 +120,8 @@ export default function ChangePassword() {
           }`}
         >
           Ubah Password
-        </Text>{" "}
-      </View>{" "}
+        </Text>
+      </View>
       <View className="flex-1">
         <ScrollView
           className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
@@ -164,7 +164,7 @@ export default function ChangePassword() {
               >
                 Pastikan password baru Anda aman dan mudah diingat
               </Text>
-            </View>{" "}
+            </View>
             {/* Form Fields */}
             <View className="space-y-5">
               {/* Current Password */}
@@ -215,7 +215,7 @@ export default function ChangePassword() {
                     )}
                   </TouchableOpacity>
                 </View>
-              </View>{" "}
+              </View>
               {/* New Password */}
               <View>
                 <Text
@@ -273,7 +273,7 @@ export default function ChangePassword() {
                 >
                   Minimal 6 karakter
                 </Text>
-              </View>{" "}
+              </View>
               {/* Confirm Password */}
               <View>
                 <Text
@@ -320,10 +320,10 @@ export default function ChangePassword() {
                         color={isDarkColorScheme ? "#ffffff" : "#000000"}
                       />
                     )}
-                  </TouchableOpacity>{" "}
+                  </TouchableOpacity>
                 </View>
               </View>
-            </View>{" "}
+            </View>
             {/* Action Buttons */}
             <View className="mt-8">
               <Button

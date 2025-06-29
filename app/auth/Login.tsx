@@ -119,7 +119,6 @@ export default function Login() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 justify-center items-center px-8 py-8">
-            {" "}
             {/* Logo and Title Section */}
             <View className="items-center mb-12">
               <View
@@ -148,7 +147,6 @@ export default function Login() {
               <View
                 className={`rounded-2xl p-8 shadow-xl ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"}`}
               >
-                {" "}
                 {/* Email Field */}
                 <View className="mb-6">
                   <Text
@@ -259,7 +257,7 @@ export default function Login() {
                 <Text
                   className={`text-base ${isDarkColorScheme ? "text-gray-400" : "text-gray-500"}`}
                 >
-                  Belum memiliki akun?{" "}
+                  Belum memiliki akun?
                 </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Register")}>
                   <Text
@@ -267,7 +265,7 @@ export default function Login() {
                   >
                     Daftar sekarang
                   </Text>
-                </TouchableOpacity>{" "}
+                </TouchableOpacity>
               </View>
             </View>
           </View>

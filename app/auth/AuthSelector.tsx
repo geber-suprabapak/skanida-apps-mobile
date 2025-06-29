@@ -66,7 +66,6 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 justify-center items-center px-8 py-16">
-          {" "}
           {/* Logo Section */}
           <View className="items-center mb-16">
             <TouchableOpacity
@@ -84,7 +83,7 @@ export default function LoginScreen() {
               className={`text-4xl font-bold text-center mb-4 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
             >
               Skanida Apps
-            </H1>{" "}
+            </H1>
             <Text
               className={`text-center text-lg leading-relaxed max-w-sm px-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
             >
@@ -92,7 +91,7 @@ export default function LoginScreen() {
             </Text>
           </View>
           {/* Action Buttons */}
-          <View className="w-full max-w-sm space-y-6">
+          <View className="w-full max-w-sm space-y-6 gap-2">
             <Button
               variant="default"
               size="lg"
@@ -113,7 +112,7 @@ export default function LoginScreen() {
             <Button
               variant="outline"
               size="lg"
-              className={`w-full h-16 rounded-xl border-2 ${
+              className={`w-full h-16 rounded-xl border-2  ${
                 isDarkColorScheme
                   ? "border-gray-600 bg-transparent"
                   : "border-gray-300 bg-transparent"
@@ -126,7 +125,7 @@ export default function LoginScreen() {
                 Daftar
               </H3>
             </Button>
-          </View>{" "}
+          </View>
           {/* Footer */}
           <View className="mt-20">
             <Text

@@ -87,24 +87,27 @@ interface UploadMetrics {
 const createLogger = (component: string) => ({
   debug: (message: string, data?: any) => {
     console.log(
-      `🔍 [${component}] ${message}`,
+      `${new Date().toISOString()} 🔍 [${component}] ${message}`,
       data ? JSON.stringify(data, null, 2) : "",
     );
   },
   info: (message: string, data?: any) => {
     console.info(
-      `ℹ️ [${component}] ${message}`,
+      `${new Date().toISOString()} ℹ️ [${component}] ${message}`,
       data ? JSON.stringify(data, null, 2) : "",
     );
   },
   warn: (message: string, data?: any) => {
     console.warn(
-      `⚠️ [${component}] ${message}`,
+      `${new Date().toISOString()} ⚠️ [${component}] ${message}`,
       data ? JSON.stringify(data, null, 2) : "",
     );
   },
   error: (message: string, error?: any) => {
-    console.error(`❌ [${component}] ${message}`, error);
+    console.error(
+      `${new Date().toISOString()} ❌ [${component}] ${message}`,
+      error,
+    );
   },
 });
 

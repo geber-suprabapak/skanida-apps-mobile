@@ -430,7 +430,7 @@ export default function EditProfile() {
         options={{
           headerShown: false,
         }}
-      />{" "}
+      />
       <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
