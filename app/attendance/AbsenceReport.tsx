@@ -64,16 +64,28 @@ const LOCATION_CONFIG = {
 // --- UTILITY FUNCTIONS ---
 const createLogger = (component: string) => ({
   debug: (message: string, data?: any) => {
-    console.log(`🔍 [${component}] ${message}`, data || "");
+    console.log(
+      `${new Date().toISOString()} 🔍 [${component}] ${message}`,
+      data || "",
+    );
   },
   info: (message: string, data?: any) => {
-    console.info(`ℹ️ [${component}] ${message}`, data || "");
+    console.info(
+      `${new Date().toISOString()} ℹ️ [${component}] ${message}`,
+      data || "",
+    );
   },
   warn: (message: string, data?: any) => {
-    console.warn(`⚠️ [${component}] ${message}`, data || "");
+    console.warn(
+      `${new Date().toISOString()} ⚠️ [${component}] ${message}`,
+      data || "",
+    );
   },
   error: (message: string, error?: any) => {
-    console.error(`❌ [${component}] ${message}`, error || "");
+    console.error(
+      `${new Date().toISOString()} ❌ [${component}] ${message}`,
+      error || "",
+    );
   },
 });
 
