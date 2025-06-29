@@ -983,7 +983,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
                   .slice(weekIndex * 7, weekIndex * 7 + 7)
                   .map((day, dayIndex) => (
                     <CalendarDayComponent
-                      key={day?.fullDate || `empty-${currentYear}-${currentMonth}-${weekIndex}-${dayIndex}`}
+                      key={`${currentYear}-${currentMonth}-w${weekIndex}-d${dayIndex}-${day?.fullDate || 'empty'}`}
                       day={day}
                       isDarkColorScheme={isDarkColorScheme}
                       onPress={() => handleDayPress(day)}
