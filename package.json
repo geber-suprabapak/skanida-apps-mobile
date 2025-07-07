@@ -25,7 +25,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "expo": "^53.0.9",
-    "expo-camera": "~16.1.6",
+    "expo-camera": "~16.1.10",
     "expo-constants": "~17.1.6",
     "expo-dev-client": "~5.1.8",
     "expo-image-manipulator": "~13.1.7",
