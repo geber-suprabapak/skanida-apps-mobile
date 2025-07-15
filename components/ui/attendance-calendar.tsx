@@ -38,6 +38,7 @@ interface CalendarDay {
   fullDate: string;
   isCurrentMonth: boolean;
   isToday: boolean;
+  isFuture: boolean;
   attendance?: AttendanceRecord;
 }
 
@@ -69,29 +70,34 @@ const getMonthDays = (year: number, month: number): CalendarDay[] => {
 
   const days: CalendarDay[] = [];
   const today = new Date();
+  const todayString = formatDate(today);
 
   // Add previous month's trailing days
   const prevMonth = new Date(year, month - 1, 0);
   for (let i = startDate - 1; i >= 0; i--) {
     const date = prevMonth.getDate() - i;
     const fullDate = formatDate(new Date(year, month - 1, date));
+    const isFuture = fullDate > todayString;
     days.push({
       date,
       fullDate,
       isCurrentMonth: false,
       isToday: false,
+      isFuture,
     });
   }
 
   // Add current month days
   for (let date = 1; date <= daysInMonth; date++) {
     const fullDate = formatDate(new Date(year, month, date));
-    const isToday = fullDate === formatDate(today);
+    const isToday = fullDate === todayString;
+    const isFuture = fullDate > todayString;
     days.push({
       date,
       fullDate,
       isCurrentMonth: true,
       isToday,
+      isFuture,
     });
   }
 
@@ -99,11 +105,13 @@ const getMonthDays = (year: number, month: number): CalendarDay[] => {
   const remainingDays = 42 - days.length; // 6 weeks * 7 days
   for (let date = 1; date <= remainingDays; date++) {
     const fullDate = formatDate(new Date(year, month + 1, date));
+    const isFuture = fullDate > todayString;
     days.push({
       date,
       fullDate,
       isCurrentMonth: false,
       isToday: false,
+      isFuture,
     });
   }
 
@@ -433,8 +441,18 @@ const CalendarDayComponent = ({
   }
 
   const getStatusColor = () => {
+    // Future dates in current month should be greyed out but distinct from next month
+    if (day.isCurrentMonth && day.isFuture) {
+      return isDarkColorScheme ? "bg-gray-800" : "bg-gray-50";
+    }
+    
+    // Previous/next month dates (outside current month)
+    if (!day.isCurrentMonth) {
+      return "bg-transparent";
+    }
+
     if (!day.attendance) {
-      return day.isCurrentMonth ? (isDarkColorScheme ? "bg-red-900" : "bg-red-100") : "bg-transparent";
+      return isDarkColorScheme ? "bg-red-900" : "bg-red-100";
     }
 
     switch (day.attendance.status) {
@@ -450,8 +468,14 @@ const CalendarDayComponent = ({
   };
 
   const getTextColor = () => {
+    // Previous/next month dates (outside current month) - very faded
     if (!day.isCurrentMonth) {
       return isDarkColorScheme ? "text-gray-600" : "text-gray-400";
+    }
+
+    // Future dates in current month - greyed out but readable
+    if (day.isCurrentMonth && day.isFuture) {
+      return isDarkColorScheme ? "text-gray-500" : "text-gray-500";
     }
 
     // Today's date text color
@@ -494,6 +518,12 @@ const CalendarDayComponent = ({
         return;
       }
 
+      // Prevent interaction with future dates
+      if (day.isFuture) {
+        console.log('Future date clicked, press ignored');
+        return;
+      }
+
       if (typeof onPress === 'function') {
         onPress();
       } else {
@@ -508,8 +538,8 @@ const CalendarDayComponent = ({
     <TouchableOpacity
       className={`flex-1 h-12 items-center justify-center m-0.5 rounded-lg ${getStatusColor()} ${getBorderAndBackground()} ${isSelected ? (isDarkColorScheme ? 'border-green-400' : 'border-green-500') : ''}`}
       onPress={handlePress}
-      disabled={!day.isCurrentMonth}
-      activeOpacity={0.7}
+      disabled={!day.isCurrentMonth || day.isFuture}
+      activeOpacity={day.isCurrentMonth && !day.isFuture ? 0.7 : 1}
       style={{ minHeight: 48 }}
     >
       <Text className={`text-sm ${getTextColor()}`}>
