@@ -286,17 +286,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               isDarkColorScheme ? 'bg-gray-800' : 'bg-white'
             }`}
           >
-            {/* School Logo */}
-            <View className={`w-20 h-20 rounded-full mb-6 items-center justify-center ${
-              isDarkColorScheme ? 'bg-gray-700' : 'bg-gray-100'
-            }`}>
-              <Image
-                source={require('~/assets/logosmk.png')}
-                className="w-16 h-16"
-                resizeMode="contain"
-              />
-            </View>
-
             {/* Success Icon */}
             <Animated.View
               style={{

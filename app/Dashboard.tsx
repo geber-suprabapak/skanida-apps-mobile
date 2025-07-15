@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
@@ -99,14 +100,32 @@ export default function Dashboard() {
     }
   }, [params, router]);
 
-  // Beta alert on dashboard open
+  // Show alpha release popup only once
   useEffect(() => {
-    Alert.alert(
-      "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
-      [{ text: "Saya Mengerti", style: "default" }],
-      { cancelable: true },
-    );
+    const showAlphaReleaseAlert = async () => {
+      try {
+        const hasSeenAlert = await AsyncStorage.getItem('alpha_release_alert_shown');
+        
+        if (!hasSeenAlert) {
+          Alert.alert(
+            "🚧 Alpha Release",
+            "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+            [{ 
+              text: "Saya Mengerti", 
+              style: "default",
+              onPress: async () => {
+                await AsyncStorage.setItem('alpha_release_alert_shown', 'true');
+              }
+            }],
+            { cancelable: false },
+          );
+        }
+      } catch (error) {
+        console.warn('Failed to check/set alpha release alert flag:', error);
+      }
+    };
+
+    showAlphaReleaseAlert();
   }, []);
 
   useEffect(() => {
