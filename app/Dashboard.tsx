@@ -1,6 +1,6 @@
 // app/Dashboard.tsx
 import { format } from "date-fns";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -21,6 +21,7 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
@@ -71,6 +73,32 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
+  
+  // Success popup state
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successData, setSuccessData] = useState<{
+    attendanceType: 'present' | 'home';
+    time: string;
+  } | null>(null);
+
+  // Handle success popup from navigation params
+  useEffect(() => {
+    if (params.showSuccessPopup === "true" && params.attendanceType && params.successTime) {
+      setSuccessData({
+        attendanceType: params.attendanceType as 'present' | 'home',
+        time: params.successTime as string,
+      });
+      setShowSuccessPopup(true);
+      
+      // Clear params to prevent popup from showing again
+      router.setParams({
+        showSuccessPopup: undefined,
+        attendanceType: undefined,
+        successTime: undefined,
+      });
+    }
+  }, [params, router]);
+
   // Beta alert on dashboard open
   useEffect(() => {
     Alert.alert(
@@ -195,6 +223,16 @@ export default function Dashboard() {
       console.error("Error fetching attendance data:", error);
     }
   }, [user]);
+
+  // Handle success popup close
+  const handleSuccessPopupClose = useCallback(() => {
+    setShowSuccessPopup(false);
+    setSuccessData(null);
+    // Refresh attendance data after successful attendance
+    if (isFocused) {
+      fetchAttendanceData();
+    }
+  }, [isFocused, fetchAttendanceData]);
 
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
@@ -609,6 +647,16 @@ export default function Dashboard() {
           </Text>
         </View>
       </SafeAreaView>
+
+      {/* Success Popup */}
+      {successData && (
+        <AttendanceSuccessPopup
+          visible={showSuccessPopup}
+          onClose={handleSuccessPopupClose}
+          attendanceType={successData.attendanceType}
+          time={successData.time}
+        />
+      )}
     </>
   );
 }

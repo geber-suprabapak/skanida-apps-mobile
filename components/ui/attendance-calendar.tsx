@@ -456,7 +456,7 @@ const CalendarDayComponent = ({
 
     // Today's date text color
     if (day.isToday) {
-      return isDarkColorScheme ? "text-blue-400 font-semibold" : "text-blue-600 font-semibold";
+      return isDarkColorScheme ? "text-pink-400 font-semibold" : "text-pink-600 font-semibold";
     }
 
     if (!day.attendance) {
@@ -476,11 +476,11 @@ const CalendarDayComponent = ({
   };
 
   const getBorderAndBackground = () => {
-    // Today's date gets a subtle border indicator
+    // Today's date gets a pink border indicator
     if (day.isToday) {
       return isDarkColorScheme
-        ? "border-2 border-blue-400"
-        : "border-2 border-blue-600";
+        ? "border-2 border-pink-400"
+        : "border-2 border-pink-500";
     }
 
     // Default border
@@ -525,7 +525,7 @@ const CalendarDayComponent = ({
       {day.isToday && (
         <View
           className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
-            isDarkColorScheme ? "bg-blue-400" : "bg-blue-600"
+            isDarkColorScheme ? "bg-pink-400" : "bg-pink-500"
           }`}
         />
       )}
@@ -953,9 +953,15 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
             <View className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-yellow-900" : "bg-yellow-100"}`} />
             <Text className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>Sakit</Text>
           </View>
-          <View key="legend-absent" className="flex-row items-center mb-2">
+          <View key="legend-absent" className="flex-row items-center mr-4 mb-2">
             <View className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-red-900" : "bg-red-100"}`} />
             <Text className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>Tidak Hadir</Text>
+          </View>
+          <View key="legend-today" className="flex-row items-center mb-2">
+            <View className={`w-4 h-4 rounded mr-2 border-2 relative ${isDarkColorScheme ? "border-pink-400 bg-gray-700" : "border-pink-500 bg-white"}`}>
+              <View className={`absolute top-0 right-0 w-1.5 h-1.5 rounded-full ${isDarkColorScheme ? "bg-pink-400" : "bg-pink-500"}`} />
+            </View>
+            <Text className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>Hari Ini</Text>
           </View>
         </View>
       </View>
