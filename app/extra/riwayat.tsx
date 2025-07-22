@@ -11,6 +11,7 @@ import { Stack, useRouter } from "expo-router";
 
 import { Text } from "~/components/ui/text";
 import AttendanceCalendar from "~/components/ui/attendance-calendar";
+import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Calendar } from "~/lib/icons/Calendar";
@@ -22,7 +23,9 @@ export default function Riwayat() {
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const [showCacheStats, setShowCacheStats] = useState(false);
+  
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Handle back button
   useEffect(() => {
@@ -72,6 +75,11 @@ export default function Riwayat() {
     } catch (error) {
       Alert.alert("❌ Error", "Failed to clear cache");
     }
+  };
+
+  // Date change handler for custom picker
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
   };
 
   return (
@@ -136,8 +144,29 @@ export default function Riwayat() {
         )}
       </View>
 
+      {/* Month/Year Selector */}
+      <View
+        className={`p-4 border-b ${
+          isDarkColorScheme
+            ? "border-gray-700 bg-gray-800"
+            : "border-border bg-background"
+        }`}
+      >
+        <MonthYearPicker
+          selectedDate={selectedDate}
+          onDateChange={handleDateChange}
+          isDarkColorScheme={isDarkColorScheme}
+          minimumDate={new Date(2020, 0, 1)}
+          maximumDate={new Date()}
+        />
+      </View>
+
       {/* Calendar Component */}
-      <AttendanceCalendar isDarkColorScheme={isDarkColorScheme} />
+      <AttendanceCalendar 
+        isDarkColorScheme={isDarkColorScheme}
+        currentYear={selectedDate.getFullYear()}
+        currentMonth={selectedDate.getMonth()}
+      />
     </SafeAreaView>
   );
 }
