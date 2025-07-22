@@ -7,7 +7,9 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
@@ -19,6 +21,7 @@ import { CheckCircle } from "~/lib/icons/CheckCircle";
 import { AlertCircle } from "~/lib/icons/AlertCircle";
 import { FileText } from "~/lib/icons/FileText";
 import { RefreshCw } from "~/lib/icons/RefreshCw";
+import { Calendar } from "~/lib/icons/Calendar";
 
 // ========== TYPES ==========
 interface AttendanceRecord {
@@ -44,6 +47,8 @@ interface CalendarDay {
 
 interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;
+  currentYear?: number;
+  currentMonth?: number;
 }
 
 // ========== UTILS ==========
@@ -788,22 +793,35 @@ const DetailCard = ({
 };
 
 // ========== MAIN COMPONENT ==========
-export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCalendarProps) {
+export default function AttendanceCalendar({ 
+  isDarkColorScheme, 
+  currentYear: propYear, 
+  currentMonth: propMonth 
+}: AttendanceCalendarProps) {
   const user = useAuthStore((state: any) => state.user);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+  
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
 
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+  // Use props if provided, otherwise use current date
+  const currentDate = propYear && propMonth !== undefined ? new Date(propYear, propMonth, 1) : new Date();
+  const currentYear = propYear || currentDate.getFullYear();
+  const currentMonth = propMonth !== undefined ? propMonth : currentDate.getMonth();
+
+  // Use internal date picker if no props provided
+  const displayYear = propYear !== undefined ? currentYear : pickerDate.getFullYear();
+  const displayMonth = propMonth !== undefined ? currentMonth : pickerDate.getMonth();
 
   // Fetch monthly attendance data with optimized caching
-  const monthlyAttendance = useOptimizedMonthlyAttendance(user?.id || "", currentYear, currentMonth);
+  const monthlyAttendance = useOptimizedMonthlyAttendance(user?.id || "", displayYear, displayMonth);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
     try {
-      const days = getMonthDays(currentYear, currentMonth);
+      const days = getMonthDays(displayYear, displayMonth);
       return days.map(day => ({
         ...day,
         attendance: monthlyAttendance.data?.[day.fullDate],
@@ -812,38 +830,13 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
       console.error('Error generating calendar days:', error);
       return [];
     }
-  }, [currentYear, currentMonth, monthlyAttendance.data]);
-
-  // Navigation functions
-  const goToPreviousMonth = () => {
-    try {
-      setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
-      setDetailDay(null); // Clear detail when changing months
-      setSelectedDay(null);
-    } catch (error) {
-      console.error('Error navigating to previous month:', error);
-    }
-  };
-
-  const goToNextMonth = () => {
-    try {
-      setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
-      setDetailDay(null); // Clear detail when changing months
-      setSelectedDay(null);
-    } catch (error) {
-      console.error('Error navigating to next month:', error);
-    }
-  };
+  }, [displayYear, displayMonth, monthlyAttendance.data]);
 
   const handleDayPress = useCallback((day: CalendarDay) => {
     try {
       // Only allow clicks on current month days
       if (!day?.isCurrentMonth) {
-        const monthName = [
-          "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-          "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-        ][currentMonth];
-        console.log(`🚫 Day ${day?.date} not in current month (${monthName} ${currentYear}), ignoring press`);
+        console.log(`🚫 Day ${day?.date} not in current month, ignoring press`);
         return;
       }
 
@@ -868,7 +861,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
       console.error('Error in handleDayPress:', error);
       console.warn('Failed to show date details, please try again');
     }
-  }, [currentMonth, currentYear]);
+  }, [displayMonth, displayYear]);
 
   // Effects
   useEffect(() => {
@@ -891,7 +884,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
     } catch (error) {
       console.error('Error refetching attendance data:', error);
     }
-  }, [currentYear, currentMonth, user?.id]);
+  }, [displayYear, displayMonth, user?.id]);
 
   // Handle manual refresh
   const handleRefresh = useCallback(() => {
@@ -904,66 +897,82 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
     }
   }, [user?.id, monthlyAttendance.refetch]);
 
-  const monthNames = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-  ];
+  // Date picker handlers (if not using props)
+  const handleDateChange = useCallback((event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (date) {
+      setPickerDate(date);
+    }
+  }, []);
+
+  const showDatePickerModal = useCallback(() => {
+    setShowDatePicker(true);
+  }, []);
+
+  const formatMonthYear = useCallback((date: Date) => {
+    return date.toLocaleDateString('id-ID', {
+      month: 'long',
+      year: 'numeric'
+    });
+  }, []);
 
   const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   return (
-    <ScrollView className="flex-1 p-4">
-      {/* Month Navigation */}
-      <View className="flex-row items-center justify-between mb-6">
-        <TouchableOpacity
-          onPress={goToPreviousMonth}
-          className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-          activeOpacity={0.7}
-        >
-          <ChevronLeft size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
-        </TouchableOpacity>
-
-        <View className="flex-1 flex-row items-center justify-center">
-          <Text
-            className={`text-xl font-bold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+    <ScrollView className="flex-1 px-4">
+      {/* Month/Year Selector - only show if no props provided */}
+      {propYear === undefined && propMonth === undefined && (
+        <View className={`flex-row items-center justify-between p-4 rounded-lg mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}>
+          <TouchableOpacity
+            onPress={showDatePickerModal}
+            className={`flex-row items-center px-4 py-2 rounded-lg ${
+              isDarkColorScheme ? "bg-gray-700" : "bg-white"
+            }`}
           >
-            {monthNames[currentMonth]} {currentYear}
-          </Text>
-
-          {/* Refresh Button */}
+            <Calendar
+              size={20}
+              color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              className="mr-2"
+            />
+            <Text
+              className={`text-lg font-semibold ${
+                isDarkColorScheme ? "text-white" : "text-foreground"
+              }`}
+            >
+              {formatMonthYear(pickerDate)}
+            </Text>
+            <ChevronRight
+              size={20}
+              color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              className="ml-2"
+            />
+          </TouchableOpacity>
+          
           <TouchableOpacity
             onPress={handleRefresh}
-            className={`ml-3 p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-            activeOpacity={0.7}
-            disabled={monthlyAttendance.loading}
-            key="refresh-button"
+            className={`p-2 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-white"}`}
           >
-            {monthlyAttendance.loading ? (
-              <View className="animate-spin">
-                <RefreshCw
-                  size={16}
-                  color="#9ca3af"
-                  className=""
-                />
-              </View>
-            ) : (
-              <RefreshCw
-                size={16}
-                color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                className=""
-              />
-            )}
+            <RefreshCw
+              size={20}
+              color={isDarkColorScheme ? "#ffffff" : "#000000"}
+            />
           </TouchableOpacity>
         </View>
+      )}
 
-        <TouchableOpacity
-          onPress={goToNextMonth}
-          className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-          activeOpacity={0.7}
-        >
-          <ChevronRight size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
-        </TouchableOpacity>
-      </View>
+      {/* Date Picker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={pickerDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
+      )}
 
       {/* Legend */}
       <View className={`p-4 rounded-lg mb-6 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}>
@@ -1018,14 +1027,14 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
             </Text>
           </View>
         ) : (
-          <View key={`calendar-${currentYear}-${currentMonth}`}>
+          <View key={`calendar-${displayYear}-${displayMonth}`}>
             {Array.from({ length: Math.ceil((calendarDays?.length || 0) / 7) }, (_, weekIndex) => (
-              <View key={`week-${currentYear}-${currentMonth}-${weekIndex}`} className="flex-row">
+              <View key={`week-${displayYear}-${displayMonth}-${weekIndex}`} className="flex-row">
                 {(calendarDays || [])
                   .slice(weekIndex * 7, weekIndex * 7 + 7)
                   .map((day, dayIndex) => (
                     <CalendarDayComponent
-                      key={`${currentYear}-${currentMonth}-w${weekIndex}-d${dayIndex}-${day?.fullDate || 'empty'}`}
+                      key={`${displayYear}-${displayMonth}-w${weekIndex}-d${dayIndex}-${day?.fullDate || 'empty'}`}
                       day={day}
                       isDarkColorScheme={isDarkColorScheme}
                       onPress={() => handleDayPress(day)}
@@ -1041,7 +1050,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
       {/* Detail Card - shows when a day is tapped */}
       {detailDay && (
         <DetailCard
-          key={`detail-${detailDay.fullDate}-${currentYear}-${currentMonth}`}
+          key={`detail-${detailDay.fullDate}-${displayYear}-${displayMonth}`}
           day={detailDay}
           isDarkColorScheme={isDarkColorScheme}
           onClose={() => setDetailDay(null)}

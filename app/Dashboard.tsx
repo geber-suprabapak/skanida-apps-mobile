@@ -518,7 +518,7 @@ export default function Dashboard() {
                       <Text
                         className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
                       >
-                        Total Jam Kerja
+                        Total Jam Di Sekolah
                       </Text>
                     </View>
                     <Text
