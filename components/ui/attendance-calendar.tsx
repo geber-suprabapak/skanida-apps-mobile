@@ -811,9 +811,9 @@ export default function AttendanceCalendar({
   const currentYear = propYear || currentDate.getFullYear();
   const currentMonth = propMonth !== undefined ? propMonth : currentDate.getMonth();
 
-  // Use internal date picker if no props provided
-  const displayYear = propYear !== undefined ? currentYear : pickerDate.getFullYear();
-  const displayMonth = propMonth !== undefined ? currentMonth : pickerDate.getMonth();
+  // Use props if provided, otherwise use internal date picker
+  const displayYear = propYear !== undefined ? propYear : pickerDate.getFullYear();
+  const displayMonth = propMonth !== undefined ? propMonth : pickerDate.getMonth();
 
   // Fetch monthly attendance data with optimized caching
   const monthlyAttendance = useOptimizedMonthlyAttendance(user?.id || "", displayYear, displayMonth);
@@ -884,7 +884,13 @@ export default function AttendanceCalendar({
     } catch (error) {
       console.error('Error refetching attendance data:', error);
     }
-  }, [displayYear, displayMonth, user?.id]);
+  }, [displayYear, displayMonth, user?.id, monthlyAttendance.refetch, monthlyAttendance.prefetchAdjacent]);
+
+  // Clear selected day when month changes
+  useEffect(() => {
+    setDetailDay(null);
+    setSelectedDay(null);
+  }, [displayYear, displayMonth]);
 
   // Handle manual refresh
   const handleRefresh = useCallback(() => {

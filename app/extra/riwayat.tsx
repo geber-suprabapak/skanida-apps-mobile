@@ -83,12 +83,12 @@ export default function Riwayat() {
 
   // Date picker handlers
   const handleDateChange = (event: any, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    setShowDatePicker(false); // Always close on both platforms
     
-    if (date) {
-      setSelectedDate(date);
+    if (event.type === 'set' && date) {
+      // Set to the first day of the selected month to focus on month/year
+      const adjustedDate = new Date(date.getFullYear(), date.getMonth(), 1);
+      setSelectedDate(adjustedDate);
     }
   };
 
@@ -99,6 +99,13 @@ export default function Riwayat() {
   const formatMonthYear = (date: Date) => {
     return date.toLocaleDateString('id-ID', {
       month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const formatShortMonthYear = (date: Date) => {
+    return date.toLocaleDateString('id-ID', {
+      month: 'short',
       year: 'numeric'
     });
   };
@@ -167,34 +174,47 @@ export default function Riwayat() {
 
       {/* Month/Year Selector */}
       <View
-        className={`flex-row items-center justify-between p-4 border-b ${
+        className={`p-4 border-b ${
           isDarkColorScheme
             ? "border-gray-700 bg-gray-800"
             : "border-border bg-background"
         }`}
       >
-        <TouchableOpacity
-          onPress={showDatePickerModal}
-          className={`flex-row items-center px-4 py-2 rounded-lg ${
-            isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
+        <Text
+          className={`text-sm font-medium mb-2 ${
+            isDarkColorScheme ? "text-gray-300" : "text-gray-600"
           }`}
         >
-          <Calendar
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            className="mr-2"
-          />
-          <Text
-            className={`text-lg font-semibold ${
-              isDarkColorScheme ? "text-white" : "text-foreground"
-            }`}
-          >
-            {formatMonthYear(selectedDate)}
-          </Text>
+          Pilih Bulan & Tahun
+        </Text>
+        <TouchableOpacity
+          onPress={showDatePickerModal}
+          className={`flex-row items-center justify-between px-4 py-3 rounded-lg border shadow-sm ${
+            isDarkColorScheme 
+              ? "bg-gray-700 border-gray-600 shadow-gray-900/20" 
+              : "bg-white border-gray-300 shadow-gray-500/10"
+          }`}
+          style={{
+            elevation: 2, // Android shadow
+          }}
+        >
+          <View className="flex-row items-center">
+            <Calendar
+              size={20}
+              color={isDarkColorScheme ? "#ffffff" : "#374151"}
+              className="mr-3"
+            />
+            <Text
+              className={`text-lg font-medium ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              {formatMonthYear(selectedDate)}
+            </Text>
+          </View>
           <ChevronRight
             size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            className="ml-2"
+            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
           />
         </TouchableOpacity>
       </View>
@@ -204,9 +224,10 @@ export default function Riwayat() {
         <DateTimePicker
           value={selectedDate}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={handleDateChange}
           maximumDate={new Date()}
+          minimumDate={new Date(2020, 0, 1)}
         />
       )}
 
