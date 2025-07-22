@@ -572,7 +572,7 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
-            <View className="flex-row space-x-3">
+            <View className="flex-row space-x-3 gap-1">
               <TouchableOpacity
                 onPress={navigateToHistory}
                 className="flex-1"
