@@ -5,19 +5,17 @@ import {
   TouchableOpacity,
   BackHandler,
   Alert,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { Text } from "~/components/ui/text";
 import AttendanceCalendar from "~/components/ui/attendance-calendar";
+import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Calendar } from "~/lib/icons/Calendar";
 import { Settings } from "~/lib/icons/Settings";
-import { ChevronRight } from "~/lib/icons/ChevronRight";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
@@ -25,11 +23,9 @@ export default function Riwayat() {
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const [showCacheStats, setShowCacheStats] = useState(false);
   
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Handle back button
   useEffect(() => {
@@ -81,33 +77,9 @@ export default function Riwayat() {
     }
   };
 
-  // Date picker handlers
-  const handleDateChange = (event: any, date?: Date) => {
-    setShowDatePicker(false); // Always close on both platforms
-    
-    if (event.type === 'set' && date) {
-      // Set to the first day of the selected month to focus on month/year
-      const adjustedDate = new Date(date.getFullYear(), date.getMonth(), 1);
-      setSelectedDate(adjustedDate);
-    }
-  };
-
-  const showDatePickerModal = () => {
-    setShowDatePicker(true);
-  };
-
-  const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('id-ID', {
-      month: 'long',
-      year: 'numeric'
-    });
-  };
-
-  const formatShortMonthYear = (date: Date) => {
-    return date.toLocaleDateString('id-ID', {
-      month: 'short',
-      year: 'numeric'
-    });
+  // Date change handler for custom picker
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
   };
 
   return (
@@ -180,56 +152,14 @@ export default function Riwayat() {
             : "border-border bg-background"
         }`}
       >
-        <Text
-          className={`text-sm font-medium mb-2 ${
-            isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-          }`}
-        >
-          Pilih Bulan & Tahun
-        </Text>
-        <TouchableOpacity
-          onPress={showDatePickerModal}
-          className={`flex-row items-center justify-between px-4 py-3 rounded-lg border shadow-sm ${
-            isDarkColorScheme 
-              ? "bg-gray-700 border-gray-600 shadow-gray-900/20" 
-              : "bg-white border-gray-300 shadow-gray-500/10"
-          }`}
-          style={{
-            elevation: 2, // Android shadow
-          }}
-        >
-          <View className="flex-row items-center">
-            <Calendar
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#374151"}
-              className="mr-3"
-            />
-            <Text
-              className={`text-lg font-medium ${
-                isDarkColorScheme ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {formatMonthYear(selectedDate)}
-            </Text>
-          </View>
-          <ChevronRight
-            size={20}
-            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Date Picker */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-          maximumDate={new Date()}
+        <MonthYearPicker
+          selectedDate={selectedDate}
+          onDateChange={handleDateChange}
+          isDarkColorScheme={isDarkColorScheme}
           minimumDate={new Date(2020, 0, 1)}
+          maximumDate={new Date()}
         />
-      )}
+      </View>
 
       {/* Calendar Component */}
       <AttendanceCalendar 

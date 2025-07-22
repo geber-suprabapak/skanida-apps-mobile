@@ -7,11 +7,10 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Platform,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { Text } from "~/components/ui/text";
+import MonthYearPicker from "~/components/ui/month-year-picker";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
@@ -803,7 +802,6 @@ export default function AttendanceCalendar({
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   
   // Date picker state
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(new Date());
 
   // Use props if provided, otherwise use current date
@@ -904,18 +902,8 @@ export default function AttendanceCalendar({
   }, [user?.id, monthlyAttendance.refetch]);
 
   // Date picker handlers (if not using props)
-  const handleDateChange = useCallback((event: any, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    
-    if (date) {
-      setPickerDate(date);
-    }
-  }, []);
-
-  const showDatePickerModal = useCallback(() => {
-    setShowDatePicker(true);
+  const handleDateChange = useCallback((date: Date) => {
+    setPickerDate(date);
   }, []);
 
   const formatMonthYear = useCallback((date: Date) => {
@@ -931,53 +919,34 @@ export default function AttendanceCalendar({
     <ScrollView className="flex-1 px-4">
       {/* Month/Year Selector - only show if no props provided */}
       {propYear === undefined && propMonth === undefined && (
-        <View className={`flex-row items-center justify-between p-4 rounded-lg mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}>
-          <TouchableOpacity
-            onPress={showDatePickerModal}
-            className={`flex-row items-center px-4 py-2 rounded-lg ${
-              isDarkColorScheme ? "bg-gray-700" : "bg-white"
-            }`}
-          >
-            <Calendar
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              className="mr-2"
-            />
+        <View className={`mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"} rounded-lg p-4`}>
+          <View className="flex-row items-center justify-between mb-3">
             <Text
               className={`text-lg font-semibold ${
                 isDarkColorScheme ? "text-white" : "text-foreground"
               }`}
             >
-              {formatMonthYear(pickerDate)}
+              Pilih Periode
             </Text>
-            <ChevronRight
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              className="ml-2"
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleRefresh}
+              className={`p-2 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-white"}`}
+            >
+              <RefreshCw
+                size={20}
+                color={isDarkColorScheme ? "#ffffff" : "#000000"}
+              />
+            </TouchableOpacity>
+          </View>
           
-          <TouchableOpacity
-            onPress={handleRefresh}
-            className={`p-2 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-white"}`}
-          >
-            <RefreshCw
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            />
-          </TouchableOpacity>
+          <MonthYearPicker
+            selectedDate={pickerDate}
+            onDateChange={handleDateChange}
+            isDarkColorScheme={isDarkColorScheme}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={new Date()}
+          />
         </View>
-      )}
-
-      {/* Date Picker */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={pickerDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
       )}
 
       {/* Legend */}
