@@ -16,7 +16,14 @@ You are an AI coding assistant working on **Skanida Apps Mobile** (React Native 
 - **NativeWind:** Use Tailwind utility classes in `className`; merge conditionally with `cn(...)` from `~/lib/utils.ts`.
 - **Icons:** Import from `~/lib/icons/<IconName>.tsx`; these wrap `lucide-react-native` icons to accept `className`.
 
-### 3. Data & Supabase Integration
+### 3. UI Components & Patterns
+- **Location & Structure:** All building-block components live in `components/ui/` (e.g., `button.tsx`, `card.tsx`, `input.tsx`, `pop-up.tsx`).
+- **Variants & Styling:** Use `class-variance-authority` (`cva`) to define variant props (e.g., `buttonVariants` in `button.tsx`). Pass `variant` and `size` props and merge classes with `cn(...)`.
+- **Text Context:** UI primitives wrap children with `TextClassContext` for consistent typography (e.g., `buttonTextVariants`).
+- **Icon Primitives:** Use wrapped icons from `~/lib/icons/` (e.g., `<Camera />`), applying `className` for sizing and color (e.g., `className="text-2xl text-primary"`).
+- **Usage Pattern:** Always prefer these primitives over raw `View`/`Text`. They enforce theme tokens, spacing, and accessibility roles.
+
+### 4. Data & Supabase Integration
 - **Client:** Import `supabase` from `~/utils/supabase.ts`.
 - **Database tables:**
     - `absences`: attendance records (types: `present`, `home`).
@@ -28,7 +35,7 @@ You are an AI coding assistant working on **Skanida Apps Mobile** (React Native 
     - `avatars`
 - **Upload pattern:** In `app/attendance/CameraAttendance.tsx`, resize with `expo-image-manipulator` (800px width, 70% quality), name file `<YYYY-MM-DD>_<timestamp>_<userId>.png`, upload to `attendance-photos`, then insert `absences` record.
 
-### 4. Core Feature Workflows
+### 5. Core Feature Workflows
 - **Absence Reporting (`app/attendance/AbsenceReport.tsx`):**
     1. Request location permission and fetch location via `expo-location`.
     2. Calculate distance to school coords `(-7.4503, 110.2241)`, require ≤500m.
@@ -38,11 +45,11 @@ You are an AI coding assistant working on **Skanida Apps Mobile** (React Native 
     - Use custom `logger` for structured debugging.
     - Upload attachments to `perizinan` bucket and insert record in Supabase.
 
-### 5. State Management & Caching
+### 6. State Management & Caching
 - **Zustand stores:** Each feature in `store/` (e.g., `useAuthStore`, `useAttendanceStore`).
 - **Caching:** `utils/attendanceCache.ts` uses AsyncStorage to cache monthly attendance data for calendar views.
 
-### 6. Developer Workflows & Scripts
+### 7. Developer Workflows & Scripts
 - **Package manager:** pnpm (v10).
 - **Scripts (pwsh):**
     - `pnpm install`
