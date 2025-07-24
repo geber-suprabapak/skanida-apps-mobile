@@ -24,10 +24,12 @@ import { EyeOff } from "~/lib/icons/EyeOff";
 import { UserCheck } from "~/lib/icons/UserCheck";
 
 export default function RegisterScreen() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [confirmPasswordError, setConfirmPasswordError] = useState(false);
@@ -52,11 +54,16 @@ export default function RegisterScreen() {
   }, [router]);
 
   const handleRegister = async () => {
+    setNameError(false);
     setEmailError(false);
     setPasswordError(false);
     setConfirmPasswordError(false);
 
     let hasValidationError = false;
+    if (!name) {
+      setNameError(true);
+      hasValidationError = true;
+    }
     if (!email) {
       setEmailError(true);
       hasValidationError = true;
@@ -86,6 +93,11 @@ export default function RegisterScreen() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
       });
 
       if (error) {
@@ -172,6 +184,39 @@ export default function RegisterScreen() {
               <View
                 className={`rounded-2xl p-8 shadow-xl ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"}`}
               >
+                {/* Name Field */}
+                <View className="mb-6">
+                  <Text
+                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                  >
+                    Nama Lengkap
+                  </Text>
+                  <Input
+                    className={cn(
+                      "h-16 rounded-xl border-2 px-4 py-4 text-lg",
+                      nameError
+                        ? "border-red-500"
+                        : isDarkColorScheme
+                          ? "border-gray-600"
+                          : "border-gray-200",
+                      isDarkColorScheme
+                        ? "bg-gray-700 text-white"
+                        : "bg-gray-50",
+                      "focus:border-blue-500",
+                      "native:text-lg native:leading-[1.2]",
+                    )}
+                    placeholder="Masukkan nama lengkap Anda"
+                    placeholderTextColor={
+                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
+                    }
+                    autoCapitalize="words"
+                    value={name}
+                    onChangeText={(text) => {
+                      setName(text);
+                      if (nameError) setNameError(false);
+                    }}
+                  />
+                </View>
                 {/* Email Field */}
                 <View className="mb-6">
                   <Text
