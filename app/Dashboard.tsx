@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
@@ -217,22 +217,80 @@ export default function Dashboard() {
     setRefreshing(false);
   }, [fetchProfileData, fetchAttendanceData]);
 
+  // Check if user has completed their profile
+  const checkProfileCompleteness = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .single();
+        
+      if (error && error.code !== "PGRST116") {
+        console.error("Error checking profile completeness:", error.message);
+        return;
+      }
+      
+      // If profile doesn't exist or full_name is not set, redirect to edit profile
+      if (!data || !data.full_name) {
+        Alert.alert(
+          "Profil Belum Lengkap",
+          "Silahkan lengkapi profil Anda terlebih dahulu sebelum menggunakan aplikasi.",
+          [{ 
+            text: "OK", 
+            onPress: () => {
+              // Navigate to EditProfile instead of replace to avoid navigation stack issues
+              router.navigate("/profile/EditProfile");
+            }
+          }]
+        );
+        return false; // Return false to indicate profile is incomplete
+      }
+      
+      return true; // Return true to indicate profile is complete
+    } catch (err: any) {
+      console.error("Exception during profile completeness check:", err.message);
+      return false; // Return false on error
+    }
+  }, [user, router]);
+
   // Effects
   useEffect(() => {
     if (isFocused && user) {
       fetchProfileData();
       fetchAttendanceData();
+      checkProfileCompleteness();
     } else if (!user) {
       setProfileData(null);
     }
-  }, [user, isFocused, fetchProfileData, fetchAttendanceData]);
+  }, [user, isFocused, fetchProfileData, fetchAttendanceData, checkProfileCompleteness]);
+  
+  // Check profile completeness on focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkAndRedirect = async () => {
+        if (user) {
+          const isProfileComplete = await checkProfileCompleteness();
+          if (!isProfileComplete) {
+            // Use navigate instead of replace to avoid navigation stack issues
+            router.navigate("/profile/EditProfile");
+          }
+        }
+      };
+      
+      checkAndRedirect();
+      
+      return () => {
+        // Cleanup if needed
+      };
+    }, [user, checkProfileCompleteness, router])
+  );
 
   // Get user's display name prioritizing profile data, then falling back to metadata
-  const displayName =
-    profileData?.full_name || // Uses profileData.full_name if it's a truthy string
-    user?.user_metadata?.name ||
-    user?.email ||
-    "Pengguna";
+  // This will be "Pengguna" if no profile data exists, which should trigger our redirect
+  const displayName = profileData?.full_name || "Pengguna"; 
 
   // Get user's avatar URL from profile data or from metadata
   const avatarUrl =
@@ -515,7 +573,7 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
-            <View className="flex-row space-x-3">
+            <View className="flex-row space-x-3 gap-2">
               <TouchableOpacity
                 onPress={navigateToHistory}
                 className="flex-1"
@@ -603,9 +661,9 @@ export default function Dashboard() {
           }`}
         >
           <Text
-            className={`text-xs ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
+            className={`text-xs font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
           >
-            Skanida Apps v1.5.0-alpha.1
+            v1.0.0-cbt.1 | Internal Build 
           </Text>
         </View>
       </SafeAreaView>
