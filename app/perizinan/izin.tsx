@@ -753,7 +753,7 @@ export default function PerizinanScreen() {
             </CardHeader>
             <CardContent>
               <View
-                className={`p-4 rounded-xl border-2 ${
+                className={`rounded-xl border-2 overflow-hidden ${
                   description.trim()
                     ? isDarkColorScheme
                       ? "border-green-600 bg-green-900/20"
@@ -764,7 +764,7 @@ export default function PerizinanScreen() {
                 }`}
               >
                 <Input
-                  className={`min-h-[120px] text-base border-0 p-0 ${
+                  className={`min-h-[120px] max-h-[200px] text-base border-0 p-4 ${
                     isDarkColorScheme
                       ? "bg-transparent text-white placeholder-gray-400"
                       : "bg-transparent text-foreground placeholder-muted-foreground"
@@ -774,6 +774,15 @@ export default function PerizinanScreen() {
                   value={description}
                   onChangeText={setDescription}
                   textAlignVertical="top"
+                  numberOfLines={6}
+                  maxLength={500}
+                  style={{
+                    textAlignVertical: 'top',
+                    lineHeight: 22,
+                    minHeight: 120,
+                    maxHeight: 200,
+                  }}
+                  scrollEnabled={true}
                 />
               </View>
               <View className="flex-row justify-between items-center mt-3">

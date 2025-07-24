@@ -347,19 +347,19 @@ function Pengaturan() {
       <ScrollView
         className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 16 }}
       >
         {/* Profile Section */}
-        <View className="px-6 pt-6 pb-4">
+        <View className="px-6 pt-4 pb-3">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
@@ -367,7 +367,7 @@ function Pengaturan() {
             </Text>
             
             {/* Profile Header */}
-            <View className="flex-row items-center mb-6">
+            <View className="flex-row items-center mb-4">
               {profileAvatarUrl ? (
                 <View
                   style={{
@@ -376,7 +376,7 @@ function Pengaturan() {
                     shadowOpacity: 0.1,
                     shadowRadius: 8,
                     elevation: 4,
-                    borderRadius: 40,
+                    borderRadius: 32,
                   }}
                 >
                   <Image
@@ -384,12 +384,12 @@ function Pengaturan() {
                       uri: profileAvatarUrl,
                       cache: "force-cache",
                     }}
-                    className="w-20 h-20 rounded-full"
+                    className="w-16 h-16 rounded-full"
                   />
                 </View>
               ) : (
                 <View
-                  className={`w-20 h-20 rounded-full ${
+                  className={`w-16 h-16 rounded-full ${
                     isDarkColorScheme ? "bg-blue-600" : "bg-blue-500"
                   } justify-center items-center`}
                   style={{
@@ -400,7 +400,7 @@ function Pengaturan() {
                     elevation: 6,
                   }}
                 >
-                  <Text className="text-2xl font-bold text-white">
+                  <Text className="text-xl font-bold text-white">
                     {(profileFullName || user?.email)?.charAt(0).toUpperCase() ||
                       "U"}
                   </Text>
@@ -409,7 +409,7 @@ function Pengaturan() {
               
               <View className="flex-1 ml-4">
                 <Text
-                  className={`text-xl font-bold ${
+                  className={`text-lg font-bold ${
                     isDarkColorScheme ? "text-white" : "text-gray-900"
                   }`}
                 >
@@ -425,7 +425,7 @@ function Pengaturan() {
                 
                 <TouchableOpacity
                   onPress={handleCopyId}
-                  className={`self-start mt-3 px-3 py-2 rounded-full ${
+                  className={`self-start mt-2 px-3 py-1.5 rounded-full ${
                     copiedId
                       ? "bg-green-500"
                       : isDarkColorScheme
@@ -454,39 +454,39 @@ function Pengaturan() {
         </View>
 
         {/* Account Settings Section */}
-        <View className="px-6 mb-6">
+        <View className="px-6 mb-3">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Pengaturan Akun
             </Text>
             
-            <View className="space-y-1">
+            <View className="space-y-0">
               <TouchableOpacity
-                className={`flex-row items-center p-4 rounded-lg ${
+                className={`flex-row items-center p-3 rounded-t-lg border-b ${
                   isDarkColorScheme
-                    ? "hover:bg-gray-700 active:bg-gray-700"
-                    : "hover:bg-gray-50 active:bg-gray-50"
+                    ? "hover:bg-gray-700 active:bg-gray-700 border-gray-700"
+                    : "hover:bg-gray-50 active:bg-gray-50 border-gray-100"
                 }`}
                 onPress={navigateToEditProfile}
                 activeOpacity={0.7}
               >
                 <View
-                  className={`w-10 h-10 rounded-lg ${
+                  className={`w-8 h-8 rounded-lg ${
                     isDarkColorScheme ? "bg-blue-600" : "bg-blue-100"
-                  } justify-center items-center mr-4`}
+                  } justify-center items-center mr-3`}
                 >
                   <User
-                    size={20}
+                    size={16}
                     color={isDarkColorScheme ? "#ffffff" : "#3b82f6"}
                   />
                 </View>
@@ -499,7 +499,7 @@ function Pengaturan() {
                     Edit Profil
                   </Text>
                   <Text
-                    className={`text-sm mt-1 ${
+                    className={`text-sm ${
                       isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
@@ -507,13 +507,13 @@ function Pengaturan() {
                   </Text>
                 </View>
                 <ChevronRight
-                  size={20}
+                  size={18}
                   color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
-                className={`flex-row items-center p-4 rounded-lg ${
+                className={`flex-row items-center p-3 rounded-b-lg ${
                   isDarkColorScheme
                     ? "hover:bg-gray-700 active:bg-gray-700"
                     : "hover:bg-gray-50 active:bg-gray-50"
@@ -522,12 +522,12 @@ function Pengaturan() {
                 activeOpacity={0.7}
               >
                 <View
-                  className={`w-10 h-10 rounded-lg ${
+                  className={`w-8 h-8 rounded-lg ${
                     isDarkColorScheme ? "bg-green-600" : "bg-green-100"
-                  } justify-center items-center mr-4`}
+                  } justify-center items-center mr-3`}
                 >
                   <Key
-                    size={20}
+                    size={16}
                     color={isDarkColorScheme ? "#ffffff" : "#16a34a"}
                   />
                 </View>
@@ -540,7 +540,7 @@ function Pengaturan() {
                     Ubah Password
                   </Text>
                   <Text
-                    className={`text-sm mt-1 ${
+                    className={`text-sm ${
                       isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
@@ -548,7 +548,7 @@ function Pengaturan() {
                   </Text>
                 </View>
                 <ChevronRight
-                  size={20}
+                  size={18}
                   color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                 />
               </TouchableOpacity>
@@ -557,35 +557,37 @@ function Pengaturan() {
         </View>
 
         {/* Preferences Section */}
-        <View className="px-6 mb-6">
+        <View className="px-6 mb-3">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Preferensi
             </Text>
             
-            <View className="space-y-1">
+            <View className="space-y-0">
               <View
-                className={`flex-row items-center p-4 rounded-lg ${
-                  isDarkColorScheme ? "bg-gray-700/50" : "bg-gray-50"
+                className={`flex-row items-center p-3 rounded-t-lg border-b ${
+                  isDarkColorScheme 
+                    ? "bg-gray-700/30 border-gray-700" 
+                    : "bg-gray-50 border-gray-100"
                 }`}
               >
                 <View
-                  className={`w-10 h-10 rounded-lg ${
+                  className={`w-8 h-8 rounded-lg ${
                     isDarkColorScheme ? "bg-purple-600" : "bg-purple-100"
-                  } justify-center items-center mr-4`}
+                  } justify-center items-center mr-3`}
                 >
                   <Moon
-                    size={20}
+                    size={16}
                     color={isDarkColorScheme ? "#ffffff" : "#7c3aed"}
                   />
                 </View>
@@ -598,7 +600,7 @@ function Pengaturan() {
                     Mode Gelap
                   </Text>
                   <Text
-                    className={`text-sm mt-1 ${
+                    className={`text-sm ${
                       isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
@@ -617,7 +619,7 @@ function Pengaturan() {
               </View>
 
               <TouchableOpacity
-                className={`flex-row items-center p-4 rounded-lg ${
+                className={`flex-row items-center p-3 rounded-b-lg ${
                   isDarkColorScheme
                     ? "hover:bg-gray-700 active:bg-gray-700"
                     : "hover:bg-gray-50 active:bg-gray-50"
@@ -629,12 +631,12 @@ function Pengaturan() {
                 activeOpacity={0.7}
               >
                 <View
-                  className={`w-10 h-10 rounded-lg ${
+                  className={`w-8 h-8 rounded-lg ${
                     isDarkColorScheme ? "bg-orange-600" : "bg-orange-100"
-                  } justify-center items-center mr-4`}
+                  } justify-center items-center mr-3`}
                 >
                   <Bell
-                    size={20}
+                    size={16}
                     color={isDarkColorScheme ? "#ffffff" : "#ea580c"}
                   />
                 </View>
@@ -647,7 +649,7 @@ function Pengaturan() {
                     Test Error Reporting
                   </Text>
                   <Text
-                    className={`text-sm mt-1 ${
+                    className={`text-sm ${
                       isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
@@ -655,7 +657,7 @@ function Pengaturan() {
                   </Text>
                 </View>
                 <ChevronRight
-                  size={20}
+                  size={18}
                   color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                 />
               </TouchableOpacity>
@@ -664,16 +666,16 @@ function Pengaturan() {
         </View>
 
         {/* Logout Section */}
-        <View className="px-6 mb-6">
+        <View className="px-6 mb-3">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
@@ -681,19 +683,19 @@ function Pengaturan() {
             </Text>
             
             <Button
-              size="lg"
+              size="default"
               onPress={handleLogout}
               className="w-full bg-red-500 hover:bg-red-600"
               style={{
                 shadowColor: '#ef4444',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 6,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
               }}
             >
               <View className="flex-row items-center">
-                <LogOut size={20} color="#ffffff" className="mr-3" />
+                <LogOut size={18} color="#ffffff" className="mr-2" />
                 <Text className="text-white font-medium">
                   Keluar dari Akun
                 </Text>
@@ -705,21 +707,21 @@ function Pengaturan() {
         {/* App Info Section */}
         <View className="px-6">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Informasi Aplikasi
             </Text>
             
-            <View className="space-y-4">
+            <View className="space-y-3">
               <View>
                 <Text
                   className={`text-sm font-medium ${
@@ -729,7 +731,7 @@ function Pengaturan() {
                   Versi Aplikasi
                 </Text>
                 <Text
-                  className={`text-base mt-1 ${
+                  className={`text-base ${
                     isDarkColorScheme ? "text-white" : "text-gray-900"
                   }`}
                 >
@@ -737,7 +739,7 @@ function Pengaturan() {
                 </Text>
               </View>
 
-              <View className={`pt-4 border-t ${
+              <View className={`pt-3 border-t ${
                 isDarkColorScheme ? "border-gray-700" : "border-gray-200"
               }`}>
                 <Text
@@ -748,7 +750,7 @@ function Pengaturan() {
                   © 2025 Skanida Apps
                 </Text>
                 <Text
-                  className={`text-sm mt-1 ${
+                  className={`text-sm ${
                     isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                   }`}
                 >
