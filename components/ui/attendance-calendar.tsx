@@ -416,10 +416,12 @@ const CalendarDayComponent = ({
   day,
   isDarkColorScheme,
   onPress,
+  isSelected,
 }: {
   day: CalendarDay;
   isDarkColorScheme: boolean;
   onPress: () => void;
+  isSelected: boolean;
 }) => {
   // Safety check for day prop
   if (!day) {
@@ -504,7 +506,7 @@ const CalendarDayComponent = ({
 
   return (
     <TouchableOpacity
-      className={`flex-1 h-12 items-center justify-center m-0.5 rounded-lg ${getStatusColor()} ${getBorderAndBackground()}`}
+      className={`flex-1 h-12 items-center justify-center m-0.5 rounded-lg ${getStatusColor()} ${getBorderAndBackground()} ${isSelected ? (isDarkColorScheme ? 'border-green-400' : 'border-green-500') : ''}`}
       onPress={handlePress}
       disabled={!day.isCurrentMonth}
       activeOpacity={0.7}
@@ -760,6 +762,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
   const user = useAuthStore((state: any) => state.user);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -786,6 +789,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
     try {
       setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
       setDetailDay(null); // Clear detail when changing months
+      setSelectedDay(null);
     } catch (error) {
       console.error('Error navigating to previous month:', error);
     }
@@ -795,6 +799,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
     try {
       setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
       setDetailDay(null); // Clear detail when changing months
+      setSelectedDay(null);
     } catch (error) {
       console.error('Error navigating to next month:', error);
     }
@@ -828,6 +833,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
 
       // Simply set the detail day to show information
       setDetailDay(day);
+      setSelectedDay(day);
     } catch (error) {
       console.error('Error in handleDayPress:', error);
       console.warn('Failed to show date details, please try again');
@@ -987,6 +993,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
                       day={day}
                       isDarkColorScheme={isDarkColorScheme}
                       onPress={() => handleDayPress(day)}
+                      isSelected={selectedDay?.fullDate === day?.fullDate}
                     />
                   ))}
               </View>
