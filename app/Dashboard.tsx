@@ -75,7 +75,7 @@ export default function Dashboard() {
   useEffect(() => {
     Alert.alert(
       "🚧 Beta Release",
-      "Aplikasi ini masih dalam tahap pengembangan. Fitur dan data dapat berubah pada rilis akhir. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      "Aplikasi ini masih dalam tahap pengembangan. Fitur dan data dapat berubah pada rilis akhir. Mohon laporkan bug atau masukan dengan mengklik tombol lonceng di pojok kanan atas. Terima kasih atas partisipasinya!",
       [{ text: "Saya Mengerti", style: "default" }],
       { cancelable: true },
     );
@@ -220,38 +220,43 @@ export default function Dashboard() {
   // Check if user has completed their profile
   const checkProfileCompleteness = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name")
         .eq("user_id", user.id)
         .single();
-        
+
       if (error && error.code !== "PGRST116") {
         console.error("Error checking profile completeness:", error.message);
         return;
       }
-      
+
       // If profile doesn't exist or full_name is not set, redirect to edit profile
       if (!data || !data.full_name) {
         Alert.alert(
           "Profil Belum Lengkap",
           "Silahkan lengkapi profil Anda terlebih dahulu sebelum menggunakan aplikasi.",
-          [{ 
-            text: "OK", 
-            onPress: () => {
-              // Navigate to EditProfile instead of replace to avoid navigation stack issues
-              router.navigate("/profile/EditProfile");
-            }
-          }]
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Navigate to EditProfile instead of replace to avoid navigation stack issues
+                router.navigate("/profile/EditProfile");
+              },
+            },
+          ],
         );
         return false; // Return false to indicate profile is incomplete
       }
-      
+
       return true; // Return true to indicate profile is complete
     } catch (err: any) {
-      console.error("Exception during profile completeness check:", err.message);
+      console.error(
+        "Exception during profile completeness check:",
+        err.message,
+      );
       return false; // Return false on error
     }
   }, [user, router]);
@@ -265,8 +270,14 @@ export default function Dashboard() {
     } else if (!user) {
       setProfileData(null);
     }
-  }, [user, isFocused, fetchProfileData, fetchAttendanceData, checkProfileCompleteness]);
-  
+  }, [
+    user,
+    isFocused,
+    fetchProfileData,
+    fetchAttendanceData,
+    checkProfileCompleteness,
+  ]);
+
   // Check profile completeness on focus
   useFocusEffect(
     useCallback(() => {
@@ -279,18 +290,18 @@ export default function Dashboard() {
           }
         }
       };
-      
+
       checkAndRedirect();
-      
+
       return () => {
         // Cleanup if needed
       };
-    }, [user, checkProfileCompleteness, router])
+    }, [user, checkProfileCompleteness, router]),
   );
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName = profileData?.full_name || "Pengguna"; 
+  const displayName = profileData?.full_name || "Pengguna";
 
   // Get user's avatar URL from profile data or from metadata
   const avatarUrl =
@@ -663,7 +674,7 @@ export default function Dashboard() {
           <Text
             className={`text-xs font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
           >
-            v1.0.0-cbt.1 | Internal Build 
+            v1.0.0-cbt.1 | Internal Build
           </Text>
         </View>
       </SafeAreaView>
