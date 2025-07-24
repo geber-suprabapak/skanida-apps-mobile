@@ -73,8 +73,8 @@ export default function Dashboard() {
   // Beta alert on dashboard open
   useEffect(() => {
     Alert.alert(
-      "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      "🚧 Beta Release",
+      "Aplikasi ini masih dalam tahap pengembangan. Fitur dan data dapat berubah pada rilis akhir. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
       [{ text: "Saya Mengerti", style: "default" }],
       { cancelable: true },
     );
