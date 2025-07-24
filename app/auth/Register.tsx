@@ -8,15 +8,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   BackHandler,
+  Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-import useAuthStore from "~/store/authStore";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { H1, H3 } from "~/components/ui/typography";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useColorScheme } from "~/lib/useColorScheme";
 import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
@@ -35,7 +34,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
+  // User will verify email before login, do not set user here
   const { isDarkColorScheme } = useColorScheme();
   // Handle hardware back button for Android
   useEffect(() => {
@@ -91,7 +90,23 @@ export default function RegisterScreen() {
 
       if (error) {
         console.error("Supabase signup error:", error.message);
+        // Tampilkan pesan khusus jika email tidak valid
+        const alertMessage = error.message
+          .toLowerCase()
+          .includes("invalid email")
+          ? "Email tidak valid"
+          : error.message;
+        Alert.alert("Registrasi Gagal", alertMessage, [{ text: "OK" }]);
         return;
+      }
+
+      if (data?.user) {
+        Alert.alert(
+          "Registrasi Berhasil",
+          "Silahkan verifikasi email Anda sebelum masuk.",
+          [{ text: "OK", onPress: () => router.replace("/auth/AuthSelector") }],
+          { cancelable: false },
+        );
       }
     } catch (error) {
       console.error("Registration error:", error);
