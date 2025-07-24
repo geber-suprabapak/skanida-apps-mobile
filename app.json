@@ -18,7 +18,15 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "skanida-apps-mobile",
+          "organization": "geber-suprabapak"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
