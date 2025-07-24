@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "0.3.0",
+    "version": "1.0.0-cbt-internal.1",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",

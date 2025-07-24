@@ -93,11 +93,6 @@ export default function RegisterScreen() {
         console.error("Supabase signup error:", error.message);
         return;
       }
-
-      if (data?.user) {
-        setUser(data.user);
-        router.replace("/Dashboard");
-      }
     } catch (error) {
       console.error("Registration error:", error);
     } finally {

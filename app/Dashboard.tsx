@@ -511,8 +511,10 @@ export default function Dashboard() {
               : "bg-white border-gray-200"
           }`}
         >
-          <Text className={`text-xs ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}>
-            Skanida Apps v1.5.0-alpha.1
+          <Text
+            className={`text-xs font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
+          >
+            v1.0.0-cbt.1 | Interal Build 
           </Text>
         </View>
       </SafeAreaView>
