@@ -345,7 +345,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
             >
               <TouchableOpacity
                 onPress={hideAnimation}
-                className="bg-purple-600 py-4 px-8 rounded-2xl items-center active:bg-purple-700"
+                className="bg-blue-600 py-4 px-8 rounded-2xl items-center active:bg-blue-700"
                 activeOpacity={0.8}
               >
                 <Text className="text-white font-semibold text-lg">
