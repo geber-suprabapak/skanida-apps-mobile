@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
 import { Text } from "~/components/ui/text";
+import { RotateCcw } from 'lucide-react-native';
 import AttendanceCalendar from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -117,7 +118,7 @@ export default function Riwayat() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <Calendar
+        <RotateCcw
           size={24}
           color={isDarkColorScheme ? "#ffffff" : "#000000"}
           className="mr-3"

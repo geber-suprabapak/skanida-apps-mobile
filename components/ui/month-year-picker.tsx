@@ -13,7 +13,12 @@ import { ChevronLeft } from '~/lib/icons/ChevronLeft';
 import { ChevronRight } from '~/lib/icons/ChevronRight';
 import { ChevronDown } from '~/lib/icons/ChevronDown';
 import { Calendar } from '~/lib/icons/Calendar';
+import { Clock } from '~/lib/icons/Clock';
+import { History } from '~/lib/icons/History';
 import { CheckCircle } from '~/lib/icons/CheckCircle';
+import { MapPin } from '~/lib/icons/MapPin';
+import { Bell } from '~/lib/icons/Bell';
+import { MousePointerClick } from 'lucide-react-native';
 
 export interface MonthYearPickerProps {
   selectedDate: Date;
@@ -196,54 +201,82 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
     index: number,
     isSelected: boolean,
     onPress: () => void,
-    isDisabled: boolean = false
-  ) => (
-    <TouchableOpacity
-      key={`${item}-${index}`}
-      onPress={isDisabled ? undefined : onPress}
-      disabled={isDisabled}
-      style={{
-        height: ITEM_HEIGHT,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginHorizontal: 8,
-        marginVertical: 4,
-        borderRadius: 12,
-        backgroundColor: isSelected 
-          ? isDarkColorScheme ? '#2563EB' : '#3B82F6'
-          : isDarkColorScheme ? '#374151' : '#F3F4F6',
-        opacity: isDisabled ? 0.4 : 1,
-        shadowColor: isSelected ? '#3B82F6' : '#000000',
-        shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
-        shadowOpacity: isSelected ? 0.3 : 0.1,
-        shadowRadius: isSelected ? 8 : 4,
-        elevation: isSelected ? 8 : 2,
-      }}
-    >
-      <View className="flex-row items-center">
-        {isSelected && (
-          <CheckCircle
-            size={18}
-            color="#ffffff"
-            className="mr-2"
-          />
-        )}
-        <Text
-          className={`
-            font-semibold text-base
-            ${isSelected 
-              ? 'text-white' 
-              : isDarkColorScheme 
-                ? isDisabled ? 'text-gray-500' : 'text-white'
-                : isDisabled ? 'text-gray-400' : 'text-gray-900'
-            }
-          `}
-        >
-          {item}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+    isDisabled: boolean = false,
+    itemType: 'month' | 'year' = 'month'
+  ) => {
+    const getIcon = () => {
+      if (!isSelected) return null;
+      
+      switch (itemType) {
+        case 'month':
+          return (
+            <Clock
+              size={18}
+              color="#ffffff"
+              className="mr-2"
+            />
+          );
+        case 'year':
+          return (
+            <History
+              size={18}
+              color="#ffffff"
+              className="mr-2"
+            />
+          );
+        default:
+          return (
+            <CheckCircle
+              size={18}
+              color="#ffffff"
+              className="mr-2"
+            />
+          );
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        key={`${item}-${index}`}
+        onPress={isDisabled ? undefined : onPress}
+        disabled={isDisabled}
+        style={{
+          height: ITEM_HEIGHT,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginHorizontal: 8,
+          marginVertical: 4,
+          borderRadius: 12,
+          backgroundColor: isSelected 
+            ? isDarkColorScheme ? '#2563EB' : '#3B82F6'
+            : isDarkColorScheme ? '#374151' : '#F3F4F6',
+          opacity: isDisabled ? 0.4 : 1,
+          shadowColor: isSelected ? '#3B82F6' : '#000000',
+          shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
+          shadowOpacity: isSelected ? 0.3 : 0.1,
+          shadowRadius: isSelected ? 8 : 4,
+          elevation: isSelected ? 8 : 2,
+        }}
+      >
+        <View className="flex-row items-center">
+          {getIcon()}
+          <Text
+            className={`
+              font-semibold text-base
+              ${isSelected 
+                ? 'text-white' 
+                : isDarkColorScheme 
+                  ? isDisabled ? 'text-gray-500' : 'text-white'
+                  : isDisabled ? 'text-gray-400' : 'text-gray-900'
+              }
+            `}
+          >
+            {item}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <>
@@ -370,7 +403,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
           >
             {/* Header */}
             <View className="flex-row items-center justify-center mb-6">
-              <Calendar
+              <MousePointerClick
                 size={24}
                 color={isDarkColorScheme ? "#ffffff" : "#000000"}
                 className="mr-3"
@@ -389,14 +422,21 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
             <View className="flex-row">
               {/* Month Selector */}
               <View className="flex-1 mr-4">
-                <Text
-                  className={`
-                    text-sm font-medium mb-4 text-center
-                    ${isDarkColorScheme ? 'text-gray-300' : 'text-gray-600'}
-                  `}
-                >
-                  Bulan
-                </Text>
+                <View className="flex-row items-center justify-center mb-4">
+                  <Clock
+                    size={16}
+                    color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                    className="mr-2"
+                  />
+                  <Text
+                    className={`
+                      text-sm font-medium text-center
+                      ${isDarkColorScheme ? 'text-gray-300' : 'text-gray-600'}
+                    `}
+                  >
+                    Bulan
+                  </Text>
+                </View>
                 <ScrollView
                   ref={monthScrollRef}
                   style={{ height: ITEM_HEIGHT * 5 }}
@@ -414,7 +454,8 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                       index,
                       isSelected,
                       () => setTempMonth(index),
-                      isDisabled
+                      isDisabled,
+                      'month'
                     );
                   })}
                 </ScrollView>
@@ -422,14 +463,21 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
 
               {/* Year Selector */}
               <View className="flex-1 ml-4">
-                <Text
-                  className={`
-                    text-sm font-medium mb-4 text-center
-                    ${isDarkColorScheme ? 'text-gray-300' : 'text-gray-600'}
-                  `}
-                >
-                  Tahun
-                </Text>
+                <View className="flex-row items-center justify-center mb-4">
+                  <History
+                    size={16}
+                    color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                    className="mr-2"
+                  />
+                  <Text
+                    className={`
+                      text-sm font-medium text-center
+                      ${isDarkColorScheme ? 'text-gray-300' : 'text-gray-600'}
+                    `}
+                  >
+                    Tahun
+                  </Text>
+                </View>
                 <ScrollView
                   ref={yearScrollRef}
                   style={{ height: ITEM_HEIGHT * 5 }}
@@ -447,7 +495,8 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                       index,
                       isSelected,
                       () => setTempYear(year),
-                      isDisabled
+                      isDisabled,
+                      'year'
                     );
                   })}
                 </ScrollView>
