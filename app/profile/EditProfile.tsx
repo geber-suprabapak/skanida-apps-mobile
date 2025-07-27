@@ -465,10 +465,10 @@ export default function EditProfile() {
 
       <ScrollView
         className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-        contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 16 }}
       >
-        {/* Profile Picture Section */}
+        {/* Profile Section with Photo and Basic Info */}
         <View className="px-6 pt-6 pb-4">
           <Card
             className={`p-6 ${
@@ -479,14 +479,14 @@ export default function EditProfile() {
           >
             <View className="items-center">
               <Text
-                className={`text-lg font-semibold mb-4 ${
+                className={`text-lg font-semibold mb-6 ${
                   isDarkColorScheme ? "text-white" : "text-gray-900"
                 }`}
               >
                 Foto Profil
               </Text>
               
-              <View className="relative mb-4">
+              <View className="relative mb-6">
                 {uploadingAvatar ? (
                   <View
                     className={`w-32 h-32 rounded-full items-center justify-center ${
@@ -494,10 +494,10 @@ export default function EditProfile() {
                     }`}
                     style={{
                       shadowColor: '#000000',
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
-                      elevation: 4,
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 12,
+                      elevation: 8,
                     }}
                   >
                     <ActivityIndicator
@@ -510,10 +510,10 @@ export default function EditProfile() {
                     <View
                       style={{
                         shadowColor: '#000000',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 8,
-                        elevation: 4,
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 12,
+                        elevation: 8,
                         borderRadius: 64,
                       }}
                     >
@@ -564,27 +564,27 @@ export default function EditProfile() {
           </Card>
         </View>
 
-        {/* Personal Information Section */}
-        <View className="px-6 mb-6">
+        {/* Combined Information Section */}
+        <View className="px-6 mb-3">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Informasi Pribadi
             </Text>
             
-            <View className="space-y-4">
+            <View className="space-y-3">
               <View>
                 <Text
-                  className={`text-sm font-medium mb-2 ${
+                  className={`text-sm font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
@@ -604,7 +604,7 @@ export default function EditProfile() {
 
               <View>
                 <Text
-                  className={`text-sm font-medium mb-2 ${
+                  className={`text-sm font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
@@ -628,26 +628,26 @@ export default function EditProfile() {
         </View>
 
         {/* Academic Information Section */}
-        <View className="px-6 mb-6">
+        <View className="px-6 mb-3">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             }`}
           >
             <Text
-              className={`text-lg font-semibold mb-4 ${
+              className={`text-lg font-semibold mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Informasi Akademik
             </Text>
             
-            <View className="space-y-4">
+            <View className="space-y-3">
               <View>
                 <Text
-                  className={`text-sm font-medium mb-2 ${
+                  className={`text-sm font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
@@ -668,7 +668,7 @@ export default function EditProfile() {
 
               <View>
                 <Text
-                  className={`text-sm font-medium mb-2 ${
+                  className={`text-sm font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
@@ -692,7 +692,7 @@ export default function EditProfile() {
         {/* Action Buttons Section */}
         <View className="px-6">
           <Card
-            className={`p-6 ${
+            className={`p-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
@@ -700,16 +700,16 @@ export default function EditProfile() {
           >
             <Button
               variant="default"
-              size="lg"
+              size="default"
               disabled={loading}
               onPress={handleSave}
               className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
               style={{
                 shadowColor: '#3B82F6',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 6,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
               }}
             >
               {loading ? (
@@ -732,7 +732,7 @@ export default function EditProfile() {
             
             <Button
               variant="outline"
-              size="lg"
+              size="default"
               onPress={() => router.back()}
               disabled={loading}
               className={`w-full ${
