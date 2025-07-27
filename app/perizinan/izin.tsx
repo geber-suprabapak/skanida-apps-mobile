@@ -770,7 +770,7 @@ export default function PerizinanScreen() {
                   numberOfLines={6}
                   maxLength={500}
                   style={{
-                    textAlignVertical: 'top',
+                    textAlignVertical: "top",
                     lineHeight: 22,
                     minHeight: 120,
                     maxHeight: 200,

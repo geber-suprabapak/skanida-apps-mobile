@@ -330,7 +330,7 @@ function Pengaturan() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        
+
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -367,7 +367,7 @@ function Pengaturan() {
               {profileAvatarUrl ? (
                 <View
                   style={{
-                    shadowColor: '#000000',
+                    shadowColor: "#000000",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.1,
                     shadowRadius: 8,
@@ -389,7 +389,7 @@ function Pengaturan() {
                     isDarkColorScheme ? "bg-blue-600" : "bg-blue-500"
                   } justify-center items-center`}
                   style={{
-                    shadowColor: '#3B82F6',
+                    shadowColor: "#3B82F6",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
@@ -397,8 +397,9 @@ function Pengaturan() {
                   }}
                 >
                   <Text className="text-xl font-bold text-white">
-                    {(profileFullName || user?.email)?.charAt(0).toUpperCase() ||
-                      "U"}
+                    {(profileFullName || user?.email)
+                      ?.charAt(0)
+                      .toUpperCase() || "U"}
                   </Text>
                 </View>
               )}
@@ -621,7 +622,10 @@ function Pengaturan() {
                     : "hover:bg-gray-50 active:bg-gray-50"
                 }`}
                 onPress={() => {
-                  Alert.alert("Test Error", "Mengirim error ke Sentry untuk testing");
+                  Alert.alert(
+                    "Test Error",
+                    "Mengirim error ke Sentry untuk testing",
+                  );
                   throw new Error("Hello, again, Sentry!");
                 }}
                 activeOpacity={0.7}
@@ -683,7 +687,7 @@ function Pengaturan() {
               onPress={handleLogout}
               className="w-full bg-red-500 hover:bg-red-600"
               style={{
-                shadowColor: '#ef4444',
+                shadowColor: "#ef4444",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.2,
                 shadowRadius: 4,
@@ -692,9 +696,7 @@ function Pengaturan() {
             >
               <View className="flex-row items-center">
                 <LogOut size={18} color="#ffffff" className="mr-2" />
-                <Text className="text-white font-medium">
-                  Keluar dari Akun
-                </Text>
+                <Text className="text-white font-medium">Keluar dari Akun</Text>
               </View>
             </Button>
           </Card>
@@ -735,9 +737,11 @@ function Pengaturan() {
                 </Text>
               </View>
 
-              <View className={`pt-3 border-t ${
-                isDarkColorScheme ? "border-gray-700" : "border-gray-200"
-              }`}>
+              <View
+                className={`pt-3 border-t ${
+                  isDarkColorScheme ? "border-gray-700" : "border-gray-200"
+                }`}
+              >
                 <Text
                   className={`text-sm ${
                     isDarkColorScheme ? "text-gray-400" : "text-gray-600"

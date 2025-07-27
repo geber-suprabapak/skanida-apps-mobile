@@ -15,8 +15,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
-
 import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
@@ -77,25 +75,31 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
-  
+
   // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successData, setSuccessData] = useState<{
-    attendanceType: 'present' | 'home';
+    attendanceType: "present" | "home";
     time: string;
     processingTime?: number;
   } | null>(null);
 
   // Handle success popup from navigation params
   useEffect(() => {
-    if (params.showSuccessPopup === "true" && params.attendanceType && params.successTime) {
+    if (
+      params.showSuccessPopup === "true" &&
+      params.attendanceType &&
+      params.successTime
+    ) {
       setSuccessData({
-        attendanceType: params.attendanceType as 'present' | 'home',
+        attendanceType: params.attendanceType as "present" | "home",
         time: params.successTime as string,
-        processingTime: params.processingTime ? parseInt(params.processingTime as string) : undefined,
+        processingTime: params.processingTime
+          ? parseInt(params.processingTime as string)
+          : undefined,
       });
       setShowSuccessPopup(true);
-      
+
       // Clear params to prevent popup from showing again
       router.setParams({
         showSuccessPopup: undefined,
@@ -110,24 +114,31 @@ export default function Dashboard() {
   useEffect(() => {
     const showAlphaReleaseAlert = async () => {
       try {
-        const hasSeenAlert = await AsyncStorage.getItem('alpha_release_alert_shown');
-        
+        const hasSeenAlert = await AsyncStorage.getItem(
+          "alpha_release_alert_shown",
+        );
+
         if (!hasSeenAlert) {
           Alert.alert(
             "🚧 Alpha Release",
             "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
-            [{ 
-              text: "Saya Mengerti", 
-              style: "default",
-              onPress: async () => {
-                await AsyncStorage.setItem('alpha_release_alert_shown', 'true');
-              }
-            }],
+            [
+              {
+                text: "Saya Mengerti",
+                style: "default",
+                onPress: async () => {
+                  await AsyncStorage.setItem(
+                    "alpha_release_alert_shown",
+                    "true",
+                  );
+                },
+              },
+            ],
             { cancelable: false },
           );
         }
       } catch (error) {
-        console.warn('Failed to check/set alpha release alert flag:', error);
+        console.warn("Failed to check/set alpha release alert flag:", error);
       }
     };
 

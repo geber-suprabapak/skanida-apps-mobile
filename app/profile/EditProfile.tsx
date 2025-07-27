@@ -193,7 +193,7 @@ export default function EditProfile() {
         Alert.alert(
           "Profil Wajib Diisi",
           "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
         return true; // Prevent default behavior
       }
@@ -423,13 +423,13 @@ export default function EditProfile() {
       setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
-        { 
-          text: "OK", 
+        {
+          text: "OK",
           onPress: () => {
             // Navigate directly to Dashboard instead of using back
             // This avoids navigation stack issues
             router.navigate("/");
-          } 
+          },
         },
       ]);
     } catch (err) {
@@ -466,21 +466,21 @@ export default function EditProfile() {
             : "border-gray-200 bg-white"
         }`}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => {
             // Check if profile is required (by checking if name is empty)
             const isProfileRequired = !profileData?.full_name && !name;
-            
+
             // If profile is required (empty), prevent going back
             if (isProfileRequired) {
               Alert.alert(
                 "Profil Wajib Diisi",
                 "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
-                [{ text: "OK" }]
+                [{ text: "OK" }],
               );
               return;
             }
-            
+
             // Check for unsaved changes
             const hasUnsavedChanges =
               name !== initialName ||
@@ -505,7 +505,7 @@ export default function EditProfile() {
             } else {
               router.navigate("/");
             }
-          }} 
+          }}
           className="mr-3"
         >
           <ChevronLeft
@@ -513,7 +513,7 @@ export default function EditProfile() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        
+
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -553,7 +553,7 @@ export default function EditProfile() {
                       isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
                     }`}
                     style={{
-                      shadowColor: '#000000',
+                      shadowColor: "#000000",
                       shadowOffset: { width: 0, height: 6 },
                       shadowOpacity: 0.15,
                       shadowRadius: 12,
@@ -569,7 +569,7 @@ export default function EditProfile() {
                   <>
                     <View
                       style={{
-                        shadowColor: '#000000',
+                        shadowColor: "#000000",
                         shadowOffset: { width: 0, height: 6 },
                         shadowOpacity: 0.15,
                         shadowRadius: 12,
@@ -579,7 +579,11 @@ export default function EditProfile() {
                     >
                       <Avatar
                         source={avatarUrl || undefined}
-                        fallback={user?.user_metadata?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                        fallback={
+                          user?.user_metadata?.name?.charAt(0) ||
+                          user?.email?.charAt(0) ||
+                          "U"
+                        }
                         size="lg"
                         className="w-32 h-32"
                       />
@@ -589,7 +593,7 @@ export default function EditProfile() {
                       className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-3"
                       onPress={pickImage}
                       style={{
-                        shadowColor: '#3B82F6',
+                        shadowColor: "#3B82F6",
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.3,
                         shadowRadius: 8,
@@ -754,7 +758,7 @@ export default function EditProfile() {
               onPress={handleSave}
               className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
               style={{
-                shadowColor: '#3B82F6',
+                shadowColor: "#3B82F6",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.2,
                 shadowRadius: 4,
@@ -773,9 +777,7 @@ export default function EditProfile() {
                   </Text>
                 </View>
               ) : (
-                <Text className="text-white font-medium">
-                  Simpan Perubahan
-                </Text>
+                <Text className="text-white font-medium">Simpan Perubahan</Text>
               )}
             </Button>
 

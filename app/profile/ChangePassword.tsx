@@ -118,7 +118,7 @@ export default function ChangePassword() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        
+
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -148,7 +148,7 @@ export default function ChangePassword() {
                   isDarkColorScheme ? "bg-blue-600" : "bg-blue-500"
                 } justify-center items-center mb-4`}
                 style={{
-                  shadowColor: '#3B82F6',
+                  shadowColor: "#3B82F6",
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,
@@ -171,7 +171,8 @@ export default function ChangePassword() {
                   isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                Pastikan password baru Anda aman dan mudah diingat. Gunakan kombinasi huruf, angka, dan simbol.
+                Pastikan password baru Anda aman dan mudah diingat. Gunakan
+                kombinasi huruf, angka, dan simbol.
               </Text>
             </View>
           </Card>
@@ -353,7 +354,7 @@ export default function ChangePassword() {
               onPress={handleChangePassword}
               className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
               style={{
-                shadowColor: '#3B82F6',
+                shadowColor: "#3B82F6",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
@@ -372,9 +373,7 @@ export default function ChangePassword() {
                   </Text>
                 </View>
               ) : (
-                <Text className="text-white font-medium">
-                  Simpan Password
-                </Text>
+                <Text className="text-white font-medium">Simpan Password</Text>
               )}
             </Button>
 

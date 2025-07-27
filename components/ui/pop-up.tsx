@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Modal,
@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   Easing,
   Image,
-} from 'react-native';
-import { Text } from './text';
-import { CheckCircle } from '~/lib/icons/CheckCircle';
-import { useColorScheme } from '~/lib/useColorScheme';
+} from "react-native";
+import { Text } from "./text";
+import { CheckCircle } from "~/lib/icons/CheckCircle";
+import { useColorScheme } from "~/lib/useColorScheme";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface ConfettiPiece {
   id: number;
@@ -27,35 +27,35 @@ interface ConfettiPiece {
 interface AttendanceSuccessPopupProps {
   visible: boolean;
   onClose: () => void;
-  attendanceType: 'present' | 'home';
+  attendanceType: "present" | "home";
   studentName?: string;
   time?: string;
   processingTime?: number;
 }
 
 const CONFETTI_COLORS = [
-  '#FF6B6B', // Red
-  '#4ECDC4', // Teal
-  '#45B7D1', // Blue
-  '#96CEB4', // Green
-  '#FFEAA7', // Yellow
-  '#DDA0DD', // Plum
-  '#98D8C8', // Mint
-  '#F7DC6F', // Light Yellow
-  '#BB8FCE', // Light Purple
-  '#85C1E9', // Light Blue
+  "#FF6B6B", // Red
+  "#4ECDC4", // Teal
+  "#45B7D1", // Blue
+  "#96CEB4", // Green
+  "#FFEAA7", // Yellow
+  "#DDA0DD", // Plum
+  "#98D8C8", // Mint
+  "#F7DC6F", // Light Yellow
+  "#BB8FCE", // Light Purple
+  "#85C1E9", // Light Blue
 ];
 
 const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   visible,
   onClose,
   attendanceType,
-  studentName = '',
+  studentName = "",
   time,
   processingTime,
 }) => {
   const { isDarkColorScheme } = useColorScheme();
-  
+
   // Animation values
   const modalScale = useRef(new Animated.Value(0)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
@@ -73,7 +73,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
       y: new Animated.Value(-50),
       rotation: new Animated.Value(0),
       scale: new Animated.Value(Math.random() * 0.5 + 0.5),
-      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      color:
+        CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
       delay: Math.random() * 500,
     }));
   };
@@ -149,7 +150,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
           useNativeDriver: true,
         }),
       ]),
-      
+
       // Check icon appears with spin and scale
       Animated.parallel([
         Animated.spring(checkIconScale, {
@@ -165,7 +166,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
           useNativeDriver: true,
         }),
       ]),
-      
+
       // Text slides up
       Animated.spring(textSlideY, {
         toValue: 0,
@@ -173,7 +174,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         friction: 8,
         useNativeDriver: true,
       }),
-      
+
       // Button appears
       Animated.spring(buttonScale, {
         toValue: 1,
@@ -214,24 +215,24 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   }, [visible]);
 
   const getSuccessMessage = () => {
-    if (attendanceType === 'present') {
+    if (attendanceType === "present") {
       return {
-        title: 'Berhasil absen masuk',
-        subtitle: 'Semangat sekolah hari ini! 🔥🔥',
-        emoji: '🎉',
+        title: "Berhasil absen masuk",
+        subtitle: "Semangat sekolah hari ini! 🔥🔥",
+        emoji: "🎉",
       };
     } else {
       return {
-        title: 'Berhasil absen pulang', 
-        subtitle: 'Terima kasih sudah belajar dengan giat! 📚✨',
-        emoji: '👋',
+        title: "Berhasil absen pulang",
+        subtitle: "Terima kasih sudah belajar dengan giat! 📚✨",
+        emoji: "👋",
       };
     }
   };
 
   const formatProcessingTime = (timeMs?: number): string => {
-    if (!timeMs) return '';
-    
+    if (!timeMs) return "";
+
     if (timeMs < 1000) {
       return `Processed in ${timeMs}ms ⚡`;
     } else if (timeMs < 10000) {
@@ -242,10 +243,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   };
 
   const message = getSuccessMessage();
-  const currentTime = time || new Date().toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const currentTime =
+    time ||
+    new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   if (!visible) return null;
 
@@ -260,27 +263,30 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
       <Animated.View
         style={{
           flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
           opacity: modalOpacity,
         }}
       >
         {/* Confetti Layer */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <View
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        >
           {confettiPieces.current.map((piece) => (
             <Animated.View
               key={piece.id}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 width: 8,
                 height: 8,
                 backgroundColor: piece.color,
                 transform: [
                   { translateX: piece.x },
                   { translateY: piece.y },
-                  { rotate: piece.rotation.interpolate({
+                  {
+                    rotate: piece.rotation.interpolate({
                       inputRange: [0, 360],
-                      outputRange: ['0deg', '360deg'],
-                    })
+                      outputRange: ["0deg", "360deg"],
+                    }),
                   },
                   { scale: piece.scale },
                 ],
@@ -297,7 +303,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               opacity: modalOpacity,
             }}
             className={`w-full max-w-sm rounded-3xl p-8 items-center ${
-              isDarkColorScheme ? 'bg-gray-800' : 'bg-white'
+              isDarkColorScheme ? "bg-gray-800" : "bg-white"
             }`}
           >
             {/* Success Icon */}
@@ -305,10 +311,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               style={{
                 transform: [
                   { scale: checkIconScale },
-                  { rotate: checkIconRotation.interpolate({
+                  {
+                    rotate: checkIconRotation.interpolate({
                       inputRange: [0, 360],
-                      outputRange: ['0deg', '360deg'],
-                    })
+                      outputRange: ["0deg", "360deg"],
+                    }),
                   },
                 ],
               }}
@@ -326,37 +333,49 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               }}
               className="items-center mb-6"
             >
-              <Text className={`text-2xl font-bold text-center mb-2 ${
-                isDarkColorScheme ? 'text-white' : 'text-gray-900'
-              }`}>
+              <Text
+                className={`text-2xl font-bold text-center mb-2 ${
+                  isDarkColorScheme ? "text-white" : "text-gray-900"
+                }`}
+              >
                 {message.title}
               </Text>
-              
-              <Text className={`text-base text-center mb-4 ${
-                isDarkColorScheme ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+
+              <Text
+                className={`text-base text-center mb-4 ${
+                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                }`}
+              >
                 {message.subtitle}
               </Text>
 
               {/* Time Display */}
-              <View className={`px-4 py-2 rounded-full mb-2 ${
-                isDarkColorScheme ? 'bg-gray-700' : 'bg-gray-100'
-              }`}>
-                <Text className={`text-sm font-medium ${
-                  isDarkColorScheme ? 'text-gray-300' : 'text-gray-700'
-                }`}>
+              <View
+                className={`px-4 py-2 rounded-full mb-2 ${
+                  isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
+                }`}
+              >
+                <Text
+                  className={`text-sm font-medium ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
                   {currentTime}
                 </Text>
               </View>
 
               {/* Processing Time Display */}
               {processingTime && (
-                <View className={`px-3 py-1 rounded-full ${
-                  isDarkColorScheme ? 'bg-green-800/30' : 'bg-green-100'
-                }`}>
-                  <Text className={`text-xs font-medium ${
-                    isDarkColorScheme ? 'text-green-300' : 'text-green-700'
-                  }`}>
+                <View
+                  className={`px-3 py-1 rounded-full ${
+                    isDarkColorScheme ? "bg-green-800/30" : "bg-green-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-medium ${
+                      isDarkColorScheme ? "text-green-300" : "text-green-700"
+                    }`}
+                  >
                     {formatProcessingTime(processingTime)}
                   </Text>
                 </View>

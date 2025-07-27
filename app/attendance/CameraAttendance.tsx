@@ -728,11 +728,11 @@ const CameraAttendance = () => {
         });
 
         // Navigate back to dashboard with success parameters
-        const currentTime = new Date().toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit',
+        const currentTime = new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
         });
-        
+
         router.replace({
           pathname: "/Dashboard",
           params: {
