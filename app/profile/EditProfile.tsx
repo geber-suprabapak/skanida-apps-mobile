@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
-  Image,
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,10 +16,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { Avatar } from "~/components/ui/avatar";
+import { H3, P, Small, Muted } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
+import { User } from "~/lib/icons/User";
+import { Camera } from "~/lib/icons/Camera";
+import { Card } from "~/components/ui/card";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -446,15 +450,21 @@ export default function EditProfile() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
     >
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
+
+      {/* Header */}
       <View
-        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+        className={`flex-row items-center p-4 border-b ${
+          isDarkColorScheme
+            ? "border-gray-700 bg-gray-900"
+            : "border-gray-200 bg-white"
+        }`}
       >
         <TouchableOpacity 
           onPress={() => {
@@ -503,193 +513,294 @@ export default function EditProfile() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
+        
         <Text
-          className={`text-lg font-bold ${isDarkColorScheme ? "text-white" : "text-foreground"}`}
+          className={`text-lg font-bold flex-1 ${
+            isDarkColorScheme ? "text-white" : "text-gray-900"
+          }`}
         >
           Edit Profil
         </Text>
       </View>
+
       <ScrollView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-        contentContainerStyle={{ padding: 24 }}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 16 }}
       >
-        <View
-          className={`rounded-xl p-5 shadow-sm mb-4 items-center ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <View className="relative">
-            {uploadingAvatar ? (
-              <View
-                className={`w-36 h-36 rounded-full items-center justify-center mb-4 ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-300"}`}
+        {/* Profile Section with Photo and Basic Info */}
+        <View className="px-6 pt-6 pb-4">
+          <Card
+            className={`p-6 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <View className="items-center">
+              <H3
+                className={`mb-6 ${
+                  isDarkColorScheme ? "text-white" : "text-gray-900"
+                }`}
               >
-                <ActivityIndicator
-                  size="large"
-                  color={isDarkColorScheme ? "#fff" : "#000"}
-                />
-              </View>
-            ) : (
-              <View className="mb-4">
-                {avatarUrl ? (
-                  <Image
-                    source={{ uri: avatarUrl }}
-                    className="w-36 h-36 rounded-full"
-                  />
-                ) : (
+                Foto Profil
+              </H3>
+
+              <View className="relative mb-6">
+                {uploadingAvatar ? (
                   <View
-                    className={`w-36 h-36 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-300"}`}
+                    className={`w-32 h-32 rounded-full items-center justify-center ${
+                      isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
+                    }`}
+                    style={{
+                      shadowColor: '#000000',
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 12,
+                      elevation: 8,
+                    }}
                   >
-                    <Ionicons
-                      name="person-circle-outline"
-                      size={80}
-                      color={
-                        isDarkColorScheme
-                          ? "rgba(255,255,255,0.4)"
-                          : "rgba(0,0,0,0.4)"
-                      }
+                    <ActivityIndicator
+                      size="large"
+                      color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
                     />
                   </View>
+                ) : (
+                  <>
+                    <View
+                      style={{
+                        shadowColor: '#000000',
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 12,
+                        elevation: 8,
+                        borderRadius: 64,
+                      }}
+                    >
+                      <Avatar
+                        source={avatarUrl || undefined}
+                        fallback={user?.user_metadata?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                        size="lg"
+                        className="w-32 h-32"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-3"
+                      onPress={pickImage}
+                      style={{
+                        shadowColor: '#3B82F6',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                        elevation: 6,
+                      }}
+                    >
+                      <Camera size={18} color="#ffffff" />
+                    </TouchableOpacity>
+                  </>
                 )}
-                <TouchableOpacity
-                  className="absolute bottom-0 right-0 bg-primary rounded-full p-3"
-                  onPress={pickImage}
-                >
-                  <Ionicons name="camera" size={20} color="#fff" />
-                </TouchableOpacity>
               </View>
-            )}
-          </View>
 
-          <Text
-            className={isDarkColorScheme ? "text-gray-300" : "text-gray-700"}
-          >
-            Ketuk ikon kamera untuk mengubah foto profil
-          </Text>
+              <Small
+                className={`text-center ${
+                  isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Ketuk ikon kamera untuk mengubah foto profil
+              </Small>
+            </View>
+          </Card>
         </View>
 
-        <View
-          className={`rounded-xl p-5 shadow-sm mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <View className="mb-4">
-            <Text
-              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Nama
-            </Text>
-            <Input
-              placeholder="Nama lengkap"
-              value={name}
-              onChangeText={setName}
-              className={
-                isDarkColorScheme
-                  ? "border-gray-600 bg-gray-700 text-white "
-                  : ""
-              }
-            />
-          </View>
-          <View className="mb-4">
-            <Text
-              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Email
-            </Text>
-            <Input
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              className={
-                isDarkColorScheme
-                  ? "border-gray-600 bg-gray-700 text-white "
-                  : ""
-              }
-            />
-          </View>
-          <View className="mb-4">
-            <Text
-              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-            >
-              No. Absen
-            </Text>
-            <Input
-              placeholder="Nomor Absen"
-              value={absenceNumber}
-              onChangeText={setAbsenceNumber}
-              keyboardType="numeric"
-              className={
-                isDarkColorScheme
-                  ? "border-gray-600 bg-gray-700 text-white "
-                  : ""
-              }
-            />
-          </View>
-          <View className="mb-6">
-            <Text
-              className={`mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Kelas
-            </Text>
-            <Input
-              placeholder="Kelas"
-              value={className}
-              onChangeText={setClassName}
-              className={
-                isDarkColorScheme
-                  ? "border-gray-600 bg-gray-700 text-white "
-                  : ""
-              }
-            />
-          </View>
-        </View>
-
-        <View
-          className={`rounded-xl p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <Button
-            variant="default"
-            size="lg"
-            disabled={loading}
-            onPress={handleSave}
-            className={`mb-4 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
+        {/* Combined Information Section */}
+        <View className="px-6 mb-3">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
           >
-            {loading ? (
-              <View className="flex-row items-center justify-center">
-                <ActivityIndicator
-                  size="small"
-                  color={isDarkColorScheme ? "#000" : "#fff"}
-                  style={{ marginRight: 8 }}
-                />
-                <Text
+            <H3
+              className={`mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Informasi Pribadi
+            </H3>
+
+            <View className="space-y-3">
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Nama Lengkap
+                </Small>
+                <Input
+                  placeholder="Masukkan nama lengkap"
+                  value={name}
+                  onChangeText={setName}
                   className={
                     isDarkColorScheme
-                      ? "text-black font-medium"
-                      : "text-white font-medium"
+                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                      : "border-gray-300 bg-white"
                   }
-                >
-                  Sedang menyimpan...
-                </Text>
+                />
               </View>
-            ) : (
+
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Email
+                </Small>
+                <Input
+                  placeholder="Masukkan alamat email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  className={
+                    isDarkColorScheme
+                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                      : "border-gray-300 bg-white"
+                  }
+                />
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {/* Academic Information Section */}
+        <View className="px-6 mb-3">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <H3
+              className={`mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Informasi Akademik
+            </H3>
+
+            <View className="space-y-3">
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Nomor Absen
+                </Small>
+                <Input
+                  placeholder="Masukkan nomor absen"
+                  value={absenceNumber}
+                  onChangeText={setAbsenceNumber}
+                  keyboardType="numeric"
+                  className={
+                    isDarkColorScheme
+                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                      : "border-gray-300 bg-white"
+                  }
+                />
+              </View>
+
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Kelas
+                </Small>
+                <Input
+                  placeholder="Masukkan kelas"
+                  value={className}
+                  onChangeText={setClassName}
+                  className={
+                    isDarkColorScheme
+                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                      : "border-gray-300 bg-white"
+                  }
+                />
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {/* Action Buttons Section */}
+        <View className="px-6">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Button
+              variant="default"
+              size="default"
+              disabled={loading}
+              onPress={handleSave}
+              className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
+              style={{
+                shadowColor: '#3B82F6',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+            >
+              {loading ? (
+                <View className="flex-row items-center justify-center">
+                  <ActivityIndicator
+                    size="small"
+                    color="#ffffff"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-white font-medium">
+                    Sedang menyimpan...
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-white font-medium">
+                  Simpan Perubahan
+                </Text>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="default"
+              onPress={() => router.back()}
+              disabled={loading}
+              className={`w-full ${
+                isDarkColorScheme
+                  ? "border-gray-600 bg-transparent"
+                  : "border-gray-300 bg-transparent"
+              }`}
+            >
               <Text
                 className={
                   isDarkColorScheme
-                    ? "text-black font-medium"
-                    : "text-white font-medium"
+                    ? "text-gray-300 font-medium"
+                    : "text-gray-700 font-medium"
                 }
               >
-                Simpan
+                Batal
               </Text>
-            )}
-          </Button>
-          <Button
-            size="default"
-            onPress={() => router.back()}
-            disabled={loading}
-            className="w-full rounded-lg py-3 bg-red-600"
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text className="text-white">Batal</Text>
-            </View>
-          </Button>
+            </Button>
+          </Card>
         </View>
       </ScrollView>
     </SafeAreaView>

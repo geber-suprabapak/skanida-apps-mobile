@@ -1,6 +1,6 @@
 // app/Dashboard.tsx
 import { format } from "date-fns";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -13,6 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+
+
 import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
@@ -21,6 +25,7 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -62,6 +67,7 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
@@ -71,14 +77,61 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
-  // Beta alert on dashboard open
+  
+  // Success popup state
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successData, setSuccessData] = useState<{
+    attendanceType: 'present' | 'home';
+    time: string;
+    processingTime?: number;
+  } | null>(null);
+
+  // Handle success popup from navigation params
   useEffect(() => {
-    Alert.alert(
-      "🚧 Beta Release",
-      "Aplikasi ini masih dalam tahap pengembangan. Fitur dan data dapat berubah pada rilis akhir. Mohon laporkan bug atau masukan dengan mengklik tombol lonceng di pojok kanan atas. Terima kasih atas partisipasinya!",
-      [{ text: "Saya Mengerti", style: "default" }],
-      { cancelable: true },
-    );
+    if (params.showSuccessPopup === "true" && params.attendanceType && params.successTime) {
+      setSuccessData({
+        attendanceType: params.attendanceType as 'present' | 'home',
+        time: params.successTime as string,
+        processingTime: params.processingTime ? parseInt(params.processingTime as string) : undefined,
+      });
+      setShowSuccessPopup(true);
+      
+      // Clear params to prevent popup from showing again
+      router.setParams({
+        showSuccessPopup: undefined,
+        attendanceType: undefined,
+        successTime: undefined,
+        processingTime: undefined,
+      });
+    }
+  }, [params, router]);
+
+  // Show alpha release popup only once
+  useEffect(() => {
+    const showAlphaReleaseAlert = async () => {
+      try {
+        const hasSeenAlert = await AsyncStorage.getItem('alpha_release_alert_shown');
+        
+        if (!hasSeenAlert) {
+          Alert.alert(
+            "🚧 Alpha Release",
+            "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+            [{ 
+              text: "Saya Mengerti", 
+              style: "default",
+              onPress: async () => {
+                await AsyncStorage.setItem('alpha_release_alert_shown', 'true');
+              }
+            }],
+            { cancelable: false },
+          );
+        }
+      } catch (error) {
+        console.warn('Failed to check/set alpha release alert flag:', error);
+      }
+    };
+
+    showAlphaReleaseAlert();
   }, []);
 
   useEffect(() => {
@@ -195,6 +248,16 @@ export default function Dashboard() {
       console.error("Error fetching attendance data:", error);
     }
   }, [user]);
+
+  // Handle success popup close
+  const handleSuccessPopupClose = useCallback(() => {
+    setShowSuccessPopup(false);
+    setSuccessData(null);
+    // Refresh attendance data after successful attendance
+    if (isFocused) {
+      fetchAttendanceData();
+    }
+  }, [isFocused, fetchAttendanceData]);
 
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
@@ -530,7 +593,7 @@ export default function Dashboard() {
                       <Text
                         className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
                       >
-                        Total Jam Kerja
+                        Total Jam Di Sekolah
                       </Text>
                     </View>
                     <Text
@@ -584,6 +647,7 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
+
             <View className="flex-row space-x-3 gap-2">
               <TouchableOpacity
                 onPress={navigateToHistory}
@@ -678,6 +742,17 @@ export default function Dashboard() {
           </Text>
         </View>
       </SafeAreaView>
+
+      {/* Success Popup */}
+      {successData && (
+        <AttendanceSuccessPopup
+          visible={showSuccessPopup}
+          onClose={handleSuccessPopupClose}
+          attendanceType={successData.attendanceType}
+          time={successData.time}
+          processingTime={successData.processingTime}
+        />
+      )}
     </>
   );
 }

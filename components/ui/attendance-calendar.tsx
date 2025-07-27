@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { Text } from "~/components/ui/text";
+import MonthYearPicker from "~/components/ui/month-year-picker";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
@@ -19,6 +20,7 @@ import { CheckCircle } from "~/lib/icons/CheckCircle";
 import { AlertCircle } from "~/lib/icons/AlertCircle";
 import { FileText } from "~/lib/icons/FileText";
 import { RefreshCw } from "~/lib/icons/RefreshCw";
+import { Calendar } from "~/lib/icons/Calendar";
 
 // ========== TYPES ==========
 interface AttendanceRecord {
@@ -38,11 +40,14 @@ interface CalendarDay {
   fullDate: string;
   isCurrentMonth: boolean;
   isToday: boolean;
+  isFuture: boolean;
   attendance?: AttendanceRecord;
 }
 
 interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;
+  currentYear?: number;
+  currentMonth?: number;
 }
 
 // ========== UTILS ==========
@@ -69,29 +74,34 @@ const getMonthDays = (year: number, month: number): CalendarDay[] => {
 
   const days: CalendarDay[] = [];
   const today = new Date();
+  const todayString = formatDate(today);
 
   // Add previous month's trailing days
   const prevMonth = new Date(year, month - 1, 0);
   for (let i = startDate - 1; i >= 0; i--) {
     const date = prevMonth.getDate() - i;
     const fullDate = formatDate(new Date(year, month - 1, date));
+    const isFuture = fullDate > todayString;
     days.push({
       date,
       fullDate,
       isCurrentMonth: false,
       isToday: false,
+      isFuture,
     });
   }
 
   // Add current month days
   for (let date = 1; date <= daysInMonth; date++) {
     const fullDate = formatDate(new Date(year, month, date));
-    const isToday = fullDate === formatDate(today);
+    const isToday = fullDate === todayString;
+    const isFuture = fullDate > todayString;
     days.push({
       date,
       fullDate,
       isCurrentMonth: true,
       isToday,
+      isFuture,
     });
   }
 
@@ -99,11 +109,13 @@ const getMonthDays = (year: number, month: number): CalendarDay[] => {
   const remainingDays = 42 - days.length; // 6 weeks * 7 days
   for (let date = 1; date <= remainingDays; date++) {
     const fullDate = formatDate(new Date(year, month + 1, date));
+    const isFuture = fullDate > todayString;
     days.push({
       date,
       fullDate,
       isCurrentMonth: false,
       isToday: false,
+      isFuture,
     });
   }
 
@@ -433,8 +445,18 @@ const CalendarDayComponent = ({
   }
 
   const getStatusColor = () => {
+    // Future dates in current month should be greyed out but distinct from next month
+    if (day.isCurrentMonth && day.isFuture) {
+      return isDarkColorScheme ? "bg-gray-800" : "bg-gray-50";
+    }
+
+    // Previous/next month dates (outside current month)
+    if (!day.isCurrentMonth) {
+      return "bg-transparent";
+    }
+
     if (!day.attendance) {
-      return day.isCurrentMonth ? (isDarkColorScheme ? "bg-red-900" : "bg-red-100") : "bg-transparent";
+      return isDarkColorScheme ? "bg-red-900" : "bg-red-100";
     }
 
     switch (day.attendance.status) {
@@ -450,13 +472,19 @@ const CalendarDayComponent = ({
   };
 
   const getTextColor = () => {
+    // Previous/next month dates (outside current month) - very faded
     if (!day.isCurrentMonth) {
       return isDarkColorScheme ? "text-gray-600" : "text-gray-400";
     }
 
+    // Future dates in current month - greyed out but readable
+    if (day.isCurrentMonth && day.isFuture) {
+      return isDarkColorScheme ? "text-gray-500" : "text-gray-500";
+    }
+
     // Today's date text color
     if (day.isToday) {
-      return isDarkColorScheme ? "text-blue-400 font-semibold" : "text-blue-600 font-semibold";
+      return isDarkColorScheme ? "text-pink-400 font-semibold" : "text-pink-600 font-semibold";
     }
 
     if (!day.attendance) {
@@ -476,11 +504,11 @@ const CalendarDayComponent = ({
   };
 
   const getBorderAndBackground = () => {
-    // Today's date gets a subtle border indicator
+    // Today's date gets a pink border indicator
     if (day.isToday) {
       return isDarkColorScheme
-        ? "border-2 border-blue-400"
-        : "border-2 border-blue-600";
+        ? "border-2 border-pink-400"
+        : "border-2 border-pink-500";
     }
 
     // Default border
@@ -494,6 +522,12 @@ const CalendarDayComponent = ({
         return;
       }
 
+      // Prevent interaction with future dates
+      if (day.isFuture) {
+        console.log('Future date clicked, press ignored');
+        return;
+      }
+
       if (typeof onPress === 'function') {
         onPress();
       } else {
@@ -504,12 +538,23 @@ const CalendarDayComponent = ({
     }
   };
 
+  const getButtonClassName = () => {
+    const baseClasses = "flex-1 h-12 items-center justify-center m-0.5 rounded-lg";
+    const statusColor = getStatusColor();
+    const borderAndBackground = getBorderAndBackground();
+    const selectionBorder = isSelected
+      ? (isDarkColorScheme ? 'border-green-400' : 'border-green-500')
+      : '';
+
+    return `${baseClasses} ${statusColor} ${borderAndBackground} ${selectionBorder}`;
+  };
+
   return (
     <TouchableOpacity
-      className={`flex-1 h-12 items-center justify-center m-0.5 rounded-lg ${getStatusColor()} ${getBorderAndBackground()} ${isSelected ? (isDarkColorScheme ? 'border-green-400' : 'border-green-500') : ''}`}
+      className={getButtonClassName()}
       onPress={handlePress}
-      disabled={!day.isCurrentMonth}
-      activeOpacity={0.7}
+      disabled={!day.isCurrentMonth || day.isFuture}
+      activeOpacity={day.isCurrentMonth && !day.isFuture ? 0.7 : 1}
       style={{ minHeight: 48 }}
     >
       <Text className={`text-sm ${getTextColor()}`}>
@@ -525,7 +570,7 @@ const CalendarDayComponent = ({
       {day.isToday && (
         <View
           className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
-            isDarkColorScheme ? "bg-blue-400" : "bg-blue-600"
+            isDarkColorScheme ? "bg-pink-400" : "bg-pink-500"
           }`}
         />
       )}
@@ -758,22 +803,34 @@ const DetailCard = ({
 };
 
 // ========== MAIN COMPONENT ==========
-export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCalendarProps) {
+export default function AttendanceCalendar({
+  isDarkColorScheme,
+  currentYear: propYear,
+  currentMonth: propMonth
+}: AttendanceCalendarProps) {
   const user = useAuthStore((state: any) => state.user);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
 
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+  // Date picker state
+  const [pickerDate, setPickerDate] = useState(new Date());
+
+  // Use props if provided, otherwise use current date
+  const currentDate = propYear && propMonth !== undefined ? new Date(propYear, propMonth, 1) : new Date();
+  const currentYear = propYear || currentDate.getFullYear();
+  const currentMonth = propMonth !== undefined ? propMonth : currentDate.getMonth();
+
+  // Use props if provided, otherwise use internal date picker
+  const displayYear = propYear !== undefined ? propYear : pickerDate.getFullYear();
+  const displayMonth = propMonth !== undefined ? propMonth : pickerDate.getMonth();
 
   // Fetch monthly attendance data with optimized caching
-  const monthlyAttendance = useOptimizedMonthlyAttendance(user?.id || "", currentYear, currentMonth);
+  const monthlyAttendance = useOptimizedMonthlyAttendance(user?.id || "", displayYear, displayMonth);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
     try {
-      const days = getMonthDays(currentYear, currentMonth);
+      const days = getMonthDays(displayYear, displayMonth);
       return days.map(day => ({
         ...day,
         attendance: monthlyAttendance.data?.[day.fullDate],
@@ -782,43 +839,18 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
       console.error('Error generating calendar days:', error);
       return [];
     }
-  }, [currentYear, currentMonth, monthlyAttendance.data]);
-
-  // Navigation functions
-  const goToPreviousMonth = () => {
-    try {
-      setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
-      setDetailDay(null); // Clear detail when changing months
-      setSelectedDay(null);
-    } catch (error) {
-      console.error('Error navigating to previous month:', error);
-    }
-  };
-
-  const goToNextMonth = () => {
-    try {
-      setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
-      setDetailDay(null); // Clear detail when changing months
-      setSelectedDay(null);
-    } catch (error) {
-      console.error('Error navigating to next month:', error);
-    }
-  };
+  }, [displayYear, displayMonth, monthlyAttendance.data]);
 
   const handleDayPress = useCallback((day: CalendarDay) => {
     try {
       // Only allow clicks on current month days
       if (!day?.isCurrentMonth) {
-        const monthName = [
-          "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-          "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-        ][currentMonth];
-        console.log(`🚫 Day ${day?.date} not in current month (${monthName} ${currentYear}), ignoring press`);
+        console.log(`🚫 Day ${day?.date} not in current month, ignoring press`);
         return;
       }
 
       console.log(`📅 Date clicked: ${day.fullDate}`);
-      
+
       if (day.attendance) {
         console.log(`✅ Attendance found: ${day.attendance.status}`);
         if (day.attendance.checkInTime) {
@@ -838,7 +870,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
       console.error('Error in handleDayPress:', error);
       console.warn('Failed to show date details, please try again');
     }
-  }, [currentMonth, currentYear]);
+  }, [displayMonth, displayYear]);
 
   // Effects
   useEffect(() => {
@@ -861,7 +893,13 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
     } catch (error) {
       console.error('Error refetching attendance data:', error);
     }
-  }, [currentYear, currentMonth, user?.id]);
+  }, [displayYear, displayMonth, user?.id, monthlyAttendance.refetch, monthlyAttendance.prefetchAdjacent]);
+
+  // Clear selected day when month changes
+  useEffect(() => {
+    setDetailDay(null);
+    setSelectedDay(null);
+  }, [displayYear, displayMonth]);
 
   // Handle manual refresh
   const handleRefresh = useCallback(() => {
@@ -874,66 +912,53 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
     }
   }, [user?.id, monthlyAttendance.refetch]);
 
-  const monthNames = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-  ];
+  // Date picker handlers (if not using props)
+  const handleDateChange = useCallback((date: Date) => {
+    setPickerDate(date);
+  }, []);
+
+  const formatMonthYear = useCallback((date: Date) => {
+    return date.toLocaleDateString('id-ID', {
+      month: 'long',
+      year: 'numeric'
+    });
+  }, []);
 
   const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   return (
-    <ScrollView className="flex-1 p-4">
-      {/* Month Navigation */}
-      <View className="flex-row items-center justify-between mb-6">
-        <TouchableOpacity
-          onPress={goToPreviousMonth}
-          className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-          activeOpacity={0.7}
-        >
-          <ChevronLeft size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
-        </TouchableOpacity>
-
-        <View className="flex-1 flex-row items-center justify-center">
-          <Text
-            className={`text-xl font-bold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-          >
-            {monthNames[currentMonth]} {currentYear}
-          </Text>
-
-          {/* Refresh Button */}
-          <TouchableOpacity
-            onPress={handleRefresh}
-            className={`ml-3 p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-            activeOpacity={0.7}
-            disabled={monthlyAttendance.loading}
-            key="refresh-button"
-          >
-            {monthlyAttendance.loading ? (
-              <View className="animate-spin">
-                <RefreshCw
-                  size={16}
-                  color="#9ca3af"
-                  className=""
-                />
-              </View>
-            ) : (
+    <ScrollView className="flex-1 px-4">
+      {/* Month/Year Selector - only show if no props provided */}
+      {propYear === undefined && propMonth === undefined && (
+        <View className={`mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"} rounded-lg p-4`}>
+          <View className="flex-row items-center justify-between mb-3">
+            <Text
+              className={`text-lg font-semibold ${
+                isDarkColorScheme ? "text-white" : "text-foreground"
+              }`}
+            >
+              Pilih Periode
+            </Text>
+            <TouchableOpacity
+              onPress={handleRefresh}
+              className={`p-2 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-white"}`}
+            >
               <RefreshCw
-                size={16}
-                color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                className=""
+                size={20}
+                color={isDarkColorScheme ? "#ffffff" : "#000000"}
               />
-            )}
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
 
-        <TouchableOpacity
-          onPress={goToNextMonth}
-          className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-          activeOpacity={0.7}
-        >
-          <ChevronRight size={20} color={isDarkColorScheme ? "#ffffff" : "#000000"} />
-        </TouchableOpacity>
-      </View>
+          <MonthYearPicker
+            selectedDate={pickerDate}
+            onDateChange={handleDateChange}
+            isDarkColorScheme={isDarkColorScheme}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={new Date()}
+          />
+        </View>
+      )}
 
       {/* Legend */}
       <View className={`p-4 rounded-lg mb-6 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}>
@@ -953,9 +978,15 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
             <View className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-yellow-900" : "bg-yellow-100"}`} />
             <Text className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>Sakit</Text>
           </View>
-          <View key="legend-absent" className="flex-row items-center mb-2">
+          <View key="legend-absent" className="flex-row items-center mr-4 mb-2">
             <View className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-red-900" : "bg-red-100"}`} />
             <Text className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>Tidak Hadir</Text>
+          </View>
+          <View key="legend-today" className="flex-row items-center mb-2">
+            <View className={`w-4 h-4 rounded mr-2 border-2 relative ${isDarkColorScheme ? "border-pink-400 bg-gray-700" : "border-pink-500 bg-white"}`}>
+              <View className={`absolute top-0 right-0 w-1.5 h-1.5 rounded-full ${isDarkColorScheme ? "bg-pink-400" : "bg-pink-500"}`} />
+            </View>
+            <Text className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>Hari Ini</Text>
           </View>
         </View>
       </View>
@@ -982,14 +1013,14 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
             </Text>
           </View>
         ) : (
-          <View key={`calendar-${currentYear}-${currentMonth}`}>
+          <View key={`calendar-${displayYear}-${displayMonth}`}>
             {Array.from({ length: Math.ceil((calendarDays?.length || 0) / 7) }, (_, weekIndex) => (
-              <View key={`week-${currentYear}-${currentMonth}-${weekIndex}`} className="flex-row">
+              <View key={`week-${displayYear}-${displayMonth}-${weekIndex}`} className="flex-row">
                 {(calendarDays || [])
                   .slice(weekIndex * 7, weekIndex * 7 + 7)
                   .map((day, dayIndex) => (
                     <CalendarDayComponent
-                      key={`${currentYear}-${currentMonth}-w${weekIndex}-d${dayIndex}-${day?.fullDate || 'empty'}`}
+                      key={`${displayYear}-${displayMonth}-w${weekIndex}-d${dayIndex}-${day?.fullDate || 'empty'}`}
                       day={day}
                       isDarkColorScheme={isDarkColorScheme}
                       onPress={() => handleDayPress(day)}
@@ -1005,7 +1036,7 @@ export default function AttendanceCalendar({ isDarkColorScheme }: AttendanceCale
       {/* Detail Card - shows when a day is tapped */}
       {detailDay && (
         <DetailCard
-          key={`detail-${detailDay.fullDate}-${currentYear}-${currentMonth}`}
+          key={`detail-${detailDay.fullDate}-${displayYear}-${displayMonth}`}
           day={detailDay}
           isDarkColorScheme={isDarkColorScheme}
           onClose={() => setDetailDay(null)}

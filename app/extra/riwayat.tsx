@@ -11,10 +11,12 @@ import { Stack, useRouter } from "expo-router";
 
 import { Text } from "~/components/ui/text";
 import AttendanceCalendar from "~/components/ui/attendance-calendar";
+import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Calendar } from "~/lib/icons/Calendar";
 import { Settings } from "~/lib/icons/Settings";
+import { History } from "~/lib/icons/History";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
@@ -22,7 +24,9 @@ export default function Riwayat() {
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const [showCacheStats, setShowCacheStats] = useState(false);
+
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Handle back button
   useEffect(() => {
@@ -74,6 +78,11 @@ export default function Riwayat() {
     }
   };
 
+  // Date change handler for custom picker
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+  };
+
   return (
     <SafeAreaView
       className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
@@ -92,7 +101,7 @@ export default function Riwayat() {
             : "border-border bg-background"
         }`}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => {
             try {
               if (router.canGoBack()) {
@@ -101,7 +110,7 @@ export default function Riwayat() {
             } catch (error) {
               console.error('Error navigating back:', error);
             }
-          }} 
+          }}
           className="mr-3"
         >
           <ChevronLeft
@@ -109,11 +118,7 @@ export default function Riwayat() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <Calendar
-          size={24}
-          color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          className="mr-3"
-        />
+        
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-foreground"
@@ -121,10 +126,10 @@ export default function Riwayat() {
         >
           Riwayat Kehadiran
         </Text>
-        
+
         {/* Cache management button (only in development) */}
         {__DEV__ && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={showCacheInfo}
             className="ml-3"
           >
@@ -136,8 +141,29 @@ export default function Riwayat() {
         )}
       </View>
 
+      {/* Month/Year Selector */}
+      <View
+        className={`p-4 border-b ${
+          isDarkColorScheme
+            ? "border-gray-700 bg-gray-800"
+            : "border-border bg-background"
+        }`}
+      >
+        <MonthYearPicker
+          selectedDate={selectedDate}
+          onDateChange={handleDateChange}
+          isDarkColorScheme={isDarkColorScheme}
+          minimumDate={new Date(2020, 0, 1)}
+          maximumDate={new Date()}
+        />
+      </View>
+
       {/* Calendar Component */}
-      <AttendanceCalendar isDarkColorScheme={isDarkColorScheme} />
+      <AttendanceCalendar
+        isDarkColorScheme={isDarkColorScheme}
+        currentYear={selectedDate.getFullYear()}
+        currentMonth={selectedDate.getMonth()}
+      />
     </SafeAreaView>
   );
 }
