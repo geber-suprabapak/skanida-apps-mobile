@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   View,
   TouchableOpacity,
@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   BackHandler,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -137,6 +138,9 @@ export default function PerizinanScreen() {
   const [description, setDescription] = useState("");
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [uploading, setUploading] = useState(false);
+  
+  // Ref for description TextInput
+  const descriptionInputRef = useRef<TextInput>(null);
 
   // Handle hardware back button
   useEffect(() => {
@@ -756,7 +760,8 @@ export default function PerizinanScreen() {
                       : "border-gray-200 bg-gray-50"
                 }`}
               >
-                <Input
+                <TextInput
+                  ref={descriptionInputRef}
                   className={`min-h-[120px] max-h-[200px] text-base border-0 p-4 ${
                     isDarkColorScheme
                       ? "bg-transparent text-white placeholder-gray-400"
@@ -769,13 +774,41 @@ export default function PerizinanScreen() {
                   textAlignVertical="top"
                   numberOfLines={6}
                   maxLength={500}
+                  scrollEnabled={true}
+                  autoCorrect={false}
+                  blurOnSubmit={false}
+                  returnKeyType="default"
                   style={{
                     textAlignVertical: 'top',
                     lineHeight: 22,
                     minHeight: 120,
                     maxHeight: 200,
+                    color: isDarkColorScheme ? 'white' : 'black',
                   }}
-                  scrollEnabled={true}
+                  placeholderTextColor={isDarkColorScheme ? '#9CA3AF' : '#6B7280'}
+                  onContentSizeChange={(event) => {
+                    // Auto-scroll to bottom when content grows
+                    const { height } = event.nativeEvent.contentSize;
+                    if (height > 120) {
+                      // Use setNativeProps to scroll to end for multiline TextInput
+                      descriptionInputRef.current?.setNativeProps({
+                        text: description,
+                        selection: { start: description.length, end: description.length }
+                      });
+                    }
+                  }}
+                  onSelectionChange={(event) => {
+                    // Ensure cursor visibility when selection changes
+                    const { selection } = event.nativeEvent;
+                    if (selection.end === description.length) {
+                      // If cursor is at the end, ensure it stays visible
+                      setTimeout(() => {
+                        descriptionInputRef.current?.setNativeProps({
+                          selection: { start: description.length, end: description.length }
+                        });
+                      }, 50);
+                    }
+                  }}
                 />
               </View>
               <View className="flex-row justify-between items-center mt-3">
