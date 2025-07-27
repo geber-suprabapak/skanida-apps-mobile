@@ -80,6 +80,7 @@ export default function Dashboard() {
   const [successData, setSuccessData] = useState<{
     attendanceType: 'present' | 'home';
     time: string;
+    processingTime?: number;
   } | null>(null);
 
   // Handle success popup from navigation params
@@ -88,6 +89,7 @@ export default function Dashboard() {
       setSuccessData({
         attendanceType: params.attendanceType as 'present' | 'home',
         time: params.successTime as string,
+        processingTime: params.processingTime ? parseInt(params.processingTime as string) : undefined,
       });
       setShowSuccessPopup(true);
       
@@ -96,6 +98,7 @@ export default function Dashboard() {
         showSuccessPopup: undefined,
         attendanceType: undefined,
         successTime: undefined,
+        processingTime: undefined,
       });
     }
   }, [params, router]);
@@ -674,6 +677,7 @@ export default function Dashboard() {
           onClose={handleSuccessPopupClose}
           attendanceType={successData.attendanceType}
           time={successData.time}
+          processingTime={successData.processingTime}
         />
       )}
     </>

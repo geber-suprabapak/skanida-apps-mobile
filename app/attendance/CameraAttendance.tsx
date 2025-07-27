@@ -739,6 +739,7 @@ const CameraAttendance = () => {
             showSuccessPopup: "true",
             attendanceType: locationData.absenceType,
             successTime: currentTime,
+            processingTime: totalTime.toString(),
           },
         });
       } catch (error: any) {

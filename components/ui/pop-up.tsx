@@ -30,6 +30,7 @@ interface AttendanceSuccessPopupProps {
   attendanceType: 'present' | 'home';
   studentName?: string;
   time?: string;
+  processingTime?: number;
 }
 
 const CONFETTI_COLORS = [
@@ -51,6 +52,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   attendanceType,
   studentName = '',
   time,
+  processingTime,
 }) => {
   const { isDarkColorScheme } = useColorScheme();
   
@@ -227,6 +229,18 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     }
   };
 
+  const formatProcessingTime = (timeMs?: number): string => {
+    if (!timeMs) return '';
+    
+    if (timeMs < 1000) {
+      return `Processed in ${timeMs}ms ⚡`;
+    } else if (timeMs < 10000) {
+      return `Processed in ${(timeMs / 1000).toFixed(1)}s ⚡`;
+    } else {
+      return `Processed in ${Math.round(timeMs / 1000)}s ⚡`;
+    }
+  };
+
   const message = getSuccessMessage();
   const currentTime = time || new Date().toLocaleTimeString('id-ID', {
     hour: '2-digit',
@@ -325,7 +339,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               </Text>
 
               {/* Time Display */}
-              <View className={`px-4 py-2 rounded-full ${
+              <View className={`px-4 py-2 rounded-full mb-2 ${
                 isDarkColorScheme ? 'bg-gray-700' : 'bg-gray-100'
               }`}>
                 <Text className={`text-sm font-medium ${
@@ -334,6 +348,19 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                   {currentTime}
                 </Text>
               </View>
+
+              {/* Processing Time Display */}
+              {processingTime && (
+                <View className={`px-3 py-1 rounded-full ${
+                  isDarkColorScheme ? 'bg-green-800/30' : 'bg-green-100'
+                }`}>
+                  <Text className={`text-xs font-medium ${
+                    isDarkColorScheme ? 'text-green-300' : 'text-green-700'
+                  }`}>
+                    {formatProcessingTime(processingTime)}
+                  </Text>
+                </View>
+              )}
             </Animated.View>
 
             {/* Confirm Button */}
