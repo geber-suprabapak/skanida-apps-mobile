@@ -540,13 +540,11 @@ function Pengaturan() {
                 color={isDarkColorScheme ? "#ffffff" : "#000000"}
               />
             }
-            title="Notifikasi"
-            subtitle="Pengaturan pemberitahuan"
+            title="Send Test Errors to Sentry"
+            subtitle="Send errors to Sentry for testing purposes"
             onPress={() => {
-              Alert.alert(
-                "Belum tersedia",
-                "Fitur ini belum diimplementasikan.",
-              );
+              Alert.alert("Error Sent");
+              throw new Error("Hello, again, Sentry!");
             }}
             showBorder={false}
           />
@@ -588,7 +586,7 @@ function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-card-foreground"
               }`}
             >
-              Version 1.5.0-alpha.1
+              Version 1.0.0-cbt.1 | Internal Build
             </Text>
           </View>
 

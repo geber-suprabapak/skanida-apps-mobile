@@ -180,7 +180,21 @@ export default function EditProfile() {
 
   // Handle hardware back button
   useEffect(() => {
-    const backAction = () => {
+    const backAction = async () => {
+      // Check if profile is required (by checking if name is empty)
+      const isProfileRequired = !profileData?.full_name && !name;
+
+      // If profile is required (empty), prevent going back
+      if (isProfileRequired) {
+        Alert.alert(
+          "Profil Wajib Diisi",
+          "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
+          [{ text: "OK" }]
+        );
+        return true; // Prevent default behavior
+      }
+
+      // Handle unsaved changes
       const hasUnsavedChanges =
         name !== initialName ||
         email !== initialEmail ||
@@ -197,12 +211,12 @@ export default function EditProfile() {
             {
               text: "Tinggalkan",
               style: "destructive",
-              onPress: () => router.back(),
+              onPress: () => router.navigate("/"),
             },
           ],
         );
       } else {
-        router.back();
+        router.navigate("/");
       }
       return true; // Prevent default behavior
     };
@@ -225,6 +239,7 @@ export default function EditProfile() {
     initialAbsenceNumber,
     initialClassName,
     initialAvatarUrl,
+    profileData,
   ]);
 
   const pickImage = async () => {
@@ -404,7 +419,14 @@ export default function EditProfile() {
       setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
-        { text: "OK", onPress: () => router.back() },
+        { 
+          text: "OK", 
+          onPress: () => {
+            // Navigate directly to Dashboard instead of using back
+            // This avoids navigation stack issues
+            router.navigate("/");
+          } 
+        },
       ]);
     } catch (err) {
       Alert.alert("Error", "Gagal memperbarui profil");
@@ -434,7 +456,48 @@ export default function EditProfile() {
       <View
         className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <TouchableOpacity 
+          onPress={() => {
+            // Check if profile is required (by checking if name is empty)
+            const isProfileRequired = !profileData?.full_name && !name;
+            
+            // If profile is required (empty), prevent going back
+            if (isProfileRequired) {
+              Alert.alert(
+                "Profil Wajib Diisi",
+                "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
+                [{ text: "OK" }]
+              );
+              return;
+            }
+            
+            // Check for unsaved changes
+            const hasUnsavedChanges =
+              name !== initialName ||
+              email !== initialEmail ||
+              absenceNumber !== initialAbsenceNumber ||
+              className !== initialClassName ||
+              avatarUrl !== initialAvatarUrl;
+
+            if (hasUnsavedChanges) {
+              Alert.alert(
+                "Perubahan Belum Disimpan",
+                "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
+                [
+                  { text: "Tetap di Sini", style: "cancel" },
+                  {
+                    text: "Tinggalkan",
+                    style: "destructive",
+                    onPress: () => router.navigate("/"),
+                  },
+                ],
+              );
+            } else {
+              router.navigate("/");
+            }
+          }} 
+          className="mr-3"
+        >
           <ChevronLeft
             size={24}
             color={isDarkColorScheme ? "#ffffff" : "#000000"}

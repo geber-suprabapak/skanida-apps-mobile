@@ -12,7 +12,8 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
+import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar";
@@ -54,7 +55,7 @@ interface AttendanceStatus {
   checkInTime?: string;
   checkOutTime?: string;
   totalWorkHours?: string;
-  todayStatus: 'present' | 'absent' | 'leave' | 'pending';
+  todayStatus: "present" | "absent" | "leave" | "pending";
 }
 
 export default function Dashboard() {
@@ -66,15 +67,15 @@ export default function Dashboard() {
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
     hasCheckedOut: false,
-    todayStatus: 'pending'
+    todayStatus: "pending",
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
   // Beta alert on dashboard open
   useEffect(() => {
     Alert.alert(
-      "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+      "🚧 Beta Release",
+      "Aplikasi ini masih dalam tahap pengembangan. Fitur dan data dapat berubah pada rilis akhir. Mohon laporkan bug atau masukan dengan mengklik tombol lonceng di pojok kanan atas. Terima kasih atas partisipasinya!",
       [{ text: "Saya Mengerti", style: "default" }],
       { cancelable: true },
     );
@@ -100,7 +101,10 @@ export default function Dashboard() {
         if (error.code === "PGRST116") {
           setProfileData(null);
         } else {
-          console.error("Dashboard: Error fetching profile data:", error.message);
+          console.error(
+            "Dashboard: Error fetching profile data:",
+            error.message,
+          );
           setProfileData(null);
         }
       } else if (data) {
@@ -109,7 +113,10 @@ export default function Dashboard() {
         setProfileData(null);
       }
     } catch (err: any) {
-      console.error("Dashboard: Exception during user_profiles data fetch:", err.message);
+      console.error(
+        "Dashboard: Exception during user_profiles data fetch:",
+        err.message,
+      );
       setProfileData(null);
     }
   }, [user]);
@@ -119,59 +126,62 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
 
       // Fetch today's attendance
       const { data: todayAttendance } = await supabase
-        .from('absences')
-        .select('status, created_at')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .order('created_at', { ascending: true });
+        .from("absences")
+        .select("status, created_at")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .order("created_at", { ascending: true });
 
       // Fetch leave requests for today
       const { data: leaveRequests } = await supabase
-        .from('perizinan')
-        .select('approval_status, kategori_izin')
-        .eq('user_id', user.id)
-        .eq('tanggal', today);
+        .from("perizinan")
+        .select("approval_status, kategori_izin")
+        .eq("user_id", user.id)
+        .eq("tanggal", today);
 
       let hasCheckedIn = false;
       let hasCheckedOut = false;
-      let checkInTime = '';
-      let checkOutTime = '';
-      let todayStatus: 'present' | 'absent' | 'leave' | 'pending' = 'pending';
+      let checkInTime = "";
+      let checkOutTime = "";
+      let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
       if (todayAttendance && todayAttendance.length > 0) {
-        todayAttendance.forEach(record => {
-          if (record.status === 'Hadir' || record.status === 'Datang') {
+        todayAttendance.forEach((record) => {
+          if (record.status === "Hadir" || record.status === "Datang") {
             hasCheckedIn = true;
             checkInTime = record.created_at;
-          } else if (record.status === 'Pulang') {
+          } else if (record.status === "Pulang") {
             hasCheckedOut = true;
             checkOutTime = record.created_at;
           }
         });
 
         if (hasCheckedIn) {
-          todayStatus = 'present';
+          todayStatus = "present";
         }
       }
 
       if (leaveRequests && leaveRequests.length > 0) {
-        const approvedLeave = leaveRequests.find(req => req.approval_status === 'approved');
+        const approvedLeave = leaveRequests.find(
+          (req) => req.approval_status === "approved",
+        );
         if (approvedLeave) {
-          todayStatus = 'leave';
+          todayStatus = "leave";
         }
       }
 
       if (!hasCheckedIn && !leaveRequests?.length) {
-        todayStatus = 'absent';
+        todayStatus = "absent";
       }
 
-      const totalWorkHours = hasCheckedIn && hasCheckedOut
-        ? calculateWorkHours(checkInTime, checkOutTime)
-        : undefined;
+      const totalWorkHours =
+        hasCheckedIn && hasCheckedOut
+          ? calculateWorkHours(checkInTime, checkOutTime)
+          : undefined;
 
       setAttendanceStatus({
         hasCheckedIn,
@@ -179,11 +189,10 @@ export default function Dashboard() {
         checkInTime,
         checkOutTime,
         totalWorkHours,
-        todayStatus
+        todayStatus,
       });
-
     } catch (error) {
-      console.error('Error fetching attendance data:', error);
+      console.error("Error fetching attendance data:", error);
     }
   }, [user]);
 
@@ -197,36 +206,102 @@ export default function Dashboard() {
       const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
       return `${hours}j ${minutes}m`;
     } catch {
-      return '0j 0m';
+      return "0j 0m";
     }
   };
 
   // Refresh function
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      fetchProfileData(),
-      fetchAttendanceData()
-    ]);
+    await Promise.all([fetchProfileData(), fetchAttendanceData()]);
     setRefreshing(false);
   }, [fetchProfileData, fetchAttendanceData]);
+
+  // Check if user has completed their profile
+  const checkProfileCompleteness = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error checking profile completeness:", error.message);
+        return;
+      }
+
+      // If profile doesn't exist or full_name is not set, redirect to edit profile
+      if (!data || !data.full_name) {
+        Alert.alert(
+          "Profil Belum Lengkap",
+          "Silahkan lengkapi profil Anda terlebih dahulu sebelum menggunakan aplikasi.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Navigate to EditProfile instead of replace to avoid navigation stack issues
+                router.navigate("/profile/EditProfile");
+              },
+            },
+          ],
+        );
+        return false; // Return false to indicate profile is incomplete
+      }
+
+      return true; // Return true to indicate profile is complete
+    } catch (err: any) {
+      console.error(
+        "Exception during profile completeness check:",
+        err.message,
+      );
+      return false; // Return false on error
+    }
+  }, [user, router]);
 
   // Effects
   useEffect(() => {
     if (isFocused && user) {
       fetchProfileData();
       fetchAttendanceData();
+      checkProfileCompleteness();
     } else if (!user) {
       setProfileData(null);
     }
-  }, [user, isFocused, fetchProfileData, fetchAttendanceData]);
+  }, [
+    user,
+    isFocused,
+    fetchProfileData,
+    fetchAttendanceData,
+    checkProfileCompleteness,
+  ]);
+
+  // Check profile completeness on focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkAndRedirect = async () => {
+        if (user) {
+          const isProfileComplete = await checkProfileCompleteness();
+          if (!isProfileComplete) {
+            // Use navigate instead of replace to avoid navigation stack issues
+            router.navigate("/profile/EditProfile");
+          }
+        }
+      };
+
+      checkAndRedirect();
+
+      return () => {
+        // Cleanup if needed
+      };
+    }, [user, checkProfileCompleteness, router]),
+  );
 
   // Get user's display name prioritizing profile data, then falling back to metadata
-  const displayName =
-    profileData?.full_name || // Uses profileData.full_name if it's a truthy string
-    user?.user_metadata?.name ||
-    user?.email ||
-    "Pengguna";
+  // This will be "Pengguna" if no profile data exists, which should trigger our redirect
+  const displayName = profileData?.full_name || "Pengguna";
 
   // Get user's avatar URL from profile data or from metadata
   const avatarUrl =
@@ -268,14 +343,26 @@ export default function Dashboard() {
   // Get status badge color and text
   const getStatusBadge = () => {
     switch (attendanceStatus.todayStatus) {
-      case 'present':
-        return { color: 'bg-green-500', text: 'Hadir', textColor: 'text-white' };
-      case 'leave':
-        return { color: 'bg-blue-500', text: 'Izin', textColor: 'text-white' };
-      case 'absent':
-        return { color: 'bg-red-500', text: 'Tidak Hadir', textColor: 'text-white' };
+      case "present":
+        return {
+          color: "bg-green-500",
+          text: "Hadir",
+          textColor: "text-white",
+        };
+      case "leave":
+        return { color: "bg-blue-500", text: "Izin", textColor: "text-white" };
+      case "absent":
+        return {
+          color: "bg-red-500",
+          text: "Tidak Hadir",
+          textColor: "text-white",
+        };
       default:
-        return { color: 'bg-gray-500', text: 'Pending', textColor: 'text-white' };
+        return {
+          color: "bg-gray-500",
+          text: "Pending",
+          textColor: "text-white",
+        };
     }
   };
 
@@ -304,7 +391,9 @@ export default function Dashboard() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* --- Header Section --- */}
-          <View className={`px-6 pt-4 pb-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}>
+          <View
+            className={`px-6 pt-4 pb-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
+          >
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center flex-1">
                 <Avatar
@@ -317,47 +406,71 @@ export default function Dashboard() {
                   }
                 />
                 <View className="flex-1">
-                  <Text className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                  <Text
+                    className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                  >
                     {displayName}
                   </Text>
-                  <Text className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                  <Text
+                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     {format(currentTime, "EEEE, dd MMMM yyyy")}
                   </Text>
                 </View>
               </View>
-              
+
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
-                <View className={`px-3 py-2 rounded-lg ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-50"}`}>
+                <View
+                  className={`px-3 py-2 rounded-lg ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-50"}`}
+                >
                   <View className="flex-row items-center">
-                    <Clock size={16} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
-                    <Text className={`ml-1 text-xs font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                    <Clock
+                      size={16}
+                      color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
+                    />
+                    <Text
+                      className={`ml-1 text-xs font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
+                    >
                       Waktu Sekarang
                     </Text>
                   </View>
-                  <Text className={`text-sm font-bold text-center mt-1 ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}>
+                  <Text
+                    className={`text-sm font-bold text-center mt-1 ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}
+                  >
                     {format(currentTime, "HH:mm:ss")}
                   </Text>
                 </View>
               </View>
 
               <TouchableOpacity
-                onPress={() => {/* Handle notifications */}}
+                onPress={() => {
+                  Sentry.showFeedbackWidget();
+                }}
                 className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
               >
-                <Bell size={20} color={isDarkColorScheme ? "#ffffff" : "#374151"} />
+                <Bell
+                  size={20}
+                  color={isDarkColorScheme ? "#ffffff" : "#374151"}
+                />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* --- Today's Status Card --- */}
           <View className="px-6 mb-6">
-            <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+            <Card
+              className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+            >
               <View className="flex-row items-center justify-between mb-4">
-                <Text className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                <Text
+                  className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                >
                   Status Hari Ini
                 </Text>
-                <Badge className={`${statusBadge.color} ${statusBadge.textColor}`}>
+                <Badge
+                  className={`${statusBadge.color} ${statusBadge.textColor}`}
+                >
                   {statusBadge.text}
                 </Badge>
               </View>
@@ -371,15 +484,18 @@ export default function Dashboard() {
                     ) : (
                       <AlertCircle size={20} color="#dc2626" />
                     )}
-                    <Text className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                    <Text
+                      className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
+                    >
                       Absen Masuk
                     </Text>
                   </View>
-                  <Text className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                  <Text
+                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum absen"
-                    }
+                      : "Belum absen"}
                   </Text>
                 </View>
 
@@ -391,15 +507,18 @@ export default function Dashboard() {
                     ) : (
                       <AlertCircle size={20} color="#dc2626" />
                     )}
-                    <Text className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                    <Text
+                      className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
+                    >
                       Absen Pulang
                     </Text>
                   </View>
-                  <Text className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                  <Text
+                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum absen"
-                    }
+                      : "Belum absen"}
                   </Text>
                 </View>
 
@@ -408,11 +527,15 @@ export default function Dashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
                       <Clock size={20} color="#3b82f6" />
-                      <Text className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}>
+                      <Text
+                        className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
+                      >
                         Total Jam Kerja
                       </Text>
                     </View>
-                    <Text className={`text-sm font-medium ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}>
+                    <Text
+                      className={`text-sm font-medium ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}
+                    >
                       {attendanceStatus.totalWorkHours}
                     </Text>
                   </View>
@@ -423,7 +546,9 @@ export default function Dashboard() {
 
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
-            <Text className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+            <Text
+              className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+            >
               Aksi Cepat
             </Text>
 
@@ -434,16 +559,24 @@ export default function Dashboard() {
                 className="w-48"
                 activeOpacity={0.8}
               >
-                <Card className={`aspect-square ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}>
+                <Card
+                  className={`aspect-square ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}
+                >
                   <View className="flex-1 items-center justify-center p-4">
                     <UserCheck size={32} color="white" />
                     <Text className="text-white font-semibold text-lg mt-2 text-center">
-                      {!attendanceStatus.hasCheckedIn ? "Absen Masuk" :
-                       !attendanceStatus.hasCheckedOut ? "Absen Pulang" : "Lihat Absensi"}
+                      {!attendanceStatus.hasCheckedIn
+                        ? "Absen Masuk"
+                        : !attendanceStatus.hasCheckedOut
+                          ? "Absen Pulang"
+                          : "Lihat Absensi"}
                     </Text>
                     <Text className="text-blue-100 text-sm text-center mt-1">
-                      {!attendanceStatus.hasCheckedIn ? "Mulai hari sekolah" :
-                       !attendanceStatus.hasCheckedOut ? "Selesaikan hari" : "Absensi selesai"}
+                      {!attendanceStatus.hasCheckedIn
+                        ? "Mulai hari sekolah"
+                        : !attendanceStatus.hasCheckedOut
+                          ? "Selesaikan hari"
+                          : "Absensi selesai"}
                     </Text>
                   </View>
                 </Card>
@@ -451,18 +584,27 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
-            <View className="flex-row space-x-3">
+            <View className="flex-row space-x-3 gap-2">
               <TouchableOpacity
                 onPress={navigateToHistory}
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                  <History size={24} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
-                  <Text className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                <Card
+                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                >
+                  <History
+                    size={24}
+                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
+                  />
+                  <Text
+                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                  >
                     Riwayat
                   </Text>
-                  <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                  <Text
+                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     Lihat absensi
                   </Text>
                 </Card>
@@ -473,12 +615,21 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                  <ClipboardPenLine size={24} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
-                  <Text className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                <Card
+                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                >
+                  <ClipboardPenLine
+                    size={24}
+                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
+                  />
+                  <Text
+                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                  >
                     Perizinan
                   </Text>
-                  <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                  <Text
+                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     Ajukan izin
                   </Text>
                 </Card>
@@ -489,12 +640,21 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                  <Settings size={24} color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
-                  <Text className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}>
+                <Card
+                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                >
+                  <Settings
+                    size={24}
+                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
+                  />
+                  <Text
+                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                  >
                     Pengaturan
                   </Text>
-                  <Text className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+                  <Text
+                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  >
                     Kelola akun
                   </Text>
                 </Card>
@@ -511,8 +671,10 @@ export default function Dashboard() {
               : "bg-white border-gray-200"
           }`}
         >
-          <Text className={`text-xs ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}>
-            Skanida Apps v1.5.0-alpha.1
+          <Text
+            className={`text-s font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
+          >
+            v1.0.0-cbt.1 | Internal Build | Branch: release/closed-beta-test
           </Text>
         </View>
       </SafeAreaView>

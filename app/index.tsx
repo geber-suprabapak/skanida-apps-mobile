@@ -14,12 +14,6 @@ export default function Index() {
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
-    Alert.alert(
-      "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
-      [{ text: "Saya Mengerti", style: "default" }],
-      { cancelable: true },
-    );
     const checkAuth = async () => {
       try {
         // Memanggil Supabase untuk cek session
