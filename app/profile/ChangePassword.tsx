@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
-import { LockIcon } from "lucide-react-native";
+import { LockIcon } from "~/lib/icons/LockIcon";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -103,7 +103,7 @@ export default function ChangePassword() {
           headerShown: false,
         }}
       />
-      
+
       {/* Header */}
       <View
         className={`flex-row items-center p-4 border-b ${
@@ -161,7 +161,7 @@ export default function ChangePassword() {
               >
                 <LockIcon size={24} color="#ffffff" />
               </View>
-              
+
               <Text
                 className={`text-xl font-bold text-center mb-2 ${
                   isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -169,7 +169,7 @@ export default function ChangePassword() {
               >
                 Keamanan Akun
               </Text>
-              
+
               <Text
                 className={`text-sm text-center leading-5 ${
                   isDarkColorScheme ? "text-gray-400" : "text-gray-600"
@@ -197,7 +197,7 @@ export default function ChangePassword() {
             >
               Ubah Password
             </Text>
-            
+
             <View className="space-y-5">
               {/* Current Password */}
               <View>
@@ -384,7 +384,7 @@ export default function ChangePassword() {
                 </Text>
               )}
             </Button>
-            
+
             <Button
               variant="outline"
               size="lg"

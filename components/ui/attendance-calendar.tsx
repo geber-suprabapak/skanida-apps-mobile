@@ -449,7 +449,7 @@ const CalendarDayComponent = ({
     if (day.isCurrentMonth && day.isFuture) {
       return isDarkColorScheme ? "bg-gray-800" : "bg-gray-50";
     }
-    
+
     // Previous/next month dates (outside current month)
     if (!day.isCurrentMonth) {
       return "bg-transparent";
@@ -538,9 +538,20 @@ const CalendarDayComponent = ({
     }
   };
 
+  const getButtonClassName = () => {
+    const baseClasses = "flex-1 h-12 items-center justify-center m-0.5 rounded-lg";
+    const statusColor = getStatusColor();
+    const borderAndBackground = getBorderAndBackground();
+    const selectionBorder = isSelected
+      ? (isDarkColorScheme ? 'border-green-400' : 'border-green-500')
+      : '';
+
+    return `${baseClasses} ${statusColor} ${borderAndBackground} ${selectionBorder}`;
+  };
+
   return (
     <TouchableOpacity
-      className={`flex-1 h-12 items-center justify-center m-0.5 rounded-lg ${getStatusColor()} ${getBorderAndBackground()} ${isSelected ? (isDarkColorScheme ? 'border-green-400' : 'border-green-500') : ''}`}
+      className={getButtonClassName()}
       onPress={handlePress}
       disabled={!day.isCurrentMonth || day.isFuture}
       activeOpacity={day.isCurrentMonth && !day.isFuture ? 0.7 : 1}
@@ -792,15 +803,15 @@ const DetailCard = ({
 };
 
 // ========== MAIN COMPONENT ==========
-export default function AttendanceCalendar({ 
-  isDarkColorScheme, 
-  currentYear: propYear, 
-  currentMonth: propMonth 
+export default function AttendanceCalendar({
+  isDarkColorScheme,
+  currentYear: propYear,
+  currentMonth: propMonth
 }: AttendanceCalendarProps) {
   const user = useAuthStore((state: any) => state.user);
   const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
-  
+
   // Date picker state
   const [pickerDate, setPickerDate] = useState(new Date());
 
@@ -839,7 +850,7 @@ export default function AttendanceCalendar({
       }
 
       console.log(`📅 Date clicked: ${day.fullDate}`);
-      
+
       if (day.attendance) {
         console.log(`✅ Attendance found: ${day.attendance.status}`);
         if (day.attendance.checkInTime) {
@@ -938,7 +949,7 @@ export default function AttendanceCalendar({
               />
             </TouchableOpacity>
           </View>
-          
+
           <MonthYearPicker
             selectedDate={pickerDate}
             onDateChange={handleDateChange}

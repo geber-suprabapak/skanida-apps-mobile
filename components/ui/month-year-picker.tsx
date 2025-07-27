@@ -18,7 +18,7 @@ import { History } from '~/lib/icons/History';
 import { CheckCircle } from '~/lib/icons/CheckCircle';
 import { MapPin } from '~/lib/icons/MapPin';
 import { Bell } from '~/lib/icons/Bell';
-import { MousePointerClick } from 'lucide-react-native';
+import { MousePointerClick } from '~/lib/icons/MousePointerClick';
 
 export interface MonthYearPickerProps {
   selectedDate: Date;
@@ -50,7 +50,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [tempYear, setTempYear] = useState(selectedDate.getFullYear());
   const [tempMonth, setTempMonth] = useState(selectedDate.getMonth());
-  
+
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -73,11 +73,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
         const itemWithSpacing = ITEM_HEIGHT + 8; // Item height + marginVertical
         const visibleAreaHeight = ITEM_HEIGHT * 5;
         const centerOffset = (visibleAreaHeight - ITEM_HEIGHT) / 2;
-        
+
         // Calculate scroll position to center the selected month
         let monthOffset = (monthIndex * itemWithSpacing) - centerOffset;
         monthOffset = Math.max(0, monthOffset);
-        
+
         monthScrollRef.current?.scrollTo({ y: monthOffset, animated: true });
 
         // Calculate proper centering for year
@@ -86,7 +86,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
           // Calculate scroll position to center the selected year
           let yearOffset = (yearIndex * itemWithSpacing) - centerOffset;
           yearOffset = Math.max(0, yearOffset);
-          
+
           yearScrollRef.current?.scrollTo({ y: yearOffset, animated: true });
         }
       }, 200);
@@ -97,7 +97,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
     setTempYear(selectedDate.getFullYear());
     setTempMonth(selectedDate.getMonth());
     setShowPicker(true);
-    
+
     // Start entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -160,7 +160,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   const navigateMonth = (direction: 'prev' | 'next') => {
     const currentDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const newDate = new Date(currentDate);
-    
+
     if (direction === 'prev') {
       newDate.setMonth(newDate.getMonth() - 1);
     } else {
@@ -178,7 +178,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
     const currentYear = selectedDate.getFullYear();
     const minMonth = minimumDate.getMonth();
     const minYear = minimumDate.getFullYear();
-    
+
     return currentYear > minYear || (currentYear === minYear && currentMonth > minMonth);
   };
 
@@ -188,7 +188,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
     const currentYear = selectedDate.getFullYear();
     const maxMonth = maximumDate.getMonth();
     const maxYear = maximumDate.getFullYear();
-    
+
     return currentYear < maxYear || (currentYear === maxYear && currentMonth < maxMonth);
   };
 
@@ -206,7 +206,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   ) => {
     const getIcon = () => {
       if (!isSelected) return null;
-      
+
       switch (itemType) {
         case 'month':
           return (
@@ -247,7 +247,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
           marginHorizontal: 8,
           marginVertical: 4,
           borderRadius: 12,
-          backgroundColor: isSelected 
+          backgroundColor: isSelected
             ? isDarkColorScheme ? '#2563EB' : '#3B82F6'
             : isDarkColorScheme ? '#374151' : '#F3F4F6',
           opacity: isDisabled ? 0.4 : 1,
@@ -263,9 +263,9 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
           <Text
             className={`
               font-semibold text-base
-              ${isSelected 
-                ? 'text-white' 
-                : isDarkColorScheme 
+              ${isSelected
+                ? 'text-white'
+                : isDarkColorScheme
                   ? isDisabled ? 'text-gray-500' : 'text-white'
                   : isDisabled ? 'text-gray-400' : 'text-gray-900'
               }
@@ -389,7 +389,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
             onPress={handleCancel}
             activeOpacity={1}
           />
-          
+
           <Animated.View
             style={{
               transform: [{ scale: scaleAnim }],
@@ -441,7 +441,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                   ref={monthScrollRef}
                   style={{ height: ITEM_HEIGHT * 5 }}
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ 
+                  contentContainerStyle={{
                     paddingTop: ITEM_HEIGHT * 2,
                     paddingBottom: ITEM_HEIGHT * 2,
                   }}
@@ -482,7 +482,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                   ref={yearScrollRef}
                   style={{ height: ITEM_HEIGHT * 5 }}
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ 
+                  contentContainerStyle={{
                     paddingTop: ITEM_HEIGHT * 2,
                     paddingBottom: ITEM_HEIGHT * 2,
                   }}
@@ -521,7 +521,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                   Batal
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 onPress={handleConfirm}
                 className="flex-1 p-4 rounded-xl bg-blue-500 ml-3"

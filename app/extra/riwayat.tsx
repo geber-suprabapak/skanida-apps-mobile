@@ -10,13 +10,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
 import { Text } from "~/components/ui/text";
-import { RotateCcw } from 'lucide-react-native';
 import AttendanceCalendar from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Calendar } from "~/lib/icons/Calendar";
 import { Settings } from "~/lib/icons/Settings";
+import { History } from "~/lib/icons/History";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
@@ -24,7 +24,7 @@ export default function Riwayat() {
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  
+
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -101,7 +101,7 @@ export default function Riwayat() {
             : "border-border bg-background"
         }`}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => {
             try {
               if (router.canGoBack()) {
@@ -110,7 +110,7 @@ export default function Riwayat() {
             } catch (error) {
               console.error('Error navigating back:', error);
             }
-          }} 
+          }}
           className="mr-3"
         >
           <ChevronLeft
@@ -118,10 +118,9 @@ export default function Riwayat() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <RotateCcw
+        <History
           size={24}
-          color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          className="mr-3"
+          className={`mr-3 ${isDarkColorScheme ? "text-white" : "text-black"}`}
         />
         <Text
           className={`text-lg font-bold flex-1 ${
@@ -130,10 +129,10 @@ export default function Riwayat() {
         >
           Riwayat Kehadiran
         </Text>
-        
+
         {/* Cache management button (only in development) */}
         {__DEV__ && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={showCacheInfo}
             className="ml-3"
           >
@@ -163,7 +162,7 @@ export default function Riwayat() {
       </View>
 
       {/* Calendar Component */}
-      <AttendanceCalendar 
+      <AttendanceCalendar
         isDarkColorScheme={isDarkColorScheme}
         currentYear={selectedDate.getFullYear()}
         currentMonth={selectedDate.getMonth()}
