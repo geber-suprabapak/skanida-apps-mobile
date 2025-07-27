@@ -783,7 +783,6 @@ export default function PerizinanScreen() {
                     lineHeight: 22,
                     minHeight: 120,
                     maxHeight: 200,
-                    color: isDarkColorScheme ? 'white' : 'black',
                   }}
                   placeholderTextColor={isDarkColorScheme ? '#9CA3AF' : '#6B7280'}
                   onContentSizeChange={(event) => {
