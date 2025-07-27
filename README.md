@@ -13,7 +13,6 @@
   <p align="center">
     <img src="https://img.shields.io/badge/React_Native-0.79.2-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native">
     <img src="https://img.shields.io/badge/Expo-53.0.9-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo">
-    <img src="https://img.shields.io/badge/Versi-0.3.0-brightgreen?style=for-the-badge" alt="Versi">
   </p>
 
   <p align="center">
