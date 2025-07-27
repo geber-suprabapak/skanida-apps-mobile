@@ -1,63 +1,62 @@
-# Panduan Konteks untuk GitHub Copilot: Aplikasi Absensi Skanida
+## GitHub Copilot Context Guide for Skanida Apps Mobile
 
-Anda adalah seorang **developer senior React Native** yang ahli dalam stack teknologi berikut: **Expo, TypeScript, Nativewind, Zustand, Expo Router, dan Supabase**. Tugas Anda adalah membantu mengembangkan aplikasi absensi dengan kode yang bersih, efisien, dan konsisten sesuai dengan konvensi yang sudah ada di proyek ini. Anda punya akses read penuh menggunakan @workspace untuk melihat kode sumber, dokumentasi, dan file konfigurasi proyek.
+You are an AI coding assistant working on **Skanida Apps Mobile** (React Native + Expo + TypeScript). Use this guide to understand project-specific architecture, conventions, and workflows.
 
----
+### 1. Project Architecture
+- **Language:** TypeScript. Always use explicit types and import from relevant `~/types` or modules.
+- **Frameworks:** Expo SDK 53, React Native 0.79, Expo Router v5, NativeWind v4, Zustand v5, Supabase-js v2.
+- **Key folders:**
+    - `app/`: File-based routes; layouts in `_layout.tsx`, groups `(auth)`, `(tabs)`.
+    - `components/ui/`: Reusable UI components (Button, Card, Input, etc.)—**do not modify**.
+    - `lib/`: `constants.ts`, `utils.ts` (exporting `cn()`), and icon wrappers in `lib/icons/`.
+    - `store/`: One Zustand store per feature (e.g., `authStore.ts`, `attendanceStore.ts`).
+    - `utils/`: `supabase.ts` (central Supabase client), `attendanceCache.ts` (AsyncStorage caching).
 
-## 1. Arsitektur & Teknologi Utama
+### 2. Styling & Utilities
+- **NativeWind:** Use Tailwind utility classes in `className`; merge conditionally with `cn(...)` from `~/lib/utils.ts`.
+- **Icons:** Import from `~/lib/icons/<IconName>.tsx`; these wrap `lucide-react-native` icons to accept `className`.
 
-* **Bahasa:** **TypeScript**. Gunakan tipe data yang kuat untuk semua props, state, dan respons API. Impor tipe dari direktori yang relevan jika ada.
-* **Framework:** **Expo (React Native)**. Gunakan API dari `expo` (seperti `expo-camera`, `expo-location`, `expo-image-picker`) daripada library eksternal.
-* **Styling:** **NativeWind (v4)**. Gunakan kelas utilitas Tailwind CSS untuk semua styling. Impor `global.css` sebagai dasar. Manfaatkan `cn` utility dari `~/lib/utils.ts` untuk menggabungkan kelas secara kondisional.
-* **State Management:** **Zustand**. Buat *store* untuk setiap *feature* di direktori `store/`.
-* **Navigasi:** **Expo Router**. Gunakan navigasi berbasis file di dalam direktori `app/`. Grup rute seperti `(auth)` dan `(tabs)` digunakan untuk mengorganisir layout.
+### 3. UI Components & Patterns
+- **Location & Structure:** All building-block components live in `components/ui/` (e.g., `button.tsx`, `card.tsx`, `input.tsx`, `pop-up.tsx`).
+- **Variants & Styling:** Use `class-variance-authority` (`cva`) to define variant props (e.g., `buttonVariants` in `button.tsx`). Pass `variant` and `size` props and merge classes with `cn(...)`.
+- **Text Context:** UI primitives wrap children with `TextClassContext` for consistent typography (e.g., `buttonTextVariants`).
+- **Icon Primitives:** Use wrapped icons from `~/lib/icons/` (e.g., `<Camera />`), applying `className` for sizing and color (e.g., `className="text-2xl text-primary"`).
+- **Usage Pattern:** Always prefer these primitives over raw `View`/`Text`. They enforce theme tokens, spacing, and accessibility roles.
 
----
+### 4. Data & Supabase Integration
+- **Client:** Import `supabase` from `~/utils/supabase.ts`.
+- **Database tables:**
+    - `absences`: attendance records (types: `present`, `home`).
+    - `perizinan`: leave requests (fields: reason, dates, file attachments).
+    - `user_profiles`: additional user data (`full_name`, `avatar_url`).
+- **Storage buckets:**
+    - `attendance-photos`
+    - `perizinan`
+    - `avatars`
+- **Upload pattern:** In `app/attendance/CameraAttendance.tsx`, resize with `expo-image-manipulator` (800px width, 70% quality), name file `<YYYY-MM-DD>_<timestamp>_<userId>.png`, upload to `attendance-photos`, then insert `absences` record.
 
-## 2. Interaksi dengan Backend (Supabase)
+### 5. Core Feature Workflows
+- **Absence Reporting (`app/attendance/AbsenceReport.tsx`):**
+    1. Request location permission and fetch location via `expo-location`.
+    2. Calculate distance to school coords `(-7.4503, 110.2241)`, require ≤500m.
+    3. Query last record in `absences` to decide `present` vs `home`.
+    4. On valid location, navigate to `CameraAttendance`.
+- **Leave Requests (`app/perizinan/izin.tsx`):**
+    - Use custom `logger` for structured debugging.
+    - Upload attachments to `perizinan` bucket and insert record in Supabase.
 
-Seluruh backend ditangani oleh **Supabase**. Selalu impor *client* Supabase terpusat dari `~/utils/supabase.ts`.
+### 6. State Management & Caching
+- **Zustand stores:** Each feature in `store/` (e.g., `useAuthStore`, `useAttendanceStore`).
+- **Caching:** `utils/attendanceCache.ts` uses AsyncStorage to cache monthly attendance data for calendar views.
 
-* **Otentikasi:** Gunakan `supabase.auth` untuk `signUp`, `signInWithPassword`, `signOut`, dan `updateUser`.
-* **Database (Tabel Utama):**
-    * `absences`: Menyimpan catatan absensi (masuk dan pulang).
-    * `perizinan`: Menyimpan data pengajuan izin (sakit/pergi).
-    * `user_profiles`: Menyimpan data tambahan pengguna seperti `full_name` dan `avatar_url`.
-* **Storage (Penyimpanan File):**
-    * Bucket `attendance-photos`: Untuk menyimpan foto bukti absensi.
-    * Bucket `perizinan`: Untuk menyimpan lampiran surat izin.
-    * Bucket `avatars`: Untuk menyimpan foto profil pengguna.
-
----
-
-## 3. Struktur & Konvensi Kode
-
-* **Komponen UI:** Semua komponen UI dasar yang dapat digunakan kembali (seperti `Button`, `Card`, `Input`) terletak di `~/components/ui/`. **JANGAN MENGUBAH FILE DI DALAM FOLDER INI** kecuali diinstruksikan. Komponen ini sudah menggunakan `class-variance-authority`.
-* **Ikon:** Gunakan ikon dari `lucide-react-native` yang sudah di-wrap dengan `iconWithClassName` di `~/lib/icons/` agar bisa menerima prop `className`.
-* **Path Alias:** Gunakan alias `~/` untuk merujuk ke root direktori proyek, sesuai konfigurasi di `tsconfig.json` dan `metro.config.js`.
-* **Logging:** Untuk debugging, gunakan *logger* kustom yang sudah dibuat di beberapa file (contohnya di `perizinan/izin.tsx`) untuk memberikan output yang terstruktur.
-
----
-
-## 4. Pola & Logika Utama Absensi
-
-* **Alur Absensi (`AbsenceReport.tsx`):**
-    1.  Verifikasi izin lokasi dari pengguna (`expo-location`).
-    2.  Ambil lokasi GPS pengguna.
-    3.  Hitung jarak dari koordinat sekolah (`-7.4503, 110.2241`). Jarak maksimal adalah 500 meter.
-    4.  Tentukan apakah ini absensi "masuk" (`present`) atau "pulang" (`home`) dengan memeriksa record terakhir di tabel `absences`.
-    5.  Jika semua valid, teruskan ke halaman `CameraAttendance`.
-
-* **Pengambilan Foto (`CameraAttendance.tsx`):**
-    1.  Gunakan komponen `CameraView` dari `expo-camera`.
-    2.  Setelah foto diambil, gunakan `expo-image-manipulator` untuk mengubah ukuran gambar menjadi lebar 800px dengan kualitas 70% dalam format JPEG.
-    3.  Upload foto ke bucket Supabase `attendance-photos` dengan nama file yang terstruktur (`<tanggal>_<timestamp>_<user_id>.png`).
-    4.  Simpan URL foto beserta data absensi ke tabel `absences`.
-
----
-
-## 5. Caching
-* **Caching (`attendanceCache.ts`):**
-    Aplikasi menggunakan sistem cache kustom dengan `AsyncStorage` untuk menyimpan data riwayat absensi bulanan. Ini mengurangi panggilan ke Supabase saat melihat kalender riwayat.
+### 7. Developer Workflows & Scripts
+- **Package manager:** pnpm (v10).
+- **Scripts (pwsh):**
+    - `pnpm install`
+    - `npm run prebuild` or `npx expo prebuild` (sync native config)
+    - `pnpm start` (Metro dev server + Expo Router)
+    - `pnpm android`, `pnpm ios`
+    - `pnpm lint`, `pnpm format`
+- **Path aliases:** Configured in `tsconfig.json` & `metro.config.js` for `~/`.
 
 ---

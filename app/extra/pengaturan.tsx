@@ -566,7 +566,7 @@ function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
-              Preferensi
+              Version 1.0.0-cbt.1 | Internal Build
             </Text>
 
             <View className="space-y-0">

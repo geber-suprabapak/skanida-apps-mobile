@@ -75,7 +75,13 @@ export default function Login() {
 
       if (error) {
         console.error("Supabase login error:", error.message); // Keep console log for debugging
-        alert("Login failed. Please check your email and password."); // Set user-facing error message
+        if (error.message === "Email not confirmed") {
+          alert(
+            "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
+          );
+        } else {
+          alert("Login gagal. Periksa kembali email dan password Anda.");
+        }
         return;
       }
 
