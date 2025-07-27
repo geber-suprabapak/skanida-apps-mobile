@@ -738,7 +738,7 @@ export default function Dashboard() {
           <Text
             className={`text-s font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
           >
-            v1.0.0-cbt.1 | Internal Build | Branch: release/closed-beta-test
+            v1.6.0-internal.1 | Branch: develop
           </Text>
         </View>
       </SafeAreaView>

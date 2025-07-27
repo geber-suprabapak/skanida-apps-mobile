@@ -566,7 +566,7 @@ function Pengaturan() {
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
-              Version 1.0.0-cbt.1 | Internal Build
+              Lain-Lain
             </Text>
 
             <View className="space-y-0">
@@ -731,7 +731,7 @@ function Pengaturan() {
                     isDarkColorScheme ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  Version 1.5.0-alpha.1
+                  Version 1.6.0-internal.1
                 </Text>
               </View>
 
