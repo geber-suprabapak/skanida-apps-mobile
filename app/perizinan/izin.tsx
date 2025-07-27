@@ -801,11 +801,9 @@ export default function PerizinanScreen() {
                     const { selection } = event.nativeEvent;
                     if (selection.end === description.length) {
                       // If cursor is at the end, ensure it stays visible
-                      setTimeout(() => {
-                        descriptionInputRef.current?.setNativeProps({
-                          selection: { start: description.length, end: description.length }
-                        });
-                      }, 50);
+                      descriptionInputRef.current?.setNativeProps({
+                        selection: { start: description.length, end: description.length }
+                      });
                     }
                   }}
                 />
