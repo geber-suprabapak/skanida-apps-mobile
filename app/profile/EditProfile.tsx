@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
-  Image,
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,6 +16,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { Avatar } from "~/components/ui/avatar";
+import { H3, P, Small, Muted } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
@@ -434,7 +435,7 @@ export default function EditProfile() {
           headerShown: false,
         }}
       />
-      
+
       {/* Header */}
       <View
         className={`flex-row items-center p-4 border-b ${
@@ -449,11 +450,7 @@ export default function EditProfile() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <User
-          size={24}
-          color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          className="mr-3"
-        />
+        
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -478,14 +475,14 @@ export default function EditProfile() {
             }`}
           >
             <View className="items-center">
-              <Text
-                className={`text-lg font-semibold mb-6 ${
+              <H3
+                className={`mb-6 ${
                   isDarkColorScheme ? "text-white" : "text-gray-900"
                 }`}
               >
                 Foto Profil
-              </Text>
-              
+              </H3>
+
               <View className="relative mb-6">
                 {uploadingAvatar ? (
                   <View
@@ -517,25 +514,14 @@ export default function EditProfile() {
                         borderRadius: 64,
                       }}
                     >
-                      {avatarUrl ? (
-                        <Image
-                          source={{ uri: avatarUrl }}
-                          className="w-32 h-32 rounded-full"
-                        />
-                      ) : (
-                        <View
-                          className={`w-32 h-32 rounded-full items-center justify-center ${
-                            isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
-                          }`}
-                        >
-                          <User
-                            size={48}
-                            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                          />
-                        </View>
-                      )}
+                      <Avatar
+                        source={avatarUrl || undefined}
+                        fallback={user?.user_metadata?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                        size="lg"
+                        className="w-32 h-32"
+                      />
                     </View>
-                    
+
                     <TouchableOpacity
                       className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-3"
                       onPress={pickImage}
@@ -553,13 +539,13 @@ export default function EditProfile() {
                 )}
               </View>
 
-              <Text
-                className={`text-sm text-center ${
+              <Small
+                className={`text-center ${
                   isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                 }`}
               >
                 Ketuk ikon kamera untuk mengubah foto profil
-              </Text>
+              </Small>
             </View>
           </Card>
         </View>
@@ -573,23 +559,23 @@ export default function EditProfile() {
                 : "bg-white border-gray-200"
             }`}
           >
-            <Text
-              className={`text-lg font-semibold mb-3 ${
+            <H3
+              className={`mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Informasi Pribadi
-            </Text>
-            
+            </H3>
+
             <View className="space-y-3">
               <View>
-                <Text
-                  className={`text-sm font-medium mb-1 ${
+                <Small
+                  className={`font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   Nama Lengkap
-                </Text>
+                </Small>
                 <Input
                   placeholder="Masukkan nama lengkap"
                   value={name}
@@ -603,13 +589,13 @@ export default function EditProfile() {
               </View>
 
               <View>
-                <Text
-                  className={`text-sm font-medium mb-1 ${
+                <Small
+                  className={`font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   Email
-                </Text>
+                </Small>
                 <Input
                   placeholder="Masukkan alamat email"
                   value={email}
@@ -636,23 +622,23 @@ export default function EditProfile() {
                 : "bg-white border-gray-200"
             }`}
           >
-            <Text
-              className={`text-lg font-semibold mb-3 ${
+            <H3
+              className={`mb-3 ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
               Informasi Akademik
-            </Text>
-            
+            </H3>
+
             <View className="space-y-3">
               <View>
-                <Text
-                  className={`text-sm font-medium mb-1 ${
+                <Small
+                  className={`font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   Nomor Absen
-                </Text>
+                </Small>
                 <Input
                   placeholder="Masukkan nomor absen"
                   value={absenceNumber}
@@ -667,13 +653,13 @@ export default function EditProfile() {
               </View>
 
               <View>
-                <Text
-                  className={`text-sm font-medium mb-1 ${
+                <Small
+                  className={`font-medium mb-1 ${
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   Kelas
-                </Text>
+                </Small>
                 <Input
                   placeholder="Masukkan kelas"
                   value={className}
@@ -729,7 +715,7 @@ export default function EditProfile() {
                 </Text>
               )}
             </Button>
-            
+
             <Button
               variant="outline"
               size="default"

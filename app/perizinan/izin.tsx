@@ -537,30 +537,23 @@ export default function PerizinanScreen() {
       <SafeAreaView
         className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
       >
-        {/* Modern Header with Shadow */}
+        {/* Header */}
         <View
-          className={`flex-row items-center px-6 py-4 ${
+          className={`flex-row items-center p-4 border-b ${
             isDarkColorScheme
-              ? "bg-gray-800 border-b border-gray-700 shadow-lg"
-              : "bg-white border-b border-gray-200 shadow-sm"
+              ? "border-gray-700 bg-gray-900"
+              : "border-gray-200 bg-white"
           }`}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className={`mr-4 p-2 rounded-full ${
-              isDarkColorScheme
-                ? "bg-gray-700 hover:bg-gray-600"
-                : "bg-gray-100 hover:bg-gray-200"
-            }`}
-          >
+          <TouchableOpacity onPress={() => router.back()} className="mr-3">
             <ChevronLeft
-              size={22}
-              color={isDarkColorScheme ? "#fff" : "#374151"}
+              size={24}
+              color={isDarkColorScheme ? "#ffffff" : "#000000"}
             />
           </TouchableOpacity>
           <View className="flex-1">
             <Text
-              className={`text-xl font-bold ${
+              className={`text-lg font-bold ${
                 isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >

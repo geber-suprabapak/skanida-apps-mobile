@@ -118,11 +118,7 @@ export default function ChangePassword() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <Key
-          size={24}
-          color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          className="mr-3"
-        />
+        
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -223,8 +219,7 @@ export default function ChangePassword() {
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                    style={{ marginTop: -10 }}
+                    className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
                       <EyeOff
@@ -265,8 +260,7 @@ export default function ChangePassword() {
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                    style={{ marginTop: -10 }}
+                    className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
                       <EyeOff
@@ -318,8 +312,7 @@ export default function ChangePassword() {
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                    style={{ marginTop: -10 }}
+                    className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
                       <EyeOff

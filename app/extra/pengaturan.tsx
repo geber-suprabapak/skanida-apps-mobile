@@ -315,7 +315,7 @@ function Pengaturan() {
           headerShown: false,
         }}
       />
-      
+
       {/* Header */}
       <View
         className={`flex-row items-center p-4 border-b ${
@@ -330,11 +330,7 @@ function Pengaturan() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <Settings
-          size={24}
-          color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          className="mr-3"
-        />
+        
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-gray-900"
@@ -365,7 +361,7 @@ function Pengaturan() {
             >
               Profil Pengguna
             </Text>
-            
+
             {/* Profile Header */}
             <View className="flex-row items-center mb-4">
               {profileAvatarUrl ? (
@@ -406,7 +402,7 @@ function Pengaturan() {
                   </Text>
                 </View>
               )}
-              
+
               <View className="flex-1 ml-4">
                 <Text
                   className={`text-lg font-bold ${
@@ -422,7 +418,7 @@ function Pengaturan() {
                 >
                   {user?.email || "Tidak ada email"}
                 </Text>
-                
+
                 <TouchableOpacity
                   onPress={handleCopyId}
                   className={`self-start mt-2 px-3 py-1.5 rounded-full ${
@@ -469,7 +465,7 @@ function Pengaturan() {
             >
               Pengaturan Akun
             </Text>
-            
+
             <View className="space-y-0">
               <TouchableOpacity
                 className={`flex-row items-center p-3 rounded-t-lg border-b ${
@@ -572,12 +568,12 @@ function Pengaturan() {
             >
               Preferensi
             </Text>
-            
+
             <View className="space-y-0">
               <View
                 className={`flex-row items-center p-3 rounded-t-lg border-b ${
-                  isDarkColorScheme 
-                    ? "bg-gray-700/30 border-gray-700" 
+                  isDarkColorScheme
+                    ? "bg-gray-700/30 border-gray-700"
                     : "bg-gray-50 border-gray-100"
                 }`}
               >
@@ -681,7 +677,7 @@ function Pengaturan() {
             >
               Akun
             </Text>
-            
+
             <Button
               size="default"
               onPress={handleLogout}
@@ -720,7 +716,7 @@ function Pengaturan() {
             >
               Informasi Aplikasi
             </Text>
-            
+
             <View className="space-y-3">
               <View>
                 <Text

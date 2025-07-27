@@ -118,10 +118,7 @@ export default function Riwayat() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        <History
-          size={24}
-          className={`mr-3 ${isDarkColorScheme ? "text-white" : "text-black"}`}
-        />
+        
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-foreground"
