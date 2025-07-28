@@ -255,14 +255,13 @@ const useOptimizedMonthlyAttendance = (userId: string, year: number, month: numb
   const fetchData = useCallback(async (forceRefresh: boolean = false) => {
     if (!userId) return;
 
-    // Avoid duplicate requests
+    // Avoid duplicate requests for the same month unless force refresh
     const currentRequest = { userId, year, month };
-    if (lastFetchRef.current &&
+    if (!forceRefresh && lastFetchRef.current &&
         lastFetchRef.current.userId === currentRequest.userId &&
         lastFetchRef.current.year === currentRequest.year &&
-        lastFetchRef.current.month === currentRequest.month &&
-        !forceRefresh) {
-      console.log('Skipping duplicate request');
+        lastFetchRef.current.month === currentRequest.month) {
+      console.log('Skipping duplicate request for same month');
       return;
     }
 
@@ -282,7 +281,7 @@ const useOptimizedMonthlyAttendance = (userId: string, year: number, month: numb
 
       let cachedData: Record<string, AttendanceRecord> | null = null;
 
-      // Try cache first (unless forcing refresh)
+      // Skip cache check if force refresh is requested
       if (!forceRefresh) {
         cachedData = await fetchFromCache();
         if (cachedData) {
@@ -294,6 +293,7 @@ const useOptimizedMonthlyAttendance = (userId: string, year: number, month: numb
       }
 
       // Fetch from server
+      console.log(`🌐 Fetching fresh data for ${year}-${month + 1}${forceRefresh ? ' (force refresh)' : ''}`);
       const serverData = await fetchFromServer(signal);
 
       if (!signal.aborted) {
@@ -302,13 +302,15 @@ const useOptimizedMonthlyAttendance = (userId: string, year: number, month: numb
     } catch (error) {
       if (!signal?.aborted) {
         console.error('Error in fetchData:', error);
-        // Fallback to cache if server fails
-        const cachedData = await fetchFromCache();
-        if (cachedData) {
-          setData(cachedData);
-          console.log('📱 Using stale cache due to server error');
-        } else {
-          setData({});
+        // Fallback to cache if server fails and we don't have data yet
+        if (Object.keys(data).length === 0) {
+          const cachedData = await fetchFromCache();
+          if (cachedData) {
+            setData(cachedData);
+            console.log('📱 Using stale cache due to server error');
+          } else {
+            setData({});
+          }
         }
       }
     } finally {
@@ -316,7 +318,7 @@ const useOptimizedMonthlyAttendance = (userId: string, year: number, month: numb
         setLoading(false);
       }
     }
-  }, [userId, year, month, fetchFromCache, fetchFromServer]);
+  }, [userId, year, month, fetchFromCache, fetchFromServer, data]);
 
   // Prefetch adjacent months
   const prefetchAdjacentMonths = useCallback(async () => {

@@ -26,6 +26,7 @@ import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
+import { attendanceCache } from "~/utils/attendanceCache";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
@@ -386,7 +387,19 @@ export default function Dashboard() {
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
-  const navigateToHistory = () => router.push("/extra/riwayat");
+  const navigateToHistory = async () => {
+    try {
+      // Force refresh current month cache before navigating
+      if (user?.id) {
+        await attendanceCache.forceRefreshCurrentMonth(user.id);
+      }
+      router.push("/extra/riwayat");
+    } catch (error) {
+      console.error('Error preparing riwayat navigation:', error);
+      // Still navigate even if cache refresh fails
+      router.push("/extra/riwayat");
+    }
+  };
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
 

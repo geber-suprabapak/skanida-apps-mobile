@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 
 import { Text } from "~/components/ui/text";
 import AttendanceCalendar, { AttendanceCalendarRef } from "~/components/ui/attendance-calendar";
@@ -17,6 +18,7 @@ import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Calendar } from "~/lib/icons/Calendar";
 import { Settings } from "~/lib/icons/Settings";
 import { History } from "~/lib/icons/History";
+import { RefreshCw } from "~/lib/icons/RefreshCw";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
@@ -24,10 +26,49 @@ export default function Riwayat() {
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isFocused = useIsFocused();
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const calendarRef = useRef<AttendanceCalendarRef>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh when screen becomes focused
+  useEffect(() => {
+    if (isFocused && user?.id) {
+      const autoRefresh = async () => {
+        try {
+          // Clear cache for current and selected months for fresh data
+          const currentDate = new Date();
+          const selectedYear = selectedDate.getFullYear();
+          const selectedMonth = selectedDate.getMonth();
+          const currentYear = currentDate.getFullYear();
+          const currentMonth = currentDate.getMonth();
+
+          // Clear cache for both current and selected months
+          await Promise.all([
+            attendanceCache.invalidate(user.id, currentYear, currentMonth),
+            selectedYear !== currentYear || selectedMonth !== currentMonth
+              ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
+              : Promise.resolve()
+          ]);
+
+          // Trigger calendar refresh
+          if (calendarRef.current) {
+            await calendarRef.current.refetch(true);
+          }
+
+          console.log('📅 Auto-refreshed riwayat data on focus');
+        } catch (error) {
+          console.error('Error auto-refreshing riwayat:', error);
+        }
+      };
+
+      // Small delay to ensure screen is fully loaded
+      const timeoutId = setTimeout(autoRefresh, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isFocused, user?.id, selectedDate]);
 
   // Handle back button
   useEffect(() => {
@@ -83,23 +124,44 @@ export default function Riwayat() {
 
   // Force refresh function for manual data refresh
   const forceRefresh = async () => {
+    if (isRefreshing) return; // Prevent double-refresh
+    
+    setIsRefreshing(true);
     try {
       if (user?.id) {
-        // Clear cache first
-        await attendanceCache.invalidateUser(user.id);
-        // Then trigger calendar refetch with force refresh
+        // Clear cache for selected month first for instant feedback
+        const selectedYear = selectedDate.getFullYear();
+        const selectedMonth = selectedDate.getMonth();
+        
+        await attendanceCache.invalidate(user.id, selectedYear, selectedMonth);
+        
+        // Trigger calendar refetch with force refresh
         if (calendarRef.current) {
           await calendarRef.current.refetch(true);
         }
+        
+        console.log('🔄 Manual refresh completed');
       }
     } catch (error) {
       console.error("Error force refreshing:", error);
+      Alert.alert("Error", "Failed to refresh data. Please try again.");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
-  // Date change handler for custom picker
-  const handleDateChange = (date: Date) => {
+  // Optimized date change handler
+  const handleDateChange = async (date: Date) => {
     setSelectedDate(date);
+    
+    // Pre-clear cache for the new month to ensure fresh data
+    if (user?.id) {
+      try {
+        await attendanceCache.invalidate(user.id, date.getFullYear(), date.getMonth());
+      } catch (error) {
+        console.error('Error clearing cache for new date:', error);
+      }
+    }
   };
 
   return (
@@ -159,14 +221,16 @@ export default function Riwayat() {
           </TouchableOpacity>
         )}
         
-        {/* Force refresh button */}
+        {/* Force refresh button with loading state */}
         <TouchableOpacity
           onPress={forceRefresh}
-          className="ml-3"
+          className={`ml-3 ${isRefreshing ? 'opacity-50' : ''}`}
+          disabled={isRefreshing}
         >
-          <History
+          <RefreshCw
             size={20}
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
+            className={isRefreshing ? 'animate-spin' : ''}
           />
         </TouchableOpacity>
       </View>
