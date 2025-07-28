@@ -429,6 +429,12 @@ export default function PerizinanScreen() {
       return;
     }
 
+    if (!imageData) {
+      logger.warn("Upload attempted without required photo");
+      Alert.alert("Error", "Foto bukti wajib dilampirkan untuk pengajuan izin.");
+      return;
+    }
+
     try {
       setUploading(true);
       logger.debug("Upload state set to true");
@@ -575,18 +581,18 @@ export default function PerizinanScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Category Selection Card */}
           <Card
-            className={`mb-6 ${
+            className={`mb-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
           >
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View
                   className={`mr-3 p-2 rounded-lg ${
@@ -619,12 +625,12 @@ export default function PerizinanScreen() {
               </View>
             </CardHeader>
             <CardContent>
-              <View className="flex-row space-x-4">
+              <View className="flex-row space-x-6">
                 {(["sakit", "pergi"] as const).map((catValue) => (
                   <TouchableOpacity
                     key={catValue}
                     onPress={() => setCategory(catValue)}
-                    className={`flex-1 p-4 rounded-xl border-2 ${
+                    className={`flex-1 p-3 rounded-xl border-2 ${
                       category === catValue
                         ? isDarkColorScheme
                           ? "bg-blue-900 border-blue-500"
@@ -636,7 +642,7 @@ export default function PerizinanScreen() {
                   >
                     <View className="items-center">
                       <View
-                        className={`mb-2 p-3 rounded-full ${
+                        className={`mb-2 p-2 rounded-full ${
                           category === catValue
                             ? isDarkColorScheme
                               ? "bg-blue-800"
@@ -648,7 +654,7 @@ export default function PerizinanScreen() {
                       >
                         {catValue === "sakit" ? (
                           <AlertCircle
-                            size={24}
+                            size={20}
                             color={
                               category === catValue
                                 ? isDarkColorScheme
@@ -661,7 +667,7 @@ export default function PerizinanScreen() {
                           />
                         ) : (
                           <ClipboardPenLine
-                            size={24}
+                            size={20}
                             color={
                               category === catValue
                                 ? isDarkColorScheme
@@ -675,7 +681,7 @@ export default function PerizinanScreen() {
                         )}
                       </View>
                       <Text
-                        className={`font-semibold text-center ${
+                        className={`font-semibold text-center text-sm ${
                           category === catValue
                             ? isDarkColorScheme
                               ? "text-blue-300"
@@ -710,13 +716,13 @@ export default function PerizinanScreen() {
           </Card>
           {/* Description Card */}
           <Card
-            className={`mb-6 ${
+            className={`mb-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
           >
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View
                   className={`mr-3 p-2 rounded-lg ${
@@ -762,7 +768,7 @@ export default function PerizinanScreen() {
               >
                 <TextInput
                   ref={descriptionInputRef}
-                  className={`min-h-[120px] max-h-[200px] text-base border-0 p-4 ${
+                  className={`min-h-[100px] max-h-[160px] text-base border-0 p-3 ${
                     isDarkColorScheme
                       ? "bg-transparent text-white placeholder-gray-400"
                       : "bg-transparent text-foreground placeholder-muted-foreground"
@@ -772,7 +778,7 @@ export default function PerizinanScreen() {
                   value={description}
                   onChangeText={setDescription}
                   textAlignVertical="top"
-                  numberOfLines={6}
+                  numberOfLines={5}
                   maxLength={500}
                   scrollEnabled={true}
                   autoCorrect={false}
@@ -781,14 +787,14 @@ export default function PerizinanScreen() {
                   style={{
                     textAlignVertical: "top",
                     lineHeight: 22,
-                    minHeight: 120,
-                    maxHeight: 200,
+                    minHeight: 100,
+                    maxHeight: 160,
                   }}
                   placeholderTextColor={isDarkColorScheme ? '#9CA3AF' : '#6B7280'}
                   onContentSizeChange={(event) => {
                     // Auto-scroll to bottom when content grows
                     const { height } = event.nativeEvent.contentSize;
-                    if (height > 120) {
+                    if (height > 100) {
                       // Use setNativeProps to scroll to end for multiline TextInput
                       descriptionInputRef.current?.setNativeProps({
                         text: description,
@@ -808,7 +814,7 @@ export default function PerizinanScreen() {
                   }}
                 />
               </View>
-              <View className="flex-row justify-between items-center mt-3">
+              <View className="flex-row justify-between items-center mt-2">
                 <Text
                   className={`text-xs ${
                     isDarkColorScheme ? "text-gray-400" : "text-gray-500"
@@ -834,13 +840,13 @@ export default function PerizinanScreen() {
           </Card>
           {/* Photo Upload Card */}
           <Card
-            className={`mb-6 ${
+            className={`mb-4 ${
               isDarkColorScheme
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
             } shadow-sm`}
           >
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View
                   className={`mr-3 p-2 rounded-lg ${
@@ -852,14 +858,14 @@ export default function PerizinanScreen() {
                     color={isDarkColorScheme ? "#A78BFA" : "#8B5CF6"}
                   />
                 </View>
-                <View className="flex-1">
+                <View>
                   <CardTitle>
                     <Text
                       className={`text-lg font-bold ${
                         isDarkColorScheme ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      Lampiran Foto
+                      Lampiran Foto *
                     </Text>
                   </CardTitle>
                   <Text
@@ -867,7 +873,7 @@ export default function PerizinanScreen() {
                       isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    Opsional - Tambahkan bukti pendukung
+                    Wajib - Tambahkan bukti pendukung
                   </Text>
                 </View>
                 {imageData && (
@@ -889,11 +895,11 @@ export default function PerizinanScreen() {
             </CardHeader>
             <CardContent>
               {!imageData ? (
-                <View className="space-y-4">
-                  <View className="flex-row space-x-3">
+                <View className="space-y-3">
+                  <View className="flex-row space-x-6">
                     <TouchableOpacity
                       onPress={pickFromCamera}
-                      className={`flex-1 p-4 rounded-xl border-2 border-dashed ${
+                      className={`flex-1 p-3 rounded-xl border-2 border-dashed ${
                         isDarkColorScheme
                           ? "border-gray-600 bg-gray-700/50"
                           : "border-gray-300 bg-gray-50"
@@ -901,17 +907,17 @@ export default function PerizinanScreen() {
                     >
                       <View className="items-center">
                         <View
-                          className={`mb-2 p-3 rounded-full ${
+                          className={`mb-2 p-2 rounded-full ${
                             isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
                           }`}
                         >
                           <Camera
-                            size={24}
+                            size={20}
                             color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                           />
                         </View>
                         <Text
-                          className={`font-medium text-center ${
+                          className={`font-medium text-center text-sm ${
                             isDarkColorScheme
                               ? "text-gray-300"
                               : "text-gray-700"
@@ -933,7 +939,7 @@ export default function PerizinanScreen() {
 
                     <TouchableOpacity
                       onPress={pickFromLibrary}
-                      className={`flex-1 p-4 rounded-xl border-2 border-dashed ${
+                      className={`flex-1 p-3 rounded-xl border-2 border-dashed ${
                         isDarkColorScheme
                           ? "border-gray-600 bg-gray-700/50"
                           : "border-gray-300 bg-gray-50"
@@ -941,17 +947,17 @@ export default function PerizinanScreen() {
                     >
                       <View className="items-center">
                         <View
-                          className={`mb-2 p-3 rounded-full ${
+                          className={`mb-2 p-2 rounded-full ${
                             isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
                           }`}
                         >
                           <ImageIcon
-                            size={24}
+                            size={20}
                             color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                           />
                         </View>
                         <Text
-                          className={`font-medium text-center ${
+                          className={`font-medium text-center text-sm ${
                             isDarkColorScheme
                               ? "text-gray-300"
                               : "text-gray-700"
@@ -976,15 +982,15 @@ export default function PerizinanScreen() {
                       isDarkColorScheme ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    Format: JPG, PNG • Maksimal 5MB
+                    Format: JPG, PNG • Maksimal 5MB • Wajib dilampirkan
                   </Text>
                 </View>
               ) : (
-                <View className="space-y-4">
+                <View className="space-y-3">
                   <View className="relative">
                     <Image
                       source={{ uri: imageData.uri }}
-                      className="w-full h-56 rounded-xl"
+                      className="w-full h-48 rounded-xl"
                       resizeMode="cover"
                     />
                     <View className="absolute inset-0 bg-black/10 rounded-xl" />
@@ -995,7 +1001,7 @@ export default function PerizinanScreen() {
                       } backdrop-blur-sm`}
                     >
                       <Trash2
-                        size={20}
+                        size={18}
                         color={isDarkColorScheme ? "#F87171" : "#EF4444"}
                       />
                     </TouchableOpacity>
@@ -1042,14 +1048,14 @@ export default function PerizinanScreen() {
                 : "bg-white border-gray-200"
             } shadow-sm`}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <TouchableOpacity
                 disabled={
-                  uploading || !description.trim() || description.length < 10
+                  uploading || !description.trim() || description.length < 10 || !imageData
                 }
                 onPress={uploadPermit}
-                className={`w-full p-4 rounded-xl flex-row items-center justify-center ${
-                  uploading || !description.trim() || description.length < 10
+                className={`w-full p-3 rounded-xl flex-row items-center justify-center ${
+                  uploading || !description.trim() || description.length < 10 || !imageData
                     ? isDarkColorScheme
                       ? "bg-gray-700"
                       : "bg-gray-300"
@@ -1082,7 +1088,7 @@ export default function PerizinanScreen() {
                     <ClipboardPenLine
                       size={20}
                       color={
-                        !description.trim() || description.length < 10
+                        !description.trim() || description.length < 10 || !imageData
                           ? isDarkColorScheme
                             ? "#6B7280"
                             : "#9CA3AF"
@@ -1092,7 +1098,7 @@ export default function PerizinanScreen() {
                     />
                     <Text
                       className={`font-bold text-base ${
-                        !description.trim() || description.length < 10
+                        !description.trim() || description.length < 10 || !imageData
                           ? isDarkColorScheme
                             ? "text-gray-400"
                             : "text-gray-500"
@@ -1105,10 +1111,10 @@ export default function PerizinanScreen() {
                 )}
               </TouchableOpacity>
 
-              {/* Validation Message */}
+              {/* Validation Messages */}
               {!description.trim() && (
                 <Text
-                  className={`text-xs text-center mt-3 ${
+                  className={`text-xs text-center mt-2 ${
                     isDarkColorScheme ? "text-red-400" : "text-red-500"
                   }`}
                 >
@@ -1117,16 +1123,25 @@ export default function PerizinanScreen() {
               )}
               {description.trim() && description.length < 10 && (
                 <Text
-                  className={`text-xs text-center mt-3 ${
+                  className={`text-xs text-center mt-2 ${
                     isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
                   }`}
                 >
                   ⚠️ Deskripsi minimal 10 karakter
                 </Text>
               )}
-              {description.trim() && description.length >= 10 && (
+              {!imageData && description.trim() && description.length >= 10 && (
                 <Text
-                  className={`text-xs text-center mt-3 ${
+                  className={`text-xs text-center mt-2 ${
+                    isDarkColorScheme ? "text-red-400" : "text-red-500"
+                  }`}
+                >
+                  ⚠️ Foto bukti wajib dilampirkan
+                </Text>
+              )}
+              {description.trim() && description.length >= 10 && imageData && (
+                <Text
+                  className={`text-xs text-center mt-2 ${
                     isDarkColorScheme ? "text-green-400" : "text-green-600"
                   }`}
                 >
