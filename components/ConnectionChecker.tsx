@@ -5,7 +5,7 @@ import React, {
   useContext,
   useState,
 } from "react";
-import { Alert, BackHandler } from "react-native";
+import { Alert } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 
 interface ConnectionCheckerProps {
@@ -44,17 +44,6 @@ export default function ConnectionChecker({
     console.log("🔍 ConnectionChecker starting...");
     isMounted.current = true;
 
-    // Add a simple test to verify alert works
-    const testAlert = () => {
-      console.log("🧪 Test alert function");
-      Alert.alert("Test", "ConnectionChecker is working!", [
-        { text: "OK", onPress: () => console.log("Test alert dismissed") },
-      ]);
-    };
-
-    // Call test alert after 3 seconds (REMOVE THIS AFTER TESTING)
-    setTimeout(testAlert, 3000);
-
     const showOfflineAlert = () => {
       if (!isMounted.current || isShowingAlert.current) {
         console.log("⚠️ Alert skipped - unmounted or already showing");
@@ -81,26 +70,19 @@ export default function ConnectionChecker({
                   type: state.type,
                 });
                 const isConnected =
-                  state.isConnected && state.isInternetReachable;
+                  state.isConnected === true &&
+                  (state.isInternetReachable === true ||
+                    state.isInternetReachable === null);
                 if (!isConnected) {
-                  // Still offline, show alert again
+                  // Still offline, show alert again immediately
                   console.log("❌ Still offline, showing alert again");
                   setTimeout(() => {
                     if (isMounted.current) showOfflineAlert();
-                  }, 500);
+                  }, 300);
                 } else {
                   console.log("✅ Connection restored!");
                 }
               });
-            },
-          },
-          {
-            text: "Keluar",
-            style: "destructive",
-            onPress: () => {
-              console.log("❌ User clicked 'Keluar'");
-              isShowingAlert.current = false;
-              BackHandler.exitApp();
             },
           },
         ],
@@ -122,7 +104,10 @@ export default function ConnectionChecker({
           details: state.details,
         });
 
-        const isConnected = state.isConnected && state.isInternetReachable;
+        const isConnected =
+          state.isConnected === true &&
+          (state.isInternetReachable === true ||
+            state.isInternetReachable === null);
         const connectionType = state.type || "unknown";
 
         // Update connection state
@@ -135,20 +120,22 @@ export default function ConnectionChecker({
         // Show alert if offline on initial load
         if (!isConnected) {
           console.log("🚨 No connection detected on initial load");
-          // Use longer delay to ensure everything is mounted properly
+          // Show alert immediately on app start if no internet
           setTimeout(() => {
             if (isMounted.current) {
               console.log("🚨 About to show initial offline alert");
               showOfflineAlert();
             }
-          }, 2000); // Increased delay
+          }, 1000); // Reduced delay for faster response
         } else {
           console.log("✅ Connection available on initial load");
         }
       } catch (error) {
         console.error("❌ Error checking initial connection:", error);
-        // If we can't check connection, assume offline
-        setTimeout(() => showOfflineAlert(), 2000);
+        // If we can't check connection, assume offline and show alert
+        setTimeout(() => {
+          if (isMounted.current) showOfflineAlert();
+        }, 1000);
       }
     };
 
@@ -160,14 +147,25 @@ export default function ConnectionChecker({
         isConnected: state.isConnected,
         isInternetReachable: state.isInternetReachable,
         type: state.type,
+        details: state.details,
       });
 
-      const isConnected = state.isConnected && state.isInternetReachable;
+      const isConnected =
+        state.isConnected === true &&
+        (state.isInternetReachable === true ||
+          state.isInternetReachable === null);
       const connectionType = state.type || "unknown";
 
       console.log("🔍 Computed connection status:", {
         isConnected,
         connectionType,
+        rawIsConnected: state.isConnected,
+        rawIsInternetReachable: state.isInternetReachable,
+        networkType: state.type,
+        isWifi: state.type === "wifi",
+        isCellular: state.type === "cellular",
+        isEthernet: state.type === "ethernet",
+        isUnknown: state.type === "unknown",
       });
 
       // Update connection state
@@ -180,12 +178,17 @@ export default function ConnectionChecker({
       // Check connection and show alert if offline
       if (!isConnected) {
         console.log("🚨 Connection lost, showing alert");
-        if (isMounted.current) {
+        console.log("🚨 Alert conditions check:", {
+          isMounted: isMounted.current,
+          isShowingAlert: isShowingAlert.current,
+          willShowAlert: isMounted.current && !isShowingAlert.current,
+        });
+        if (isMounted.current && !isShowingAlert.current) {
           showOfflineAlert();
         }
       } else {
         console.log("✅ Connection restored");
-        // Connection restored, close any existing alert
+        // Connection restored, reset alert flag
         isShowingAlert.current = false;
       }
     });
