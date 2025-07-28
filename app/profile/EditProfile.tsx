@@ -184,7 +184,7 @@ export default function EditProfile() {
 
   // Handle hardware back button
   useEffect(() => {
-    const backAction = async () => {
+    const backAction = () => {
       // Check if profile is required (by checking if name is empty)
       const isProfileRequired = !profileData?.full_name && !name;
 
@@ -215,12 +215,12 @@ export default function EditProfile() {
             {
               text: "Tinggalkan",
               style: "destructive",
-              onPress: () => router.navigate("/"),
+              onPress: () => router.back(),
             },
           ],
         );
       } else {
-        router.navigate("/");
+        router.back();
       }
       return true; // Prevent default behavior
     };
@@ -426,9 +426,8 @@ export default function EditProfile() {
         {
           text: "OK",
           onPress: () => {
-            // Navigate directly to Dashboard instead of using back
-            // This avoids navigation stack issues
-            router.navigate("/");
+            // Navigate back to the previous screen
+            router.back();
           },
         },
       ]);
@@ -498,12 +497,12 @@ export default function EditProfile() {
                   {
                     text: "Tinggalkan",
                     style: "destructive",
-                    onPress: () => router.navigate("/"),
+                    onPress: () => router.back(),
                   },
                 ],
               );
             } else {
-              router.navigate("/");
+              router.back();
             }
           }}
           className="mr-3"
