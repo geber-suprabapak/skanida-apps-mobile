@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   ScrollView,
@@ -48,6 +48,10 @@ interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;
   currentYear?: number;
   currentMonth?: number;
+}
+
+export interface AttendanceCalendarRef {
+  refetch: (forceRefresh?: boolean) => Promise<void>;
 }
 
 // ========== UTILS ==========
@@ -163,13 +167,13 @@ const useOptimizedMonthlyAttendance = (userId: string, year: number, month: numb
         .gte("date", startDate)
         .lte("date", endDate);
 
-      // Fetch leave requests with abort signal
+      // Fetch leave requests with abort signal - using proper timestamp filtering
       const leavePromise = supabase
         .from("perizinan")
         .select("id, tanggal, kategori_izin, deskripsi, link_foto, approval_status")
         .eq("user_id", userId)
-        .gte("tanggal", startDate)
-        .lte("tanggal", endDate);
+        .gte("tanggal", `${startDate}T00:00:00.000Z`)
+        .lt("tanggal", `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`);
 
       // Execute both queries in parallel
       const [attendanceResult, leaveResult] = await Promise.all([
@@ -803,11 +807,11 @@ const DetailCard = ({
 };
 
 // ========== MAIN COMPONENT ==========
-export default function AttendanceCalendar({
+const AttendanceCalendar = forwardRef<AttendanceCalendarRef, AttendanceCalendarProps>(({
   isDarkColorScheme,
   currentYear: propYear,
   currentMonth: propMonth
-}: AttendanceCalendarProps) {
+}, ref) => {
   const user = useAuthStore((state: any) => state.user);
   const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
@@ -826,6 +830,16 @@ export default function AttendanceCalendar({
 
   // Fetch monthly attendance data with optimized caching
   const monthlyAttendance = useOptimizedMonthlyAttendance(user?.id || "", displayYear, displayMonth);
+
+  // Expose refetch method via ref
+  useImperativeHandle(ref, () => ({
+    refetch: (forceRefresh: boolean = false) => {
+      if (user?.id && typeof monthlyAttendance.refetch === 'function') {
+        return monthlyAttendance.refetch(forceRefresh);
+      }
+      return Promise.resolve();
+    }
+  }), [user?.id, monthlyAttendance.refetch]);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -1044,4 +1058,8 @@ export default function AttendanceCalendar({
       )}
     </ScrollView>
   );
-}
+});
+
+AttendanceCalendar.displayName = 'AttendanceCalendar';
+
+export default AttendanceCalendar;

@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   TouchableOpacity,
@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
 import { Text } from "~/components/ui/text";
-import AttendanceCalendar from "~/components/ui/attendance-calendar";
+import AttendanceCalendar, { AttendanceCalendarRef } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
@@ -27,6 +27,7 @@ export default function Riwayat() {
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const calendarRef = useRef<AttendanceCalendarRef>(null);
 
   // Handle back button
   useEffect(() => {
@@ -72,9 +73,27 @@ export default function Riwayat() {
       if (user?.id) {
         await attendanceCache.invalidateUser(user.id);
         Alert.alert("✅ Success", "Cache cleared successfully");
+        // Force refresh the calendar after clearing cache
+        window.location?.reload?.(); // For web
       }
     } catch (error) {
       Alert.alert("❌ Error", "Failed to clear cache");
+    }
+  };
+
+  // Force refresh function for manual data refresh
+  const forceRefresh = async () => {
+    try {
+      if (user?.id) {
+        // Clear cache first
+        await attendanceCache.invalidateUser(user.id);
+        // Then trigger calendar refetch with force refresh
+        if (calendarRef.current) {
+          await calendarRef.current.refetch(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error force refreshing:", error);
     }
   };
 
@@ -139,6 +158,17 @@ export default function Riwayat() {
             />
           </TouchableOpacity>
         )}
+        
+        {/* Force refresh button */}
+        <TouchableOpacity
+          onPress={forceRefresh}
+          className="ml-3"
+        >
+          <History
+            size={20}
+            color={isDarkColorScheme ? "#ffffff" : "#000000"}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Month/Year Selector */}
@@ -160,9 +190,11 @@ export default function Riwayat() {
 
       {/* Calendar Component */}
       <AttendanceCalendar
+        ref={calendarRef}
         isDarkColorScheme={isDarkColorScheme}
         currentYear={selectedDate.getFullYear()}
         currentMonth={selectedDate.getMonth()}
+        key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
       />
     </SafeAreaView>
   );

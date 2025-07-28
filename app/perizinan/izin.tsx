@@ -407,6 +407,47 @@ export default function PerizinanScreen() {
     logger.debug("Form reset completed");
   };
 
+  // Check if user has already submitted izin today
+  const checkTodayIzin = async (userId: string): Promise<boolean> => {
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+      logger.debug("Checking today's izin submissions", {
+        userId,
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+      });
+
+      const { data, error } = await supabase
+        .from("perizinan")
+        .select("id, tanggal")
+        .eq("user_id", userId)
+        .gte("tanggal", startOfDay.toISOString())
+        .lt("tanggal", endOfDay.toISOString());
+
+      if (error) {
+        logger.error("Error checking today's izin", error);
+        // If there's an error checking, allow submission to not block users
+        return false;
+      }
+
+      const hasSubmittedToday = data && data.length > 0;
+      logger.info("Today's izin check result", {
+        hasSubmittedToday,
+        submissionCount: data?.length || 0,
+        submissions: data,
+      });
+
+      return hasSubmittedToday;
+    } catch (error) {
+      logger.error("Unexpected error checking today's izin", error);
+      // If there's an unexpected error, allow submission
+      return false;
+    }
+  };
+
   const uploadPermit = async (): Promise<void> => {
     const startTime = Date.now();
     logger.info("Starting permit upload process", {
@@ -432,6 +473,20 @@ export default function PerizinanScreen() {
     if (!imageData) {
       logger.warn("Upload attempted without required photo");
       Alert.alert("Error", "Foto bukti wajib dilampirkan untuk pengajuan izin.");
+      return;
+    }
+
+    // Check if user has already submitted izin today
+    logger.debug("Checking if user has already submitted izin today");
+    const hasSubmittedToday = await checkTodayIzin(user.id);
+    
+    if (hasSubmittedToday) {
+      logger.warn("Upload attempted but user has already submitted izin today");
+      Alert.alert(
+        "Izin Sudah Diajukan",
+        "Anda sudah mengajukan izin hari ini. Hanya dapat mengajukan satu izin per hari.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
