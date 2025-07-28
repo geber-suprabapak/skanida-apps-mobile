@@ -5,7 +5,7 @@ import React, {
   useContext,
   useState,
 } from "react";
-import { Alert } from "react-native";
+import { Alert, BackHandler } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 
 interface ConnectionCheckerProps {
@@ -16,6 +16,7 @@ interface ConnectionContextType {
   isConnected: boolean;
   isInternetReachable: boolean;
   connectionType: string;
+  toggleForceOffline?: () => void;
 }
 
 const ConnectionContext = createContext<ConnectionContextType>({
@@ -31,6 +32,9 @@ export default function ConnectionChecker({
 }: ConnectionCheckerProps) {
   const isShowingAlert = useRef(false);
   const isMounted = useRef(false);
+  const hasShownAlphaAlert = useRef(false);
+  const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
+  const [forceOffline, setForceOffline] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionContextType>(
     {
       isConnected: false,
@@ -38,6 +42,13 @@ export default function ConnectionChecker({
       connectionType: "unknown",
     },
   );
+
+  const toggleForceOffline = () => {
+    if (__DEV__) {
+      console.log("Toggling force offline");
+      setForceOffline((prev) => !prev);
+    }
+  };
 
   useEffect(() => {
     console.log("🔍 ConnectionChecker mounted");
@@ -72,7 +83,8 @@ export default function ConnectionChecker({
                 const isConnected =
                   state.isConnected === true &&
                   (state.isInternetReachable === true ||
-                    state.isInternetReachable === null);
+                    state.isInternetReachable === null) &&
+                  !forceOffline;
                 if (!isConnected) {
                   // Still offline, show alert again immediately
                   console.log("❌ Still offline, showing alert again");
@@ -81,14 +93,33 @@ export default function ConnectionChecker({
                   }, 300);
                 } else {
                   console.log("✅ Connection restored!");
+                  // If connection is restored, show the alpha alert
+                  showAlphaReleaseAlert();
+                  setIsInitialCheckDone(true);
                 }
               });
             },
+          },
+          {
+            text: "Keluar",
+            onPress: () => BackHandler.exitApp(),
+            style: "destructive",
           },
         ],
         {
           cancelable: false, // Prevent dismissing without action
         },
+      );
+    };
+
+    const showAlphaReleaseAlert = () => {
+      if (hasShownAlphaAlert.current) return;
+      hasShownAlphaAlert.current = true;
+      Alert.alert(
+        "🚧 Alpha Release",
+        "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+        [{ text: "Saya Mengerti", style: "default" }],
+        { cancelable: true },
       );
     };
 
@@ -107,12 +138,13 @@ export default function ConnectionChecker({
         const isConnected =
           state.isConnected === true &&
           (state.isInternetReachable === true ||
-            state.isInternetReachable === null);
+            state.isInternetReachable === null) &&
+          !forceOffline;
         const connectionType = state.type || "unknown";
 
         // Update connection state
         setConnectionState({
-          isConnected: !!state.isConnected,
+          isConnected: !!state.isConnected && !forceOffline,
           isInternetReachable: !!state.isInternetReachable,
           connectionType,
         });
@@ -129,6 +161,8 @@ export default function ConnectionChecker({
           }, 1000); // Reduced delay for faster response
         } else {
           console.log("✅ Connection available on initial load");
+          showAlphaReleaseAlert();
+          setIsInitialCheckDone(true);
         }
       } catch (error) {
         console.error("❌ Error checking initial connection:", error);
@@ -153,7 +187,8 @@ export default function ConnectionChecker({
       const isConnected =
         state.isConnected === true &&
         (state.isInternetReachable === true ||
-          state.isInternetReachable === null);
+          state.isInternetReachable === null) &&
+        !forceOffline;
       const connectionType = state.type || "unknown";
 
       console.log("🔍 Computed connection status:", {
@@ -170,7 +205,7 @@ export default function ConnectionChecker({
 
       // Update connection state
       setConnectionState({
-        isConnected: !!state.isConnected,
+        isConnected: !!state.isConnected && !forceOffline,
         isInternetReachable: !!state.isInternetReachable,
         connectionType,
       });
@@ -190,6 +225,12 @@ export default function ConnectionChecker({
         console.log("✅ Connection restored");
         // Connection restored, reset alert flag
         isShowingAlert.current = false;
+        if (isMounted.current && !hasShownAlphaAlert.current) {
+          showAlphaReleaseAlert();
+        }
+        if (!isInitialCheckDone) {
+          setIsInitialCheckDone(true);
+        }
       }
     });
 
@@ -200,11 +241,13 @@ export default function ConnectionChecker({
       isShowingAlert.current = false;
       unsubscribe();
     };
-  }, []);
+  }, [isInitialCheckDone, forceOffline]);
 
   return (
-    <ConnectionContext.Provider value={connectionState}>
-      {children}
+    <ConnectionContext.Provider
+      value={{ ...connectionState, toggleForceOffline }}
+    >
+      {isInitialCheckDone ? children : null}
     </ConnectionContext.Provider>
   );
 }
