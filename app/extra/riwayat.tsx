@@ -1,11 +1,5 @@
-/* eslint-disable prettier/prettier */
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  TouchableOpacity,
-  BackHandler,
-  Alert,
-} from "react-native";
+import { View, TouchableOpacity, BackHandler, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
@@ -38,7 +32,7 @@ export default function Riwayat() {
         }
         return false;
       } catch (error) {
-        console.error('Error in back press handler:', error);
+        console.error("Error in back press handler:", error);
         return false;
       }
     };
@@ -56,11 +50,11 @@ export default function Riwayat() {
       const stats = await attendanceCache.getCacheStats();
       Alert.alert(
         "📊 Cache Statistics",
-        `Total cached items: ${stats.totalItems}\nCache size: ${stats.totalSize}\nOldest: ${stats.oldestEntry || 'N/A'}\nNewest: ${stats.newestEntry || 'N/A'}`,
+        `Total cached items: ${stats.totalItems}\nCache size: ${stats.totalSize}\nOldest: ${stats.oldestEntry || "N/A"}\nNewest: ${stats.newestEntry || "N/A"}`,
         [
           { text: "Clear Cache", style: "destructive", onPress: clearCache },
-          { text: "Close", style: "cancel" }
-        ]
+          { text: "Close", style: "cancel" },
+        ],
       );
     } catch (error) {
       Alert.alert("Error", "Failed to get cache statistics");
@@ -108,7 +102,7 @@ export default function Riwayat() {
                 router.back();
               }
             } catch (error) {
-              console.error('Error navigating back:', error);
+              console.error("Error navigating back:", error);
             }
           }}
           className="mr-3"
