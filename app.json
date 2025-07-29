@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "0.3.0",
+    "version": "1.6.0-internal.1",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",
@@ -18,7 +18,15 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "skanida-apps-mobile",
+          "organization": "geber-suprabapak"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

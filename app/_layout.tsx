@@ -17,6 +17,29 @@ import ConnectionChecker from "~/components/ConnectionChecker";
 
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
+import * as Sentry from "@sentry/react-native";
+
+Sentry.init({
+  dsn: "https://a6b6f7f50d7448b1d36d85f74336a3e4@o4509587174522880.ingest.de.sentry.io/4509587182321744",
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [
+    Sentry.mobileReplayIntegration(),
+    Sentry.feedbackIntegration(),
+  ],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+  _experiments: { enableLogs: true },
+});
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -32,7 +55,7 @@ export {
   ErrorBoundary,
 } from "expo-router";
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const hasMounted = React.useRef(false);
   const { isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
@@ -68,7 +91,7 @@ export default function RootLayout() {
       </ThemeProvider>
     </SafeAreaProvider>
   );
-}
+});
 
 // Untuk support server-side rendering di web
 const useIsomorphicLayoutEffect =

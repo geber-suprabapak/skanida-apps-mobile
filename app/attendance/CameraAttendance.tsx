@@ -727,11 +727,21 @@ const CameraAttendance = () => {
           photoUrl,
         });
 
-        Alert.alert(
-          "Sukses",
-          `Absensi (${reason}) berhasil disimpan! Foto terkirim dalam ${(totalTime / 1000).toFixed(1)} detik.`,
-          [{ text: "OK", onPress: () => router.replace("/Dashboard") }],
-        );
+        // Navigate back to dashboard with success parameters
+        const currentTime = new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        router.replace({
+          pathname: "/Dashboard",
+          params: {
+            showSuccessPopup: "true",
+            attendanceType: locationData.absenceType,
+            successTime: currentTime,
+            processingTime: totalTime.toString(),
+          },
+        });
       } catch (error: any) {
         logger.error("Enhanced photo processing and upload failed", error);
 
