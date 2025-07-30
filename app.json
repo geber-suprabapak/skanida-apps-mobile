@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "1.0.0-cbt-internal.1",
+    "version": "1.6.0-internal.1",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",
@@ -40,9 +40,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hfzrk.skanidaappsmobile"

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
+import { LockIcon } from "~/lib/icons/LockIcon";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -19,6 +20,8 @@ import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Key } from "~/lib/icons/Key";
 import { Eye } from "~/lib/icons/Eye";
 import { EyeOff } from "~/lib/icons/EyeOff";
+import { Card } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 
 export default function ChangePassword() {
   const router = useRouter();
@@ -93,301 +96,324 @@ export default function ChangePassword() {
   };
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
     >
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
-      {/* Custom Header */}
+
+      {/* Header */}
       <View
-        className={`flex-row items-center px-6 py-4 border-b ${
+        className={`flex-row items-center p-4 border-b ${
           isDarkColorScheme
             ? "border-gray-700 bg-gray-900"
-            : "border-border bg-background"
+            : "border-gray-200 bg-white"
         }`}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4 p-1">
+        <TouchableOpacity onPress={() => router.back()} className="mr-3">
           <ChevronLeft
             size={24}
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
+
         <Text
-          className={`text-lg font-bold ${
-            isDarkColorScheme ? "text-white" : "text-foreground"
+          className={`text-lg font-bold flex-1 ${
+            isDarkColorScheme ? "text-white" : "text-gray-900"
           }`}
         >
           Ubah Password
         </Text>
       </View>
-      <View className="flex-1">
-        <ScrollView
-          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-          contentContainerStyle={{
-            paddingHorizontal: 24,
-            paddingTop: 24,
-            paddingBottom: 60,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Main Card */}
-          <View
-            className={`rounded-xl p-6 shadow-sm ${
-              isDarkColorScheme ? "bg-gray-800" : "bg-card"
+
+      <ScrollView
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Security Info Section */}
+        <View className="px-6 pt-6 pb-4">
+          <Card
+            className={`p-6 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
             }`}
           >
-            {/* Header Icon */}
-            <View className="items-center mb-8">
+            <View className="items-center">
               <View
-                className={`w-20 h-20 rounded-full ${
-                  isDarkColorScheme ? "bg-gray-700" : "bg-accent"
+                className={`w-16 h-16 rounded-full ${
+                  isDarkColorScheme ? "bg-blue-600" : "bg-blue-500"
                 } justify-center items-center mb-4`}
+                style={{
+                  shadowColor: "#3B82F6",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 6,
+                }}
               >
-                <Key
-                  size={36}
-                  color={isDarkColorScheme ? "#ffffff" : "#000000"}
-                />
+                <LockIcon size={24} color="#ffffff" />
               </View>
+
               <Text
-                className={`text-xl font-bold text-center ${
-                  isDarkColorScheme ? "text-white" : "text-card-foreground"
+                className={`text-xl font-bold text-center mb-2 ${
+                  isDarkColorScheme ? "text-white" : "text-gray-900"
                 }`}
               >
                 Keamanan Akun
               </Text>
+
               <Text
-                className={`text-sm text-center mt-2 px-4 leading-5 ${
-                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+                className={`text-sm text-center leading-5 ${
+                  isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                Pastikan password baru Anda aman dan mudah diingat
+                Pastikan password baru Anda aman dan mudah diingat. Gunakan
+                kombinasi huruf, angka, dan simbol.
               </Text>
             </View>
-            {/* Form Fields */}
+          </Card>
+        </View>
+
+        {/* Password Form Section */}
+        <View className="px-6 mb-6">
+          <Card
+            className={`p-6 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-6 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Ubah Password
+            </Text>
+
             <View className="space-y-5">
               {/* Current Password */}
               <View>
                 <Text
                   className={`text-sm font-medium mb-2 ${
-                    isDarkColorScheme ? "text-white" : "text-card-foreground"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
-                  Password Lama
+                  Password Saat Ini
                 </Text>
-                <View
-                  className={`flex-row items-center border rounded-xl px-4 py-4 ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-border bg-background"
-                  }`}
-                >
-                  <TextInput
-                    className={`flex-1 text-base ${
-                      isDarkColorScheme
-                        ? "text-white placeholder:text-gray-400"
-                        : "text-foreground placeholder:text-muted-foreground"
-                    }`}
+                <View className="relative">
+                  <Input
                     placeholder="Masukkan password lama"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
                     secureTextEntry={!showAllPasswords}
                     autoCapitalize="none"
+                    className={`pr-12 ${
+                      isDarkColorScheme
+                        ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                        : "border-gray-300 bg-white placeholder:text-gray-500"
+                    }`}
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
-                    className="ml-3 p-1"
+                    className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
                       <EyeOff
                         size={20}
-                        color={isDarkColorScheme ? "#ffffff" : "#000000"}
+                        color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                       />
                     ) : (
                       <Eye
                         size={20}
-                        color={isDarkColorScheme ? "#ffffff" : "#000000"}
+                        color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                       />
                     )}
                   </TouchableOpacity>
                 </View>
               </View>
+
               {/* New Password */}
               <View>
                 <Text
                   className={`text-sm font-medium mb-2 ${
-                    isDarkColorScheme ? "text-white" : "text-card-foreground"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   Password Baru
                 </Text>
-                <View
-                  className={`flex-row items-center border rounded-xl px-4 py-4 ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-border bg-background"
-                  }`}
-                >
-                  <TextInput
-                    className={`flex-1 text-base ${
-                      isDarkColorScheme
-                        ? "text-white placeholder:text-gray-400"
-                        : "text-foreground placeholder:text-muted-foreground"
-                    }`}
+                <View className="relative">
+                  <Input
                     placeholder="Masukkan password baru"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry={!showAllPasswords}
                     autoCapitalize="none"
+                    className={`pr-12 ${
+                      isDarkColorScheme
+                        ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                        : "border-gray-300 bg-white placeholder:text-gray-500"
+                    }`}
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
-                    className="ml-3 p-1"
+                    className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
                       <EyeOff
                         size={20}
-                        color={isDarkColorScheme ? "#ffffff" : "#000000"}
+                        color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                       />
                     ) : (
                       <Eye
                         size={20}
-                        color={isDarkColorScheme ? "#ffffff" : "#000000"}
+                        color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                       />
                     )}
                   </TouchableOpacity>
                 </View>
                 <Text
                   className={`text-xs mt-2 ${
-                    isDarkColorScheme
-                      ? "text-gray-400"
-                      : "text-muted-foreground"
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-600"
                   }`}
                 >
-                  Minimal 6 karakter
+                  Minimal 6 karakter untuk keamanan yang lebih baik
                 </Text>
               </View>
+
               {/* Confirm Password */}
               <View>
                 <Text
                   className={`text-sm font-medium mb-2 ${
-                    isDarkColorScheme ? "text-white" : "text-card-foreground"
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   Konfirmasi Password Baru
                 </Text>
-                <View
-                  className={`flex-row items-center border rounded-xl px-4 py-4 ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-border bg-background"
-                  }`}
-                >
-                  <TextInput
-                    className={`flex-1 text-base ${
-                      isDarkColorScheme
-                        ? "text-white placeholder:text-gray-400"
-                        : "text-foreground placeholder:text-muted-foreground"
-                    }`}
+                <View className="relative">
+                  <Input
                     placeholder="Ulangi password baru"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showAllPasswords}
                     autoCapitalize="none"
+                    className={`pr-12 ${
+                      isDarkColorScheme
+                        ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                        : "border-gray-300 bg-white placeholder:text-gray-500"
+                    } ${
+                      confirmPassword && newPassword !== confirmPassword
+                        ? "border-red-500"
+                        : ""
+                    }`}
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
-                    className="ml-3 p-1"
+                    className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
                       <EyeOff
                         size={20}
-                        color={isDarkColorScheme ? "#ffffff" : "#000000"}
+                        color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                       />
                     ) : (
                       <Eye
                         size={20}
-                        color={isDarkColorScheme ? "#ffffff" : "#000000"}
+                        color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
                       />
                     )}
                   </TouchableOpacity>
                 </View>
-              </View>
-            </View>
-            {/* Action Buttons */}
-            <View className="mt-8">
-              <Button
-                variant="default"
-                size="lg"
-                disabled={loading}
-                onPress={handleChangePassword}
-                className={`mb-4 w-full ${isDarkColorScheme ? "bg-white" : "bg-black"}`}
-              >
-                {loading ? (
-                  <View className="flex-row items-center justify-center">
-                    <ActivityIndicator
-                      size="small"
-                      color={isDarkColorScheme ? "#000" : "#fff"}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text
-                      className={
-                        isDarkColorScheme
-                          ? "text-black font-medium"
-                          : "text-white font-medium"
-                      }
-                    >
-                      Sedang menyimpan...
-                    </Text>
-                  </View>
-                ) : (
-                  <Text
-                    className={
-                      isDarkColorScheme
-                        ? "text-black font-medium"
-                        : "text-white font-medium"
-                    }
-                  >
-                    Simpan Password
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <Text className="text-xs mt-2 text-red-500">
+                    Password tidak cocok
                   </Text>
                 )}
-              </Button>
-              <Button
-                size="default"
-                onPress={() => router.back()}
-                disabled={loading}
-                className="w-full rounded-lg py-3 bg-red-600"
-              >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text className="text-white">Batal</Text>
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {/* Action Buttons Section */}
+        <View className="px-6">
+          <Card
+            className={`p-6 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Button
+              variant="default"
+              size="lg"
+              disabled={loading}
+              onPress={handleChangePassword}
+              className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
+              style={{
+                shadowColor: "#3B82F6",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
+              }}
+            >
+              {loading ? (
+                <View className="flex-row items-center justify-center">
+                  <ActivityIndicator
+                    size="small"
+                    color="#ffffff"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-white font-medium">
+                    Sedang menyimpan...
+                  </Text>
                 </View>
-              </Button>
-            </View>
-          </View>
-          {/* Footer */}
-          <View className="mt-8">
-            <View className="items-center">
+              ) : (
+                <Text className="text-white font-medium">Simpan Password</Text>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onPress={() => router.back()}
+              disabled={loading}
+              className={`w-full ${
+                isDarkColorScheme
+                  ? "border-gray-600 bg-transparent"
+                  : "border-gray-300 bg-transparent"
+              }`}
+            >
               <Text
-                className={`text-sm ${
-                  isDarkColorScheme ? "text-gray-500" : "text-gray-400"
-                }`}
+                className={
+                  isDarkColorScheme
+                    ? "text-gray-300 font-medium"
+                    : "text-gray-700 font-medium"
+                }
               >
-                © 2025 Skanida Apps
+                Batal
               </Text>
-            </View>
+            </Button>
+          </Card>
+        </View>
+
+        {/* Footer */}
+        <View className="px-6 pt-6">
+          <View className="items-center">
+            <Text
+              className={`text-xs ${
+                isDarkColorScheme ? "text-gray-500" : "text-gray-400"
+              }`}
+            >
+              © 2025 Skanida Apps - Keamanan adalah prioritas kami
+            </Text>
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

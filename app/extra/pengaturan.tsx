@@ -27,6 +27,8 @@ import { Moon } from "~/lib/icons/Moon";
 import { Bell } from "~/lib/icons/Bell";
 import { LogOut } from "~/lib/icons/LogOut";
 import { ChevronRight } from "~/lib/icons/ChevronRight";
+import { Settings } from "~/lib/icons/Settings";
+import { Card } from "~/components/ui/card";
 
 // Performance optimization utilities
 const prefetchProfileData = async (userId: string) => {
@@ -303,93 +305,24 @@ function Pengaturan() {
       setTimeout(() => setCopiedId(false), 2000); // Reset after 2 seconds
     }
   }, [user?.id]);
-  // Memoized components for better performance
-  const SectionHeader = useCallback(
-    ({ title }: { title: string }) => (
-      <Text
-        className={`text-sm font-medium mb-4 ${isDarkColorScheme ? "text-white" : "text-muted-foreground"}`}
-      >
-        {title}
-      </Text>
-    ),
-    [isDarkColorScheme],
-  );
-
-  const ListItem = ({
-    icon,
-    title,
-    subtitle,
-    rightElement,
-    onPress,
-    showBorder = true,
-  }: {
-    icon: React.ReactNode;
-    title: string;
-    subtitle?: string;
-    rightElement?: React.ReactNode;
-    onPress?: () => void;
-    showBorder?: boolean;
-  }) => (
-    <TouchableOpacity
-      className={`flex-row items-center py-3 ${
-        showBorder
-          ? `border-b ${isDarkColorScheme ? "border-gray-700" : "border-border"}`
-          : ""
-      }`}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      disabled={!onPress}
-    >
-      <View
-        className={`w-9 h-9 rounded-lg ${isDarkColorScheme ? "bg-gray-700" : "bg-accent"} justify-center items-center mr-3`}
-      >
-        {icon}
-      </View>
-      <View className="flex-1">
-        <Text
-          className={`text-base ${
-            isDarkColorScheme ? "text-white" : "text-card-foreground"
-          }`}
-        >
-          {title}
-        </Text>
-        {subtitle && (
-          <Text
-            className={`text-xs mt-1 ${
-              isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
-            }`}
-          >
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      {rightElement && typeof rightElement === "string" ? (
-        <Text className={isDarkColorScheme ? "text-white" : "text-foreground"}>
-          {rightElement}
-        </Text>
-      ) : (
-        <>{rightElement}</>
-      )}
-      {!rightElement && onPress && (
-        <ChevronRight
-          size={16}
-          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-        />
-      )}
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
     >
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
+
+      {/* Header */}
       <View
-        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-border bg-background"}`}
+        className={`flex-row items-center p-4 border-b ${
+          isDarkColorScheme
+            ? "border-gray-700 bg-gray-900"
+            : "border-gray-200 bg-white"
+        }`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
           <ChevronLeft
@@ -397,215 +330,435 @@ function Pengaturan() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
+
         <Text
-          className={`text-lg font-bold ${isDarkColorScheme ? "text-white" : "text-foreground"}`}
+          className={`text-lg font-bold flex-1 ${
+            isDarkColorScheme ? "text-white" : "text-gray-900"
+          }`}
         >
           Pengaturan
         </Text>
       </View>
+
       <ScrollView
-        className={`flex-1 pb-32 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
-        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 16 }}
       >
-        <View
-          key="profile-section"
-          className={`rounded-xl mx-5 mt-6 mb-6 p-6 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <SectionHeader title="Profil" />
-          {/* Profile Header */}
-          <View className="flex-row items-center mb-6">
-            {profileAvatarUrl ? (
-              <Image
-                source={{
-                  uri: profileAvatarUrl,
-                  cache: "force-cache", // Enable caching for better performance
-                }}
-                className="w-20 h-20 rounded-full mr-4 border-2 border-opacity-10"
-                defaultSource={undefined} // Prevent default image flashing
-                fadeDuration={200} // Smooth transition
-              />
-            ) : (
-              <View
-                className={`w-20 h-20 rounded-full ${isDarkColorScheme ? "bg-blue-600" : "bg-primary"} justify-center items-center mr-4 shadow-md`}
-              >
-                <Text className="text-2xl font-bold text-white">
-                  {(profileFullName || user?.email)?.charAt(0).toUpperCase() ||
-                    "U"}
-                </Text>
-              </View>
-            )}
-            <View className="flex-1">
-              <Text
-                className={`text-xl font-bold ${
-                  isDarkColorScheme ? "text-white" : "text-card-foreground"
-                }`}
-              >
-                {profileFullName || user?.email?.split("@")[0] || "Pengguna"}
-              </Text>
-              <Text
-                className={`text-sm mt-1 ${
-                  isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
-                }`}
-              >
-                {user?.email || "Tidak ada email"}
-              </Text>
-              <TouchableOpacity
-                onPress={handleCopyId}
-                className={`inline-flex self-start px-3 py-2 rounded-full mt-2 ${
-                  isDarkColorScheme ? "bg-gray-700" : "bg-accent"
-                } ${copiedId ? "bg-green-600" : ""}`}
-                activeOpacity={0.7}
-              >
+        {/* Profile Section */}
+        <View className="px-6 pt-4 pb-3">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Profil Pengguna
+            </Text>
+
+            {/* Profile Header */}
+            <View className="flex-row items-center mb-4">
+              {profileAvatarUrl ? (
+                <View
+                  style={{
+                    shadowColor: "#000000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                    borderRadius: 32,
+                  }}
+                >
+                  <Image
+                    source={{
+                      uri: profileAvatarUrl,
+                      cache: "force-cache",
+                    }}
+                    className="w-16 h-16 rounded-full"
+                  />
+                </View>
+              ) : (
+                <View
+                  className={`w-16 h-16 rounded-full ${
+                    isDarkColorScheme ? "bg-blue-600" : "bg-blue-500"
+                  } justify-center items-center`}
+                  style={{
+                    shadowColor: "#3B82F6",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  }}
+                >
+                  <Text className="text-xl font-bold text-white">
+                    {(profileFullName || user?.email)
+                      ?.charAt(0)
+                      .toUpperCase() || "U"}
+                  </Text>
+                </View>
+              )}
+
+              <View className="flex-1 ml-4">
                 <Text
-                  className={`text-xs font-medium ${
-                    copiedId
-                      ? "text-white"
-                      : isDarkColorScheme
-                        ? "text-gray-300"
-                        : "text-muted-foreground"
+                  className={`text-lg font-bold ${
+                    isDarkColorScheme ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  {copiedId
-                    ? "✓ Tersalin!"
-                    : `ID: ${user?.id?.substring(0, 8) || "Unknown"}`}
+                  {profileFullName || user?.email?.split("@")[0] || "Pengguna"}
                 </Text>
+                <Text
+                  className={`text-sm mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  {user?.email || "Tidak ada email"}
+                </Text>
+
+                <TouchableOpacity
+                  onPress={handleCopyId}
+                  className={`self-start mt-2 px-3 py-1.5 rounded-full ${
+                    copiedId
+                      ? "bg-green-500"
+                      : isDarkColorScheme
+                        ? "bg-gray-700"
+                        : "bg-gray-100"
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    className={`text-xs font-medium ${
+                      copiedId
+                        ? "text-white"
+                        : isDarkColorScheme
+                          ? "text-gray-300"
+                          : "text-gray-600"
+                    }`}
+                  >
+                    {copiedId
+                      ? "✓ ID Tersalin!"
+                      : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {/* Account Settings Section */}
+        <View className="px-6 mb-3">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Pengaturan Akun
+            </Text>
+
+            <View className="space-y-0">
+              <TouchableOpacity
+                className={`flex-row items-center p-3 rounded-t-lg border-b ${
+                  isDarkColorScheme
+                    ? "hover:bg-gray-700 active:bg-gray-700 border-gray-700"
+                    : "hover:bg-gray-50 active:bg-gray-50 border-gray-100"
+                }`}
+                onPress={navigateToEditProfile}
+                activeOpacity={0.7}
+              >
+                <View
+                  className={`w-8 h-8 rounded-lg ${
+                    isDarkColorScheme ? "bg-blue-600" : "bg-blue-100"
+                  } justify-center items-center mr-3`}
+                >
+                  <User
+                    size={16}
+                    color={isDarkColorScheme ? "#ffffff" : "#3b82f6"}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-base font-medium ${
+                      isDarkColorScheme ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    Edit Profil
+                  </Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Ubah nama dan foto profil
+                  </Text>
+                </View>
+                <ChevronRight
+                  size={18}
+                  color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`flex-row items-center p-3 rounded-b-lg ${
+                  isDarkColorScheme
+                    ? "hover:bg-gray-700 active:bg-gray-700"
+                    : "hover:bg-gray-50 active:bg-gray-50"
+                }`}
+                onPress={navigateToChangePassword}
+                activeOpacity={0.7}
+              >
+                <View
+                  className={`w-8 h-8 rounded-lg ${
+                    isDarkColorScheme ? "bg-green-600" : "bg-green-100"
+                  } justify-center items-center mr-3`}
+                >
+                  <Key
+                    size={16}
+                    color={isDarkColorScheme ? "#ffffff" : "#16a34a"}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-base font-medium ${
+                      isDarkColorScheme ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    Ubah Password
+                  </Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Perbarui kata sandi akun
+                  </Text>
+                </View>
+                <ChevronRight
+                  size={18}
+                  color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                />
               </TouchableOpacity>
             </View>
-          </View>
-
-          {/* Section Divider */}
-          <View
-            className={`border-b mb-4 ${isDarkColorScheme ? "border-gray-700" : "border-border"}`}
-          />
-          <SectionHeader title="Pengaturan Akun" />
-          <ListItem
-            icon={
-              <User
-                size={20}
-                color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              />
-            }
-            title="Edit Profil"
-            subtitle="Ubah nama dan foto profil"
-            onPress={navigateToEditProfile}
-          />
-
-          <ListItem
-            icon={
-              <Key
-                size={20}
-                color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              />
-            }
-            title="Ubah Password"
-            subtitle="Perbarui kata sandi akun"
-            onPress={navigateToChangePassword}
-            showBorder={false}
-          />
-        </View>
-        <View
-          key="preferences-section"
-          className={`rounded-xl mx-5 mb-6 p-6 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <SectionHeader title="Preferensi" />
-          {/* DarkMode Handler */}
-          <ListItem
-            icon={
-              <Moon
-                size={20}
-                color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              />
-            }
-            title="Mode Gelap"
-            subtitle="Tampilan gelap untuk mata"
-            rightElement={
-              <Switch
-                value={isDarkColorScheme}
-                onValueChange={toggleColorScheme}
-                trackColor={{
-                  false: isDarkColorScheme ? "#374151" : "hsl(var(--muted))",
-                  true: "#3b82f6",
-                }}
-                thumbColor={isDarkColorScheme ? "#fff" : "#f4f3f4"}
-              />
-            }
-          />
-
-          <ListItem
-            icon={
-              <Bell
-                size={20}
-                color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              />
-            }
-            title="Send Test Errors to Sentry"
-            subtitle="Send errors to Sentry for testing purposes"
-            onPress={() => {
-              Alert.alert("Error Sent");
-              throw new Error("Hello, again, Sentry!");
-            }}
-            showBorder={false}
-          />
+          </Card>
         </View>
 
-        <View
-          key="account-section"
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <SectionHeader title="Akun" />
-          <Button
-            size="default"
-            onPress={handleLogout}
-            className="w-full rounded-lg py-4 bg-red-600 hover:bg-red-700"
+        {/* Preferences Section */}
+        <View className="px-6 mb-3">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
           >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <LogOut size={20} color="#ffffff" style={{ marginRight: 8 }} />
-              <Text className="text-white font-medium">Keluar dari Akun</Text>
+            <Text
+              className={`text-lg font-semibold mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Lain-Lain
+            </Text>
+
+            <View className="space-y-0">
+              <View
+                className={`flex-row items-center p-3 rounded-t-lg border-b ${
+                  isDarkColorScheme
+                    ? "bg-gray-700/30 border-gray-700"
+                    : "bg-gray-50 border-gray-100"
+                }`}
+              >
+                <View
+                  className={`w-8 h-8 rounded-lg ${
+                    isDarkColorScheme ? "bg-purple-600" : "bg-purple-100"
+                  } justify-center items-center mr-3`}
+                >
+                  <Moon
+                    size={16}
+                    color={isDarkColorScheme ? "#ffffff" : "#7c3aed"}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-base font-medium ${
+                      isDarkColorScheme ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    Mode Gelap
+                  </Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Tampilan gelap untuk kenyamanan mata
+                  </Text>
+                </View>
+                <Switch
+                  value={isDarkColorScheme}
+                  onValueChange={toggleColorScheme}
+                  trackColor={{
+                    false: isDarkColorScheme ? "#374151" : "#e5e7eb",
+                    true: "#3b82f6",
+                  }}
+                  thumbColor={isDarkColorScheme ? "#fff" : "#f9fafb"}
+                />
+              </View>
+
+              <TouchableOpacity
+                className={`flex-row items-center p-3 rounded-b-lg ${
+                  isDarkColorScheme
+                    ? "hover:bg-gray-700 active:bg-gray-700"
+                    : "hover:bg-gray-50 active:bg-gray-50"
+                }`}
+                onPress={() => {
+                  Alert.alert(
+                    "Test Error",
+                    "Mengirim error ke Sentry untuk testing",
+                  );
+                  throw new Error("Hello, again, Sentry!");
+                }}
+                activeOpacity={0.7}
+              >
+                <View
+                  className={`w-8 h-8 rounded-lg ${
+                    isDarkColorScheme ? "bg-orange-600" : "bg-orange-100"
+                  } justify-center items-center mr-3`}
+                >
+                  <Bell
+                    size={16}
+                    color={isDarkColorScheme ? "#ffffff" : "#ea580c"}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-base font-medium ${
+                      isDarkColorScheme ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    Test Error Reporting
+                  </Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Kirim error ke Sentry untuk testing
+                  </Text>
+                </View>
+                <ChevronRight
+                  size={18}
+                  color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
+                />
+              </TouchableOpacity>
             </View>
-          </Button>
+          </Card>
         </View>
 
-        <View
-          key="appinfo-section"
-          className={`rounded-xl mx-5 mb-5 p-5 shadow-sm ${isDarkColorScheme ? "bg-gray-800" : "bg-card"}`}
-        >
-          <SectionHeader title="Informasi Aplikasi" />
+        {/* Logout Section */}
+        <View className="px-6 mb-3">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Akun
+            </Text>
 
-          <View className="py-2">
-            <Text
-              className={`text-sm ${
-                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
-              }`}
+            <Button
+              size="default"
+              onPress={handleLogout}
+              className="w-full bg-red-500 hover:bg-red-600"
+              style={{
+                shadowColor: "#ef4444",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
             >
-              Versi Aplikasi
-            </Text>
-            <Text
-              className={`mt-1 ${
-                isDarkColorScheme ? "text-white" : "text-card-foreground"
-              }`}
-            >
-              Version 1.0.0-cbt.1 | Internal Build
-            </Text>
-          </View>
+              <View className="flex-row items-center">
+                <LogOut size={18} color="#ffffff" className="mr-2" />
+                <Text className="text-white font-medium">Keluar dari Akun</Text>
+              </View>
+            </Button>
+          </Card>
+        </View>
 
-          <View className="py-2 mt-2">
+        {/* App Info Section */}
+        <View className="px-6">
+          <Card
+            className={`p-4 ${
+              isDarkColorScheme
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+          >
             <Text
-              className={`text-sm ${
-                isDarkColorScheme ? "text-gray-400" : "text-muted-foreground"
+              className={`text-lg font-semibold mb-3 ${
+                isDarkColorScheme ? "text-white" : "text-gray-900"
               }`}
             >
-              © 2025 Skanida Apps
+              Informasi Aplikasi
             </Text>
-            <Text
-              className={`mt-1 ${
-                isDarkColorScheme ? "text-white" : "text-card-foreground"
-              }`}
-            >
-              Semua hak dilindungi tuhan
-            </Text>
-          </View>
+
+            <View className="space-y-3">
+              <View>
+                <Text
+                  className={`text-sm font-medium ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Versi Aplikasi
+                </Text>
+                <Text
+                  className={`text-base ${
+                    isDarkColorScheme ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  Version 1.6.0-internal.1
+                </Text>
+              </View>
+
+              <View
+                className={`pt-3 border-t ${
+                  isDarkColorScheme ? "border-gray-700" : "border-gray-200"
+                }`}
+              >
+                <Text
+                  className={`text-sm ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  © 2025 Skanida Apps
+                </Text>
+                <Text
+                  className={`text-sm ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  Semua hak dilindungi undang-undang
+                </Text>
+              </View>
+            </View>
+          </Card>
         </View>
       </ScrollView>
     </SafeAreaView>

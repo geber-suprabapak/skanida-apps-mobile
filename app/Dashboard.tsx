@@ -1,6 +1,6 @@
 // app/Dashboard.tsx
 import { format } from "date-fns";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
@@ -21,6 +23,7 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -62,6 +65,7 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
@@ -71,14 +75,74 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
-  // Beta alert on dashboard open
+
+  // Success popup state
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successData, setSuccessData] = useState<{
+    attendanceType: "present" | "home";
+    time: string;
+    processingTime?: number;
+  } | null>(null);
+
+  // Handle success popup from navigation params
   useEffect(() => {
-    Alert.alert(
-      "🚧 Alpha Release",
-      "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
-      [{ text: "Saya Mengerti", style: "default" }],
-      { cancelable: true },
-    );
+    if (
+      params.showSuccessPopup === "true" &&
+      params.attendanceType &&
+      params.successTime
+    ) {
+      setSuccessData({
+        attendanceType: params.attendanceType as "present" | "home",
+        time: params.successTime as string,
+        processingTime: params.processingTime
+          ? parseInt(params.processingTime as string)
+          : undefined,
+      });
+      setShowSuccessPopup(true);
+
+      // Clear params to prevent popup from showing again
+      router.setParams({
+        showSuccessPopup: undefined,
+        attendanceType: undefined,
+        successTime: undefined,
+        processingTime: undefined,
+      });
+    }
+  }, [params, router]);
+
+  // Show alpha release popup only once
+  useEffect(() => {
+    const showAlphaReleaseAlert = async () => {
+      try {
+        const hasSeenAlert = await AsyncStorage.getItem(
+          "alpha_release_alert_shown",
+        );
+
+        if (!hasSeenAlert) {
+          Alert.alert(
+            "🚧 Alpha Release",
+            "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
+            [
+              {
+                text: "Saya Mengerti",
+                style: "default",
+                onPress: async () => {
+                  await AsyncStorage.setItem(
+                    "alpha_release_alert_shown",
+                    "true",
+                  );
+                },
+              },
+            ],
+            { cancelable: false },
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to check/set alpha release alert flag:", error);
+      }
+    };
+
+    showAlphaReleaseAlert();
   }, []);
 
   useEffect(() => {
@@ -196,6 +260,16 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Handle success popup close
+  const handleSuccessPopupClose = useCallback(() => {
+    setShowSuccessPopup(false);
+    setSuccessData(null);
+    // Refresh attendance data after successful attendance
+    if (isFocused) {
+      fetchAttendanceData();
+    }
+  }, [isFocused, fetchAttendanceData]);
+
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
     try {
@@ -220,38 +294,43 @@ export default function Dashboard() {
   // Check if user has completed their profile
   const checkProfileCompleteness = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name")
         .eq("user_id", user.id)
         .single();
-        
+
       if (error && error.code !== "PGRST116") {
         console.error("Error checking profile completeness:", error.message);
         return;
       }
-      
+
       // If profile doesn't exist or full_name is not set, redirect to edit profile
       if (!data || !data.full_name) {
         Alert.alert(
           "Profil Belum Lengkap",
           "Silahkan lengkapi profil Anda terlebih dahulu sebelum menggunakan aplikasi.",
-          [{ 
-            text: "OK", 
-            onPress: () => {
-              // Navigate to EditProfile instead of replace to avoid navigation stack issues
-              router.navigate("/profile/EditProfile");
-            }
-          }]
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Navigate to EditProfile instead of replace to avoid navigation stack issues
+                router.navigate("/profile/EditProfile");
+              },
+            },
+          ],
         );
         return false; // Return false to indicate profile is incomplete
       }
-      
+
       return true; // Return true to indicate profile is complete
     } catch (err: any) {
-      console.error("Exception during profile completeness check:", err.message);
+      console.error(
+        "Exception during profile completeness check:",
+        err.message,
+      );
       return false; // Return false on error
     }
   }, [user, router]);
@@ -265,8 +344,14 @@ export default function Dashboard() {
     } else if (!user) {
       setProfileData(null);
     }
-  }, [user, isFocused, fetchProfileData, fetchAttendanceData, checkProfileCompleteness]);
-  
+  }, [
+    user,
+    isFocused,
+    fetchProfileData,
+    fetchAttendanceData,
+    checkProfileCompleteness,
+  ]);
+
   // Check profile completeness on focus
   useFocusEffect(
     useCallback(() => {
@@ -279,18 +364,18 @@ export default function Dashboard() {
           }
         }
       };
-      
+
       checkAndRedirect();
-      
+
       return () => {
         // Cleanup if needed
       };
-    }, [user, checkProfileCompleteness, router])
+    }, [user, checkProfileCompleteness, router]),
   );
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName = profileData?.full_name || "Pengguna"; 
+  const displayName = profileData?.full_name || "Pengguna";
 
   // Get user's avatar URL from profile data or from metadata
   const avatarUrl =
@@ -519,7 +604,7 @@ export default function Dashboard() {
                       <Text
                         className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
                       >
-                        Total Jam Kerja
+                        Total Jam Di Sekolah
                       </Text>
                     </View>
                     <Text
@@ -573,6 +658,7 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
+
             <View className="flex-row space-x-3 gap-2">
               <TouchableOpacity
                 onPress={navigateToHistory}
@@ -661,12 +747,23 @@ export default function Dashboard() {
           }`}
         >
           <Text
-            className={`text-xs font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
+            className={`text-s font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
           >
-            v1.0.0-cbt.1 | Internal Build 
+            v1.6.0-internal.1 | Branch: develop
           </Text>
         </View>
       </SafeAreaView>
+
+      {/* Success Popup */}
+      {successData && (
+        <AttendanceSuccessPopup
+          visible={showSuccessPopup}
+          onClose={handleSuccessPopupClose}
+          attendanceType={successData.attendanceType}
+          time={successData.time}
+          processingTime={successData.processingTime}
+        />
+      )}
     </>
   );
 }

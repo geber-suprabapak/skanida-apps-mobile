@@ -13,6 +13,7 @@ import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import LoadingScreen from "./auth/LoadingScreen";
+import ConnectionChecker from "~/components/ConnectionChecker";
 
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
@@ -79,12 +80,14 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-        <StatusBar
-          style={isDarkColorScheme ? "light" : "dark"}
-          backgroundColor="transparent"
-          translucent={Platform.OS === "android"}
-        />
-        <Stack />
+        <ConnectionChecker>
+          <StatusBar
+            style={isDarkColorScheme ? "light" : "dark"}
+            backgroundColor="transparent"
+            translucent={Platform.OS === "android"}
+          />
+          <Stack />
+        </ConnectionChecker>
       </ThemeProvider>
     </SafeAreaProvider>
   );
