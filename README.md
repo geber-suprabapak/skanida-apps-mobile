@@ -3,13 +3,7 @@
   
   <h1>📱 Skanida Apps Mobile</h1>
   <p><strong>Sistem Absensi Pintar untuk SMKN 2 Kota Magelang</strong></p>
-  
-  <p align="center">
-    <img src="https://img.shields.io/badge/TypeScript-95.5%25-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-    <img src="https://img.shields.io/badge/CSS-2.4%25-1572B6?style=for-the-badge&logo=css3&logoColor=white" alt="CSS">
-    <img src="https://img.shields.io/badge/JavaScript-1.2%25-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript">
-  </p>
-  
+    
   <p align="center">
     <img src="https://img.shields.io/badge/React_Native-0.79.2-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native">
     <img src="https://img.shields.io/badge/Expo-53.0.9-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo">
