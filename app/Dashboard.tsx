@@ -26,6 +26,7 @@ import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
+import { attendanceCache } from "~/utils/attendanceCache";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
@@ -203,9 +204,10 @@ export default function Dashboard() {
       // Fetch leave requests for today
       const { data: leaveRequests } = await supabase
         .from("perizinan")
-        .select("approval_status, kategori_izin")
+        .select("approval_status, kategori_izin, status")
         .eq("user_id", user.id)
-        .eq("tanggal", today);
+        .gte("tanggal", `${today}T00:00:00.000Z`)
+        .lt("tanggal", `${today}T23:59:59.999Z`);
 
       let hasCheckedIn = false;
       let hasCheckedOut = false;
@@ -213,7 +215,17 @@ export default function Dashboard() {
       let checkOutTime = "";
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
-      if (todayAttendance && todayAttendance.length > 0) {
+      // Check for leave requests first (they take priority)
+      if (leaveRequests && leaveRequests.length > 0) {
+        // Check if there's any leave request for today (any submitted request counts)
+        const hasLeaveRequest = leaveRequests.length > 0;
+        if (hasLeaveRequest) {
+          todayStatus = "leave";
+        }
+      }
+
+      // Only check attendance if no leave request exists
+      if (todayStatus !== "leave" && todayAttendance && todayAttendance.length > 0) {
         todayAttendance.forEach((record) => {
           if (record.status === "Hadir" || record.status === "Datang") {
             hasCheckedIn = true;
@@ -229,16 +241,8 @@ export default function Dashboard() {
         }
       }
 
-      if (leaveRequests && leaveRequests.length > 0) {
-        const approvedLeave = leaveRequests.find(
-          (req) => req.approval_status === "approved",
-        );
-        if (approvedLeave) {
-          todayStatus = "leave";
-        }
-      }
-
-      if (!hasCheckedIn && !leaveRequests?.length) {
+      // If no attendance and no leave request, mark as absent
+      if (todayStatus === "pending" && (!todayAttendance?.length && !leaveRequests?.length)) {
         todayStatus = "absent";
       }
 
@@ -383,7 +387,19 @@ export default function Dashboard() {
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
-  const navigateToHistory = () => router.push("/extra/riwayat");
+  const navigateToHistory = async () => {
+    try {
+      // Force refresh current month cache before navigating
+      if (user?.id) {
+        await attendanceCache.forceRefreshCurrentMonth(user.id);
+      }
+      router.push("/extra/riwayat");
+    } catch (error) {
+      console.error('Error preparing riwayat navigation:', error);
+      // Still navigate even if cache refresh fails
+      router.push("/extra/riwayat");
+    }
+  };
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
 
@@ -424,7 +440,11 @@ export default function Dashboard() {
           textColor: "text-white",
         };
       case "leave":
-        return { color: "bg-blue-500", text: "Izin", textColor: "text-white" };
+        return { 
+          color: "bg-yellow-500", 
+          text: "Izin", 
+          textColor: "text-white" 
+        };
       case "absent":
         return {
           color: "bg-red-500",

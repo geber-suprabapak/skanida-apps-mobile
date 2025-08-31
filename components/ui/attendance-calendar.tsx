@@ -1,10 +1,5 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+/* eslint-disable prettier/prettier */
+import React, { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   ScrollView,
@@ -53,6 +48,10 @@ interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;
   currentYear?: number;
   currentMonth?: number;
+}
+
+export interface AttendanceCalendarRef {
+  refetch: (forceRefresh?: boolean) => Promise<void>;
 }
 
 // ========== UTILS ==========
@@ -166,40 +165,36 @@ const useOptimizedMonthlyAttendance = (
       const lastDay = new Date(year, month + 1, 0).getDate();
       const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-      try {
-        console.log(
-          `🔄 Fetching attendance data for ${year}-${month + 1} from server...`,
-        );
+    try {
+      console.log(`🔄 Fetching attendance data for ${year}-${month + 1} from server...`);
 
-        // Fetch attendance records with abort signal
-        const attendancePromise = supabase
-          .from("absences")
-          .select("id, date, status, reason, photo_url, created_at")
-          .eq("user_id", userId)
-          .gte("date", startDate)
-          .lte("date", endDate);
+      // Fetch attendance records with abort signal
+      const attendancePromise = supabase
+        .from("absences")
+        .select("id, date, status, reason, photo_url, created_at")
+        .eq("user_id", userId)
+        .gte("date", startDate)
+        .lte("date", endDate);
 
-        // Fetch leave requests with abort signal
-        const leavePromise = supabase
-          .from("perizinan")
-          .select(
-            "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
-          )
-          .eq("user_id", userId)
-          .gte("tanggal", startDate)
-          .lte("tanggal", endDate);
+      // Fetch leave requests with abort signal - using proper timestamp filtering
+      const leavePromise = supabase
+        .from("perizinan")
+        .select("id, tanggal, kategori_izin, deskripsi, link_foto, approval_status")
+        .eq("user_id", userId)
+        .gte("tanggal", `${startDate}T00:00:00.000Z`)
+        .lt("tanggal", `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`);
 
-        // Execute both queries in parallel
-        const [attendanceResult, leaveResult] = await Promise.all([
-          attendancePromise,
-          leavePromise,
-        ]);
+      // Execute both queries in parallel
+      const [attendanceResult, leaveResult] = await Promise.all([
+        attendancePromise,
+        leavePromise
+      ]);
 
-        // Check if request was aborted
-        if (signal?.aborted) {
-          console.log("Request aborted");
-          return {};
-        }
+      // Check if request was aborted
+      if (signal?.aborted) {
+        console.log('Request aborted');
+        return {};
+      }
 
         if (attendanceResult.error) throw attendanceResult.error;
         if (leaveResult.error) throw leaveResult.error;
@@ -277,18 +272,22 @@ const useOptimizedMonthlyAttendance = (
     async (forceRefresh: boolean = false) => {
       if (!userId) return;
 
-      // Avoid duplicate requests
-      const currentRequest = { userId, year, month };
-      if (
-        lastFetchRef.current &&
+    // Avoid duplicate requests for the same month unless force refresh
+    const currentRequest = { userId, year, month };
+    if (!forceRefresh && lastFetchRef.current &&
         lastFetchRef.current.userId === currentRequest.userId &&
         lastFetchRef.current.year === currentRequest.year &&
-        lastFetchRef.current.month === currentRequest.month &&
-        !forceRefresh
-      ) {
-        console.log("Skipping duplicate request");
-        return;
-      }
+        lastFetchRef.current.month === currentRequest.month) {
+      console.log('Skipping duplicate request for same month');
+      return;
+    }
+
+    lastFetchRef.current = currentRequest;
+
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
       lastFetchRef.current = currentRequest;
 
@@ -301,48 +300,43 @@ const useOptimizedMonthlyAttendance = (
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
-      try {
-        setLoading(true);
-
-        let cachedData: Record<string, AttendanceRecord> | null = null;
-
-        // Try cache first (unless forcing refresh)
-        if (!forceRefresh) {
-          cachedData = await fetchFromCache();
-          if (cachedData) {
-            setData(cachedData);
-            setLoading(false);
-            console.log(`📱 Using cached data for ${year}-${month + 1}`);
-            return;
-          }
+      // Skip cache check if force refresh is requested
+      if (!forceRefresh) {
+        cachedData = await fetchFromCache();
+        if (cachedData) {
+          setData(cachedData);
+          setLoading(false);
+          console.log(`📱 Using cached data for ${year}-${month + 1}`);
+          return;
         }
 
-        // Fetch from server
-        const serverData = await fetchFromServer(signal);
+      // Fetch from server
+      console.log(`🌐 Fetching fresh data for ${year}-${month + 1}${forceRefresh ? ' (force refresh)' : ''}`);
+      const serverData = await fetchFromServer(signal);
 
-        if (!signal.aborted) {
-          setData(serverData);
-        }
-      } catch (error) {
-        if (!signal?.aborted) {
-          console.error("Error in fetchData:", error);
-          // Fallback to cache if server fails
+      if (!signal.aborted) {
+        setData(serverData);
+      }
+    } catch (error) {
+      if (!signal?.aborted) {
+        console.error('Error in fetchData:', error);
+        // Fallback to cache if server fails and we don't have data yet
+        if (Object.keys(data).length === 0) {
           const cachedData = await fetchFromCache();
           if (cachedData) {
             setData(cachedData);
-            console.log("📱 Using stale cache due to server error");
+            console.log('📱 Using stale cache due to server error');
           } else {
             setData({});
           }
         }
-      } finally {
-        if (!signal?.aborted) {
-          setLoading(false);
-        }
       }
-    },
-    [userId, year, month, fetchFromCache, fetchFromServer],
-  );
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }, [userId, year, month, fetchFromCache, fetchFromServer, data]);
 
   // Prefetch adjacent months
   const prefetchAdjacentMonths = useCallback(async () => {
@@ -854,11 +848,11 @@ const DetailCard = ({
 };
 
 // ========== MAIN COMPONENT ==========
-export default function AttendanceCalendar({
+const AttendanceCalendar = forwardRef<AttendanceCalendarRef, AttendanceCalendarProps>(({
   isDarkColorScheme,
   currentYear: propYear,
-  currentMonth: propMonth,
-}: AttendanceCalendarProps) {
+  currentMonth: propMonth
+}, ref) => {
   const user = useAuthStore((state: any) => state.user);
   const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
@@ -887,6 +881,16 @@ export default function AttendanceCalendar({
     displayYear,
     displayMonth,
   );
+
+  // Expose refetch method via ref
+  useImperativeHandle(ref, () => ({
+    refetch: (forceRefresh: boolean = false) => {
+      if (user?.id && typeof monthlyAttendance.refetch === 'function') {
+        return monthlyAttendance.refetch(forceRefresh);
+      }
+      return Promise.resolve();
+    }
+  }), [user?.id, monthlyAttendance.refetch]);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -1184,4 +1188,8 @@ export default function AttendanceCalendar({
       )}
     </ScrollView>
   );
-}
+});
+
+AttendanceCalendar.displayName = 'AttendanceCalendar';
+
+export default AttendanceCalendar;
