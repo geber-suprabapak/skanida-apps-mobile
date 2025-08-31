@@ -183,34 +183,8 @@ pnpm start
           <br><sub>Dokumentasi lengkap proyek</sub>
         </a>
       </td>
-      <td align="center" width="33%">
-        <a href="https://github.com/geber-suprabapak/skanida-apps-mobile/issues">
-          <img src="https://img.icons8.com/fluency/64/bug.png" alt="Issues" width="48">
-          <br><strong>🐛 Laporan</strong>
-          <br><sub>Laporkan bug & fitur</sub>
-        </a>
-      </td>
-      <td align="center" width="33%">
-        <a href="https://github.com/geber-suprabapak/skanida-apps-mobile/discussions">
-          <img src="https://img.icons8.com/fluency/64/chat.png" alt="Discussions" width="48">
-          <br><strong>💭 Diskusi</strong>
-          <br><sub>Obrolan komunitas</sub>
-        </a>
-      </td>
     </tr>
   </table>
-</div>
-
----
-
-## ⭐ Tunjukkan Dukungan Anda
-
-<div align="center">
-  <p>Jika proyek ini membantu Anda, mohon pertimbangkan untuk memberinya ⭐!</p>
-  
-  <a href="https://github.com/geber-suprabapak/skanida-apps-mobile">
-    <img src="https://img.shields.io/badge/⭐_Beri_Bintang_repo_ini-FFD700?style=for-the-badge&logoColor=black" alt="Beri Bintang repo ini">
-  </a>
 </div>
 
 ---
