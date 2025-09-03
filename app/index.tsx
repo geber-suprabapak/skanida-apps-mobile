@@ -1,7 +1,7 @@
 // filepath: app/index.tsx
 import { useRouter, Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase } from "../utils/supabase";

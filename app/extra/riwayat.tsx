@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React, { useEffect, useState, useRef } from "react";
 import { View, TouchableOpacity, BackHandler, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
