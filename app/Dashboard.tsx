@@ -225,7 +225,11 @@ export default function Dashboard() {
       }
 
       // Only check attendance if no leave request exists
-      if (todayStatus !== "leave" && todayAttendance && todayAttendance.length > 0) {
+      if (
+        todayStatus !== "leave" &&
+        todayAttendance &&
+        todayAttendance.length > 0
+      ) {
         todayAttendance.forEach((record) => {
           if (record.status === "Hadir" || record.status === "Datang") {
             hasCheckedIn = true;
@@ -242,7 +246,11 @@ export default function Dashboard() {
       }
 
       // If no attendance and no leave request, mark as absent
-      if (todayStatus === "pending" && (!todayAttendance?.length && !leaveRequests?.length)) {
+      if (
+        todayStatus === "pending" &&
+        !todayAttendance?.length &&
+        !leaveRequests?.length
+      ) {
         todayStatus = "absent";
       }
 
@@ -395,7 +403,7 @@ export default function Dashboard() {
       }
       router.push("/extra/riwayat");
     } catch (error) {
-      console.error('Error preparing riwayat navigation:', error);
+      console.error("Error preparing riwayat navigation:", error);
       // Still navigate even if cache refresh fails
       router.push("/extra/riwayat");
     }
@@ -440,10 +448,10 @@ export default function Dashboard() {
           textColor: "text-white",
         };
       case "leave":
-        return { 
-          color: "bg-yellow-500", 
-          text: "Izin", 
-          textColor: "text-white" 
+        return {
+          color: "bg-yellow-500",
+          text: "Izin",
+          textColor: "text-white",
         };
       case "absent":
         return {

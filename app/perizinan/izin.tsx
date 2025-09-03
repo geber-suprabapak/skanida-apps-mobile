@@ -141,7 +141,7 @@ export default function PerizinanScreen() {
   const [uploading, setUploading] = useState(false);
   const [hasSubmittedToday, setHasSubmittedToday] = useState<boolean>(false);
   const [checkingSubmission, setCheckingSubmission] = useState<boolean>(true);
-  
+
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
 
@@ -155,13 +155,15 @@ export default function PerizinanScreen() {
       }
 
       try {
-        logger.debug("Checking initial submission status for user", { userId: user.id });
+        logger.debug("Checking initial submission status for user", {
+          userId: user.id,
+        });
         const hasSubmitted = await checkTodayIzin(user.id);
         setHasSubmittedToday(hasSubmitted);
-        
+
         logger.info("Initial submission status check complete", {
           userId: user.id,
-          hasSubmittedToday: hasSubmitted
+          hasSubmittedToday: hasSubmitted,
         });
       } catch (error) {
         logger.error("Error checking initial submission status", error);
@@ -183,13 +185,15 @@ export default function PerizinanScreen() {
 
         try {
           setCheckingSubmission(true);
-          logger.debug("Refreshing submission status on focus", { userId: user.id });
+          logger.debug("Refreshing submission status on focus", {
+            userId: user.id,
+          });
           const hasSubmitted = await checkTodayIzin(user.id);
           setHasSubmittedToday(hasSubmitted);
-          
+
           logger.info("Focus refresh submission status complete", {
             userId: user.id,
-            hasSubmittedToday: hasSubmitted
+            hasSubmittedToday: hasSubmitted,
           });
         } catch (error) {
           logger.error("Error refreshing submission status on focus", error);
@@ -201,7 +205,7 @@ export default function PerizinanScreen() {
       };
 
       refreshSubmissionStatus();
-    }, [user?.id])
+    }, [user?.id]),
   );
 
   // Handle hardware back button
@@ -435,14 +439,16 @@ export default function PerizinanScreen() {
     // Check if user has already submitted izin today (double-check before insert)
     logger.debug("Final check before database insert");
     const finalCheck = await checkTodayIzin(user.id);
-    
+
     if (finalCheck) {
       logger.error("Final check failed - user has already submitted today", {
         userId: user.id,
         attemptedCategory: category,
-        currentTime: new Date().toISOString()
+        currentTime: new Date().toISOString(),
       });
-      throw new Error("Izin sudah diajukan hari ini. Hanya satu pengajuan per hari yang diperbolehkan.");
+      throw new Error(
+        "Izin sudah diajukan hari ini. Hanya satu pengajuan per hari yang diperbolehkan.",
+      );
     }
 
     const insertData = {
@@ -488,21 +494,21 @@ export default function PerizinanScreen() {
       // Get current date in local timezone
       const now = new Date();
       const localDate = format(now, "yyyy-MM-dd");
-      
+
       // Create start and end of day in local timezone, then convert to UTC
       const startOfDay = new Date(`${localDate}T00:00:00`);
       const endOfDay = new Date(`${localDate}T23:59:59.999`);
-      
+
       // Convert to ISO string for database comparison
       const startOfDayUTC = startOfDay.toISOString();
       const endOfDayUTC = endOfDay.toISOString();
-      
+
       logger.debug("Checking today's izin submissions", {
         userId,
         localDate,
         startOfDayUTC,
         endOfDayUTC,
-        now: now.toISOString()
+        now: now.toISOString(),
       });
 
       const { data, error } = await supabase
@@ -522,17 +528,18 @@ export default function PerizinanScreen() {
       logger.info("Today's izin check result", {
         hasSubmittedToday,
         submissionCount: data?.length || 0,
-        submissions: data?.map(item => ({
-          id: item.id,
-          kategori_izin: item.kategori_izin,
-          tanggal: item.tanggal,
-          created_at: item.created_at
-        })) || [],
+        submissions:
+          data?.map((item) => ({
+            id: item.id,
+            kategori_izin: item.kategori_izin,
+            tanggal: item.tanggal,
+            created_at: item.created_at,
+          })) || [],
         localDate,
         searchRange: {
           from: startOfDayUTC,
-          to: endOfDayUTC
-        }
+          to: endOfDayUTC,
+        },
       });
 
       return hasSubmittedToday;
@@ -567,29 +574,35 @@ export default function PerizinanScreen() {
 
     if (!imageData) {
       logger.warn("Upload attempted without required photo");
-      Alert.alert("Error", "Foto bukti wajib dilampirkan untuk pengajuan izin.");
+      Alert.alert(
+        "Error",
+        "Foto bukti wajib dilampirkan untuk pengajuan izin.",
+      );
       return;
     }
 
     // Check if user has already submitted izin today
     logger.debug("Checking if user has already submitted izin today");
     const hasSubmittedToday = await checkTodayIzin(user.id);
-    
+
     if (hasSubmittedToday) {
-      logger.warn("Upload attempted but user has already submitted izin today", {
-        userId: user.id,
-        attemptedCategory: category,
-        today: format(new Date(), "yyyy-MM-dd")
-      });
+      logger.warn(
+        "Upload attempted but user has already submitted izin today",
+        {
+          userId: user.id,
+          attemptedCategory: category,
+          today: format(new Date(), "yyyy-MM-dd"),
+        },
+      );
       Alert.alert(
         "Izin Sudah Diajukan Hari Ini",
         "Anda sudah mengajukan izin untuk hari ini. Sistem hanya memperbolehkan satu pengajuan izin per hari.\n\nJika perlu mengubah atau menambah informasi, silakan hubungi admin sekolah.",
         [
-          { 
-            text: "Mengerti", 
-            style: "default"
-          }
-        ]
+          {
+            text: "Mengerti",
+            style: "default",
+          },
+        ],
       );
       return;
     }
@@ -629,7 +642,9 @@ export default function PerizinanScreen() {
 
       // Update state to reflect that user has submitted today
       setHasSubmittedToday(true);
-      logger.debug("Updated hasSubmittedToday state to true after successful submission");
+      logger.debug(
+        "Updated hasSubmittedToday state to true after successful submission",
+      );
 
       Alert.alert("Success", "Izin berhasil dikirim");
       resetForm();
@@ -702,9 +717,9 @@ export default function PerizinanScreen() {
   }, [uploading]);
 
   useEffect(() => {
-    logger.debug("Submission status changed", { 
-      hasSubmittedToday, 
-      checkingSubmission 
+    logger.debug("Submission status changed", {
+      hasSubmittedToday,
+      checkingSubmission,
     });
   }, [hasSubmittedToday, checkingSubmission]);
   return (
@@ -778,21 +793,28 @@ export default function PerizinanScreen() {
                   <View className="flex-1">
                     <Text
                       className={`font-bold text-base ${
-                        isDarkColorScheme ? "text-yellow-300" : "text-yellow-800"
+                        isDarkColorScheme
+                          ? "text-yellow-300"
+                          : "text-yellow-800"
                       }`}
                     >
                       Izin Sudah Diajukan Hari Ini
                     </Text>
                     <Text
                       className={`text-sm mt-1 ${
-                        isDarkColorScheme ? "text-yellow-400" : "text-yellow-700"
+                        isDarkColorScheme
+                          ? "text-yellow-400"
+                          : "text-yellow-700"
                       }`}
                     >
-                      Anda sudah mengajukan izin untuk hari ini. Hanya satu pengajuan izin yang diperbolehkan per hari.
+                      Anda sudah mengajukan izin untuk hari ini. Hanya satu
+                      pengajuan izin yang diperbolehkan per hari.
                     </Text>
                     <Text
                       className={`text-xs mt-2 ${
-                        isDarkColorScheme ? "text-yellow-500" : "text-yellow-600"
+                        isDarkColorScheme
+                          ? "text-yellow-500"
+                          : "text-yellow-600"
                       }`}
                     >
                       💡 Jika perlu mengubah informasi, hubungi admin sekolah.
@@ -879,7 +901,11 @@ export default function PerizinanScreen() {
                 {(["sakit", "pergi"] as const).map((catValue) => (
                   <TouchableOpacity
                     key={catValue}
-                    onPress={() => !hasSubmittedToday && !checkingSubmission && setCategory(catValue)}
+                    onPress={() =>
+                      !hasSubmittedToday &&
+                      !checkingSubmission &&
+                      setCategory(catValue)
+                    }
                     disabled={hasSubmittedToday || checkingSubmission}
                     className={`flex-1 p-3 rounded-xl border-2 ${
                       category === catValue
@@ -889,7 +915,7 @@ export default function PerizinanScreen() {
                         : isDarkColorScheme
                           ? "bg-gray-700 border-gray-600"
                           : "bg-gray-50 border-gray-200"
-                    } ${(hasSubmittedToday || checkingSubmission) ? "opacity-50" : ""}`}
+                    } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                   >
                     <View className="items-center">
                       <View
@@ -1024,7 +1050,7 @@ export default function PerizinanScreen() {
                     isDarkColorScheme
                       ? "bg-transparent text-white placeholder-gray-400"
                       : "bg-transparent text-foreground placeholder-muted-foreground"
-                  } ${(hasSubmittedToday || checkingSubmission) ? "opacity-50" : ""}`}
+                  } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                   placeholder="Contoh: Sakit demam dan perlu istirahat di rumah..."
                   multiline
                   value={description}
@@ -1042,7 +1068,9 @@ export default function PerizinanScreen() {
                     minHeight: 100,
                     maxHeight: 160,
                   }}
-                  placeholderTextColor={isDarkColorScheme ? '#9CA3AF' : '#6B7280'}
+                  placeholderTextColor={
+                    isDarkColorScheme ? "#9CA3AF" : "#6B7280"
+                  }
                   onContentSizeChange={(event) => {
                     // Auto-scroll to bottom when content grows
                     const { height } = event.nativeEvent.contentSize;
@@ -1050,7 +1078,10 @@ export default function PerizinanScreen() {
                       // Use setNativeProps to scroll to end for multiline TextInput
                       descriptionInputRef.current?.setNativeProps({
                         text: description,
-                        selection: { start: description.length, end: description.length }
+                        selection: {
+                          start: description.length,
+                          end: description.length,
+                        },
                       });
                     }
                   }}
@@ -1060,7 +1091,10 @@ export default function PerizinanScreen() {
                     if (selection.end === description.length) {
                       // If cursor is at the end, ensure it stays visible
                       descriptionInputRef.current?.setNativeProps({
-                        selection: { start: description.length, end: description.length }
+                        selection: {
+                          start: description.length,
+                          end: description.length,
+                        },
                       });
                     }
                   }}
@@ -1156,7 +1190,7 @@ export default function PerizinanScreen() {
                         isDarkColorScheme
                           ? "border-gray-600 bg-gray-700/50"
                           : "border-gray-300 bg-gray-50"
-                      } ${(hasSubmittedToday || checkingSubmission) ? "opacity-50" : ""}`}
+                      } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                     >
                       <View className="items-center">
                         <View
@@ -1197,7 +1231,7 @@ export default function PerizinanScreen() {
                         isDarkColorScheme
                           ? "border-gray-600 bg-gray-700/50"
                           : "border-gray-300 bg-gray-50"
-                      } ${(hasSubmittedToday || checkingSubmission) ? "opacity-50" : ""}`}
+                      } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                     >
                       <View className="items-center">
                         <View
@@ -1305,19 +1339,19 @@ export default function PerizinanScreen() {
             <CardContent className="p-4">
               <TouchableOpacity
                 disabled={
-                  uploading || 
-                  !description.trim() || 
-                  description.length < 10 || 
-                  !imageData || 
+                  uploading ||
+                  !description.trim() ||
+                  description.length < 10 ||
+                  !imageData ||
                   hasSubmittedToday ||
                   checkingSubmission
                 }
                 onPress={uploadPermit}
                 className={`w-full p-3 rounded-xl flex-row items-center justify-center ${
-                  uploading || 
-                  !description.trim() || 
-                  description.length < 10 || 
-                  !imageData || 
+                  uploading ||
+                  !description.trim() ||
+                  description.length < 10 ||
+                  !imageData ||
                   hasSubmittedToday ||
                   checkingSubmission
                     ? isDarkColorScheme
@@ -1386,7 +1420,9 @@ export default function PerizinanScreen() {
                     <ClipboardPenLine
                       size={20}
                       color={
-                        !description.trim() || description.length < 10 || !imageData
+                        !description.trim() ||
+                        description.length < 10 ||
+                        !imageData
                           ? isDarkColorScheme
                             ? "#6B7280"
                             : "#9CA3AF"
@@ -1396,7 +1432,9 @@ export default function PerizinanScreen() {
                     />
                     <Text
                       className={`font-bold text-base ${
-                        !description.trim() || description.length < 10 || !imageData
+                        !description.trim() ||
+                        description.length < 10 ||
+                        !imageData
                           ? isDarkColorScheme
                             ? "text-gray-400"
                             : "text-gray-500"
@@ -1419,42 +1457,55 @@ export default function PerizinanScreen() {
                   ⚠️ Sudah mengajukan izin hari ini
                 </Text>
               )}
-              {!hasSubmittedToday && !checkingSubmission && !description.trim() && (
-                <Text
-                  className={`text-xs text-center mt-2 ${
-                    isDarkColorScheme ? "text-red-400" : "text-red-500"
-                  }`}
-                >
-                  ⚠️ Deskripsi tidak boleh kosong
-                </Text>
-              )}
-              {!hasSubmittedToday && !checkingSubmission && description.trim() && description.length < 10 && (
-                <Text
-                  className={`text-xs text-center mt-2 ${
-                    isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
-                  }`}
-                >
-                  ⚠️ Deskripsi minimal 10 karakter
-                </Text>
-              )}
-              {!hasSubmittedToday && !checkingSubmission && !imageData && description.trim() && description.length >= 10 && (
-                <Text
-                  className={`text-xs text-center mt-2 ${
-                    isDarkColorScheme ? "text-red-400" : "text-red-500"
-                  }`}
-                >
-                  ⚠️ Foto bukti wajib dilampirkan
-                </Text>
-              )}
-              {!hasSubmittedToday && !checkingSubmission && description.trim() && description.length >= 10 && imageData && (
-                <Text
-                  className={`text-xs text-center mt-2 ${
-                    isDarkColorScheme ? "text-green-400" : "text-green-600"
-                  }`}
-                >
-                  ✓ Siap untuk dikirim
-                </Text>
-              )}
+              {!hasSubmittedToday &&
+                !checkingSubmission &&
+                !description.trim() && (
+                  <Text
+                    className={`text-xs text-center mt-2 ${
+                      isDarkColorScheme ? "text-red-400" : "text-red-500"
+                    }`}
+                  >
+                    ⚠️ Deskripsi tidak boleh kosong
+                  </Text>
+                )}
+              {!hasSubmittedToday &&
+                !checkingSubmission &&
+                description.trim() &&
+                description.length < 10 && (
+                  <Text
+                    className={`text-xs text-center mt-2 ${
+                      isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
+                    }`}
+                  >
+                    ⚠️ Deskripsi minimal 10 karakter
+                  </Text>
+                )}
+              {!hasSubmittedToday &&
+                !checkingSubmission &&
+                !imageData &&
+                description.trim() &&
+                description.length >= 10 && (
+                  <Text
+                    className={`text-xs text-center mt-2 ${
+                      isDarkColorScheme ? "text-red-400" : "text-red-500"
+                    }`}
+                  >
+                    ⚠️ Foto bukti wajib dilampirkan
+                  </Text>
+                )}
+              {!hasSubmittedToday &&
+                !checkingSubmission &&
+                description.trim() &&
+                description.length >= 10 &&
+                imageData && (
+                  <Text
+                    className={`text-xs text-center mt-2 ${
+                      isDarkColorScheme ? "text-green-400" : "text-green-600"
+                    }`}
+                  >
+                    ✓ Siap untuk dikirim
+                  </Text>
+                )}
             </CardContent>
           </Card>
         </ScrollView>
