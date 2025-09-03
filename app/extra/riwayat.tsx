@@ -1,17 +1,13 @@
-/* eslint-disable prettier/prettier */
 import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  TouchableOpacity,
-  BackHandler,
-  Alert,
-} from "react-native";
+import { View, TouchableOpacity, BackHandler, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 
 import { Text } from "~/components/ui/text";
-import AttendanceCalendar, { AttendanceCalendarRef } from "~/components/ui/attendance-calendar";
+import AttendanceCalendar, {
+  AttendanceCalendarRef,
+} from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
@@ -50,7 +46,7 @@ export default function Riwayat() {
             attendanceCache.invalidate(user.id, currentYear, currentMonth),
             selectedYear !== currentYear || selectedMonth !== currentMonth
               ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
-              : Promise.resolve()
+              : Promise.resolve(),
           ]);
 
           // Trigger calendar refresh
@@ -58,9 +54,9 @@ export default function Riwayat() {
             await calendarRef.current.refetch(true);
           }
 
-          console.log('📅 Auto-refreshed riwayat data on focus');
+          console.log("📅 Auto-refreshed riwayat data on focus");
         } catch (error) {
-          console.error('Error auto-refreshing riwayat:', error);
+          console.error("Error auto-refreshing riwayat:", error);
         }
       };
 
@@ -125,22 +121,22 @@ export default function Riwayat() {
   // Force refresh function for manual data refresh
   const forceRefresh = async () => {
     if (isRefreshing) return; // Prevent double-refresh
-    
+
     setIsRefreshing(true);
     try {
       if (user?.id) {
         // Clear cache for selected month first for instant feedback
         const selectedYear = selectedDate.getFullYear();
         const selectedMonth = selectedDate.getMonth();
-        
+
         await attendanceCache.invalidate(user.id, selectedYear, selectedMonth);
-        
+
         // Trigger calendar refetch with force refresh
         if (calendarRef.current) {
           await calendarRef.current.refetch(true);
         }
-        
-        console.log('🔄 Manual refresh completed');
+
+        console.log("🔄 Manual refresh completed");
       }
     } catch (error) {
       console.error("Error force refreshing:", error);
@@ -153,13 +149,17 @@ export default function Riwayat() {
   // Optimized date change handler
   const handleDateChange = async (date: Date) => {
     setSelectedDate(date);
-    
+
     // Pre-clear cache for the new month to ensure fresh data
     if (user?.id) {
       try {
-        await attendanceCache.invalidate(user.id, date.getFullYear(), date.getMonth());
+        await attendanceCache.invalidate(
+          user.id,
+          date.getFullYear(),
+          date.getMonth(),
+        );
       } catch (error) {
-        console.error('Error clearing cache for new date:', error);
+        console.error("Error clearing cache for new date:", error);
       }
     }
   };
@@ -199,7 +199,7 @@ export default function Riwayat() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        
+
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-foreground"
@@ -210,27 +210,24 @@ export default function Riwayat() {
 
         {/* Cache management button (only in development) */}
         {__DEV__ && (
-          <TouchableOpacity
-            onPress={showCacheInfo}
-            className="ml-3"
-          >
+          <TouchableOpacity onPress={showCacheInfo} className="ml-3">
             <Settings
               size={20}
               color={isDarkColorScheme ? "#ffffff" : "#000000"}
             />
           </TouchableOpacity>
         )}
-        
+
         {/* Force refresh button with loading state */}
         <TouchableOpacity
           onPress={forceRefresh}
-          className={`ml-3 ${isRefreshing ? 'opacity-50' : ''}`}
+          className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
           disabled={isRefreshing}
         >
           <RefreshCw
             size={20}
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            className={isRefreshing ? 'animate-spin' : ''}
+            className={isRefreshing ? "animate-spin" : ""}
           />
         </TouchableOpacity>
       </View>

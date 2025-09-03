@@ -4,6 +4,7 @@ import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Alert, TouchableOpacity, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import NetInfo from "@react-native-community/netinfo";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -24,18 +25,6 @@ import { MapPinOff } from "~/lib/icons/MapPinOff";
 import { HelpCircle } from "~/lib/icons/HelpCircle";
 
 // --- TYPES AND INTERFACES ---
-interface NetInfoState {
-  isConnected: boolean;
-  isInternetReachable: boolean;
-}
-
-interface NetInfoType {
-  addEventListener: (callback: (state: NetInfoState) => void) => {
-    remove: () => void;
-  };
-  fetch: () => Promise<NetInfoState>;
-}
-
 type AbsenceType = "present" | "home";
 type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
 
@@ -90,19 +79,6 @@ const createLogger = (component: string) => ({
 });
 
 const logger = createLogger("AbsenceReport");
-
-// NetInfo setup with error handling
-let NetInfo: NetInfoType;
-try {
-  NetInfo = require("@react-native-community/netinfo").default;
-  logger.debug("NetInfo loaded successfully");
-} catch (error) {
-  logger.warn("Failed to import NetInfo, using fallback", error);
-  NetInfo = {
-    addEventListener: () => ({ remove: () => {} }),
-    fetch: async () => ({ isConnected: true, isInternetReachable: true }),
-  };
-}
 
 // --- MAIN COMPONENT ---
 const AbsenceReport = () => {

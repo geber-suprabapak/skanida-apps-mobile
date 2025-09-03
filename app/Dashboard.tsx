@@ -19,7 +19,6 @@ import * as Sentry from "@sentry/react-native";
 
 // Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar";
-import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -32,12 +31,10 @@ import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
 import { Settings } from "~/lib/icons/Settings";
 import { UserCheck } from "~/lib/icons/UserCheck";
-import { Calendar } from "~/lib/icons/Calendar";
 import { Clock } from "~/lib/icons/Clock";
 import { CheckCircle } from "~/lib/icons/CheckCircle";
 import { AlertCircle } from "~/lib/icons/AlertCircle";
 import { Bell } from "~/lib/icons/Bell";
-import { ChevronRight } from "~/lib/icons/ChevronRight";
 
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
@@ -225,7 +222,11 @@ export default function Dashboard() {
       }
 
       // Only check attendance if no leave request exists
-      if (todayStatus !== "leave" && todayAttendance && todayAttendance.length > 0) {
+      if (
+        todayStatus !== "leave" &&
+        todayAttendance &&
+        todayAttendance.length > 0
+      ) {
         todayAttendance.forEach((record) => {
           if (record.status === "Hadir" || record.status === "Datang") {
             hasCheckedIn = true;
@@ -242,7 +243,11 @@ export default function Dashboard() {
       }
 
       // If no attendance and no leave request, mark as absent
-      if (todayStatus === "pending" && (!todayAttendance?.length && !leaveRequests?.length)) {
+      if (
+        todayStatus === "pending" &&
+        !todayAttendance?.length &&
+        !leaveRequests?.length
+      ) {
         todayStatus = "absent";
       }
 
@@ -395,7 +400,7 @@ export default function Dashboard() {
       }
       router.push("/extra/riwayat");
     } catch (error) {
-      console.error('Error preparing riwayat navigation:', error);
+      console.error("Error preparing riwayat navigation:", error);
       // Still navigate even if cache refresh fails
       router.push("/extra/riwayat");
     }
@@ -440,10 +445,10 @@ export default function Dashboard() {
           textColor: "text-white",
         };
       case "leave":
-        return { 
-          color: "bg-yellow-500", 
-          text: "Izin", 
-          textColor: "text-white" 
+        return {
+          color: "bg-yellow-500",
+          text: "Izin",
+          textColor: "text-white",
         };
       case "absent":
         return {

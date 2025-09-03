@@ -16,8 +16,6 @@ import { Calendar } from "~/lib/icons/Calendar";
 import { Clock } from "~/lib/icons/Clock";
 import { History } from "~/lib/icons/History";
 import { CheckCircle } from "~/lib/icons/CheckCircle";
-import { MapPin } from "~/lib/icons/MapPin";
-import { Bell } from "~/lib/icons/Bell";
 import { MousePointerClick } from "~/lib/icons/MousePointerClick";
 
 export interface MonthYearPickerProps {

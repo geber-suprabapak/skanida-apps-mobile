@@ -19,6 +19,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import NetInfo from "@react-native-community/netinfo";
 
 import { supabase } from "~/utils/supabase";
 import { Camera } from "~/lib/icons/Camera";
@@ -112,19 +113,6 @@ const createLogger = (component: string) => ({
 });
 
 const logger = createLogger("CameraAttendance");
-
-// NetInfo setup with error handling
-let NetInfo: any;
-try {
-  NetInfo = require("@react-native-community/netinfo").default;
-  logger.debug("NetInfo loaded successfully");
-} catch (error) {
-  logger.warn("Failed to import NetInfo, using fallback", error);
-  NetInfo = {
-    addEventListener: () => ({ remove: () => {} }),
-    fetch: async () => ({ isConnected: true, isInternetReachable: true }),
-  };
-}
 
 // --- MAIN COMPONENT ---
 const CameraAttendance = () => {
