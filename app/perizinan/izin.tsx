@@ -403,9 +403,14 @@ export default function PerizinanScreen() {
       throw new Error(`Upload gagal: ${uploadError.message}`);
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData, error: signedErr } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 days
+
+    if (signedErr) {
+      logger.error("Failed to create signed URL", signedErr);
+      throw new Error(`Gagal membuat URL gambar: ${signedErr.message}`);
+    }
 
     const uploadTime = Date.now() - startTime;
     const throughput = (fileBuffer.length / 1024 / (uploadTime / 1000)).toFixed(
@@ -414,13 +419,13 @@ export default function PerizinanScreen() {
 
     logger.info("Image upload completed successfully", {
       fileName,
-      publicUrl: urlData.publicUrl,
+      publicUrl: urlData.signedUrl,
       uploadTime,
       throughput: `${throughput} KB/s`,
       fileSize: fileBuffer.length,
     });
 
-    return urlData.publicUrl;
+    return urlData.signedUrl;
   };
   const insertPermitToDatabase = async (permitData: {
     userId: string;
