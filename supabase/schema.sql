@@ -294,7 +294,7 @@ do $$ begin
     drop policy public_read_perizinan on storage.objects;
   end if;
   if exists (
-    select 1 from pg_policies where s chemaname='storage' and tablename='objects' and policyname='public_read_avatars'
+    select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='public_read_avatars'
   ) then
     drop policy public_read_avatars on storage.objects;
   end if;
