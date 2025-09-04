@@ -27,6 +27,10 @@ create table if not exists public.user_profiles (
   updated_at timestamptz not null default now()
 );
 
+-- Additional column from old schema
+alter table public.user_profiles
+  add column if not exists role text;
+
 -- Keep updated_at fresh
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
@@ -84,6 +88,27 @@ create table if not exists public.perizinan (
   created_at timestamptz not null default now()
 );
 
+-- Add missing columns from old schema (idempotent)
+alter table public.perizinan
+  add column if not exists updated_at timestamptz not null default now(),
+  add column if not exists approved_by uuid,
+  add column if not exists approved_at timestamptz,
+  add column if not exists rejection_reason text,
+  add column if not exists rejected_at timestamptz,
+  add column if not exists rejected_by text;
+
+-- Safe foreign key for approved_by -> auth.users(id)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'perizinan_approved_by_fkey'
+  ) then
+    alter table public.perizinan
+      add constraint perizinan_approved_by_fkey foreign key (approved_by) references auth.users(id);
+  end if;
+end$$;
+
 create index if not exists perizinan_user_tanggal_idx on public.perizinan(user_id, tanggal desc);
 
 -- One perizinan per user per day using a stored UTC date column (safe for unique index)
@@ -119,6 +144,18 @@ update public.perizinan
 -- Enforce one per day per user
 create unique index if not exists perizinan_user_day_unique
   on public.perizinan (user_id, tanggal_utc_date);
+
+-- Keep perizinan.updated_at fresh on updates (reuse public.set_updated_at)
+do $$
+begin
+  if not exists (
+    select 1 from pg_trigger where tgname = 'set_perizinan_updated_at'
+  ) then
+    create trigger set_perizinan_updated_at
+      before update on public.perizinan
+      for each row execute function public.set_updated_at();
+  end if;
+end$$;
 
 -- ==============
 -- Row Level Security (RLS)
@@ -257,7 +294,7 @@ do $$ begin
     drop policy public_read_perizinan on storage.objects;
   end if;
   if exists (
-    select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='public_read_avatars'
+    select 1 from pg_policies where s chemaname='storage' and tablename='objects' and policyname='public_read_avatars'
   ) then
     drop policy public_read_avatars on storage.objects;
   end if;
