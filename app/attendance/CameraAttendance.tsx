@@ -393,13 +393,14 @@ const CameraAttendance = () => {
 
           onProgress?.(80);
 
-          // Get public URL
-          const { data: urlData } = supabase.storage
+          // Get signed URL (private bucket)
+          const { data: signedData, error: signedErr } = await supabase.storage
             .from(UPLOAD_CONFIG.STORAGE_BUCKET)
-            .getPublicUrl(fileName);
+            .createSignedUrl(fileName, 60 * 60 * 24); // 24 hours
 
-          if (!urlData?.publicUrl) {
-            throw new Error("Failed to generate public URL");
+          if (signedErr) throw signedErr;
+          if (!signedData?.signedUrl) {
+            throw new Error("Failed to generate signed URL");
           }
 
           onProgress?.(100);
@@ -409,7 +410,7 @@ const CameraAttendance = () => {
             logger.info("Upload metrics", metrics);
           }
 
-          return urlData.publicUrl;
+          return signedData.signedUrl;
         } catch (error: any) {
           lastError = error;
           logger.warn(`Direct upload attempt ${attempt} failed`, {

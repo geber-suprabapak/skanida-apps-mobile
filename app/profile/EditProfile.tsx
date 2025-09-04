@@ -305,15 +305,20 @@ export default function EditProfile() {
         throw new Error(`Supabase storage error: ${storageError.message}`);
       }
 
-      const { data: urlData } = supabase.storage
+      const { data: urlData, error: signedErr } = await supabase.storage
         .from("avatars")
-        .getPublicUrl(fileNameInBucket);
+        .createSignedUrl(fileNameInBucket, 60 * 60 * 24 * 7); // 7 days
 
-      const newAvatarUrl = urlData?.publicUrl;
+      if (signedErr) {
+        console.error("Failed to get signed URL. Storage data:", storageData);
+        throw new Error(`Gagal mendapatkan URL avatar: ${signedErr.message}`);
+      }
+
+      const newAvatarUrl = urlData?.signedUrl;
 
       if (!newAvatarUrl) {
-        console.error("Failed to get public URL. Storage data:", storageData);
-        throw new Error("Gagal mendapatkan URL publik avatar setelah unggah.");
+        console.error("Failed to get signed URL. Storage data:", storageData);
+        throw new Error("Gagal mendapatkan URL avatar setelah unggah.");
       }
 
       setAvatarUrl(newAvatarUrl);
