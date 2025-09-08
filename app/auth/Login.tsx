@@ -263,13 +263,13 @@ export default function Login() {
                 <Text
                   className={`text-base ${isDarkColorScheme ? "text-gray-400" : "text-gray-500"}`}
                 >
-                  Belum memiliki akun?
+                  Belum aktivasi akun?
                 </Text>
-                <TouchableOpacity onPress={() => router.push("/auth/Register")}>
+                <TouchableOpacity onPress={() => router.push("/auth/Activate")}>
                   <Text
                     className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
                   >
-                    Daftar sekarang
+                    Aktivasi sekarang
                   </Text>
                 </TouchableOpacity>
               </View>

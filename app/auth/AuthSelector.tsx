@@ -108,21 +108,20 @@ export default function LoginScreen() {
                 Masuk
               </H3>
             </Button>
-
             <Button
               variant="outline"
               size="lg"
-              className={`w-full h-16 rounded-xl border-2  ${
+              className={`w-full h-16 rounded-xl border-2 ${
                 isDarkColorScheme
-                  ? "border-gray-600 bg-transparent"
-                  : "border-gray-300 bg-transparent"
+                  ? "border-white bg-transparent"
+                  : "border-gray-900 bg-transparent"
               }`}
-              onPress={() => router.push("/auth/Register")}
+              onPress={() => router.push("/auth/Activate")}
             >
               <H3
                 className={`font-semibold text-lg ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
               >
-                Daftar
+                Aktivasi Akun
               </H3>
             </Button>
           </View>
