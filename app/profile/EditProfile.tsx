@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, Stack, useNavigation } from "expo-router";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Alert,
@@ -17,23 +16,23 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
-import { H3, P, Small, Muted } from "~/components/ui/typography";
+import { H3, Small } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { User } from "~/lib/icons/User";
 import { Camera } from "~/lib/icons/Camera";
 import { Card } from "~/components/ui/card";
 
 // Define interface for user profile data
 interface UserProfile {
   id: string;
-  user_id: string;
   full_name?: string;
   email?: string;
   absence_number?: string;
   class_name?: string;
+  nis?: string;
+  gender?: string;
   avatar_url?: string;
   created_at?: string;
   updated_at?: string;
@@ -57,79 +56,104 @@ export default function EditProfile() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  const [name, setName] = useState(user?.user_metadata?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [absenceNumber, setAbsenceNumber] = useState(
-    user?.user_metadata?.absence_number || "",
-  );
-  const [className, setClassName] = useState(
-    user?.user_metadata?.class_name || "",
-  );
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [absenceNumber, setAbsenceNumber] = useState("");
+  const [className, setClassName] = useState("");
+  const [nis, setNis] = useState("");
+  const [gender, setGender] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [fetchProfileError, setFetchProfileError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const [initialName, setInitialName] = useState("");
-  const [initialEmail, setInitialEmail] = useState("");
   const [initialAbsenceNumber, setInitialAbsenceNumber] = useState("");
-  const [initialClassName, setInitialClassName] = useState("");
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAndSetInitialProfileData = async () => {
       if (!user) {
-        setInitialName(name);
-        setInitialEmail(email);
-        setInitialAbsenceNumber(absenceNumber);
-        setInitialClassName(className);
-        setInitialAvatarUrl(avatarUrl);
         return;
       }
 
+      // Set initial data from user auth metadata
       let currentName = user.user_metadata?.name || "";
       let currentEmail = user.email || "";
       let currentAbsenceNumber = user.user_metadata?.absence_number || "";
       let currentClassName = user.user_metadata?.class_name || "";
+      let currentNis = user.user_metadata?.nis || "";
+      let currentGender = user.user_metadata?.gender || "";
       let currentAvatarUrl: string | null =
         user.user_metadata?.avatar_url || null;
 
+      // Set initial values immediately
+      setName(currentName);
       setEmail(currentEmail);
+      setAbsenceNumber(currentAbsenceNumber);
+      setClassName(currentClassName);
+      setNis(currentNis);
+      setGender(currentGender);
+      setAvatarUrl(currentAvatarUrl);
+      setInitialAbsenceNumber(currentAbsenceNumber);
+      setInitialAvatarUrl(currentAvatarUrl);
 
+      // Try to fetch additional data from user_profiles table
       try {
+        console.log("Fetching profile for user_id:", user.id);
+
+        // Use id column as primary key
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("full_name, email, absence_number, class_name, avatar_url")
-          .eq("user_id", user.id)
+          .select(
+            "full_name, email, absence_number, class_name, nis, gender, avatar_url",
+          )
+          .eq("id", user.id)
           .single();
 
         if (error && error.code !== "PGRST116") {
           console.error("Error fetching profile:", error.message);
+          console.error("Error details:", error);
           setFetchProfileError(true);
+          return; // Exit early if there's an error
         }
 
         if (data) {
+          console.log("Profile data found:", data);
           setProfileData(data as UserProfile);
-          currentName = data.full_name || currentName;
-          currentAbsenceNumber = data.absence_number || currentAbsenceNumber;
-          currentClassName = data.class_name || currentClassName;
-          currentAvatarUrl = data.avatar_url || currentAvatarUrl;
+
+          // Update states with profile data (profile data takes precedence)
+          const updatedName = data.full_name || currentName;
+          const updatedAbsenceNumber =
+            data.absence_number || currentAbsenceNumber;
+          const updatedClassName = data.class_name || currentClassName;
+          const updatedNis = data.nis || currentNis;
+          const updatedGender = data.gender || currentGender;
+          const updatedAvatarUrl = data.avatar_url || currentAvatarUrl;
+
+          setName(updatedName);
+          setAbsenceNumber(updatedAbsenceNumber);
+          setClassName(updatedClassName);
+          setNis(updatedNis);
+          setGender(updatedGender);
+          setAvatarUrl(updatedAvatarUrl);
+          setInitialAbsenceNumber(updatedAbsenceNumber);
+          setInitialAvatarUrl(updatedAvatarUrl);
+
+          console.log("Updated data set to:", {
+            updatedName,
+            updatedNis,
+            updatedGender,
+            updatedClassName,
+            updatedAbsenceNumber,
+          });
+        } else {
+          console.log("No profile data found for user:", user.id);
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
         setFetchProfileError(true);
       }
-
-      setName(currentName);
-      setInitialName(currentName);
-      setInitialEmail(currentEmail);
-      setAbsenceNumber(currentAbsenceNumber);
-      setInitialAbsenceNumber(currentAbsenceNumber);
-      setClassName(currentClassName);
-      setInitialClassName(currentClassName);
-      setAvatarUrl(currentAvatarUrl);
-      setInitialAvatarUrl(currentAvatarUrl);
     };
 
     fetchAndSetInitialProfileData();
@@ -137,10 +161,7 @@ export default function EditProfile() {
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
       const hasUnsavedChanges =
-        name !== initialName ||
-        email !== initialEmail ||
         absenceNumber !== initialAbsenceNumber ||
-        className !== initialClassName ||
         avatarUrl !== initialAvatarUrl;
 
       if (!hasUnsavedChanges) {
@@ -170,15 +191,9 @@ export default function EditProfile() {
     };
   }, [
     navigation,
-    name,
-    email,
     absenceNumber,
-    className,
     avatarUrl,
-    initialName,
-    initialEmail,
     initialAbsenceNumber,
-    initialClassName,
     initialAvatarUrl,
   ]);
 
@@ -200,10 +215,7 @@ export default function EditProfile() {
 
       // Handle unsaved changes
       const hasUnsavedChanges =
-        name !== initialName ||
-        email !== initialEmail ||
         absenceNumber !== initialAbsenceNumber ||
-        className !== initialClassName ||
         avatarUrl !== initialAvatarUrl;
 
       if (hasUnsavedChanges) {
@@ -233,17 +245,12 @@ export default function EditProfile() {
     return () => backHandler.remove();
   }, [
     router,
-    name,
-    email,
     absenceNumber,
-    className,
     avatarUrl,
-    initialName,
-    initialEmail,
     initialAbsenceNumber,
-    initialClassName,
     initialAvatarUrl,
     profileData,
+    name,
   ]);
 
   const pickImage = async () => {
@@ -337,35 +344,17 @@ export default function EditProfile() {
   };
 
   const handleSave = async () => {
-    if (!name) {
-      Alert.alert("Error", "Nama tidak boleh kosong");
-      return;
-    }
-
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert("Error", "Email tidak valid");
+    if (!absenceNumber) {
+      Alert.alert("Error", "Nomor absen tidak boleh kosong");
       return;
     }
 
     setLoading(true);
     try {
-      const { error: emailError } = await supabase.auth.updateUser({
-        email,
-      });
-
-      if (emailError) {
-        Alert.alert("Error", emailError.message);
-        setLoading(false);
-        return;
-      }
-
+      // Only update the avatar_url and absence_number in user metadata
       const { error } = await supabase.auth.updateUser({
         data: {
-          name,
-          full_name: name,
           absence_number: absenceNumber,
-          class_name: className,
-          display_name: name,
           avatar_url: avatarUrl,
         },
       });
@@ -376,19 +365,14 @@ export default function EditProfile() {
         return;
       }
 
+      // Update absence_number and avatar_url in the profiles table
       const { error: profileError } = await supabase
         .from("user_profiles")
-        .upsert(
-          {
-            user_id: user.id,
-            full_name: name,
-            email,
-            absence_number: absenceNumber,
-            class_name: className,
-            avatar_url: avatarUrl,
-          },
-          { onConflict: "user_id" },
-        );
+        .update({
+          absence_number: absenceNumber,
+          avatar_url: avatarUrl,
+        })
+        .eq("id", user.id);
 
       if (profileError) {
         console.error("Error updating profile table:", profileError);
@@ -407,10 +391,11 @@ export default function EditProfile() {
         return;
       }
 
+      // Fetch refreshed profile data
       const { data: refreshedProfile } = await supabase
         .from("user_profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .single();
 
       if (refreshedProfile) {
@@ -421,10 +406,7 @@ export default function EditProfile() {
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
 
-      setInitialName(name);
-      setInitialEmail(email);
       setInitialAbsenceNumber(absenceNumber);
-      setInitialClassName(className);
       setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
@@ -487,10 +469,7 @@ export default function EditProfile() {
 
             // Check for unsaved changes
             const hasUnsavedChanges =
-              name !== initialName ||
-              email !== initialEmail ||
               absenceNumber !== initialAbsenceNumber ||
-              className !== initialClassName ||
               avatarUrl !== initialAvatarUrl;
 
             if (hasUnsavedChanges) {
@@ -647,16 +626,28 @@ export default function EditProfile() {
                 >
                   Nama Lengkap
                 </Small>
-                <Input
-                  placeholder="Masukkan nama lengkap"
-                  value={name}
-                  onChangeText={setName}
-                  className={
+                <View
+                  className={`px-3 py-3 rounded-lg border ${
                     isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
-                />
+                      ? "border-gray-600 bg-gray-700"
+                      : "border-gray-300 bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    {name || "Belum diisi"}
+                  </Text>
+                </View>
+                <Small
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  *Tidak dapat diubah
+                </Small>
               </View>
 
               <View>
@@ -667,18 +658,60 @@ export default function EditProfile() {
                 >
                   Email
                 </Small>
-                <Input
-                  placeholder="Masukkan alamat email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  className={
+                <View
+                  className={`px-3 py-3 rounded-lg border ${
                     isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
-                />
+                      ? "border-gray-600 bg-gray-700"
+                      : "border-gray-300 bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    {email || "Belum diisi"}
+                  </Text>
+                </View>
+                <Small
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  *Tidak dapat diubah
+                </Small>
+              </View>
+
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  NIS
+                </Small>
+                <View
+                  className={`px-3 py-3 rounded-lg border ${
+                    isDarkColorScheme
+                      ? "border-gray-600 bg-gray-700"
+                      : "border-gray-300 bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    {nis || "Belum diisi"}
+                  </Text>
+                </View>
+                <Small
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  *Tidak dapat diubah
+                </Small>
               </View>
             </View>
           </Card>
@@ -708,6 +741,74 @@ export default function EditProfile() {
                     isDarkColorScheme ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
+                  Kelas
+                </Small>
+                <View
+                  className={`px-3 py-3 rounded-lg border ${
+                    isDarkColorScheme
+                      ? "border-gray-600 bg-gray-700"
+                      : "border-gray-300 bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    {className || "Belum diisi"}
+                  </Text>
+                </View>
+                <Small
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  *Tidak dapat diubah
+                </Small>
+              </View>
+
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Jenis Kelamin
+                </Small>
+                <View
+                  className={`px-3 py-3 rounded-lg border ${
+                    isDarkColorScheme
+                      ? "border-gray-600 bg-gray-700"
+                      : "border-gray-300 bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    {gender
+                      ? gender === "male"
+                        ? "Laki-laki"
+                        : "Perempuan"
+                      : "Belum diisi"}
+                  </Text>
+                </View>
+                <Small
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  *Tidak dapat diubah
+                </Small>
+              </View>
+
+              <View>
+                <Small
+                  className={`font-medium mb-1 ${
+                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
                   Nomor Absen
                 </Small>
                 <Input
@@ -717,30 +818,17 @@ export default function EditProfile() {
                   keyboardType="numeric"
                   className={
                     isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
+                      ? "border-gray-600 bg-gray-700 text-white"
                       : "border-gray-300 bg-white"
                   }
                 />
-              </View>
-
-              <View>
                 <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-blue-400" : "text-blue-600"
                   }`}
                 >
-                  Kelas
+                  *Dapat diubah
                 </Small>
-                <Input
-                  placeholder="Masukkan kelas"
-                  value={className}
-                  onChangeText={setClassName}
-                  className={
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
-                />
               </View>
             </View>
           </Card>

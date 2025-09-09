@@ -225,17 +225,21 @@ export default function Activate() {
       }
 
       if (data?.user) {
-        // Update the existing user profile with email
+        // Update user profile with new user ID and email
         const { error: profileError } = await supabase
           .from("user_profiles")
           .update({
+            id: data.user.id,
             email: email,
           })
-          .eq("id", userProfile.id);
+          .eq("nis", userProfile.nis);
 
         if (profileError) {
           console.error("Error updating profile:", profileError.message);
-          Alert.alert("Error", "Gagal mengupdate profil pengguna");
+          Alert.alert(
+            "Error",
+            "Gagal mengupdate profil pengguna setelah aktivasi. Silakan hubungi administrator untuk membersihkan akun yang tidak lengkap.",
+          );
           return;
         }
 
