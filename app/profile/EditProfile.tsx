@@ -78,7 +78,8 @@ export default function EditProfile() {
       }
 
       // Set initial data from user auth metadata
-      let currentName = user.user_metadata?.name || "";
+      let currentName =
+        user.user_metadata?.name || user.user_metadata?.full_name || "";
       let currentEmail = user.email || "";
       let currentAbsenceNumber = user.user_metadata?.absence_number || "";
       let currentClassName = user.user_metadata?.class_name || "";
@@ -100,7 +101,7 @@ export default function EditProfile() {
 
       // Try to fetch additional data from user_profiles table
       try {
-        console.log("Fetching profile for user_id:", user.id);
+        console.log("Fetching profile for user id:", user.id);
 
         // Use id column as primary key
         const { data, error } = await supabase
@@ -200,11 +201,25 @@ export default function EditProfile() {
   // Handle hardware back button
   useEffect(() => {
     const backAction = () => {
-      // Check if profile is required (by checking if name is empty)
-      const isProfileRequired = !profileData?.full_name && !name;
+      // Allow navigation if user has any name data (profile, form, or auth metadata)
+      const hasAnyName =
+        (profileData?.full_name && profileData.full_name.trim().length > 0) ||
+        (name && name.trim().length > 0) ||
+        (user?.user_metadata?.name &&
+          user.user_metadata.name.trim().length > 0) ||
+        (user?.user_metadata?.full_name &&
+          user.user_metadata.full_name.trim().length > 0);
 
-      // If profile is required (empty), prevent going back
-      if (isProfileRequired) {
+      console.log("Hardware back button check:", {
+        hasAnyName,
+        profileDataFullName: profileData?.full_name,
+        formName: name,
+        userMetadataName: user?.user_metadata?.name,
+        userMetadataFullName: user?.user_metadata?.full_name,
+      });
+
+      // Only prevent navigation if user truly has no name data anywhere
+      if (!hasAnyName) {
         Alert.alert(
           "Profil Wajib Diisi",
           "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
@@ -251,6 +266,8 @@ export default function EditProfile() {
     initialAvatarUrl,
     profileData,
     name,
+    user?.user_metadata?.name,
+    user?.user_metadata?.full_name,
   ]);
 
   const pickImage = async () => {
@@ -365,17 +382,31 @@ export default function EditProfile() {
         return;
       }
 
-      // Update absence_number and avatar_url in the profiles table
+      // Update absence_number and avatar_url in the profiles table using upsert
       const { error: profileError } = await supabase
         .from("user_profiles")
-        .update({
+        .upsert({
+          id: user.id,
           absence_number: absenceNumber,
           avatar_url: avatarUrl,
-        })
-        .eq("id", user.id);
+          full_name:
+            name || user.user_metadata?.name || user.user_metadata?.full_name,
+          email: email,
+          class_name: className,
+          nis: nis,
+          gender: gender,
+        });
 
       if (profileError) {
         console.error("Error updating profile table:", profileError);
+        console.error("User ID:", user.id);
+        console.error("Profile data being saved:", {
+          id: user.id,
+          absence_number: absenceNumber,
+          avatar_url: avatarUrl,
+          full_name: name,
+          email: email,
+        });
         Alert.alert(
           "Perhatian",
           "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
@@ -454,11 +485,26 @@ export default function EditProfile() {
       >
         <TouchableOpacity
           onPress={() => {
-            // Check if profile is required (by checking if name is empty)
-            const isProfileRequired = !profileData?.full_name && !name;
+            // Allow navigation if user has any name data (profile, form, or auth metadata)
+            const hasAnyName =
+              (profileData?.full_name &&
+                profileData.full_name.trim().length > 0) ||
+              (name && name.trim().length > 0) ||
+              (user?.user_metadata?.name &&
+                user.user_metadata.name.trim().length > 0) ||
+              (user?.user_metadata?.full_name &&
+                user.user_metadata.full_name.trim().length > 0);
 
-            // If profile is required (empty), prevent going back
-            if (isProfileRequired) {
+            console.log("Header back button check:", {
+              hasAnyName,
+              profileDataFullName: profileData?.full_name,
+              formName: name,
+              userMetadataName: user?.user_metadata?.name,
+              userMetadataFullName: user?.user_metadata?.full_name,
+            });
+
+            // Only prevent navigation if user truly has no name data anywhere
+            if (!hasAnyName) {
               Alert.alert(
                 "Profil Wajib Diisi",
                 "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",

@@ -42,7 +42,6 @@ const fallbackProfileImage = require("../assets/muflih.jpg");
 // Define interface for user profile data
 interface UserProfile {
   id: string;
-  user_id: string;
   full_name?: string;
   avatar_url?: string;
   created_at?: string;
@@ -156,7 +155,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name, avatar_url")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .single();
 
       if (error) {
@@ -308,7 +307,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .single();
 
       if (error && error.code !== "PGRST116") {

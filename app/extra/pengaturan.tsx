@@ -37,7 +37,7 @@ const prefetchProfileData = async (userId: string) => {
     const { data } = await supabase
       .from("user_profiles")
       .select("full_name, avatar_url")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .single();
     return data;
   } catch (error) {
@@ -213,7 +213,7 @@ function Pengaturan() {
         const { data: userProfile, error: profileError } = await supabase
           .from("user_profiles")
           .select("full_name, avatar_url")
-          .eq("user_id", user.id)
+          .eq("id", user.id)
           .single();
 
         if (profileError && profileError.code !== "PGRST116") {
