@@ -3,26 +3,13 @@
   - Android Studio + Android SDK, NDK
   - Java JDK, use adoptium JDK
   - PNPM Package Manager
-### Instalasi
+### Installation
 
 ```bash
-# Kloning repositori
 git clone https://github.com/geber-suprabapak/skanida-apps-mobile.git
-
-# Navigasi ke proyek
 cd skanida-apps-mobile
-
-# Instal dependensi
 pnpm install
-
-# Prebuild aplikasi Expo
-npx expo prebuild
-
-# Jalankan di Android
-pnpm android
-
-# Atau mulai server pengembangan
-pnpm start
+pnpm android / pnpm start
 ```
 
-> **Tips:** Pastikan Anda telah mengkonfigurasi Android Studio atau Xcode dengan benar sebelum menjalankan aplikasi!
+> **Note:** Please configure ANDROID_HOME enviroment variable properly before running pnpm android
