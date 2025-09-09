@@ -733,7 +733,7 @@ function Pengaturan() {
                     isDarkColorScheme ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  Version 1.6.1-internal.2
+                  Version 1.6.2-internal.1
                 </Text>
               </View>
 
