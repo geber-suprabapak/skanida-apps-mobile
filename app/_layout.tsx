@@ -29,7 +29,7 @@ Sentry.init({
   profilesSampleRate: 1.0,
 
   // Configure Session Replay
-  replaysSessionSampleRate: 1,
+  replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1,
   integrations: [
     Sentry.mobileReplayIntegration(),
