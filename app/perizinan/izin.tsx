@@ -138,7 +138,7 @@ export default function PerizinanScreen() {
   const [description, setDescription] = useState("");
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [uploading, setUploading] = useState(false);
-  
+
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
 
@@ -784,7 +784,9 @@ export default function PerizinanScreen() {
                     minHeight: 120,
                     maxHeight: 200,
                   }}
-                  placeholderTextColor={isDarkColorScheme ? '#9CA3AF' : '#6B7280'}
+                  placeholderTextColor={
+                    isDarkColorScheme ? "#9CA3AF" : "#6B7280"
+                  }
                   onContentSizeChange={(event) => {
                     // Auto-scroll to bottom when content grows
                     const { height } = event.nativeEvent.contentSize;
@@ -792,7 +794,10 @@ export default function PerizinanScreen() {
                       // Use setNativeProps to scroll to end for multiline TextInput
                       descriptionInputRef.current?.setNativeProps({
                         text: description,
-                        selection: { start: description.length, end: description.length }
+                        selection: {
+                          start: description.length,
+                          end: description.length,
+                        },
                       });
                     }
                   }}
@@ -802,7 +807,10 @@ export default function PerizinanScreen() {
                     if (selection.end === description.length) {
                       // If cursor is at the end, ensure it stays visible
                       descriptionInputRef.current?.setNativeProps({
-                        selection: { start: description.length, end: description.length }
+                        selection: {
+                          start: description.length,
+                          end: description.length,
+                        },
                       });
                     }
                   }}

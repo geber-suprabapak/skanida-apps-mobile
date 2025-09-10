@@ -14,9 +14,11 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import LoadingScreen from "./auth/LoadingScreen";
 import ConnectionChecker from "~/components/ConnectionChecker";
+import { SafeLoadingScreen } from "~/components/SafeLoadingScreen";
+import { requiresSafeNativeWindInit } from "~/lib/deviceUtils";
 
 import { NAV_THEME } from "~/lib/constants";
-import { useColorScheme } from "~/lib/useColorScheme";
+import { useSafeColorScheme } from "~/lib/useSafeColorScheme";
 import * as Sentry from "@sentry/react-native";
 
 Sentry.init({
@@ -57,8 +59,10 @@ export {
 
 export default Sentry.wrap(function RootLayout() {
   const hasMounted = React.useRef(false);
-  const { isDarkColorScheme } = useColorScheme();
+  const { isDarkColorScheme, isInitialized } = useSafeColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
+  const requiresSafeInit = requiresSafeNativeWindInit();
+
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
       return;
@@ -72,7 +76,17 @@ export default Sentry.wrap(function RootLayout() {
     hasMounted.current = true;
   }, []);
 
-  // Show loading screen until color scheme is loaded
+  // Show safe loading screen for Transsion devices during NativeWind initialization
+  if (requiresSafeInit && (!isColorSchemeLoaded || !isInitialized)) {
+    return (
+      <SafeLoadingScreen
+        message="Initializing app..."
+        showDebugInfo={__DEV__}
+      />
+    );
+  }
+
+  // Show regular loading screen until color scheme is loaded for other devices
   if (!isColorSchemeLoaded) {
     return <LoadingScreen />;
   }

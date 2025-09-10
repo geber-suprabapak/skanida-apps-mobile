@@ -5,6 +5,8 @@ import { View, Text, ActivityIndicator, Alert } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase } from "../utils/supabase";
+import { SafeLoadingScreen } from "~/components/SafeLoadingScreen";
+import { requiresSafeNativeWindInit } from "~/lib/deviceUtils";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -13,9 +15,16 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
+  const requiresSafeInit = requiresSafeNativeWindInit();
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Add delay for Transsion devices to ensure UI is stable
+        if (requiresSafeInit) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
         // Memanggil Supabase untuk cek session
         const {
           data: { session },
@@ -43,7 +52,17 @@ export default function Index() {
     };
 
     checkAuth();
-  }, [router, setUser]);
+  }, [router, setUser, requiresSafeInit]);
+
+  // Use safe loading screen for Transsion devices
+  if (requiresSafeInit) {
+    return (
+      <>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <SafeLoadingScreen message={loadingMessage} />
+      </>
+    );
+  }
 
   return (
     <>

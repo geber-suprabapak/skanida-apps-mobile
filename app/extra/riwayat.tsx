@@ -112,7 +112,7 @@ export default function Riwayat() {
             color={isDarkColorScheme ? "#ffffff" : "#000000"}
           />
         </TouchableOpacity>
-        
+
         <Text
           className={`text-lg font-bold flex-1 ${
             isDarkColorScheme ? "text-white" : "text-foreground"
@@ -123,10 +123,7 @@ export default function Riwayat() {
 
         {/* Cache management button (only in development) */}
         {__DEV__ && (
-          <TouchableOpacity
-            onPress={showCacheInfo}
-            className="ml-3"
-          >
+          <TouchableOpacity onPress={showCacheInfo} className="ml-3">
             <Settings
               size={20}
               color={isDarkColorScheme ? "#ffffff" : "#000000"}
