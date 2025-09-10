@@ -14,7 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { LockIcon } from "~/lib/icons/LockIcon";
 import { Text } from "~/components/ui/text";
-import { supabase } from "~/utils/supabase";
+import { appwriteAuth } from "~/utils/migration/authMigration";
+import { account } from "~/utils/appwrite";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Key } from "~/lib/icons/Key";
@@ -62,28 +63,19 @@ export default function ChangePassword() {
     }
     setLoading(true);
     try {
-      // Re-authenticate user
-      const session = await supabase.auth.getSession();
-      const email = session.data.session?.user.email;
-      if (!email) throw new Error("Session tidak valid");
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password: currentPassword,
-      });
-      if (loginError) {
-        Alert.alert("Error", "Password lama salah");
+      // Update password using Appwrite
+      const result = await appwriteAuth.updatePassword(newPassword, currentPassword);
+      
+      if (!result.success) {
+        if (result.message.includes("Invalid credentials") || result.message.includes("password")) {
+          Alert.alert("Error", "Password lama salah");
+        } else {
+          Alert.alert("Error", result.message || "Gagal mengubah password");
+        }
         setLoading(false);
         return;
       }
-      // Update password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      if (error) {
-        Alert.alert("Error", error.message);
-        setLoading(false);
-        return;
-      }
+
       Alert.alert("Sukses", "Password berhasil diubah", [
         { text: "OK", onPress: () => router.back() },
       ]);

@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
+import { appwriteAuth } from "~/utils/migration/authMigration";
+import { account } from "~/utils/appwrite";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -68,29 +69,34 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const result = await appwriteAuth.signIn(email, password);
 
-      if (error) {
-        console.error("Supabase login error:", error.message); // Keep console log for debugging
-        if (error.message === "Email not confirmed") {
+      if (!result.success) {
+        console.error("Appwrite login error:", result.message); // Keep console log for debugging
+        if (result.message.includes("Email not confirmed") || result.message.includes("verification")) {
           alert(
             "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
           );
-        } else {
+        } else if (result.message.includes("Invalid credentials")) {
           alert("Login gagal. Periksa kembali email dan password Anda.");
+        } else {
+          alert(`Login gagal: ${result.message}`);
         }
         return;
       }
 
-      if (data?.user) {
-        setUser(data.user);
+      // Get user details from Appwrite and set in store
+      try {
+        const user = await account.get();
+        setUser(user);
         router.replace("/Dashboard");
+      } catch (userError) {
+        console.error("Error getting user details:", userError);
+        alert("Login berhasil, tetapi gagal mengambil data pengguna.");
       }
     } catch (error) {
       console.error("Login error:", error);
+      alert("Terjadi kesalahan saat login. Silakan coba lagi.");
     } finally {
       setLoading(false);
     }

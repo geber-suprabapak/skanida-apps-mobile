@@ -17,7 +17,7 @@ import { H1, H3 } from "~/components/ui/typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { cn } from "~/lib/utils";
-import { supabase } from "~/utils/supabase";
+import { appwriteAuth } from "~/utils/migration/authMigration";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Eye } from "~/lib/icons/Eye";
 import { EyeOff } from "~/lib/icons/EyeOff";
@@ -90,38 +90,33 @@ export default function RegisterScreen() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          },
-        },
-      });
+      const result = await appwriteAuth.signUp(email, password, name);
 
-      if (error) {
-        console.error("Supabase signup error:", error.message);
+      if (!result.success) {
+        console.error("Appwrite signup error:", result.message);
         // Tampilkan pesan khusus jika email tidak valid
-        const alertMessage = error.message
+        const alertMessage = result.message
           .toLowerCase()
           .includes("invalid email")
           ? "Email tidak valid"
-          : error.message;
+          : result.message.includes("already exists")
+          ? "Email sudah terdaftar"
+          : result.message;
         Alert.alert("Registrasi Gagal", alertMessage, [{ text: "OK" }]);
         return;
       }
 
-      if (data?.user) {
+      if (result.userId) {
         Alert.alert(
           "Registrasi Berhasil",
-          "Silahkan verifikasi email Anda sebelum masuk.",
-          [{ text: "OK", onPress: () => router.replace("/auth/AuthSelector") }],
+          "Akun Anda telah berhasil dibuat. Silakan masuk untuk melanjutkan.",
+          [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
           { cancelable: false },
         );
       }
     } catch (error) {
       console.error("Registration error:", error);
+      Alert.alert("Registrasi Gagal", "Terjadi kesalahan saat mendaftar. Silakan coba lagi.", [{ text: "OK" }]);
     } finally {
       setLoading(false);
     }
