@@ -15,7 +15,8 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
-import { supabase } from "~/utils/supabase";
+import { account } from "~/utils/appwrite";
+import { absencesService } from "~/utils/migration/databaseMigration";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { RefreshCw } from "~/lib/icons/RefreshCw";
 import { Loader2 } from "~/lib/icons/Loader2";
@@ -222,14 +223,9 @@ const AbsenceReport = () => {
   > => {
     try {
       logger.debug("Checking user authentication");
-      const { data, error } = await supabase.auth.getUser();
+      const user = await account.get();
 
-      if (error) {
-        logger.error("Authentication error", error);
-        throw error;
-      }
-
-      if (!data?.user) {
+      if (!user) {
         logger.warn("No authenticated user found");
         Alert.alert(
           "Error",
@@ -239,11 +235,19 @@ const AbsenceReport = () => {
         return null;
       }
 
-      logger.info("User authenticated successfully", { userId: data.user.id });
-      return data.user.id;
-    } catch (error) {
+      logger.info("User authenticated successfully", { userId: user.$id });
+      return user.$id;
+    } catch (error: any) {
       logger.error("Error in user authentication check", error);
-      Alert.alert("Error", "Gagal mendapatkan data pengguna");
+      if (error.code === 401) {
+        Alert.alert(
+          "Session Expired",
+          "Sesi Anda telah berakhir. Silakan login kembali.",
+        );
+        router.replace("/auth/Login");
+      } else {
+        Alert.alert("Error", "Gagal mendapatkan data pengguna");
+      }
       throw error;
     }
   }, [router]);

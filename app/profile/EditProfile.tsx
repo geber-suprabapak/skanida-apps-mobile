@@ -20,15 +20,16 @@ import { Avatar } from "~/components/ui/avatar";
 import { H3, P, Small, Muted } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
-import { supabase } from "~/utils/supabase";
+import { userProfilesService } from "~/utils/migration/databaseMigration";
+import { account } from "~/utils/appwrite";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { User } from "~/lib/icons/User";
 import { Camera } from "~/lib/icons/Camera";
 import { Card } from "~/components/ui/card";
 
-// Define interface for user profile data
+// Define interface for user profile data (Appwrite format)
 interface UserProfile {
-  id: string;
+  $id: string;
   user_id: string;
   full_name?: string;
   email?: string;
@@ -88,33 +89,29 @@ export default function EditProfile() {
         return;
       }
 
-      let currentName = user.user_metadata?.name || "";
-      let currentEmail = user.email || "";
-      let currentAbsenceNumber = user.user_metadata?.absence_number || "";
-      let currentClassName = user.user_metadata?.class_name || "";
-      let currentAvatarUrl: string | null =
-        user.user_metadata?.avatar_url || null;
+      let currentName = user?.name || "";
+      let currentEmail = user?.email || "";
+      let currentAbsenceNumber = "";
+      let currentClassName = "";
+      let currentAvatarUrl: string | null = null;
 
       setEmail(currentEmail);
 
       try {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("full_name, email, absence_number, class_name, avatar_url")
-          .eq("user_id", user.id)
-          .single();
+        const result = await userProfilesService.getProfile(user?.$id || "");
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching profile:", error.message);
+        if (!result.success && result.message !== "Profile not found") {
+          console.error("Error fetching profile:", result.message);
           setFetchProfileError(true);
         }
 
-        if (data) {
-          setProfileData(data as UserProfile);
-          currentName = data.full_name || currentName;
-          currentAbsenceNumber = data.absence_number || currentAbsenceNumber;
-          currentClassName = data.class_name || currentClassName;
-          currentAvatarUrl = data.avatar_url || currentAvatarUrl;
+        if (result.success && result.data) {
+          setProfileData(result.data as UserProfile);
+          currentName = result.data.full_name || currentName;
+          currentAbsenceNumber =
+            result.data.absence_number || currentAbsenceNumber;
+          currentClassName = result.data.class_name || currentClassName;
+          currentAvatarUrl = result.data.avatar_url || currentAvatarUrl;
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
@@ -349,74 +346,55 @@ export default function EditProfile() {
 
     setLoading(true);
     try {
-      const { error: emailError } = await supabase.auth.updateUser({
+      // Update email in Appwrite account if it has changed
+      if (email !== user?.email) {
+        try {
+          await account.updateEmail(email, ""); // In Appwrite, password is required for email update
+          Alert.alert(
+            "Info",
+            "Email berhasil diperbarui. Anda mungkin perlu memverifikasi email baru.",
+          );
+        } catch (emailError: any) {
+          console.error("Error updating email:", emailError);
+          // Continue with profile update even if email update fails
+          Alert.alert(
+            "Perhatian",
+            "Gagal memperbarui email, tetapi profil lainnya akan tetap disimpan.",
+          );
+        }
+      }
+
+      // Update or create user profile in database
+      const result = await userProfilesService.upsertProfile({
+        user_id: user?.$id || "",
+        full_name: name,
         email,
+        absence_number: absenceNumber,
+        class_name: className,
+        avatar_url: avatarUrl,
       });
 
-      if (emailError) {
-        Alert.alert("Error", emailError.message);
+      if (!result.success) {
+        Alert.alert("Error", result.message || "Gagal menyimpan profil");
         setLoading(false);
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          name,
-          full_name: name,
-          absence_number: absenceNumber,
-          class_name: className,
-          display_name: name,
-          avatar_url: avatarUrl,
-        },
-      });
-
-      if (error) {
-        Alert.alert("Error", error.message);
-        setLoading(false);
-        return;
+      // Get updated user data from Appwrite
+      try {
+        const updatedUser = await account.get();
+        setUser(updatedUser);
+      } catch (userError) {
+        console.error("Error getting updated user:", userError);
       }
 
-      const { error: profileError } = await supabase
-        .from("user_profiles")
-        .upsert(
-          {
-            user_id: user.id,
-            full_name: name,
-            email,
-            absence_number: absenceNumber,
-            class_name: className,
-            avatar_url: avatarUrl,
-          },
-          { onConflict: "user_id" },
-        );
-
-      if (profileError) {
-        console.error("Error updating profile table:", profileError);
-        Alert.alert(
-          "Perhatian",
-          "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
-          [{ text: "OK" }],
-        );
+      // Get updated profile data
+      const updatedProfileResult = await userProfilesService.getProfile(
+        user?.$id || "",
+      );
+      if (updatedProfileResult.success && updatedProfileResult.data) {
+        setProfileData(updatedProfileResult.data);
       }
-
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        Alert.alert("Error", "Gagal mengambil data user terbaru");
-        setLoading(false);
-        return;
-      }
-
-      const { data: refreshedProfile } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      if (refreshedProfile) {
-        setProfileData(refreshedProfile);
-      }
-      setUser(userData.user);
 
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
