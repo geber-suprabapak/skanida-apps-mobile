@@ -580,7 +580,7 @@ export default function Dashboard() {
                     {attendanceStatus.hasCheckedIn ? (
                       <CheckCircle size={20} color="#16a34a" />
                     ) : (
-                      <AlertCircle size={20} color="#dc2626" />
+                      <AlertCircle size={20} color={attendanceStatus.todayStatus === "leave" ? "#F59E0B" : "#dc2626"} />
                     )}
                     <Text
                       className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
@@ -591,7 +591,9 @@ export default function Dashboard() {
                   <Text
                     className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
                   >
-                    {attendanceStatus.checkInTime
+                    {attendanceStatus.todayStatus === "leave"
+                      ? "Izin"
+                      : attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
                       : "Belum absen"}
                   </Text>
@@ -603,7 +605,7 @@ export default function Dashboard() {
                     {attendanceStatus.hasCheckedOut ? (
                       <CheckCircle size={20} color="#16a34a" />
                     ) : (
-                      <AlertCircle size={20} color="#dc2626" />
+                      <AlertCircle size={20} color={attendanceStatus.todayStatus === "leave" ? "#F59E0B" : "#dc2626"} />
                     )}
                     <Text
                       className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
@@ -614,7 +616,9 @@ export default function Dashboard() {
                   <Text
                     className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
                   >
-                    {attendanceStatus.checkOutTime
+                    {attendanceStatus.todayStatus === "leave"
+                      ? "Izin"
+                      : attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
                       : "Belum absen"}
                   </Text>
