@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import LoadingScreen from "./auth/LoadingScreen";
 import ConnectionChecker from "~/components/ConnectionChecker";
 import { SafeLoadingScreen } from "~/components/SafeLoadingScreen";
+import { NativeWindErrorBoundary } from "~/components/NativeWindErrorBoundary";
 import { requiresSafeNativeWindInit } from "~/lib/deviceUtils";
 
 import { NAV_THEME } from "~/lib/constants";
@@ -92,18 +93,20 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-        <ConnectionChecker>
-          <StatusBar
-            style={isDarkColorScheme ? "light" : "dark"}
-            backgroundColor="transparent"
-            translucent={Platform.OS === "android"}
-          />
-          <Stack />
-        </ConnectionChecker>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <NativeWindErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+          <ConnectionChecker>
+            <StatusBar
+              style={isDarkColorScheme ? "light" : "dark"}
+              backgroundColor="transparent"
+              translucent={Platform.OS === "android"}
+            />
+            <Stack />
+          </ConnectionChecker>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </NativeWindErrorBoundary>
   );
 });
 
