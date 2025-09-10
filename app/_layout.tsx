@@ -14,9 +14,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import LoadingScreen from "./auth/LoadingScreen";
 import ConnectionChecker from "~/components/ConnectionChecker";
+import { SafeAppWrapper } from "./SafeAppWrapper";
 
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { useSafeColorScheme } from "~/lib/safeColorScheme";
+import { shouldUseSafeMode } from "~/lib/deviceCompatibility";
+import { testDeviceCompatibility } from "~/lib/testCompatibility";
 import * as Sentry from "@sentry/react-native";
 
 Sentry.init({
@@ -55,10 +59,29 @@ export {
   ErrorBoundary,
 } from "expo-router";
 
-export default Sentry.wrap(function RootLayout() {
+// Inner layout component that uses safe color scheme
+function InnerRootLayout() {
   const hasMounted = React.useRef(false);
-  const { isDarkColorScheme } = useColorScheme();
+  const isSafeMode = shouldUseSafeMode();
+  
+  // Use safe color scheme if in safe mode, otherwise use regular NativeWind color scheme
+  let isDarkColorScheme = false;
+  
+  if (isSafeMode) {
+    try {
+      const safeScheme = useSafeColorScheme();
+      isDarkColorScheme = safeScheme.isDarkColorScheme;
+    } catch {
+      // Fallback if not in provider context
+      isDarkColorScheme = false;
+    }
+  } else {
+    const regularColorScheme = useColorScheme();
+    isDarkColorScheme = regularColorScheme.isDarkColorScheme;
+  }
+    
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
+  
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
       return;
@@ -90,6 +113,31 @@ export default Sentry.wrap(function RootLayout() {
         </ConnectionChecker>
       </ThemeProvider>
     </SafeAreaProvider>
+  );
+}
+
+export default Sentry.wrap(function RootLayout() {
+  const isSafeMode = shouldUseSafeMode();
+
+  // Add device compatibility logging
+  React.useEffect(() => {
+    // Run compatibility test
+    testDeviceCompatibility();
+    
+    if (isSafeMode) {
+      console.log('Safe mode enabled for device compatibility');
+      Sentry.setTag('safe_mode', true);
+      Sentry.setContext('device_compatibility', {
+        safe_mode: true,
+        reason: 'TECNO device compatibility'
+      });
+    }
+  }, [isSafeMode]);
+
+  return (
+    <SafeAppWrapper>
+      <InnerRootLayout />
+    </SafeAppWrapper>
   );
 });
 

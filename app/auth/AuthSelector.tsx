@@ -16,12 +16,42 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { H1, H3 } from "~/components/ui/typography";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { shouldUseSafeMode } from "~/lib/deviceCompatibility";
+import { useSafeColorScheme } from "~/lib/safeColorScheme";
+import { createSafeStyle } from "~/lib/safeStyles";
 
 const SkanidaLogo = require("../../assets/skanidatransparan.png");
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { isDarkColorScheme, setColorScheme } = useColorScheme();
+  const isSafeMode = shouldUseSafeMode();
+  
+  // Use appropriate color scheme hook based on safe mode
+  let isDarkColorScheme = false;
+  let colorScheme: 'light' | 'dark' = 'light';
+  let setColorScheme: (scheme: 'light' | 'dark') => void;
+  
+  if (isSafeMode) {
+    try {
+      const safeScheme = useSafeColorScheme();
+      isDarkColorScheme = safeScheme.isDarkColorScheme;
+      colorScheme = safeScheme.colorScheme;
+      setColorScheme = safeScheme.setColorScheme;
+    } catch {
+      // Fallback if not in provider context
+      isDarkColorScheme = false;
+      colorScheme = 'light';
+      setColorScheme = () => {};
+    }
+  } else {
+    const regularColorScheme = useColorScheme();
+    isDarkColorScheme = regularColorScheme.isDarkColorScheme;
+    colorScheme = regularColorScheme.colorScheme ?? 'light';
+    setColorScheme = (scheme: 'light' | 'dark') => regularColorScheme.setColorScheme(scheme);
+  }
+  
+  // Create safe style utility
+  const safeStyle = createSafeStyle({ isSafeMode, colorScheme });
 
   // Optimized color scheme toggle with useCallback
   const toggleColorScheme = useCallback((): void => {
@@ -56,7 +86,7 @@ export default function LoginScreen() {
   }, []);
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${safeStyle.background(isDarkColorScheme ? "bg-gray-900" : "bg-background")}`}
     >
       <Stack.Screen options={{ headerShown: false }} />
 
@@ -138,4 +168,4 @@ export default function LoginScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
+}

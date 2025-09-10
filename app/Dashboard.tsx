@@ -27,6 +27,9 @@ import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { useColorScheme } from "~/lib/useColorScheme";
+import { shouldUseSafeMode } from "~/lib/deviceCompatibility";
+import { useSafeColorScheme } from "~/lib/safeColorScheme";
+import { createSafeStyle } from "~/lib/safeStyles";
 import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
 import { Settings } from "~/lib/icons/Settings";
@@ -63,7 +66,30 @@ interface AttendanceStatus {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const { isDarkColorScheme } = useColorScheme();
+  const isSafeMode = shouldUseSafeMode();
+  
+  // Use appropriate color scheme hook based on safe mode
+  let isDarkColorScheme = false;
+  let colorScheme: 'light' | 'dark' = 'light';
+  
+  if (isSafeMode) {
+    try {
+      const safeScheme = useSafeColorScheme();
+      isDarkColorScheme = safeScheme.isDarkColorScheme;
+      colorScheme = safeScheme.colorScheme;
+    } catch {
+      // Fallback if not in provider context
+      isDarkColorScheme = false;
+      colorScheme = 'light';
+    }
+  } else {
+    const regularColorScheme = useColorScheme();
+    isDarkColorScheme = regularColorScheme.isDarkColorScheme;
+    colorScheme = regularColorScheme.colorScheme ?? 'light';
+  }
+  
+  // Create safe style utility
+  const safeStyle = createSafeStyle({ isSafeMode, colorScheme });
   const router = useRouter();
   const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -452,12 +478,12 @@ export default function Dashboard() {
       />
       {/* Apply dynamic background based on theme */}
       <SafeAreaView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+        className={`flex-1 ${safeStyle.background(isDarkColorScheme ? "bg-gray-900" : "bg-gray-50")}`}
         edges={["top"]}
       >
         {/* Main container with theme-based background */}
         <ScrollView
-          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+          className={`flex-1 ${safeStyle.background(isDarkColorScheme ? "bg-gray-900" : "bg-gray-50")}`}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -766,4 +792,4 @@ export default function Dashboard() {
       )}
     </>
   );
-}
+}

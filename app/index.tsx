@@ -5,6 +5,9 @@ import { View, Text, ActivityIndicator, Alert } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase } from "../utils/supabase";
+import { shouldUseSafeMode } from "../lib/deviceCompatibility";
+import { useSafeColorScheme } from "../lib/safeColorScheme";
+import { useColorScheme } from "../lib/useColorScheme";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -12,6 +15,23 @@ export default function Index() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
+  
+  const isSafeMode = shouldUseSafeMode();
+  
+  // Use appropriate color scheme hook based on safe mode
+  let isDarkColorScheme = false;
+  if (isSafeMode) {
+    try {
+      const safeScheme = useSafeColorScheme();
+      isDarkColorScheme = safeScheme.isDarkColorScheme;
+    } catch {
+      // Fallback if not in provider context
+      isDarkColorScheme = false;
+    }
+  } else {
+    const regularColorScheme = useColorScheme();
+    isDarkColorScheme = regularColorScheme.isDarkColorScheme;
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,12 +65,26 @@ export default function Index() {
     checkAuth();
   }, [router, setUser]);
 
+  // Use safe styling for problematic devices
+  const backgroundClass = isSafeMode 
+    ? (isDarkColorScheme ? "bg-gray-900" : "bg-white")
+    : "flex-1 items-center justify-center p-4";
+  
+  const textClass = isSafeMode
+    ? (isDarkColorScheme ? "text-white mb-4 text-xl font-bold" : "text-gray-900 mb-4 text-xl font-bold")
+    : "mb-4 text-xl font-bold";
+
   return (
     <>
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <View className="flex-1 items-center justify-center p-4">
-        <Text className="mb-4 text-xl font-bold">{loadingMessage}</Text>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View className={`flex-1 items-center justify-center p-4 ${backgroundClass}`}>
+        <Text className={textClass}>{loadingMessage}</Text>
+        <ActivityIndicator size="large" color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"} />
+        {isSafeMode && (
+          <Text className={`mt-4 text-sm text-center ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}>
+            Safe mode enabled for device compatibility
+          </Text>
+        )}
       </View>
     </>
   );
