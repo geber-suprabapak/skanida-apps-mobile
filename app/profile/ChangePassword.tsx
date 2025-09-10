@@ -64,10 +64,16 @@ export default function ChangePassword() {
     setLoading(true);
     try {
       // Update password using Appwrite
-      const result = await appwriteAuth.updatePassword(newPassword, currentPassword);
-      
+      const result = await appwriteAuth.updatePassword(
+        newPassword,
+        currentPassword,
+      );
+
       if (!result.success) {
-        if (result.message.includes("Invalid credentials") || result.message.includes("password")) {
+        if (
+          result.message.includes("Invalid credentials") ||
+          result.message.includes("password")
+        ) {
           Alert.alert("Error", "Password lama salah");
         } else {
           Alert.alert("Error", result.message || "Gagal mengubah password");

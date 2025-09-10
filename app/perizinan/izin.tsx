@@ -18,7 +18,8 @@ import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { useColorScheme } from "~/lib/useColorScheme";
-import { supabase } from "~/utils/supabase";
+import { perizinanService } from "~/utils/migration/databaseMigration";
+import { storage, appwriteConfig, ID } from "~/utils/appwrite";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
 import { FileText } from "~/lib/icons/FileText";
@@ -156,13 +157,13 @@ export default function PerizinanScreen() {
 
       try {
         logger.debug("Checking initial submission status for user", {
-          userId: user.id,
+          userId: user.$id,
         });
-        const hasSubmitted = await checkTodayIzin(user.id);
+        const hasSubmitted = await checkTodayIzin(user.$id);
         setHasSubmittedToday(hasSubmitted);
 
         logger.info("Initial submission status check complete", {
-          userId: user.id,
+          userId: user.$id,
           hasSubmittedToday: hasSubmitted,
         });
       } catch (error) {
@@ -186,13 +187,13 @@ export default function PerizinanScreen() {
         try {
           setCheckingSubmission(true);
           logger.debug("Refreshing submission status on focus", {
-            userId: user.id,
+            userId: user.$id,
           });
-          const hasSubmitted = await checkTodayIzin(user.id);
+          const hasSubmitted = await checkTodayIzin(user.$id);
           setHasSubmittedToday(hasSubmitted);
 
           logger.info("Focus refresh submission status complete", {
-            userId: user.id,
+            userId: user.$id,
             hasSubmittedToday: hasSubmitted,
           });
         } catch (error) {
@@ -376,13 +377,11 @@ export default function PerizinanScreen() {
       fileSizeMB: (fileBuffer.length / (1024 * 1024)).toFixed(2),
     });
 
-    const { data, error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(fileName, fileBuffer, {
-        contentType,
-        cacheControl: "3600",
-        upsert: false,
-      });
+    const { data, error: uploadError } = await storage.createFile(
+      appwriteConfig.perizinanStorage,
+      ID.unique(),
+      fileBuffer,
+    );
 
     if (uploadError) {
       logger.error("Storage upload failed", {
@@ -403,14 +402,11 @@ export default function PerizinanScreen() {
       throw new Error(`Upload gagal: ${uploadError.message}`);
     }
 
-    const { data: urlData, error: signedErr } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 days
-
-    if (signedErr) {
-      logger.error("Failed to create signed URL", signedErr);
-      throw new Error(`Gagal membuat URL gambar: ${signedErr.message}`);
-    }
+    // Get the file view URL for Appwrite
+    const fileUrl = storage.getFileView(
+      appwriteConfig.perizinanStorage,
+      data.$id,
+    );
 
     const uploadTime = Date.now() - startTime;
     const throughput = (fileBuffer.length / 1024 / (uploadTime / 1000)).toFixed(
@@ -425,7 +421,7 @@ export default function PerizinanScreen() {
       fileSize: fileBuffer.length,
     });
 
-    return urlData.signedUrl;
+    return fileUrl;
   };
   const insertPermitToDatabase = async (permitData: {
     userId: string;
@@ -443,11 +439,11 @@ export default function PerizinanScreen() {
 
     // Check if user has already submitted izin today (double-check before insert)
     logger.debug("Final check before database insert");
-    const finalCheck = await checkTodayIzin(user.id);
+    const finalCheck = await checkTodayIzin(user.$id);
 
     if (finalCheck) {
       logger.error("Final check failed - user has already submitted today", {
-        userId: user.id,
+        userId: user.$id,
         attemptedCategory: category,
         currentTime: new Date().toISOString(),
       });
@@ -467,16 +463,20 @@ export default function PerizinanScreen() {
 
     logger.debug("Database insert payload", insertData);
 
-    const { error: insertError } = await supabase
-      .from("perizinan")
-      .insert(insertData);
+    const result = await perizinanService.createLeaveRequest({
+      user_id: permitData.userId,
+      kategori_izin: permitData.category,
+      deskripsi: permitData.description,
+      link_foto: permitData.imageUrl || undefined,
+      tanggal: new Date().toISOString(),
+    });
 
-    if (insertError) {
+    if (!result.success) {
       logger.error("Database insert failed", {
-        error: insertError,
+        error: result.message,
         permitData,
       });
-      throw new Error(`Gagal menyimpan data: ${insertError.message}`);
+      throw new Error(`Gagal menyimpan data: ${result.message}`);
     }
 
     const insertTime = Date.now() - startTime;
@@ -516,35 +516,33 @@ export default function PerizinanScreen() {
         now: now.toISOString(),
       });
 
-      const { data, error } = await supabase
-        .from("perizinan")
-        .select("id, tanggal, kategori_izin, created_at")
-        .eq("user_id", userId)
-        .gte("tanggal", startOfDayUTC)
-        .lte("tanggal", endOfDayUTC);
+      const result = await perizinanService.getUserLeaveRequests(userId);
 
-      if (error) {
-        logger.error("Error checking today's izin", error);
+      if (!result.success) {
+        logger.error("Error checking today's izin", result.message);
         // If there's an error checking, allow submission to not block users
         return false;
       }
 
-      const hasSubmittedToday = data && data.length > 0;
+      // Filter for today's submissions
+      const todaySubmissions =
+        result.data?.filter((item: any) => {
+          const itemDate = new Date(item.tanggal);
+          const itemLocalDate = format(itemDate, "yyyy-MM-dd");
+          return itemLocalDate === localDate;
+        }) || [];
+
+      const hasSubmittedToday = todaySubmissions.length > 0;
       logger.info("Today's izin check result", {
         hasSubmittedToday,
-        submissionCount: data?.length || 0,
-        submissions:
-          data?.map((item) => ({
-            id: item.id,
-            kategori_izin: item.kategori_izin,
-            tanggal: item.tanggal,
-            created_at: item.created_at,
-          })) || [],
+        submissionCount: todaySubmissions.length,
+        submissions: todaySubmissions.map((item: any) => ({
+          id: item.$id,
+          kategori_izin: item.kategori_izin,
+          tanggal: item.tanggal,
+          created_at: item.created_at,
+        })),
         localDate,
-        searchRange: {
-          from: startOfDayUTC,
-          to: endOfDayUTC,
-        },
       });
 
       return hasSubmittedToday;
@@ -588,13 +586,13 @@ export default function PerizinanScreen() {
 
     // Check if user has already submitted izin today
     logger.debug("Checking if user has already submitted izin today");
-    const hasSubmittedToday = await checkTodayIzin(user.id);
+    const hasSubmittedToday = await checkTodayIzin(user.$id);
 
     if (hasSubmittedToday) {
       logger.warn(
         "Upload attempted but user has already submitted izin today",
         {
-          userId: user.id,
+          userId: user.$id,
           attemptedCategory: category,
           today: format(new Date(), "yyyy-MM-dd"),
         },
@@ -620,7 +618,7 @@ export default function PerizinanScreen() {
       // Upload image if exists
       if (imageData) {
         logger.debug("Starting image upload process");
-        imageUrl = await uploadImageToStorage(imageData, user.id);
+        imageUrl = await uploadImageToStorage(imageData, user.$id);
         logger.info("Image upload completed", { imageUrl });
       } else {
         logger.debug("No image to upload, proceeding without photo");
@@ -629,7 +627,7 @@ export default function PerizinanScreen() {
       // Insert permit data to database
       logger.debug("Starting database insert process");
       await insertPermitToDatabase({
-        userId: user.id,
+        userId: user.$id,
         category,
         description,
         imageUrl,

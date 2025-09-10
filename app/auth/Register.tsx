@@ -100,8 +100,8 @@ export default function RegisterScreen() {
           .includes("invalid email")
           ? "Email tidak valid"
           : result.message.includes("already exists")
-          ? "Email sudah terdaftar"
-          : result.message;
+            ? "Email sudah terdaftar"
+            : result.message;
         Alert.alert("Registrasi Gagal", alertMessage, [{ text: "OK" }]);
         return;
       }
@@ -116,7 +116,11 @@ export default function RegisterScreen() {
       }
     } catch (error) {
       console.error("Registration error:", error);
-      Alert.alert("Registrasi Gagal", "Terjadi kesalahan saat mendaftar. Silakan coba lagi.", [{ text: "OK" }]);
+      Alert.alert(
+        "Registrasi Gagal",
+        "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",
+        [{ text: "OK" }],
+      );
     } finally {
       setLoading(false);
     }

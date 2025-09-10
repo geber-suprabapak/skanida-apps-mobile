@@ -73,7 +73,10 @@ export default function Login() {
 
       if (!result.success) {
         console.error("Appwrite login error:", result.message); // Keep console log for debugging
-        if (result.message.includes("Email not confirmed") || result.message.includes("verification")) {
+        if (
+          result.message.includes("Email not confirmed") ||
+          result.message.includes("verification")
+        ) {
           alert(
             "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
           );

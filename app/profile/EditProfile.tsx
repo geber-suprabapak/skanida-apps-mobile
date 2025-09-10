@@ -108,7 +108,8 @@ export default function EditProfile() {
         if (result.success && result.data) {
           setProfileData(result.data as UserProfile);
           currentName = result.data.full_name || currentName;
-          currentAbsenceNumber = result.data.absence_number || currentAbsenceNumber;
+          currentAbsenceNumber =
+            result.data.absence_number || currentAbsenceNumber;
           currentClassName = result.data.class_name || currentClassName;
           currentAvatarUrl = result.data.avatar_url || currentAvatarUrl;
         }
@@ -350,15 +351,15 @@ export default function EditProfile() {
         try {
           await account.updateEmail(email, ""); // In Appwrite, password is required for email update
           Alert.alert(
-            "Info", 
-            "Email berhasil diperbarui. Anda mungkin perlu memverifikasi email baru."
+            "Info",
+            "Email berhasil diperbarui. Anda mungkin perlu memverifikasi email baru.",
           );
         } catch (emailError: any) {
           console.error("Error updating email:", emailError);
           // Continue with profile update even if email update fails
           Alert.alert(
-            "Perhatian", 
-            "Gagal memperbarui email, tetapi profil lainnya akan tetap disimpan."
+            "Perhatian",
+            "Gagal memperbarui email, tetapi profil lainnya akan tetap disimpan.",
           );
         }
       }
@@ -388,7 +389,9 @@ export default function EditProfile() {
       }
 
       // Get updated profile data
-      const updatedProfileResult = await userProfilesService.getProfile(user?.$id || "");
+      const updatedProfileResult = await userProfilesService.getProfile(
+        user?.$id || "",
+      );
       if (updatedProfileResult.success && updatedProfileResult.data) {
         setProfileData(updatedProfileResult.data);
       }
