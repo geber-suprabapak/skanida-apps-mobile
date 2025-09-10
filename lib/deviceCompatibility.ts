@@ -1,6 +1,6 @@
 // lib/deviceCompatibility.ts
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 export interface DeviceInfo {
   manufacturer?: string;
@@ -14,7 +14,7 @@ export function getDeviceInfo(): DeviceInfo {
     manufacturer: Constants.manufacturer || undefined,
     model: Constants.deviceName || undefined,
     brand: Constants.brand || Platform.OS,
-    isAndroid: Platform.OS === 'android'
+    isAndroid: Platform.OS === "android",
   };
 }
 
@@ -25,32 +25,34 @@ export function getDeviceInfo(): DeviceInfo {
 export function isTecnoDevice(): boolean {
   try {
     const deviceInfo = getDeviceInfo();
-    
+
     if (!deviceInfo.isAndroid) {
       return false;
     }
 
     // Check for TECNO device indicators
-    const deviceName = (Constants.deviceName || '').toLowerCase();
-    const brand = (Constants.brand || '').toLowerCase();
-    const manufacturer = (Constants.manufacturer || '').toLowerCase();
+    const deviceName = (Constants.deviceName || "").toLowerCase();
+    const brand = (Constants.brand || "").toLowerCase();
+    const manufacturer = (Constants.manufacturer || "").toLowerCase();
 
     // Common TECNO identifiers
     const tecnoIdentifiers = [
-      'tecno',
-      'kl4', // TECNO KL4 specifically mentioned in the issue
-      'infinix', // TECNO's sub-brand
-      'itel' // Another TECNO sub-brand
+      "tecno",
+      "kl4", // TECNO KL4 specifically mentioned in the issue
+      "infinix", // TECNO's sub-brand
+      "itel", // Another TECNO sub-brand
+      "sdk_gphone64_x86_64",
     ];
 
-    return tecnoIdentifiers.some(identifier => 
-      deviceName.includes(identifier) || 
-      brand.includes(identifier) || 
-      manufacturer.includes(identifier)
+    return tecnoIdentifiers.some(
+      (identifier) =>
+        deviceName.includes(identifier) ||
+        brand.includes(identifier) ||
+        manufacturer.includes(identifier),
     );
   } catch (error) {
     // If we can't determine device info, assume it's safe (not TECNO)
-    console.warn('Could not determine device compatibility:', error);
+    console.warn("Could not determine device compatibility:", error);
     return false;
   }
 }

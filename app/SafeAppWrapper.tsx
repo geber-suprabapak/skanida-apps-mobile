@@ -1,8 +1,8 @@
 // app/SafeAppWrapper.tsx
-import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
-import { shouldUseSafeMode } from '~/lib/deviceCompatibility';
-import { SafeColorSchemeProvider } from '~/lib/safeColorScheme';
+import React, { useEffect } from "react";
+import { View, Text } from "react-native";
+import { shouldUseSafeMode } from "~/lib/deviceCompatibility";
+import { SafeColorSchemeProvider } from "~/lib/safeColorScheme";
 
 interface SafeAppWrapperProps {
   children: React.ReactNode;
@@ -27,23 +27,29 @@ export function SafeAppWrapper({ children }: SafeAppWrapperProps) {
 
   if (!isReady) {
     return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: '#ffffff' 
-      }}>
-        <Text style={{ 
-          fontSize: 16, 
-          color: '#374151',
-          marginBottom: 8 
-        }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            color: "#374151",
+            marginBottom: 8,
+          }}
+        >
           Skanida Apps
         </Text>
-        <Text style={{ 
-          fontSize: 12, 
-          color: '#6b7280' 
-        }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: "#6b7280",
+          }}
+        >
           Optimizing for your device...
         </Text>
       </View>
@@ -51,11 +57,7 @@ export function SafeAppWrapper({ children }: SafeAppWrapperProps) {
   }
 
   if (isSafeMode) {
-    return (
-      <SafeColorSchemeProvider>
-        {children}
-      </SafeColorSchemeProvider>
-    );
+    return <SafeColorSchemeProvider>{children}</SafeColorSchemeProvider>;
   }
 
   return <>{children}</>;
