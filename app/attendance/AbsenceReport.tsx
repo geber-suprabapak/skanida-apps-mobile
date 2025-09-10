@@ -228,27 +228,20 @@ const AbsenceReport = () => {
         return;
       }
 
-      // If user is attempting to mark 'Pulang', ensure they have no perizinan today
+      // If user has submitted perizinan today, block any attendance (present or pulang)
       try {
-        if (currentAbsenceType === "home") {
-          const hasPerizinan = await checkTodayPerizinan(userId);
-          if (hasPerizinan) {
-            logger.warn("Blocked pulang attendance: perizinan exists today", {
-              userId,
-            });
-            Alert.alert(
-              "Tidak dapat absen pulang",
-              "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absen pulang.",
-            );
-            return;
-          }
+        const hasPerizinan = await checkTodayPerizinan(userId);
+        if (hasPerizinan) {
+          logger.warn("Blocked attendance: perizinan exists today", { userId });
+          Alert.alert(
+            "Tidak dapat melakukan absensi",
+            "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absensi (masuk atau pulang). Jika ada kesalahan, silakan hubungi admin.",
+          );
+          return;
         }
       } catch (err) {
         logger.error("Error while checking perizinan before navigating to camera", err);
-        Alert.alert(
-          "Error",
-          "Gagal memeriksa status perizinan. Silakan coba lagi.",
-        );
+        Alert.alert("Error", "Gagal memeriksa status perizinan. Silakan coba lagi.");
         return;
       }
 

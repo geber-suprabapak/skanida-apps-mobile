@@ -723,21 +723,19 @@ const CameraAttendance = () => {
           );
         }
 
-        // If this is a pulang attendance, block if user submitted perizinan today
-        if (locationData.absenceType === "home") {
-          const hasPerizinan = await checkTodayPerizinan(locationData.userId);
-          if (hasPerizinan) {
-            logger.warn("Blocking pulang attendance because perizinan exists today", {
-              userId: locationData.userId,
-            });
-            Alert.alert(
-              "Tidak dapat absen pulang",
-              "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absen pulang.",
-            );
-            // Cleanup uploaded file maybe; but we skip saving attendance
-            setIsUploading(false);
-            return;
-          }
+        // If the user submitted perizinan today, block any attendance (present or pulang)
+        const hasPerizinan = await checkTodayPerizinan(locationData.userId);
+        if (hasPerizinan) {
+          logger.warn("Blocking attendance because perizinan exists today", {
+            userId: locationData.userId,
+          });
+          Alert.alert(
+            "Tidak dapat melakukan absensi",
+            "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absensi (masuk atau pulang).",
+          );
+          // Cleanup uploaded file maybe; but we skip saving attendance
+          setIsUploading(false);
+          return;
         }
 
         await saveAttendanceRecord(photoUrl);
