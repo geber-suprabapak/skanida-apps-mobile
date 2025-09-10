@@ -585,6 +585,33 @@ const CameraAttendance = () => {
     [locationData, currentDateTime],
   );
 
+  // Check if user has submitted perizinan today
+  const checkTodayPerizinan = useCallback(
+    async (userId: string | null): Promise<boolean> => {
+      if (!userId) return false;
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const { data, error } = await supabase
+          .from("perizinan")
+          .select("id, tanggal")
+          .eq("user_id", userId)
+          .gte("tanggal", `${today}T00:00:00`)
+          .lte("tanggal", `${today}T23:59:59.999`);
+
+        if (error) {
+          logger.error("Error checking today's perizinan", error);
+          return false;
+        }
+
+        return !!(data && data.length > 0);
+      } catch (err) {
+        logger.error("Unexpected error checking today's perizinan", err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const processAndUploadPhoto = useCallback(
     async (base64Data: string): Promise<void> => {
       setIsUploading(true);
@@ -694,6 +721,23 @@ const CameraAttendance = () => {
             "Upload validation failed, continuing anyway",
             validationError,
           );
+        }
+
+        // If this is a pulang attendance, block if user submitted perizinan today
+        if (locationData.absenceType === "home") {
+          const hasPerizinan = await checkTodayPerizinan(locationData.userId);
+          if (hasPerizinan) {
+            logger.warn("Blocking pulang attendance because perizinan exists today", {
+              userId: locationData.userId,
+            });
+            Alert.alert(
+              "Tidak dapat absen pulang",
+              "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absen pulang.",
+            );
+            // Cleanup uploaded file maybe; but we skip saving attendance
+            setIsUploading(false);
+            return;
+          }
         }
 
         await saveAttendanceRecord(photoUrl);

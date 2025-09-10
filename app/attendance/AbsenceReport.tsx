@@ -143,6 +143,29 @@ const AbsenceReport = () => {
     [],
   );
 
+      // Check if user has submitted perizinan today
+      const checkTodayPerizinan = useCallback(async (userId: string) => {
+        try {
+          const today = new Date().toISOString().split("T")[0];
+          const { data, error } = await supabase
+            .from("perizinan")
+            .select("id, tanggal")
+            .eq("user_id", userId)
+            .gte("tanggal", `${today}T00:00:00`)
+            .lte("tanggal", `${today}T23:59:59.999`);
+
+          if (error) {
+            logger.error("Error checking today's perizinan", error);
+            return false;
+          }
+
+          return !!(data && data.length > 0);
+        } catch (err) {
+          logger.error("Unexpected error checking today's perizinan", err);
+          return false;
+        }
+      }, []);
+
   // Get location with high accuracy only
   const getLocationWithHighAccuracy =
     useCallback(async (): Promise<Location.LocationObject | null> => {
@@ -185,35 +208,63 @@ const AbsenceReport = () => {
     }, []);
 
   const navigateToCamera = useCallback(() => {
-    if (
-      !currentLocation ||
-      !userId ||
-      !currentAbsenceType ||
-      !canProceedToCamera
-    ) {
-      logger.error("Cannot navigate to camera - missing required data", {
-        hasLocation: !!currentLocation,
-        hasUserId: !!userId,
-        hasAbsenceType: !!currentAbsenceType,
-        canProceed: canProceedToCamera,
-      });
-      Alert.alert(
-        "Error",
-        "Tidak dapat melanjutkan, data tidak lengkap atau kondisi tidak terpenuhi.",
-      );
-      return;
-    }
+    const doNavigate = async () => {
+      if (
+        !currentLocation ||
+        !userId ||
+        !currentAbsenceType ||
+        !canProceedToCamera
+      ) {
+        logger.error("Cannot navigate to camera - missing required data", {
+          hasLocation: !!currentLocation,
+          hasUserId: !!userId,
+          hasAbsenceType: !!currentAbsenceType,
+          canProceed: canProceedToCamera,
+        });
+        Alert.alert(
+          "Error",
+          "Tidak dapat melanjutkan, data tidak lengkap atau kondisi tidak terpenuhi.",
+        );
+        return;
+      }
 
-    logger.info("Navigating to camera", { absenceType: currentAbsenceType });
-    router.push({
-      pathname: "/attendance/CameraAttendance",
-      params: {
-        latitude: currentLocation.coords.latitude.toString(),
-        longitude: currentLocation.coords.longitude.toString(),
-        userId,
-        absenceType: currentAbsenceType,
-      },
-    });
+      // If user is attempting to mark 'Pulang', ensure they have no perizinan today
+      try {
+        if (currentAbsenceType === "home") {
+          const hasPerizinan = await checkTodayPerizinan(userId);
+          if (hasPerizinan) {
+            logger.warn("Blocked pulang attendance: perizinan exists today", {
+              userId,
+            });
+            Alert.alert(
+              "Tidak dapat absen pulang",
+              "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absen pulang.",
+            );
+            return;
+          }
+        }
+      } catch (err) {
+        logger.error("Error while checking perizinan before navigating to camera", err);
+        Alert.alert(
+          "Error",
+          "Gagal memeriksa status perizinan. Silakan coba lagi.",
+        );
+        return;
+      }
+
+      logger.info("Navigating to camera", { absenceType: currentAbsenceType });
+      router.push({
+        pathname: "/attendance/CameraAttendance",
+        params: {
+          latitude: currentLocation.coords.latitude.toString(),
+          longitude: currentLocation.coords.longitude.toString(),
+          userId,
+          absenceType: currentAbsenceType,
+        },
+      });
+    };
+
+    void doNavigate();
   }, [currentLocation, userId, currentAbsenceType, canProceedToCamera, router]);
 
   // --- CORE FUNCTIONS ---

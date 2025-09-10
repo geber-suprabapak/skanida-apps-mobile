@@ -141,9 +141,61 @@ export default function PerizinanScreen() {
   const [uploading, setUploading] = useState(false);
   const [hasSubmittedToday, setHasSubmittedToday] = useState<boolean>(false);
   const [checkingSubmission, setCheckingSubmission] = useState<boolean>(true);
+  const [blockedReason, setBlockedReason] = useState<"izin" | "absen" | null>(null);
 
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
+
+  // Check today's attendance status: 'none' | 'hadir' | 'pulang'
+  type AttendanceStatus = "none" | "hadir" | "pulang";
+  const checkTodayAttendanceStatus = async (
+    userId: string,
+  ): Promise<AttendanceStatus> => {
+    try {
+      const now = new Date();
+      const localDate = format(now, "yyyy-MM-dd");
+
+      logger.debug("Checking today's attendance records", {
+        userId,
+        localDate,
+      });
+
+      const { data, error } = await supabase
+        .from("absences")
+        .select("status, date, created_at")
+        .eq("user_id", userId)
+        .eq("date", localDate)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        logger.error("Error checking today's attendance", error);
+        return "none";
+      }
+
+      if (!data || data.length === 0) {
+        logger.info("No attendance record for today", { userId, localDate });
+        return "none";
+      }
+
+      const latest = data[0];
+      const statusValue = latest.status || "";
+
+      if (statusValue === "Hadir") {
+        return "hadir";
+      }
+
+      if (statusValue === "Pulang") {
+        return "pulang";
+      }
+
+      // For any other statuses default to 'none' to allow izin
+      return "none";
+    } catch (err) {
+      logger.error("Unexpected error checking today's attendance", err);
+      return "none";
+    }
+  };
 
   // Check initial submission status when component loads
   useEffect(() => {
@@ -158,8 +210,16 @@ export default function PerizinanScreen() {
         logger.debug("Checking initial submission status for user", {
           userId: user.id,
         });
-        const hasSubmitted = await checkTodayIzin(user.id);
-        setHasSubmittedToday(hasSubmitted);
+        const [hasSubmitted, attendanceStatus] = await Promise.all([
+          checkTodayIzin(user.id),
+          checkTodayAttendanceStatus(user.id),
+        ]);
+
+        // Only block perizinan if attendance status is 'pulang'
+        const hasBlockFromAttendance = attendanceStatus === "pulang";
+        setHasSubmittedToday(hasSubmitted || hasBlockFromAttendance);
+        if (hasBlockFromAttendance) setBlockedReason("absen");
+        else if (hasSubmitted) setBlockedReason("izin");
 
         logger.info("Initial submission status check complete", {
           userId: user.id,
@@ -188,8 +248,15 @@ export default function PerizinanScreen() {
           logger.debug("Refreshing submission status on focus", {
             userId: user.id,
           });
-          const hasSubmitted = await checkTodayIzin(user.id);
-          setHasSubmittedToday(hasSubmitted);
+          const [hasSubmitted, attendanceStatus] = await Promise.all([
+            checkTodayIzin(user.id),
+            checkTodayAttendanceStatus(user.id),
+          ]);
+
+          const hasBlockFromAttendance = attendanceStatus === "pulang";
+          setHasSubmittedToday(hasSubmitted || hasBlockFromAttendance);
+          if (hasBlockFromAttendance) setBlockedReason("absen");
+          else if (hasSubmitted) setBlockedReason("izin");
 
           logger.info("Focus refresh submission status complete", {
             userId: user.id,
@@ -588,7 +655,25 @@ export default function PerizinanScreen() {
 
     // Check if user has already submitted izin today
     logger.debug("Checking if user has already submitted izin today");
-    const hasSubmittedToday = await checkTodayIzin(user.id);
+    const [hasSubmittedToday, attendanceStatus] = await Promise.all([
+      checkTodayIzin(user.id),
+      checkTodayAttendanceStatus(user.id),
+    ]);
+
+    if (attendanceStatus === "pulang") {
+      logger.warn("Upload attempted but user has already recorded pulang attendance today", {
+        userId: user.id,
+        today: format(new Date(), "yyyy-MM-dd"),
+      });
+
+      Alert.alert(
+        "Sudah Absen Pulang Hari Ini",
+        "Anda sudah melakukan absen pulang hari ini sehingga tidak dapat mengajukan izin. Jika ada kesalahan, silakan hubungi admin.",
+        [{ text: "Mengerti", style: "default" }],
+      );
+      setBlockedReason("absen");
+      return;
+    }
 
     if (hasSubmittedToday) {
       logger.warn(
@@ -803,7 +888,9 @@ export default function PerizinanScreen() {
                           : "text-yellow-800"
                       }`}
                     >
-                      Izin Sudah Diajukan Hari Ini
+                      {blockedReason === "absen"
+                        ? "Anda Sudah Melakukan Absensi Hari Ini"
+                        : "Izin Sudah Diajukan Hari Ini"}
                     </Text>
                     <Text
                       className={`text-sm mt-1 ${
@@ -812,8 +899,9 @@ export default function PerizinanScreen() {
                           : "text-yellow-700"
                       }`}
                     >
-                      Anda sudah mengajukan izin untuk hari ini. Hanya satu
-                      pengajuan izin yang diperbolehkan per hari.
+                      {blockedReason === "absen"
+                        ? "Karena Anda sudah melakukan absensi hari ini, pengajuan izin tidak diperbolehkan. Jika ada kesalahan, silakan hubungi admin."
+                        : "Anda sudah mengajukan izin untuk hari ini. Hanya satu pengajuan izin yang diperbolehkan per hari."}
                     </Text>
                     <Text
                       className={`text-xs mt-2 ${
