@@ -23,6 +23,8 @@ export class NativeWindErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Log immediately when error is caught
+    console.error("🚨 [NativeWindErrorBoundary] Error caught in getDerivedStateFromError:", error.message);
     // Update state so the next render will show the fallback UI
     return { hasError: true, error, errorInfo: null };
   }
@@ -34,6 +36,22 @@ export class NativeWindErrorBoundary extends Component<Props, State> {
       errorInfo: errorInfo.componentStack || null,
     });
 
+    const deviceInfo = getDeviceDebugInfo();
+    
+    // Enhanced logging for debugging
+    console.error("🚨 [NativeWindErrorBoundary] Caught rendering error:", error);
+    console.error("📍 [NativeWindErrorBoundary] Error stack:", error.stack);
+    console.error("🧩 [NativeWindErrorBoundary] Component stack:", errorInfo.componentStack);
+    console.error("🔍 [NativeWindErrorBoundary] Device info:", deviceInfo);
+    console.error("📱 [NativeWindErrorBoundary] Is Transsion device:", deviceInfo.isTranssionDevice);
+    
+    // Additional context logging
+    if (deviceInfo.isTranssionDevice) {
+      console.error("⚠️ [NativeWindErrorBoundary] Transsion device crash detected - this may be related to NativeWind compatibility issues");
+    } else {
+      console.error("❓ [NativeWindErrorBoundary] Non-Transsion device crash - unexpected error occurred");
+    }
+
     // You can also log the error to an error reporting service here
     console.warn("NativeWind Error Boundary caught an error:", error);
     console.warn("Error Info:", errorInfo);
@@ -42,6 +60,9 @@ export class NativeWindErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       const deviceInfo = getDeviceDebugInfo();
+      
+      console.error("🔴 [NativeWindErrorBoundary] Rendering fallback UI due to error");
+      console.error("📱 [NativeWindErrorBoundary] Device info for fallback:", deviceInfo);
 
       // Fallback UI using inline styles to avoid any NativeWind issues
       return (

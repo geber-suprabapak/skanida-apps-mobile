@@ -26,19 +26,26 @@ export function useSafeColorScheme(): ColorSchemeState {
   useEffect(() => {
     if (requiresSafeNativeWindInit()) {
       // For Transsion devices, delay NativeWind initialization
+      console.log("[SafeColorScheme] 🔄 Starting delayed NativeWind initialization for Transsion device (2s delay)");
       const timer = setTimeout(() => {
+        console.log("[SafeColorScheme] ✅ NativeWind initialization delay completed, switching to full functionality");
         setIsInitialized(true);
       }, 2000); // 2 second delay to let UI stabilize
 
-      return () => clearTimeout(timer);
+      return () => {
+        console.log("[SafeColorScheme] 🧹 Cleanup: Clearing initialization timer");
+        clearTimeout(timer);
+      };
     } else {
       // For other devices, initialize immediately
+      console.log("[SafeColorScheme] ⚡ Standard device detected, initializing NativeWind immediately");
       setIsInitialized(true);
     }
   }, []);
 
   // For problematic devices during initialization, use fallback
   if (requiresSafeNativeWindInit() && !isInitialized) {
+    console.log("[SafeColorScheme] 🔒 Using fallback color scheme during initialization phase");
     return {
       colorScheme: fallbackScheme,
       isDarkColorScheme: fallbackScheme === "dark",
@@ -51,6 +58,10 @@ export function useSafeColorScheme(): ColorSchemeState {
 
   // Once initialized or for safe devices, use NativeWind
   const { colorScheme, setColorScheme, toggleColorScheme } = nativewindHook;
+  
+  if (requiresSafeNativeWindInit()) {
+    console.log("[SafeColorScheme] 🎨 NativeWind fully initialized, using native color scheme:", colorScheme);
+  }
 
   return {
     colorScheme: colorScheme ?? fallbackScheme,

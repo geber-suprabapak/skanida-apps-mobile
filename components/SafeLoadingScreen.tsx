@@ -27,8 +27,15 @@ export function SafeLoadingScreen({
   const useSafeMode = requiresSafeNativeWindInit();
   const debugInfo = showDebugInfo ? getDeviceDebugInfo() : null;
 
+  console.log("[SafeLoadingScreen] Rendering with safe mode:", useSafeMode);
+  console.log("[SafeLoadingScreen] Message:", message);
+  if (showDebugInfo && debugInfo) {
+    console.log("[SafeLoadingScreen] Debug info:", debugInfo);
+  }
+
   // Use inline styles for Transsion devices to avoid NativeWind conflicts
   if (useSafeMode) {
+    console.log("[SafeLoadingScreen] 🛡️ Using safe mode with inline styles (Transsion device)");
     return (
       <View
         style={{
@@ -97,6 +104,7 @@ export function SafeLoadingScreen({
   }
 
   // For non-Transsion devices, use NativeWind classes
+  console.log("[SafeLoadingScreen] ⚡ Using NativeWind classes (standard device)");
   return (
     <View className="flex-1 justify-center items-center bg-black p-4">
       <StatusBar

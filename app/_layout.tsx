@@ -64,21 +64,33 @@ export default Sentry.wrap(function RootLayout() {
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
   const requiresSafeInit = requiresSafeNativeWindInit();
 
+  console.log("[RootLayout] App initialization starting");
+  console.log("[RootLayout] Requires safe initialization:", requiresSafeInit);
+  console.log("[RootLayout] Color scheme initialized:", isInitialized);
+  console.log("[RootLayout] Color scheme loaded:", isColorSchemeLoaded);
+
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
       return;
     }
 
+    console.log("[RootLayout] Component mounting, setting up environment");
+
     if (Platform.OS === "web") {
       // Adds the background color to the html element to prevent white background on overscroll.
+      console.log("[RootLayout] Web platform detected, adding background class");
       document.documentElement.classList.add("bg-background");
     }
     setIsColorSchemeLoaded(true);
     hasMounted.current = true;
+    
+    console.log("[RootLayout] ✅ Layout initialization completed");
   }, []);
 
   // Show safe loading screen for Transsion devices during NativeWind initialization
   if (requiresSafeInit && (!isColorSchemeLoaded || !isInitialized)) {
+    console.log("[RootLayout] 🛡️ Showing safe loading screen for Transsion device");
+    console.log("[RootLayout] Color scheme loaded:", isColorSchemeLoaded, "NativeWind initialized:", isInitialized);
     return (
       <SafeLoadingScreen
         message="Initializing app..."
@@ -89,8 +101,12 @@ export default Sentry.wrap(function RootLayout() {
 
   // Show regular loading screen until color scheme is loaded for other devices
   if (!isColorSchemeLoaded) {
+    console.log("[RootLayout] 📱 Showing regular loading screen for standard device");
     return <LoadingScreen />;
   }
+
+  console.log("[RootLayout] 🚀 App fully initialized, rendering main layout");
+  console.log("[RootLayout] Dark mode active:", isDarkColorScheme);
 
   return (
     <NativeWindErrorBoundary>

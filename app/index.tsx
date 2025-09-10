@@ -17,14 +17,23 @@ export default function Index() {
 
   const requiresSafeInit = requiresSafeNativeWindInit();
 
+  console.log("[Index] Index component initialized");
+  console.log("[Index] Safe initialization required:", requiresSafeInit);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log("[Index] Starting authentication check");
+        console.log("[Index] Requires safe initialization:", requiresSafeInit);
+        
         // Add delay for Transsion devices to ensure UI is stable
         if (requiresSafeInit) {
+          console.log("[Index] 🔄 Applying 1s stabilization delay for Transsion device");
           await new Promise((resolve) => setTimeout(resolve, 1000));
+          console.log("[Index] ✅ Stabilization delay completed");
         }
 
+        console.log("[Index] 🔍 Checking Supabase session");
         // Memanggil Supabase untuk cek session
         const {
           data: { session },
@@ -33,20 +42,26 @@ export default function Index() {
 
         if (error) {
           // Error handling without console.log
+          console.error("[Index] 🚨 Supabase session error:", error.message);
           setLoadingMessage(`Error: ${error.message}`);
         }
 
         if (session?.user) {
+          console.log("[Index] ✅ Valid session found, user:", session.user.id);
           setLoadingMessage("Session found");
           setUser(session.user);
+          console.log("[Index] 🏠 Navigating to Dashboard");
           router.replace("/Dashboard");
         } else {
+          console.log("[Index] ❌ No valid session, redirecting to auth");
           router.replace("/auth/AuthSelector");
         }
-      } catch {
+      } catch (authError) {
         // Tangani error tak terduga
+        console.error("[Index] 💥 Unexpected error during auth check:", authError);
         setLoadingMessage("Error occurred while checking session");
       } finally {
+        console.log("[Index] 🏁 Authentication check completed");
         setIsLoading(false);
       }
     };
@@ -56,6 +71,7 @@ export default function Index() {
 
   // Use safe loading screen for Transsion devices
   if (requiresSafeInit) {
+    console.log("[Index] 🛡️ Using safe loading screen for Transsion device");
     return (
       <>
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -64,6 +80,7 @@ export default function Index() {
     );
   }
 
+  console.log("[Index] ⚡ Using standard UI for non-Transsion device");
   return (
     <>
       <Stack.Screen name="index" options={{ headerShown: false }} />
