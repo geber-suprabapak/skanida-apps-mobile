@@ -23,6 +23,7 @@ import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
+import { getRandomMotivation } from "~/lib/motivation";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
@@ -81,6 +82,7 @@ export default function Dashboard() {
     attendanceType: "present" | "home";
     time: string;
     processingTime?: number;
+    motivation?: string;
   } | null>(null);
 
   // Handle success popup from navigation params
@@ -90,12 +92,14 @@ export default function Dashboard() {
       params.attendanceType &&
       params.successTime
     ) {
+      const quote = getRandomMotivation();
       setSuccessData({
         attendanceType: params.attendanceType as "present" | "home",
         time: params.successTime as string,
         processingTime: params.processingTime
           ? parseInt(params.processingTime as string)
           : undefined,
+        motivation: quote.text,
       });
       setShowSuccessPopup(true);
 
@@ -816,6 +820,7 @@ export default function Dashboard() {
           attendanceType={successData.attendanceType}
           time={successData.time}
           processingTime={successData.processingTime}
+          motivationMessage={successData.motivation}
         />
       )}
     </>

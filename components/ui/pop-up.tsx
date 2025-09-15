@@ -31,6 +31,7 @@ interface AttendanceSuccessPopupProps {
   studentName?: string;
   time?: string;
   processingTime?: number;
+  motivationMessage?: string; // pesan motivasi yang akan ditampilkan
 }
 
 const CONFETTI_COLORS = [
@@ -53,6 +54,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   studentName = "",
   time,
   processingTime,
+  motivationMessage,
 }) => {
   const { isDarkColorScheme } = useColorScheme();
 
@@ -214,21 +216,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     }
   }, [visible]);
 
-  const getSuccessMessage = () => {
-    if (attendanceType === "present") {
-      return {
-        title: "Berhasil absen masuk",
-        subtitle: "Semangat sekolah hari ini! 🔥🔥",
-        emoji: "🎉",
-      };
-    } else {
-      return {
-        title: "Berhasil absen pulang",
-        subtitle: "Terima kasih sudah belajar dengan giat! 📚✨",
-        emoji: "👋",
-      };
-    }
-  };
+  // Tidak lagi menggunakan title/subtitle default karena diminta hanya menampilkan motivasi
 
   const formatProcessingTime = (timeMs?: number): string => {
     if (!timeMs) return "";
@@ -242,7 +230,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     }
   };
 
-  const message = getSuccessMessage();
+  // message dihapus, langsung gunakan motivationMessage
+  // Tampilkan kembali jam (HH:MM) saja tanpa processing time
   const currentTime =
     time ||
     new Date().toLocaleTimeString("id-ID", {
@@ -333,20 +322,29 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               }}
               className="items-center mb-6"
             >
+              {motivationMessage && (() => {
+                // Batasi maksimal 5 kalimat (dipisah berdasarkan titik / ! / ?)
+                const sentences = motivationMessage
+                  .split(/(?<=[.!?])\s+/)
+                  .filter(Boolean)
+                  .slice(0, 5)
+                  .join(" ");
+                return (
+                  <Text
+                    className={`text-base text-center mb-4 font-medium ${
+                      isDarkColorScheme ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    {`“${sentences}”`}
+                  </Text>
+                );
+              })()}
               <Text
-                className={`text-2xl font-bold text-center mb-2 ${
-                  isDarkColorScheme ? "text-white" : "text-gray-900"
+                className={`text-sm -mt-2 mb-4 font-semibold tracking-wide ${
+                  isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
                 }`}
               >
-                {message.title}
-              </Text>
-
-              <Text
-                className={`text-base text-center mb-4 ${
-                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
-                {message.subtitle}
+                Kelas KING 👑🔥
               </Text>
 
               {/* Time Display */}
@@ -363,23 +361,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                   {currentTime}
                 </Text>
               </View>
-
-              {/* Processing Time Display */}
-              {processingTime && (
-                <View
-                  className={`px-3 py-1 rounded-full ${
-                    isDarkColorScheme ? "bg-green-800/30" : "bg-green-100"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-medium ${
-                      isDarkColorScheme ? "text-green-300" : "text-green-700"
-                    }`}
-                  >
-                    {formatProcessingTime(processingTime)}
-                  </Text>
-                </View>
-              )}
             </Animated.View>
 
             {/* Confirm Button */}
