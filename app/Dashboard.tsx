@@ -215,21 +215,8 @@ export default function Dashboard() {
   let checkOutReason = "";
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
-      // Check for leave requests first (they take priority)
-      if (leaveRequests && leaveRequests.length > 0) {
-        // Check if there's any leave request for today (any submitted request counts)
-        const hasLeaveRequest = leaveRequests.length > 0;
-        if (hasLeaveRequest) {
-          todayStatus = "leave";
-        }
-      }
-
-      // Only check attendance if no leave request exists
-      if (
-        todayStatus !== "leave" &&
-        todayAttendance &&
-        todayAttendance.length > 0
-      ) {
+      // Evaluate attendance first to know if user already checked in
+      if (todayAttendance && todayAttendance.length > 0) {
         todayAttendance.forEach((record) => {
           if (record.status === "Hadir" || record.status === "Datang") {
             if (!hasCheckedIn) {
@@ -248,10 +235,22 @@ export default function Dashboard() {
             }
           }
         });
+      }
 
+      // Determine if leave affects status display.
+      // New rule: If user has checked in then later submit izin, we still show check-in row (Absen Masuk) normally
+      // but treat overall status & pulang row as Izin.
+      const hasLeaveRequest = leaveRequests && leaveRequests.length > 0;
+      if (hasLeaveRequest) {
         if (hasCheckedIn) {
-          todayStatus = "present";
+          // Mixed case: show status badge as Izin, keep check-in info, override checkout row only.
+          todayStatus = "leave"; // Badge shows Izin
+        } else {
+          // Pure leave (no attendance at all)
+          todayStatus = "leave";
         }
+      } else if (hasCheckedIn) {
+        todayStatus = "present";
       }
 
       // If no attendance and no leave request, mark as absent
@@ -606,15 +605,15 @@ export default function Dashboard() {
                   <Text
                     className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
                   >
-                    {attendanceStatus.todayStatus === "leave"
-                      ? "Izin"
-                      : attendanceStatus.checkInTime
-                        ? attendanceStatus.checkInReason === "Terlambat"
-                          ? "Terlambat"
-                          : format(
-                              new Date(attendanceStatus.checkInTime),
-                              "HH:mm",
-                            )
+                    {attendanceStatus.checkInTime
+                      ? attendanceStatus.checkInReason === "Terlambat"
+                        ? "Terlambat"
+                        : format(
+                            new Date(attendanceStatus.checkInTime),
+                            "HH:mm",
+                          )
+                      : attendanceStatus.todayStatus === "leave"
+                        ? "Izin"
                         : "Belum absen"}
                   </Text>
                 </View>
@@ -636,7 +635,7 @@ export default function Dashboard() {
                   <Text
                     className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
                   >
-                    {attendanceStatus.todayStatus === "leave"
+                    {attendanceStatus.todayStatus === "leave" && !attendanceStatus.hasCheckedOut
                       ? "Izin"
                       : attendanceStatus.checkOutTime
                         ? attendanceStatus.checkOutReason && attendanceStatus.checkOutReason !== ""
@@ -645,7 +644,9 @@ export default function Dashboard() {
                               new Date(attendanceStatus.checkOutTime),
                               "HH:mm",
                             )
-                        : "Belum absen"}
+                        : attendanceStatus.todayStatus === "leave"
+                          ? "Izin"
+                          : "Belum absen"}
                   </Text>
                 </View>
 
