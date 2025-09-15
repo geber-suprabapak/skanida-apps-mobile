@@ -556,8 +556,24 @@ const CameraAttendance = () => {
 
   const saveAttendanceRecord = useCallback(
     async (photoUrl: string): Promise<void> => {
-      const reason =
-        locationData.absenceType === "present" ? "Hadir" : "Pulang";
+
+      // --- TIME-BASED REASON LOGIC ---
+      let status = locationData.absenceType === "present" ? "Hadir" : "Pulang";
+      let reason = "";
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      if (locationData.absenceType === "present") {
+        // 06:00–07:00 normal, >07:00 late
+        if (currentMinutes > 420) {
+          reason = "Terlambat";
+        }
+      } else if (locationData.absenceType === "home") {
+        // 15:15–21:00 normal, <15:15 or >21:00 not valid
+        if (currentMinutes < 915 || currentMinutes > 1260) {
+          reason = "Tidak absen pulang";
+        }
+      }
 
       const attendanceData = {
         user_id: locationData.userId,
@@ -566,7 +582,7 @@ const CameraAttendance = () => {
         photo_url: photoUrl,
         latitude: locationData.latitude,
         longitude: locationData.longitude,
-        status: reason,
+        status,
       };
 
       logger.debug("Saving attendance record", attendanceData);
@@ -733,10 +749,11 @@ const CameraAttendance = () => {
             "Tidak dapat melakukan absensi",
             "Anda telah mengajukan izin hari ini sehingga tidak dapat melakukan absensi (masuk atau pulang).",
           );
-          // Cleanup uploaded file maybe; but we skip saving attendance
           setIsUploading(false);
           return;
         }
+  // Removed strict time blocking per updated requirement.
+  // Reason for late / invalid time is now handled inside saveAttendanceRecord()
 
         await saveAttendanceRecord(photoUrl);
 

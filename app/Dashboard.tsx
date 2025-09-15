@@ -56,6 +56,8 @@ interface AttendanceStatus {
   checkOutTime?: string;
   totalWorkHours?: string;
   todayStatus: "present" | "absent" | "leave" | "pending";
+  checkInReason?: string;
+  checkOutReason?: string;
 }
 
 export default function Dashboard() {
@@ -192,7 +194,7 @@ export default function Dashboard() {
       // Fetch today's attendance
       const { data: todayAttendance } = await supabase
         .from("absences")
-        .select("status, created_at")
+        .select("status, created_at, reason")
         .eq("user_id", user.id)
         .eq("date", today)
         .order("created_at", { ascending: true });
@@ -207,8 +209,10 @@ export default function Dashboard() {
 
       let hasCheckedIn = false;
       let hasCheckedOut = false;
-      let checkInTime = "";
-      let checkOutTime = "";
+  let checkInTime = "";
+  let checkOutTime = "";
+  let checkInReason = "";
+  let checkOutReason = "";
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
       // Check for leave requests first (they take priority)
@@ -228,11 +232,20 @@ export default function Dashboard() {
       ) {
         todayAttendance.forEach((record) => {
           if (record.status === "Hadir" || record.status === "Datang") {
-            hasCheckedIn = true;
-            checkInTime = record.created_at;
+            if (!hasCheckedIn) {
+              hasCheckedIn = true;
+              checkInTime = record.created_at;
+              // capture reason (e.g., Terlambat)
+              // @ts-ignore reason may exist
+              checkInReason = (record as any).reason || "";
+            }
           } else if (record.status === "Pulang") {
-            hasCheckedOut = true;
-            checkOutTime = record.created_at;
+            if (!hasCheckedOut) {
+              hasCheckedOut = true;
+              checkOutTime = record.created_at;
+              // @ts-ignore reason may exist
+              checkOutReason = (record as any).reason || "";
+            }
           }
         });
 
@@ -262,6 +275,8 @@ export default function Dashboard() {
         checkOutTime,
         totalWorkHours,
         todayStatus,
+  checkInReason,
+  checkOutReason,
       });
     } catch (error) {
       console.error("Error fetching attendance data:", error);
@@ -594,8 +609,13 @@ export default function Dashboard() {
                     {attendanceStatus.todayStatus === "leave"
                       ? "Izin"
                       : attendanceStatus.checkInTime
-                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum absen"}
+                        ? attendanceStatus.checkInReason === "Terlambat"
+                          ? "Terlambat"
+                          : format(
+                              new Date(attendanceStatus.checkInTime),
+                              "HH:mm",
+                            )
+                        : "Belum absen"}
                   </Text>
                 </View>
 
@@ -619,8 +639,13 @@ export default function Dashboard() {
                     {attendanceStatus.todayStatus === "leave"
                       ? "Izin"
                       : attendanceStatus.checkOutTime
-                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum absen"}
+                        ? attendanceStatus.checkOutReason && attendanceStatus.checkOutReason !== ""
+                          ? attendanceStatus.checkOutReason
+                          : format(
+                              new Date(attendanceStatus.checkOutTime),
+                              "HH:mm",
+                            )
+                        : "Belum absen"}
                   </Text>
                 </View>
 
