@@ -421,19 +421,27 @@ export default function EditProfile() {
       }
 
       // Update absence_number and avatar_url in the profiles table using upsert
+      // Use onConflict to specify which column to use for conflict resolution
       const { error: profileError } = await supabase
         .from("user_profiles")
-        .upsert({
-          user_id: user?.id,
-          absence_number: absenceNumber,
-          avatar_url: avatarUrl,
-          full_name:
-            name || user?.user_metadata?.name || user?.user_metadata?.full_name,
-          email: email,
-          class_name: className,
-          nis: nis,
-          gender: gender,
-        });
+        .upsert(
+          {
+            user_id: user?.id,
+            absence_number: absenceNumber,
+            avatar_url: avatarUrl,
+            full_name:
+              name ||
+              user?.user_metadata?.name ||
+              user?.user_metadata?.full_name,
+            email: email,
+            class_name: className,
+            nis: nis,
+            gender: gender,
+          },
+          {
+            onConflict: "user_id",
+          },
+        );
 
       if (profileError) {
         console.error("Error updating profile table:", profileError);
