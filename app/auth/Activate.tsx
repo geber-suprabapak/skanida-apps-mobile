@@ -25,9 +25,8 @@ import { EyeOff } from "~/lib/icons/EyeOff";
 
 // Tipe data yang BENAR dan sesuai dengan database Anda
 type SiswaProfile = {
-  id: string;
   nama: string;
-  nis: number; // Tipe nis adalah angka (number)
+  nis: string; // Disimpan sebagai text di DB
   kelas?: string;
   activated: boolean;
 };
@@ -77,20 +76,17 @@ export default function Activate() {
       setCheckingNis(true);
       setNisError(false);
 
-      // PERBAIKAN: Ubah string NIS dari input menjadi angka
-      const nisAsNumber = parseInt(nis, 10);
-      if (isNaN(nisAsNumber)) {
+      // Validasi NIS numerik (disimpan sebagai text di DB)
+      if (!/^\d+$/.test(nis.trim())) {
         Alert.alert("Error", "NIS harus berupa angka.");
         setCheckingNis(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("biodata_siswa")
-        .select("id, nama, nis, kelas, activated")
-        .eq("nis", nisAsNumber) // Gunakan NIS yang sudah menjadi angka
-        .limit(1)
-        .maybeSingle();
+      // Gunakan RPC agar tetap bisa dibaca secara anon di bawah RLS
+      const { data, error } = await supabase.rpc("get_biodata_siswa", {
+        p_nis: nis.trim(),
+      });
 
       if (error) {
         console.error("Error checking nis:", error);
@@ -101,12 +97,14 @@ export default function Activate() {
         return;
       }
 
-      if (data) {
+      const row = Array.isArray(data) ? data[0] : data;
+
+      if (row) {
         if (data.activated) {
           Alert.alert("Error", "NIS ini sudah diaktivasi. Silakan login.");
           return;
         }
-        setUserProfile(data);
+        setUserProfile(row as SiswaProfile);
         setNisExists(true);
       } else {
         Alert.alert(
@@ -158,13 +156,13 @@ export default function Activate() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: userProfile.nama,
-            nis: userProfile.nis, // nis di sini sudah berupa angka dari state userProfile
+            nis: userProfile.nis,
           },
         },
       });
@@ -180,31 +178,13 @@ export default function Activate() {
         return;
       }
 
-      if (data?.user) {
-        const { error: profileError } = await supabase
-          .from("biodata_siswa")
-          .update({
-            user_id: data.user.id,
-            activated: true,
-          })
-          .eq("nis", userProfile.nis); // nis di sini sudah berupa angka
-
-        if (profileError) {
-          console.error("Error updating profile:", profileError.message);
-          Alert.alert(
-            "Error",
-            `Gagal mengupdate profil: ${profileError.message}`,
-          );
-          setLoading(false); // Pastikan loading berhenti jika ada error
-          return;
-        }
-
-        Alert.alert(
-          "Berhasil!",
-          "Akun berhasil diaktivasi. Silakan periksa email Anda untuk verifikasi.",
-          [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
-        );
-      }
+      // Jika pendaftaran berhasil, arahkan pengguna untuk verifikasi email.
+      // Logika aktivasi profil akan ditangani setelah login pertama.
+      Alert.alert(
+        "Verifikasi Diperlukan",
+        "Akun berhasil dibuat. Silakan verifikasi email Anda, lalu login untuk menyelesaikan aktivasi.",
+        [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
+      );
     } catch (error) {
       console.error("Activation error:", error);
       Alert.alert("Error", "Terjadi kesalahan tak terduga saat aktivasi");
