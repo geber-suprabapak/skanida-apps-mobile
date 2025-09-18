@@ -702,7 +702,7 @@ export default function Dashboard() {
           <Text
             className={`text-s font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
           >
-            v1.6.1-internal.2 | Branch: develop
+            v1.7.0-internaldev | Branch: develop
           </Text>
         </View>
       </SafeAreaView>

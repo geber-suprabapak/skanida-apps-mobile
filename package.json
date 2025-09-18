@@ -1,6 +1,6 @@
 {
   "name": "skanida-apps-mobile",
-  "version": "1.6.1-internal.2",
+  "version": "1.7.0-internaldev",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
