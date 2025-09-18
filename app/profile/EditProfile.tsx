@@ -13,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
 import { H3, Small } from "~/components/ui/typography";
@@ -218,9 +217,7 @@ export default function EditProfile() {
   }, [user]);
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
-      const hasUnsavedChanges =
-        absenceNumber !== initialAbsenceNumber ||
-        avatarUrl !== initialAvatarUrl;
+      const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
 
       if (!hasUnsavedChanges) {
         return;
@@ -247,13 +244,7 @@ export default function EditProfile() {
     return () => {
       navigation.removeListener("beforeRemove", onBeforeRemove);
     };
-  }, [
-    navigation,
-    absenceNumber,
-    avatarUrl,
-    initialAbsenceNumber,
-    initialAvatarUrl,
-  ]);
+  }, [navigation, avatarUrl, initialAvatarUrl]);
 
   // Handle hardware back button
   useEffect(() => {
@@ -286,9 +277,7 @@ export default function EditProfile() {
       }
 
       // Handle unsaved changes
-      const hasUnsavedChanges =
-        absenceNumber !== initialAbsenceNumber ||
-        avatarUrl !== initialAvatarUrl;
+      const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
 
       if (hasUnsavedChanges) {
         Alert.alert(
@@ -317,9 +306,7 @@ export default function EditProfile() {
     return () => backHandler.remove();
   }, [
     router,
-    absenceNumber,
     avatarUrl,
-    initialAbsenceNumber,
     initialAvatarUrl,
     profileData,
     name,
@@ -418,17 +405,11 @@ export default function EditProfile() {
   };
 
   const handleSave = async () => {
-    if (!absenceNumber) {
-      Alert.alert("Error", "Nomor absen tidak boleh kosong");
-      return;
-    }
-
     setLoading(true);
     try {
-      // Only update the avatar_url and absence_number in user metadata
+      // Only update the avatar_url in user metadata (absence number is read-only)
       const { error } = await supabase.auth.updateUser({
         data: {
-          absence_number: absenceNumber,
           avatar_url: avatarUrl,
         },
       });
@@ -744,13 +725,6 @@ export default function EditProfile() {
                     {name || "Belum diisi"}
                   </Text>
                 </View>
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  *Tidak dapat diubah
-                </Small>
               </View>
 
               <View>
@@ -776,13 +750,6 @@ export default function EditProfile() {
                     {email || "Belum diisi"}
                   </Text>
                 </View>
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  *Tidak dapat diubah
-                </Small>
               </View>
 
               <View>
@@ -808,13 +775,6 @@ export default function EditProfile() {
                     {nis || "Belum diisi"}
                   </Text>
                 </View>
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  *Tidak dapat diubah
-                </Small>
               </View>
             </View>
           </Card>
@@ -861,13 +821,6 @@ export default function EditProfile() {
                     {className || "Belum diisi"}
                   </Text>
                 </View>
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  *Tidak dapat diubah
-                </Small>
               </View>
 
               <View>
@@ -897,13 +850,6 @@ export default function EditProfile() {
                       : "Belum diisi"}
                   </Text>
                 </View>
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  *Tidak dapat diubah
-                </Small>
               </View>
 
               <View>
@@ -914,23 +860,27 @@ export default function EditProfile() {
                 >
                   Nomor Absen
                 </Small>
-                <Input
-                  placeholder="Masukkan nomor absen"
-                  value={absenceNumber}
-                  onChangeText={setAbsenceNumber}
-                  keyboardType="numeric"
-                  className={
+                <View
+                  className={`px-3 py-3 rounded-lg border ${
                     isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white"
-                      : "border-gray-300 bg-white"
-                  }
-                />
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-blue-400" : "text-blue-600"
+                      ? "border-gray-600 bg-gray-700"
+                      : "border-gray-300 bg-gray-100"
                   }`}
                 >
-                  *Dapat diubah
+                  <Text
+                    className={`${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    {absenceNumber || "Belum diisi"}
+                  </Text>
+                </View>
+                <Small
+                  className={`mt-1 ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  *Tidak dapat diubah
                 </Small>
               </View>
             </View>
