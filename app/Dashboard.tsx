@@ -270,7 +270,7 @@ export default function Dashboard() {
       console.error("Error fetching attendance data:", error);
     }
   }, [user]);
-  
+
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
     if (user) {
