@@ -104,6 +104,7 @@ export default function Activate() {
       }
 
       setNisExists(true);
+      setUserProfile(profile);
     } catch {
       Alert.alert("Error", "Terjadi kesalahan tak terduga");
     } finally {
