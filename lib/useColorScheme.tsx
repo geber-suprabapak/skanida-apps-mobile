@@ -25,7 +25,7 @@ export function useColorScheme() {
         }
       } catch (err) {
         // non-fatal; fallback to native behavior
-        // eslint-disable-next-line no-console
+
         console.warn("useColorScheme: failed to load stored theme", err);
       }
     })();
@@ -39,7 +39,6 @@ export function useColorScheme() {
       try {
         await AsyncStorage.setItem(COLOR_SCHEME_KEY, value);
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn("useColorScheme: failed to save theme", err);
       }
       nativeSetColorScheme(value);

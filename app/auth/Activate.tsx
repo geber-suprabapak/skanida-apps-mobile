@@ -23,8 +23,17 @@ import { UserCheck } from "~/lib/icons/UserCheck";
 import { Eye } from "~/lib/icons/Eye";
 import { EyeOff } from "~/lib/icons/EyeOff";
 
+// Tipe data yang BENAR dan sesuai dengan database Anda
+type SiswaProfile = {
+  id: string;
+  nama: string;
+  nis: number; // Tipe nis adalah angka (number)
+  kelas?: string;
+  activated: boolean;
+};
+
 export default function Activate() {
-  const [nis, setNis] = useState("");
+  const [nis, setNis] = useState(""); // Input dari pengguna (selalu string)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,14 +42,9 @@ export default function Activate() {
   const [nisExists, setNisExists] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [userProfile, setUserProfile] = useState<{
-    id: string;
-    full_name: string;
-    nis: string;
-    absence_number: string;
-    email: string;
-    class_name?: string;
-  } | null>(null);
+
+  // Gunakan tipe data SiswaProfile yang sudah didefinisikan
+  const [userProfile, setUserProfile] = useState<SiswaProfile | null>(null);
 
   // Error states
   const [nisError, setNisError] = useState(false);
@@ -51,18 +55,15 @@ export default function Activate() {
   const router = useRouter();
   const { isDarkColorScheme } = useColorScheme();
 
-  // Handle hardware back button for Android
   useEffect(() => {
     const backAction = () => {
       router.back();
-      return true; // Prevent default behavior
+      return true;
     };
-
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
       backAction,
     );
-
     return () => backHandler.remove();
   }, [router]);
 
@@ -76,73 +77,43 @@ export default function Activate() {
       setCheckingNis(true);
       setNisError(false);
 
-      // Check if NIS exists in user_profiles table
-      // Use anonymous access for checking NIS existence
+      // PERBAIKAN: Ubah string NIS dari input menjadi angka
+      const nisAsNumber = parseInt(nis, 10);
+      if (isNaN(nisAsNumber)) {
+        Alert.alert("Error", "NIS harus berupa angka.");
+        setCheckingNis(false);
+        return;
+      }
+
       const { data, error } = await supabase
-        .from("user_profiles")
-        .select("id, full_name, nis, absence_number, email, class_name")
-        .eq("nis", nis)
+        .from("biodata_siswa")
+        .select("id, nama, nis, kelas, activated")
+        .eq("nis", nisAsNumber) // Gunakan NIS yang sudah menjadi angka
         .limit(1)
         .maybeSingle();
 
       if (error) {
-        console.error("Error checking NIS:", error);
-        console.error("Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
+        console.error("Error checking nis:", error);
         Alert.alert(
           "Error",
-          `Terjadi kesalahan saat memeriksa NIS: ${error.message}`,
+          `Terjadi kesalahan saat memeriksa nis: ${error.message}`,
         );
         return;
       }
 
       if (data) {
-        // Check if this profile already has an email (already activated)
-        if (data.email && data.email.trim() !== "") {
+        if (data.activated) {
           Alert.alert("Error", "NIS ini sudah diaktivasi. Silakan login.");
           return;
         }
-
         setUserProfile(data);
         setNisExists(true);
       } else {
-        // If not found in nis column, try absence_number column
-        const { data: dataByAbsence, error: errorByAbsence } = await supabase
-          .from("user_profiles")
-          .select("id, full_name, nis, absence_number, email, class_name")
-          .eq("absence_number", nis)
-          .limit(1)
-          .maybeSingle();
-
-        if (errorByAbsence) {
-          console.error("Error checking absence_number:", errorByAbsence);
-          Alert.alert(
-            "Error",
-            `Terjadi kesalahan saat memeriksa NIS: ${errorByAbsence.message}`,
-          );
-          return;
-        }
-
-        if (dataByAbsence) {
-          // Check if this profile already has an email (already activated)
-          if (dataByAbsence.email && dataByAbsence.email.trim() !== "") {
-            Alert.alert("Error", "NIS ini sudah diaktivasi. Silakan login.");
-            return;
-          }
-
-          setUserProfile(dataByAbsence);
-          setNisExists(true);
-        } else {
-          Alert.alert(
-            "Error",
-            "NIS tidak ditemukan dalam sistem. Hubungi administrator.",
-          );
-          setNisExists(false);
-        }
+        Alert.alert(
+          "Error",
+          "NIS tidak ditemukan dalam sistem. Hubungi administrator.",
+        );
+        setNisExists(false);
       }
     } catch (error) {
       console.error("NIS check error:", error);
@@ -154,36 +125,22 @@ export default function Activate() {
 
   const validateForm = () => {
     let hasError = false;
-
-    // Reset all errors
     setEmailError(false);
     setPasswordError(false);
     setConfirmPasswordError(false);
 
-    if (!email.trim()) {
-      setEmailError(true);
-      hasError = true;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError(true);
       hasError = true;
     }
-
-    if (!password) {
-      setPasswordError(true);
-      hasError = true;
-    } else if (password.length < 6) {
+    if (!password || password.length < 6) {
       setPasswordError(true);
       hasError = true;
     }
-
-    if (!confirmPassword) {
-      setConfirmPasswordError(true);
-      hasError = true;
-    } else if (password !== confirmPassword) {
+    if (!confirmPassword || password !== confirmPassword) {
       setConfirmPasswordError(true);
       hasError = true;
     }
-
     return !hasError;
   };
 
@@ -201,62 +158,56 @@ export default function Activate() {
     try {
       setLoading(true);
 
-      // Sign up user with the existing profile data
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: userProfile.full_name,
-            nis: userProfile.nis || userProfile.absence_number,
+            full_name: userProfile.nama,
+            nis: userProfile.nis, // nis di sini sudah berupa angka dari state userProfile
           },
         },
       });
 
       if (error) {
         console.error("Supabase signup error:", error.message);
-
         if (error.message.includes("already registered")) {
           Alert.alert("Error", "Email sudah terdaftar");
         } else {
-          Alert.alert("Error", "Gagal membuat akun. Coba lagi nanti.");
+          Alert.alert("Error", `Gagal membuat akun: ${error.message}`);
         }
+        setLoading(false); // Pastikan loading berhenti jika ada error
         return;
       }
 
       if (data?.user) {
-        // Update user profile with new user ID and email
         const { error: profileError } = await supabase
-          .from("user_profiles")
+          .from("biodata_siswa")
           .update({
-            id: data.user.id,
-            email: email,
+            user_id: data.user.id,
+            activated: true,
           })
-          .eq("nis", userProfile.nis);
+          .eq("nis", userProfile.nis); // nis di sini sudah berupa angka
 
         if (profileError) {
           console.error("Error updating profile:", profileError.message);
           Alert.alert(
             "Error",
-            "Gagal mengupdate profil pengguna setelah aktivasi. Silakan hubungi administrator untuk membersihkan akun yang tidak lengkap.",
+            `Gagal mengupdate profil: ${profileError.message}`,
           );
+          setLoading(false); // Pastikan loading berhenti jika ada error
           return;
         }
 
         Alert.alert(
           "Berhasil!",
-          "Akun berhasil diaktivasi. Silakan periksa email Anda untuk verifikasi sebelum login.",
-          [
-            {
-              text: "OK",
-              onPress: () => router.replace("/auth/Login"),
-            },
-          ],
+          "Akun berhasil diaktivasi. Silakan periksa email Anda untuk verifikasi.",
+          [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
         );
       }
     } catch (error) {
       console.error("Activation error:", error);
-      Alert.alert("Error", "Terjadi kesalahan tak terduga");
+      Alert.alert("Error", "Terjadi kesalahan tak terduga saat aktivasi");
     } finally {
       setLoading(false);
     }
@@ -264,15 +215,17 @@ export default function Activate() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
+      className={`flex-1 ${
+        isDarkColorScheme ? "bg-gray-900" : "bg-background"
+      }`}
     >
       <Stack.Screen name="auth/Activate" options={{ headerShown: false }} />
-
-      {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} shadow-lg`}
+          className={`w-12 h-12 rounded-full items-center justify-center ${
+            isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"
+          } shadow-lg`}
         >
           <ChevronLeft
             size={20}
@@ -292,25 +245,28 @@ export default function Activate() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 justify-center items-center px-8 py-8">
-            {/* Logo and Title Section */}
             <View className="items-center mb-8">
               <View
-                className={`w-32 h-32 rounded-full shadow-lg mb-8 ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} items-center justify-center`}
+                className={`w-32 h-32 rounded-full shadow-lg mb-8 ${
+                  isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"
+                } items-center justify-center`}
               >
                 <UserCheck
                   size={48}
                   color={isDarkColorScheme ? "#ffffff" : "#374151"}
                 />
               </View>
-
               <H1
-                className={`text-3xl font-bold text-center mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                className={`text-3xl font-bold text-center mb-3 ${
+                  isDarkColorScheme ? "text-white" : "text-gray-900"
+                }`}
               >
                 Aktivasi Akun
               </H1>
-
               <Text
-                className={`text-center text-base leading-relaxed max-w-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+                className={`text-center text-base leading-relaxed max-w-sm ${
+                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                }`}
               >
                 {!nisExists
                   ? "Masukkan NIS Anda untuk memulai proses aktivasi akun"
@@ -318,15 +274,17 @@ export default function Activate() {
               </Text>
             </View>
 
-            {/* Form Section */}
             <View className="w-full max-w-sm space-y-4">
               <View
-                className={`rounded-2xl p-6 shadow-xl ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"}`}
+                className={`rounded-2xl p-6 shadow-xl ${
+                  isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"
+                }`}
               >
-                {/* NIS Field */}
                 <View className="mb-4">
                   <Text
-                    className={`mb-2 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                    className={`mb-2 text-sm font-medium ${
+                      isDarkColorScheme ? "text-gray-200" : "text-gray-700"
+                    }`}
                   >
                     NIS
                   </Text>
@@ -353,7 +311,6 @@ export default function Activate() {
                     onChangeText={(text) => {
                       setNis(text);
                       if (nisError) setNisError(false);
-                      // Reset form when NIS changes
                       if (nisExists) {
                         setNisExists(false);
                         setUserProfile(null);
@@ -365,7 +322,6 @@ export default function Activate() {
                     editable={!nisExists}
                   />
 
-                  {/* Edit NIS Button - only show when NIS is verified */}
                   {nisExists && (
                     <TouchableOpacity
                       className="mt-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-700"
@@ -384,7 +340,6 @@ export default function Activate() {
                   )}
                 </View>
 
-                {/* Check NIS Button */}
                 {!nisExists && (
                   <Button
                     variant="outline"
@@ -396,14 +351,15 @@ export default function Activate() {
                     disabled={checkingNis || !nis.trim()}
                   >
                     <H3
-                      className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                      className={`font-semibold text-base ${
+                        isDarkColorScheme ? "text-white" : "text-gray-900"
+                      }`}
                     >
                       {checkingNis ? "Memeriksa NIS..." : "Periksa NIS"}
                     </H3>
                   </Button>
                 )}
 
-                {/* Show user info when NIS is found */}
                 {nisExists && userProfile && (
                   <View className="mb-4 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                     <Text className="text-green-800 dark:text-green-200 font-medium mb-2">
@@ -416,28 +372,17 @@ export default function Activate() {
                           Nama:
                         </Text>
                         <Text className="text-green-700 dark:text-green-300 text-sm">
-                          {userProfile.full_name}
+                          {userProfile.nama}
                         </Text>
                       </View>
 
-                      {userProfile.absence_number && (
-                        <View className="flex-row justify-between">
-                          <Text className="text-green-700 dark:text-green-300 text-sm font-medium">
-                            No. Absen:
-                          </Text>
-                          <Text className="text-green-700 dark:text-green-300 text-sm">
-                            {userProfile.absence_number}
-                          </Text>
-                        </View>
-                      )}
-
-                      {userProfile.class_name && (
+                      {userProfile.kelas && (
                         <View className="flex-row justify-between">
                           <Text className="text-green-700 dark:text-green-300 text-sm font-medium">
                             Kelas:
                           </Text>
                           <Text className="text-green-700 dark:text-green-300 text-sm">
-                            {userProfile.class_name}
+                            {userProfile.kelas}
                           </Text>
                         </View>
                       )}
@@ -449,13 +394,13 @@ export default function Activate() {
                   </View>
                 )}
 
-                {/* Email and Password fields - only show when NIS exists */}
                 {nisExists && (
                   <>
-                    {/* Email Field */}
                     <View className="mb-4">
                       <Text
-                        className={`mb-2 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                        className={`mb-2 text-sm font-medium ${
+                          isDarkColorScheme ? "text-gray-200" : "text-gray-700"
+                        }`}
                       >
                         Email
                       </Text>
@@ -487,10 +432,11 @@ export default function Activate() {
                       />
                     </View>
 
-                    {/* Password Field */}
                     <View className="mb-4">
                       <Text
-                        className={`mb-2 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                        className={`mb-2 text-sm font-medium ${
+                          isDarkColorScheme ? "text-gray-200" : "text-gray-700"
+                        }`}
                       >
                         Password
                       </Text>
@@ -539,10 +485,11 @@ export default function Activate() {
                       </View>
                     </View>
 
-                    {/* Confirm Password Field */}
                     <View className="mb-6">
                       <Text
-                        className={`mb-2 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                        className={`mb-2 text-sm font-medium ${
+                          isDarkColorScheme ? "text-gray-200" : "text-gray-700"
+                        }`}
                       >
                         Konfirmasi Password
                       </Text>
@@ -594,7 +541,6 @@ export default function Activate() {
                       </View>
                     </View>
 
-                    {/* Activate Button */}
                     <Button
                       variant="default"
                       size="lg"
@@ -607,7 +553,9 @@ export default function Activate() {
                       disabled={loading}
                     >
                       <H3
-                        className={`font-semibold text-base ${isDarkColorScheme ? "text-gray-900" : "text-white"}`}
+                        className={`font-semibold text-base ${
+                          isDarkColorScheme ? "text-gray-900" : "text-white"
+                        }`}
                       >
                         {loading ? "Sedang aktivasi..." : "Aktivasi Akun"}
                       </H3>
@@ -616,16 +564,19 @@ export default function Activate() {
                 )}
               </View>
 
-              {/* Login Link */}
               <View className="flex-row justify-center items-center mt-6">
                 <Text
-                  className={`text-base ${isDarkColorScheme ? "text-gray-400" : "text-gray-500"}`}
+                  className={`text-base ${
+                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
+                  }`}
                 >
                   Sudah punya akun?{" "}
                 </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Login")}>
                   <Text
-                    className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                    className={`font-semibold text-base ${
+                      isDarkColorScheme ? "text-white" : "text-gray-900"
+                    }`}
                   >
                     Masuk
                   </Text>
