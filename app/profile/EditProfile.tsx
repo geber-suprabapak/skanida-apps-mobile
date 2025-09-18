@@ -72,92 +72,149 @@ export default function EditProfile() {
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchAndSetInitialProfileData = async () => {
+    const fetchAndSetProfileData = async () => {
       if (!user) {
         return;
       }
 
-      // Set initial data from user auth metadata
-      let currentName =
-        user.user_metadata?.name || user.user_metadata?.full_name || "";
-      let currentEmail = user.email || "";
-      let currentAbsenceNumber = user.user_metadata?.absence_number || "";
-      let currentClassName = user.user_metadata?.class_name || "";
-      let currentNis = user.user_metadata?.nis || "";
-      let currentGender = user.user_metadata?.gender || "";
-      let currentAvatarUrl: string | null =
-        user.user_metadata?.avatar_url || null;
+      // Set loading indicator if needed
 
-      // Set initial values immediately
-      setName(currentName);
-      setEmail(currentEmail);
-      setAbsenceNumber(currentAbsenceNumber);
-      setClassName(currentClassName);
-      setNis(currentNis);
-      setGender(currentGender);
-      setAvatarUrl(currentAvatarUrl);
-      setInitialAbsenceNumber(currentAbsenceNumber);
-      setInitialAvatarUrl(currentAvatarUrl);
-
-      // Try to fetch additional data from user_profiles table
+      // First try to fetch data from user_profiles table (primary source)
       try {
-        console.log("Fetching profile for user id:", user.id);
+        console.log("Fetching profile for user id:", user?.id);
 
-        // Use id column as primary key
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select(
-            "full_name, email, absence_number, class_name, nis, gender, avatar_url",
-          )
-          .eq("id", user.id)
-          .single();
+        // Implement retry mechanism for race condition
+        const maxRetries = 3;
+        let profileData = null;
+        let fetchError = null;
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching profile:", error.message);
-          console.error("Error details:", error);
-          setFetchProfileError(true);
-          return; // Exit early if there's an error
+        // Try multiple times with a delay to handle race conditions
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          if (attempt > 0) {
+            // Wait before retry
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            console.log(`Retry attempt ${attempt + 1} for profile data...`);
+          }
+
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .select(
+              "full_name, email, absence_number, class_name, nis, gender, avatar_url",
+            )
+            .eq("user_id", user?.id)
+            .single();
+
+          if (data) {
+            profileData = data;
+            fetchError = null;
+            break; // Exit loop if we got data
+          }
+
+          fetchError = error;
+
+          // If error is something other than "not found", don't retry
+          if (error && error.code !== "PGRST116") {
+            break;
+          }
         }
 
-        if (data) {
-          console.log("Profile data found:", data);
-          setProfileData(data as UserProfile);
+        if (fetchError && fetchError.code !== "PGRST116") {
+          console.error("Error fetching profile:", fetchError.message);
+          console.error("Error details:", fetchError);
+          setFetchProfileError(true);
+        }
 
-          // Update states with profile data (profile data takes precedence)
-          const updatedName = data.full_name || currentName;
-          const updatedAbsenceNumber =
-            data.absence_number || currentAbsenceNumber;
-          const updatedClassName = data.class_name || currentClassName;
-          const updatedNis = data.nis || currentNis;
-          const updatedGender = data.gender || currentGender;
-          const updatedAvatarUrl = data.avatar_url || currentAvatarUrl;
+        if (profileData) {
+          // If we have profile data from database, use it as primary source
+          console.log("Profile data found:", profileData);
+          setProfileData(profileData as UserProfile);
 
-          setName(updatedName);
-          setAbsenceNumber(updatedAbsenceNumber);
-          setClassName(updatedClassName);
-          setNis(updatedNis);
-          setGender(updatedGender);
-          setAvatarUrl(updatedAvatarUrl);
-          setInitialAbsenceNumber(updatedAbsenceNumber);
-          setInitialAvatarUrl(updatedAvatarUrl);
+          // Prioritize profile data, fall back to user metadata only if needed
+          const currentName =
+            user.user_metadata?.name || user.user_metadata?.full_name || "";
+          const currentEmail = user.email || "";
+          const currentAbsenceNumber = user.user_metadata?.absence_number || "";
+          const currentClassName = user.user_metadata?.class_name || "";
+          const currentNis = user.user_metadata?.nis || "";
+          const currentGender = user.user_metadata?.gender || "";
+          const currentAvatarUrl = user.user_metadata?.avatar_url || null;
 
-          console.log("Updated data set to:", {
-            updatedName,
-            updatedNis,
-            updatedGender,
-            updatedClassName,
-            updatedAbsenceNumber,
+          setName(profileData.full_name || currentName);
+          setEmail(profileData.email || currentEmail);
+          setAbsenceNumber(profileData.absence_number || currentAbsenceNumber);
+          setClassName(profileData.class_name || currentClassName);
+          setNis(profileData.nis || currentNis);
+          setGender(profileData.gender || currentGender);
+          setAvatarUrl(profileData.avatar_url || currentAvatarUrl);
+
+          // Set initial values for change detection
+          setInitialAbsenceNumber(
+            profileData.absence_number || currentAbsenceNumber,
+          );
+          setInitialAvatarUrl(profileData.avatar_url || currentAvatarUrl);
+
+          console.log("Data set from user_profiles:", {
+            name: profileData.full_name,
+            nis: profileData.nis,
+            gender: profileData.gender,
+            className: profileData.class_name,
+            absenceNumber: profileData.absence_number,
           });
         } else {
           console.log("No profile data found for user:", user.id);
+
+          // Fallback to user metadata if no profile data
+          let currentName =
+            user.user_metadata?.name || user.user_metadata?.full_name || "";
+          let currentEmail = user.email || "";
+          let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+          let currentClassName = user.user_metadata?.class_name || "";
+          let currentNis = user.user_metadata?.nis || "";
+          let currentGender = user.user_metadata?.gender || "";
+          let currentAvatarUrl: string | null =
+            user.user_metadata?.avatar_url || null;
+
+          // Set values from user metadata as fallback
+          setName(currentName);
+          setEmail(currentEmail);
+          setAbsenceNumber(currentAbsenceNumber);
+          setClassName(currentClassName);
+          setNis(currentNis);
+          setGender(currentGender);
+          setAvatarUrl(currentAvatarUrl);
+          setInitialAbsenceNumber(currentAbsenceNumber);
+          setInitialAvatarUrl(currentAvatarUrl);
+
+          console.log("Using fallback data from user metadata");
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
         setFetchProfileError(true);
+
+        // Fallback to user metadata on error
+        let currentName =
+          user.user_metadata?.name || user.user_metadata?.full_name || "";
+        let currentEmail = user.email || "";
+        let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+        let currentClassName = user.user_metadata?.class_name || "";
+        let currentNis = user.user_metadata?.nis || "";
+        let currentGender = user.user_metadata?.gender || "";
+        let currentAvatarUrl: string | null =
+          user.user_metadata?.avatar_url || null;
+
+        setName(currentName);
+        setEmail(currentEmail);
+        setAbsenceNumber(currentAbsenceNumber);
+        setClassName(currentClassName);
+        setNis(currentNis);
+        setGender(currentGender);
+        setAvatarUrl(currentAvatarUrl);
+        setInitialAbsenceNumber(currentAbsenceNumber);
+        setInitialAvatarUrl(currentAvatarUrl);
       }
     };
 
-    fetchAndSetInitialProfileData();
+    fetchAndSetProfileData();
   }, [user]);
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
@@ -386,11 +443,11 @@ export default function EditProfile() {
       const { error: profileError } = await supabase
         .from("user_profiles")
         .upsert({
-          id: user.id,
+          user_id: user?.id,
           absence_number: absenceNumber,
           avatar_url: avatarUrl,
           full_name:
-            name || user.user_metadata?.name || user.user_metadata?.full_name,
+            name || user?.user_metadata?.name || user?.user_metadata?.full_name,
           email: email,
           class_name: className,
           nis: nis,
@@ -399,9 +456,9 @@ export default function EditProfile() {
 
       if (profileError) {
         console.error("Error updating profile table:", profileError);
-        console.error("User ID:", user.id);
+        console.error("User ID:", user?.id);
         console.error("Profile data being saved:", {
-          id: user.id,
+          user_id: user?.id,
           absence_number: absenceNumber,
           avatar_url: avatarUrl,
           full_name: name,
@@ -426,7 +483,7 @@ export default function EditProfile() {
       const { data: refreshedProfile } = await supabase
         .from("user_profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (refreshedProfile) {
