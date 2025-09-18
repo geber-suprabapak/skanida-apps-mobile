@@ -72,49 +72,39 @@ export default function Activate() {
       return;
     }
 
+    // Validate NIS is numeric
+    if (!/^\d+$/.test(nis.trim())) {
+      Alert.alert("Error", "NIS harus berupa angka.");
+      return;
+    }
+
     try {
       setCheckingNis(true);
       setNisError(false);
 
-      // Validasi NIS numerik (disimpan sebagai text di DB)
-      if (!/^\d+$/.test(nis.trim())) {
-        Alert.alert("Error", "NIS harus berupa angka.");
-        setCheckingNis(false);
-        return;
-      }
-
-      // Gunakan RPC agar tetap bisa dibaca secara anon di bawah RLS
       const { data, error } = await supabase.rpc("get_biodata_siswa", {
         p_nis: nis.trim(),
       });
 
       if (error) {
-        console.error("Error checking nis:", error);
-        Alert.alert(
-          "Error",
-          `Terjadi kesalahan saat memeriksa nis: ${error.message}`,
-        );
+        Alert.alert("Error", `Terjadi kesalahan: ${error.message}`);
         return;
       }
 
-      const row = Array.isArray(data) ? data[0] : data;
+      const profile = Array.isArray(data) ? data[0] : data;
 
-      if (row) {
-        if (data.activated) {
-          Alert.alert("Error", "NIS ini sudah diaktivasi. Silakan login.");
-          return;
-        }
-        setUserProfile(row as SiswaProfile);
-        setNisExists(true);
-      } else {
-        Alert.alert(
-          "Error",
-          "NIS tidak ditemukan dalam sistem. Hubungi administrator.",
-        );
-        setNisExists(false);
+      if (!profile) {
+        Alert.alert("Error", "NIS tidak ditemukan. Hubungi administrator.");
+        return;
       }
-    } catch (error) {
-      console.error("NIS check error:", error);
+
+      if (profile.activated) {
+        Alert.alert("Error", "NIS sudah diaktivasi. Silakan login.");
+        return;
+      }
+
+      setNisExists(true);
+    } catch {
       Alert.alert("Error", "Terjadi kesalahan tak terduga");
     } finally {
       setCheckingNis(false);
