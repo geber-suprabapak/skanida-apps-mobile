@@ -852,7 +852,7 @@ export default function EditProfile() {
                     }`}
                   >
                     {gender
-                      ? gender === "male"
+                      ? gender === "L"
                         ? "Laki-laki"
                         : "Perempuan"
                       : "Belum diisi"}
