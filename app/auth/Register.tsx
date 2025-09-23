@@ -15,8 +15,6 @@ import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { H1, H3 } from "~/components/ui/typography";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useColorScheme } from "~/lib/useColorScheme";
-import { cn } from "~/lib/utils";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Eye } from "~/lib/icons/Eye";
@@ -37,7 +35,6 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   // User will verify email before login, do not set user here
-  const { isDarkColorScheme } = useColorScheme();
   // Handle hardware back button for Android
   useEffect(() => {
     const backAction = () => {
@@ -127,21 +124,16 @@ export default function RegisterScreen() {
     }
   };
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-    >
+    <SafeAreaView className={`flex-1 `}>
       <Stack.Screen name="auth/Register" options={{ headerShown: false }} />
 
       {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} shadow-lg`}
+          className={`w-12 h-12 rounded-full items-center justify-center  shadow-lg`}
         >
-          <ChevronLeft
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <ChevronLeft size={20} />
         </TouchableOpacity>
       </View>
 
@@ -159,56 +151,31 @@ export default function RegisterScreen() {
             {/* Logo and Title Section */}
             <View className="items-center mb-10">
               <View
-                className={`w-28 h-28 rounded-full shadow-lg mb-6 ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} items-center justify-center`}
+                className={`w-28 h-28 rounded-full shadow-lg mb-6  items-center justify-center`}
               >
-                <UserCheck
-                  size={40}
-                  color={isDarkColorScheme ? "#ffffff" : "#374151"}
-                />
+                <UserCheck size={40} />
               </View>
 
-              <H1
-                className={`text-3xl font-bold text-center mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-              >
+              <H1 className={`text-3xl font-bold text-center mb-3 `}>
                 Buat Akun Baru
               </H1>
 
               <Text
-                className={`text-center text-base leading-relaxed max-w-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+                className={`text-center text-base leading-relaxed max-w-sm `}
               >
                 Bergabunglah dengan Skanida untuk memulai perjalanan Anda
               </Text>
             </View>
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
-              <View
-                className={`rounded-2xl p-8 shadow-xl ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"}`}
-              >
+              <View className={`rounded-2xl p-8 shadow-xl `}>
                 {/* Name Field */}
                 <View className="mb-6">
-                  <Text
-                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
-                  >
+                  <Text className={`mb-3 text-sm font-medium `}>
                     Nama Lengkap
                   </Text>
                   <Input
-                    className={cn(
-                      "h-16 rounded-xl border-2 px-4 py-4 text-lg",
-                      nameError
-                        ? "border-red-500"
-                        : isDarkColorScheme
-                          ? "border-gray-600"
-                          : "border-gray-200",
-                      isDarkColorScheme
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-50",
-                      "focus:border-blue-500",
-                      "native:text-lg native:leading-[1.2]",
-                    )}
                     placeholder="Masukkan nama lengkap Anda"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
                     autoCapitalize="words"
                     value={name}
                     onChangeText={(text) => {
@@ -219,29 +186,9 @@ export default function RegisterScreen() {
                 </View>
                 {/* Email Field */}
                 <View className="mb-6">
-                  <Text
-                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
-                  >
-                    Email
-                  </Text>
+                  <Text className={`mb-3 text-sm font-medium `}>Email</Text>
                   <Input
-                    className={cn(
-                      "h-16 rounded-xl border-2 px-4 py-4 text-lg",
-                      emailError
-                        ? "border-red-500"
-                        : isDarkColorScheme
-                          ? "border-gray-600"
-                          : "border-gray-200",
-                      isDarkColorScheme
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-50",
-                      "focus:border-blue-500",
-                      "native:text-lg native:leading-[1.2]",
-                    )}
                     placeholder="Masukkan email Anda"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
@@ -253,30 +200,10 @@ export default function RegisterScreen() {
                 </View>
                 {/* Password Field */}
                 <View className="mb-6">
-                  <Text
-                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
-                  >
-                    Password
-                  </Text>
+                  <Text className={`mb-3 text-sm font-medium `}>Password</Text>
                   <View className="relative">
                     <Input
-                      className={cn(
-                        "h-16 rounded-xl border-2 px-4 py-4 pr-16 text-lg",
-                        passwordError
-                          ? "border-red-500"
-                          : isDarkColorScheme
-                            ? "border-gray-600"
-                            : "border-gray-200",
-                        isDarkColorScheme
-                          ? "bg-gray-700 text-white"
-                          : "bg-gray-50",
-                        "focus:border-blue-500",
-                        "native:text-lg native:leading-[1.2]",
-                      )}
                       placeholder="Masukkan password"
-                      placeholderTextColor={
-                        isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                      }
                       secureTextEntry={!showPassword}
                       value={password}
                       onChangeText={(text) => {
@@ -291,46 +218,18 @@ export default function RegisterScreen() {
                       className="absolute right-4 top-1/2 -translate-y-1/2"
                       onPress={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? (
-                        <EyeOff
-                          size={20}
-                          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                        />
-                      ) : (
-                        <Eye
-                          size={20}
-                          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                        />
-                      )}
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </TouchableOpacity>
                   </View>
                 </View>
                 {/* Confirm Password Field */}
                 <View className="mb-8">
-                  <Text
-                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
-                  >
+                  <Text className={`mb-3 text-sm font-medium `}>
                     Konfirmasi Password
                   </Text>
                   <View className="relative">
                     <Input
-                      className={cn(
-                        "h-16 rounded-xl border-2 px-4 py-4 pr-16 text-lg",
-                        confirmPasswordError
-                          ? "border-red-500"
-                          : isDarkColorScheme
-                            ? "border-gray-600"
-                            : "border-gray-200",
-                        isDarkColorScheme
-                          ? "bg-gray-700 text-white"
-                          : "bg-gray-50",
-                        "focus:border-blue-500",
-                        "native:text-lg native:leading-[1.2]",
-                      )}
                       placeholder="Masukkan kembali"
-                      placeholderTextColor={
-                        isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                      }
                       secureTextEntry={!showConfirmPassword}
                       value={confirmPassword}
                       onChangeText={(text) => {
@@ -349,15 +248,9 @@ export default function RegisterScreen() {
                       }
                     >
                       {showConfirmPassword ? (
-                        <EyeOff
-                          size={20}
-                          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                        />
+                        <EyeOff size={20} />
                       ) : (
-                        <Eye
-                          size={20}
-                          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                        />
+                        <Eye size={20} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -366,17 +259,11 @@ export default function RegisterScreen() {
                 <Button
                   variant="default"
                   size="lg"
-                  className={`w-full h-16 rounded-xl shadow-lg ${
-                    isDarkColorScheme
-                      ? "bg-white shadow-gray-900/20"
-                      : "bg-gray-900 shadow-gray-900/10"
-                  }`}
+                  className={`w-full h-16 rounded-xl shadow-lg `}
                   onPress={handleRegister}
                   disabled={loading}
                 >
-                  <H3
-                    className={`font-semibold text-lg ${isDarkColorScheme ? "text-gray-900" : "text-white"}`}
-                  >
+                  <H3 className={`font-semibold text-lg `}>
                     {loading ? "Sedang mendaftar..." : "Daftar"}
                   </H3>
                 </Button>
@@ -384,15 +271,9 @@ export default function RegisterScreen() {
 
               {/* Login Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text
-                  className={`text-base ${isDarkColorScheme ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  Sudah memiliki akun?
-                </Text>
+                <Text className={`text-base `}>Sudah memiliki akun?</Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Login")}>
-                  <Text
-                    className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                  >
+                  <Text className={`font-semibold text-base `}>
                     Masuk sekarang
                   </Text>
                 </TouchableOpacity>

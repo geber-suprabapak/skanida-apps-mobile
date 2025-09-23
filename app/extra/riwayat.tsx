@@ -9,7 +9,6 @@ import AttendanceCalendar, {
   AttendanceCalendarRef,
 } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { Calendar } from "~/lib/icons/Calendar";
 import { Settings } from "~/lib/icons/Settings";
@@ -19,7 +18,6 @@ import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
 export default function Riwayat() {
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isFocused = useIsFocused();
@@ -165,9 +163,7 @@ export default function Riwayat() {
   };
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-    >
+    <SafeAreaView className={`flex-1 `}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -175,13 +171,7 @@ export default function Riwayat() {
       />
 
       {/* Header */}
-      <View
-        className={`flex-row items-center p-4 border-b ${
-          isDarkColorScheme
-            ? "border-gray-700 bg-gray-900"
-            : "border-border bg-background"
-        }`}
-      >
+      <View className={`flex-row items-center p-4 border-b $`}>
         <TouchableOpacity
           onPress={() => {
             try {
@@ -194,27 +184,15 @@ export default function Riwayat() {
           }}
           className="mr-3"
         >
-          <ChevronLeft
-            size={24}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <ChevronLeft size={24} />
         </TouchableOpacity>
 
-        <Text
-          className={`text-lg font-bold flex-1 ${
-            isDarkColorScheme ? "text-white" : "text-foreground"
-          }`}
-        >
-          Riwayat Kehadiran
-        </Text>
+        <Text className={`text-lg font-bold flex-1 `}>Riwayat Kehadiran</Text>
 
         {/* Cache management button (only in development) */}
         {__DEV__ && (
           <TouchableOpacity onPress={showCacheInfo} className="ml-3">
-            <Settings
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            />
+            <Settings size={20} />
           </TouchableOpacity>
         )}
 
@@ -224,26 +202,15 @@ export default function Riwayat() {
           className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
           disabled={isRefreshing}
         >
-          <RefreshCw
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            className={isRefreshing ? "animate-spin" : ""}
-          />
+          <RefreshCw size={20} className={isRefreshing ? "animate-spin" : ""} />
         </TouchableOpacity>
       </View>
 
       {/* Month/Year Selector */}
-      <View
-        className={`p-4 border-b ${
-          isDarkColorScheme
-            ? "border-gray-700 bg-gray-800"
-            : "border-border bg-background"
-        }`}
-      >
+      <View className={`p-4 border-b `}>
         <MonthYearPicker
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
-          isDarkColorScheme={isDarkColorScheme}
           minimumDate={new Date(2020, 0, 1)}
           maximumDate={new Date()}
         />
@@ -252,7 +219,6 @@ export default function Riwayat() {
       {/* Calendar Component */}
       <AttendanceCalendar
         ref={calendarRef}
-        isDarkColorScheme={isDarkColorScheme}
         currentYear={selectedDate.getFullYear()}
         currentMonth={selectedDate.getMonth()}
         key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}

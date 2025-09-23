@@ -26,7 +26,6 @@ import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { History } from "~/lib/icons/History";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
 import { Settings } from "~/lib/icons/Settings";
@@ -61,7 +60,6 @@ interface AttendanceStatus {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -476,13 +474,10 @@ export default function Dashboard() {
         }}
       />
       {/* Apply dynamic background based on theme */}
-      <SafeAreaView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-        edges={["top"]}
-      >
+      <SafeAreaView className={`flex-1 `} edges={["top"]}>
         {/* Main container with theme-based background */}
         <ScrollView
-          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+          className={`flex-1 `}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -490,9 +485,7 @@ export default function Dashboard() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* --- Header Section --- */}
-          <View
-            className={`px-6 pt-4 pb-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
-          >
+          <View className={`px-6 pt-4 pb-6 `}>
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center flex-1">
                 <Avatar
@@ -505,14 +498,10 @@ export default function Dashboard() {
                   }
                 />
                 <View className="flex-1">
-                  <Text
-                    className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                  >
+                  <Text className={`text-lg font-semibold `}>
                     {displayName}
                   </Text>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
+                  <Text className={`text-sm `}>
                     {format(currentTime, "EEEE, dd MMMM yyyy")}
                   </Text>
                 </View>
@@ -520,23 +509,14 @@ export default function Dashboard() {
 
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
-                <View
-                  className={`px-3 py-2 rounded-lg ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-50"}`}
-                >
+                <View className={`px-3 py-2 rounded-lg `}>
                   <View className="flex-row items-center">
-                    <Clock
-                      size={16}
-                      color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                    />
-                    <Text
-                      className={`ml-1 text-xs font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                    >
+                    <Clock size={16} />
+                    <Text className={`ml-1 text-xs font-medium `}>
                       Waktu Sekarang
                     </Text>
                   </View>
-                  <Text
-                    className={`text-sm font-bold text-center mt-1 ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}
-                  >
+                  <Text className={`text-sm font-bold text-center mt-1 `}>
                     {format(currentTime, "HH:mm:ss")}
                   </Text>
                 </View>
@@ -546,25 +526,18 @@ export default function Dashboard() {
                 onPress={() => {
                   Sentry.showFeedbackWidget();
                 }}
-                className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
+                className={`p-2 rounded-full `}
               >
-                <Bell
-                  size={20}
-                  color={isDarkColorScheme ? "#ffffff" : "#374151"}
-                />
+                <Bell size={20} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* --- Today's Status Card --- */}
           <View className="px-6 mb-6">
-            <Card
-              className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-            >
+            <Card className={`p-4 `}>
               <View className="flex-row items-center justify-between mb-4">
-                <Text
-                  className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                >
+                <Text className={`text-lg font-semibold `}>
                   Status Hari Ini
                 </Text>
                 <Badge
@@ -583,15 +556,9 @@ export default function Dashboard() {
                     ) : (
                       <AlertCircle size={20} color="#dc2626" />
                     )}
-                    <Text
-                      className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                    >
-                      Absen Masuk
-                    </Text>
+                    <Text className={`ml-2 `}>Absen Masuk</Text>
                   </View>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
+                  <Text className={`text-sm `}>
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
                       : "Belum absen"}
@@ -606,15 +573,9 @@ export default function Dashboard() {
                     ) : (
                       <AlertCircle size={20} color="#dc2626" />
                     )}
-                    <Text
-                      className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                    >
-                      Absen Pulang
-                    </Text>
+                    <Text className={`ml-2 `}>Absen Pulang</Text>
                   </View>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
+                  <Text className={`text-sm `}>
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
                       : "Belum absen"}
@@ -626,15 +587,9 @@ export default function Dashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
                       <Clock size={20} color="#3b82f6" />
-                      <Text
-                        className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                      >
-                        Total Jam Di Sekolah
-                      </Text>
+                      <Text className={`ml-2 `}>Total Jam Di Sekolah</Text>
                     </View>
-                    <Text
-                      className={`text-sm font-medium ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}
-                    >
+                    <Text className={`text-sm font-medium `}>
                       {attendanceStatus.totalWorkHours}
                     </Text>
                   </View>
@@ -645,11 +600,7 @@ export default function Dashboard() {
 
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
-            <Text
-              className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-            >
-              Aksi Cepat
-            </Text>
+            <Text className={`text-lg font-semibold mb-3 `}>Aksi Cepat</Text>
 
             {/* Large Square Primary Action - Attendance (Centered) */}
             <View className="items-center mb-4">
@@ -658,9 +609,7 @@ export default function Dashboard() {
                 className="w-48"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`aspect-square ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}
-                >
+                <Card className={`aspect-square `}>
                   <View className="flex-1 items-center justify-center p-4">
                     <UserCheck size={32} color="white" />
                     <Text className="text-white font-semibold text-lg mt-2 text-center">
@@ -690,23 +639,10 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  <History
-                    size={24}
-                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                  />
-                  <Text
-                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                  >
-                    Riwayat
-                  </Text>
-                  <Text
-                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    Lihat absensi
-                  </Text>
+                <Card className={`p-4 `}>
+                  <History size={24} />
+                  <Text className={`mt-2 font-medium `}>Riwayat</Text>
+                  <Text className={`text-xs `}>Lihat absensi</Text>
                 </Card>
               </TouchableOpacity>
 
@@ -715,23 +651,10 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  <ClipboardPenLine
-                    size={24}
-                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                  />
-                  <Text
-                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                  >
-                    Perizinan
-                  </Text>
-                  <Text
-                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    Ajukan izin
-                  </Text>
+                <Card className={`p-4 `}>
+                  <ClipboardPenLine size={24} />
+                  <Text className={`mt-2 font-medium `}>Perizinan</Text>
+                  <Text className={`text-xs `}>Ajukan izin</Text>
                 </Card>
               </TouchableOpacity>
 
@@ -740,23 +663,10 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  <Settings
-                    size={24}
-                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                  />
-                  <Text
-                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                  >
-                    Pengaturan
-                  </Text>
-                  <Text
-                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    Kelola akun
-                  </Text>
+                <Card className={`p-4 `}>
+                  <Settings size={24} />
+                  <Text className={`mt-2 font-medium `}>Pengaturan</Text>
+                  <Text className={`text-xs `}>Kelola akun</Text>
                 </Card>
               </TouchableOpacity>
             </View>
@@ -764,16 +674,8 @@ export default function Dashboard() {
         </ScrollView>
 
         {/* --- Footer Section --- */}
-        <View
-          className={`items-center px-6 py-3 border-t ${
-            isDarkColorScheme
-              ? "bg-gray-900 border-gray-700"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <Text
-            className={`text-s font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
-          >
+        <View className={`items-center px-6 py-3 border-t `}>
+          <Text className={`text-s font-bold `}>
             v1.6.2-internal.1 | Branch: develop
           </Text>
         </View>

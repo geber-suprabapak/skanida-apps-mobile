@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
 import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
@@ -128,11 +127,6 @@ const getImageContentType = (uri: string): string => {
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const { isDarkColorScheme } = useColorScheme();
-  logger.info("PerizinanScreen component mounted", {
-    userId: user?.id,
-    isDarkColorScheme,
-  });
 
   // State management
   const [category, setCategory] = useState<PermitCategory>("sakit");
@@ -734,38 +728,15 @@ export default function PerizinanScreen() {
           headerShown: false,
         }}
       />
-      <SafeAreaView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-      >
+      <SafeAreaView className={`flex-1 `}>
         {/* Header */}
-        <View
-          className={`flex-row items-center p-4 border-b ${
-            isDarkColorScheme
-              ? "border-gray-700 bg-gray-900"
-              : "border-gray-200 bg-white"
-          }`}
-        >
+        <View className={`flex-row items-center p-4 border-b `}>
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
-            <ChevronLeft
-              size={24}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            />
+            <ChevronLeft size={24} />
           </TouchableOpacity>
           <View className="flex-1">
-            <Text
-              className={`text-lg font-bold ${
-                isDarkColorScheme ? "text-white" : "text-gray-900"
-              }`}
-            >
-              Pengajuan Izin
-            </Text>
-            <Text
-              className={`text-sm ${
-                isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              Isi formulir dengan lengkap
-            </Text>
+            <Text className={`text-lg font-bold `}>Pengajuan Izin</Text>
+            <Text className={`text-sm `}>Isi formulir dengan lengkap</Text>
           </View>
         </View>
 
@@ -776,52 +747,21 @@ export default function PerizinanScreen() {
         >
           {/* Already Submitted Today Warning */}
           {hasSubmittedToday && !checkingSubmission && (
-            <Card
-              className={`mb-4 ${
-                isDarkColorScheme
-                  ? "bg-yellow-900/20 border-yellow-800"
-                  : "bg-yellow-50 border-yellow-200"
-              } shadow-sm border-2`}
-            >
+            <Card className={`mb-4  shadow-sm border-2`}>
               <CardContent className="p-4">
                 <View className="flex-row items-center">
-                  <View
-                    className={`mr-3 p-2 rounded-lg ${
-                      isDarkColorScheme ? "bg-yellow-900" : "bg-yellow-100"
-                    }`}
-                  >
-                    <AlertCircle
-                      size={20}
-                      color={isDarkColorScheme ? "#FCD34D" : "#D97706"}
-                    />
+                  <View className={`mr-3 p-2 rounded-lg `}>
+                    <AlertCircle size={20} />
                   </View>
                   <View className="flex-1">
-                    <Text
-                      className={`font-bold text-base ${
-                        isDarkColorScheme
-                          ? "text-yellow-300"
-                          : "text-yellow-800"
-                      }`}
-                    >
+                    <Text className={`font-bold text-base `}>
                       Izin Sudah Diajukan Hari Ini
                     </Text>
-                    <Text
-                      className={`text-sm mt-1 ${
-                        isDarkColorScheme
-                          ? "text-yellow-400"
-                          : "text-yellow-700"
-                      }`}
-                    >
+                    <Text className={`text-sm mt-1 `}>
                       Anda sudah mengajukan izin untuk hari ini. Hanya satu
                       pengajuan izin yang diperbolehkan per hari.
                     </Text>
-                    <Text
-                      className={`text-xs mt-2 ${
-                        isDarkColorScheme
-                          ? "text-yellow-500"
-                          : "text-yellow-600"
-                      }`}
-                    >
+                    <Text className={`text-xs mt-2 `}>
                       💡 Jika perlu mengubah informasi, hubungi admin sekolah.
                     </Text>
                   </View>
@@ -832,29 +772,15 @@ export default function PerizinanScreen() {
 
           {/* Loading Check */}
           {checkingSubmission && (
-            <Card
-              className={`mb-4 ${
-                isDarkColorScheme
-                  ? "bg-gray-800 border-gray-700"
-                  : "bg-white border-gray-200"
-              } shadow-sm`}
-            >
+            <Card className={`mb-4  shadow-sm`}>
               <CardContent className="p-4">
                 <View className="flex-row items-center justify-center">
                   <View className="mr-3">
                     <View
-                      className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${
-                        isDarkColorScheme
-                          ? "border-gray-400"
-                          : "border-gray-600"
-                      }`}
+                      className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin `}
                     />
                   </View>
-                  <Text
-                    className={`text-sm ${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
+                  <Text className={`text-sm `}>
                     Memeriksa status pengajuan hari ini...
                   </Text>
                 </View>
@@ -862,40 +788,17 @@ export default function PerizinanScreen() {
             </Card>
           )}
           {/* Category Selection Card */}
-          <Card
-            className={`mb-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            } shadow-sm`}
-          >
+          <Card className={`mb-4  shadow-sm`}>
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
-                <View
-                  className={`mr-3 p-2 rounded-lg ${
-                    isDarkColorScheme ? "bg-blue-900" : "bg-blue-100"
-                  }`}
-                >
-                  <ClipboardPenLine
-                    size={20}
-                    color={isDarkColorScheme ? "#60A5FA" : "#3B82F6"}
-                  />
+                <View className={`mr-3 p-2 rounded-lg `}>
+                  <ClipboardPenLine size={20} />
                 </View>
                 <View>
                   <CardTitle>
-                    <Text
-                      className={`text-lg font-bold ${
-                        isDarkColorScheme ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Kategori Izin
-                    </Text>
+                    <Text className={`text-lg font-bold `}>Kategori Izin</Text>
                   </CardTitle>
-                  <Text
-                    className={`text-sm ${
-                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
+                  <Text className={`text-sm `}>
                     Pilih jenis izin yang sesuai
                   </Text>
                 </View>
@@ -912,80 +815,20 @@ export default function PerizinanScreen() {
                       setCategory(catValue)
                     }
                     disabled={hasSubmittedToday || checkingSubmission}
-                    className={`flex-1 p-3 rounded-xl border-2 ${
-                      category === catValue
-                        ? isDarkColorScheme
-                          ? "bg-blue-900 border-blue-500"
-                          : "bg-blue-50 border-blue-500"
-                        : isDarkColorScheme
-                          ? "bg-gray-700 border-gray-600"
-                          : "bg-gray-50 border-gray-200"
-                    } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
+                    className={`flex-1 p-3 rounded-xl border-2  ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                   >
                     <View className="items-center">
-                      <View
-                        className={`mb-2 p-2 rounded-full ${
-                          category === catValue
-                            ? isDarkColorScheme
-                              ? "bg-blue-800"
-                              : "bg-blue-100"
-                            : isDarkColorScheme
-                              ? "bg-gray-600"
-                              : "bg-gray-200"
-                        }`}
-                      >
+                      <View className={`mb-2 p-2 rounded-full `}>
                         {catValue === "sakit" ? (
-                          <AlertCircle
-                            size={20}
-                            color={
-                              category === catValue
-                                ? isDarkColorScheme
-                                  ? "#60A5FA"
-                                  : "#3B82F6"
-                                : isDarkColorScheme
-                                  ? "#9CA3AF"
-                                  : "#6B7280"
-                            }
-                          />
+                          <AlertCircle size={20} />
                         ) : (
-                          <ClipboardPenLine
-                            size={20}
-                            color={
-                              category === catValue
-                                ? isDarkColorScheme
-                                  ? "#60A5FA"
-                                  : "#3B82F6"
-                                : isDarkColorScheme
-                                  ? "#9CA3AF"
-                                  : "#6B7280"
-                            }
-                          />
+                          <ClipboardPenLine size={20} />
                         )}
                       </View>
-                      <Text
-                        className={`font-semibold text-center text-sm ${
-                          category === catValue
-                            ? isDarkColorScheme
-                              ? "text-blue-300"
-                              : "text-blue-600"
-                            : isDarkColorScheme
-                              ? "text-gray-300"
-                              : "text-gray-700"
-                        }`}
-                      >
+                      <Text className={`font-semibold text-center text-sm `}>
                         {catValue.charAt(0).toUpperCase() + catValue.slice(1)}
                       </Text>
-                      <Text
-                        className={`text-xs text-center mt-1 ${
-                          category === catValue
-                            ? isDarkColorScheme
-                              ? "text-blue-400"
-                              : "text-blue-500"
-                            : isDarkColorScheme
-                              ? "text-gray-400"
-                              : "text-gray-500"
-                        }`}
-                      >
+                      <Text className={`text-xs text-center mt-1 `}>
                         {catValue === "sakit"
                           ? "Kondisi kesehatan"
                           : "Keperluan pribadi"}
@@ -997,65 +840,28 @@ export default function PerizinanScreen() {
             </CardContent>
           </Card>
           {/* Description Card */}
-          <Card
-            className={`mb-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            } shadow-sm`}
-          >
+          <Card className={`mb-4  shadow-sm`}>
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
-                <View
-                  className={`mr-3 p-2 rounded-lg ${
-                    isDarkColorScheme ? "bg-green-900" : "bg-green-100"
-                  }`}
-                >
-                  <FileText
-                    size={20}
-                    color={isDarkColorScheme ? "#34D399" : "#10B981"}
-                  />
+                <View className={`mr-3 p-2 rounded-lg `}>
+                  <FileText size={20} />
                 </View>
                 <View>
                   <CardTitle>
-                    <Text
-                      className={`text-lg font-bold ${
-                        isDarkColorScheme ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Deskripsi
-                    </Text>
+                    <Text className={`text-lg font-bold `}>Deskripsi</Text>
                   </CardTitle>
-                  <Text
-                    className={`text-sm ${
-                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
+                  <Text className={`text-sm `}>
                     Jelaskan alasan pengajuan izin Anda
                   </Text>
                 </View>
               </View>
             </CardHeader>
             <CardContent>
-              <View
-                className={`rounded-xl border-2 overflow-hidden ${
-                  description.trim()
-                    ? isDarkColorScheme
-                      ? "border-green-600 bg-green-900/20"
-                      : "border-green-300 bg-green-50"
-                    : isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700/50"
-                      : "border-gray-200 bg-gray-50"
-                }`}
-              >
+              <View className={`rounded-xl border-2 overflow-hidden `}>
                 <TextInput
                   ref={descriptionInputRef}
                   editable={!hasSubmittedToday && !checkingSubmission}
-                  className={`min-h-[100px] max-h-[160px] text-base border-0 p-3 ${
-                    isDarkColorScheme
-                      ? "bg-transparent text-white placeholder-gray-400"
-                      : "bg-transparent text-foreground placeholder-muted-foreground"
-                  } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
+                  className={`min-h-[100px] max-h-[160px] text-base border-0 p-3  ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                   placeholder="Contoh: Sakit demam dan perlu istirahat di rumah..."
                   multiline
                   value={description}
@@ -1073,9 +879,6 @@ export default function PerizinanScreen() {
                     minHeight: 100,
                     maxHeight: 160,
                   }}
-                  placeholderTextColor={
-                    isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                  }
                   onContentSizeChange={(event) => {
                     // Auto-scroll to bottom when content grows
                     const { height } = event.nativeEvent.contentSize;
@@ -1106,78 +909,31 @@ export default function PerizinanScreen() {
                 />
               </View>
               <View className="flex-row justify-between items-center mt-2">
-                <Text
-                  className={`text-xs ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  Minimal 10 karakter
-                </Text>
-                <Text
-                  className={`text-xs ${
-                    description.length >= 10
-                      ? isDarkColorScheme
-                        ? "text-green-400"
-                        : "text-green-600"
-                      : isDarkColorScheme
-                        ? "text-gray-400"
-                        : "text-gray-500"
-                  }`}
-                >
-                  {description.length}/500
-                </Text>
+                <Text className={`text-xs `}>Minimal 10 karakter</Text>
+                <Text className={`text-xs `}>{description.length}/500</Text>
               </View>
             </CardContent>
           </Card>
           {/* Photo Upload Card */}
-          <Card
-            className={`mb-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            } shadow-sm`}
-          >
+          <Card className={`mb-4  shadow-sm`}>
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
-                <View
-                  className={`mr-3 p-2 rounded-lg ${
-                    isDarkColorScheme ? "bg-purple-900" : "bg-purple-100"
-                  }`}
-                >
-                  <Camera
-                    size={20}
-                    color={isDarkColorScheme ? "#A78BFA" : "#8B5CF6"}
-                  />
+                <View className={`mr-3 p-2 rounded-lg `}>
+                  <Camera size={20} />
                 </View>
                 <View>
                   <CardTitle>
-                    <Text
-                      className={`text-lg font-bold ${
-                        isDarkColorScheme ? "text-white" : "text-gray-900"
-                      }`}
-                    >
+                    <Text className={`text-lg font-bold `}>
                       Lampiran Foto *
                     </Text>
                   </CardTitle>
-                  <Text
-                    className={`text-sm ${
-                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
+                  <Text className={`text-sm `}>
                     Wajib - Tambahkan bukti pendukung
                   </Text>
                 </View>
                 {imageData && (
-                  <View
-                    className={`px-3 py-1 rounded-full ${
-                      isDarkColorScheme ? "bg-green-900" : "bg-green-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        isDarkColorScheme ? "text-green-300" : "text-green-700"
-                      }`}
-                    >
+                  <View className={`px-3 py-1 rounded-full `}>
+                    <Text className={`text-xs font-medium `}>
                       ✓ Foto dipilih
                     </Text>
                   </View>
@@ -1191,39 +947,16 @@ export default function PerizinanScreen() {
                     <TouchableOpacity
                       onPress={pickFromCamera}
                       disabled={hasSubmittedToday || checkingSubmission}
-                      className={`flex-1 p-3 rounded-xl border-2 border-dashed ${
-                        isDarkColorScheme
-                          ? "border-gray-600 bg-gray-700/50"
-                          : "border-gray-300 bg-gray-50"
-                      } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
+                      className={`flex-1 p-3 rounded-xl border-2 border-dashed  ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                     >
                       <View className="items-center">
-                        <View
-                          className={`mb-2 p-2 rounded-full ${
-                            isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
-                          }`}
-                        >
-                          <Camera
-                            size={20}
-                            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                          />
+                        <View className={`mb-2 p-2 rounded-full`}>
+                          <Camera size={20} />
                         </View>
-                        <Text
-                          className={`font-medium text-center text-sm ${
-                            isDarkColorScheme
-                              ? "text-gray-300"
-                              : "text-gray-700"
-                          }`}
-                        >
+                        <Text className={`font-medium text-center text-sm `}>
                           Ambil Foto
                         </Text>
-                        <Text
-                          className={`text-xs text-center mt-1 ${
-                            isDarkColorScheme
-                              ? "text-gray-400"
-                              : "text-gray-500"
-                          }`}
-                        >
+                        <Text className={`text-xs text-center mt-1 `}>
                           Kamera
                         </Text>
                       </View>
@@ -1232,49 +965,22 @@ export default function PerizinanScreen() {
                     <TouchableOpacity
                       onPress={pickFromLibrary}
                       disabled={hasSubmittedToday || checkingSubmission}
-                      className={`flex-1 p-3 rounded-xl border-2 border-dashed ${
-                        isDarkColorScheme
-                          ? "border-gray-600 bg-gray-700/50"
-                          : "border-gray-300 bg-gray-50"
-                      } ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
+                      className={`flex-1 p-3 rounded-xl border-2 border-dashed  ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
                     >
                       <View className="items-center">
-                        <View
-                          className={`mb-2 p-2 rounded-full ${
-                            isDarkColorScheme ? "bg-gray-600" : "bg-gray-200"
-                          }`}
-                        >
-                          <ImageIcon
-                            size={20}
-                            color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                          />
+                        <View className={`mb-2 p-2 rounded-full `}>
+                          <ImageIcon size={20} />
                         </View>
-                        <Text
-                          className={`font-medium text-center text-sm ${
-                            isDarkColorScheme
-                              ? "text-gray-300"
-                              : "text-gray-700"
-                          }`}
-                        >
+                        <Text className={`font-medium text-center text-sm `}>
                           Pilih File
                         </Text>
-                        <Text
-                          className={`text-xs text-center mt-1 ${
-                            isDarkColorScheme
-                              ? "text-gray-400"
-                              : "text-gray-500"
-                          }`}
-                        >
+                        <Text className={`text-xs text-center mt-1 `}>
                           Galeri
                         </Text>
                       </View>
                     </TouchableOpacity>
                   </View>
-                  <Text
-                    className={`text-xs text-center ${
-                      isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
+                  <Text className={`text-xs text-center `}>
                     Format: JPG, PNG • Maksimal 5MB • Wajib dilampirkan
                   </Text>
                 </View>
@@ -1289,22 +995,13 @@ export default function PerizinanScreen() {
                     <View className="absolute inset-0 bg-black/10 rounded-xl" />
                     <TouchableOpacity
                       onPress={clearImage}
-                      className={`absolute top-3 right-3 p-2 rounded-full ${
-                        isDarkColorScheme ? "bg-red-900/80" : "bg-red-100/80"
-                      } backdrop-blur-sm`}
+                      className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm`}
                     >
-                      <Trash2
-                        size={18}
-                        color={isDarkColorScheme ? "#F87171" : "#EF4444"}
-                      />
+                      <Trash2 size={18} />
                     </TouchableOpacity>
                   </View>
                   <View className="flex-row justify-between items-center">
-                    <Text
-                      className={`text-sm font-medium ${
-                        isDarkColorScheme ? "text-green-300" : "text-green-600"
-                      }`}
-                    >
+                    <Text className={`text-sm font-medium `}>
                       ✓ Foto berhasil dipilih
                     </Text>
                     <TouchableOpacity
@@ -1315,17 +1012,9 @@ export default function PerizinanScreen() {
                           pickFromCamera();
                         }, 100);
                       }}
-                      className={`px-3 py-1 rounded-lg ${
-                        isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
-                      }`}
+                      className={`px-3 py-1 rounded-lg `}
                     >
-                      <Text
-                        className={`text-xs font-medium ${
-                          isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                        }`}
-                      >
-                        Ganti Foto
-                      </Text>
+                      <Text className={`text-xs font-medium `}>Ganti Foto</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1334,13 +1023,7 @@ export default function PerizinanScreen() {
           </Card>
 
           {/* Submit Button Card */}
-          <Card
-            className={`${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            } shadow-sm`}
-          >
+          <Card className={` shadow-sm`}>
             <CardContent className="p-4">
               <TouchableOpacity
                 disabled={
@@ -1352,52 +1035,23 @@ export default function PerizinanScreen() {
                   checkingSubmission
                 }
                 onPress={uploadPermit}
-                className={`w-full p-3 rounded-xl flex-row items-center justify-center ${
-                  uploading ||
-                  !description.trim() ||
-                  description.length < 10 ||
-                  !imageData ||
-                  hasSubmittedToday ||
-                  checkingSubmission
-                    ? isDarkColorScheme
-                      ? "bg-gray-700"
-                      : "bg-gray-300"
-                    : isDarkColorScheme
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-blue-500 hover:bg-blue-600"
-                } ${uploading ? "opacity-80" : ""}`}
+                className={`w-full p-3 rounded-xl flex-row items-center justify-center ${uploading ? "opacity-80" : ""}`}
               >
                 {uploading ? (
                   <>
                     <View className="mr-3">
                       <View
-                        className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${
-                          isDarkColorScheme
-                            ? "border-gray-400"
-                            : "border-blue-200"
-                        }`}
+                        className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin `}
                       />
                     </View>
-                    <Text
-                      className={`font-semibold text-base ${
-                        isDarkColorScheme ? "text-gray-300" : "text-blue-100"
-                      }`}
-                    >
+                    <Text className={`font-semibold text-base`}>
                       Mengirim Pengajuan...
                     </Text>
                   </>
                 ) : hasSubmittedToday ? (
                   <>
-                    <AlertCircle
-                      size={20}
-                      color={isDarkColorScheme ? "#6B7280" : "#9CA3AF"}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text
-                      className={`font-bold text-base ${
-                        isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
+                    <AlertCircle size={20} style={{ marginRight: 8 }} />
+                    <Text className={`font-bold text-base `}>
                       Sudah Mengajukan Hari Ini
                     </Text>
                   </>
@@ -1405,47 +1059,17 @@ export default function PerizinanScreen() {
                   <>
                     <View className="mr-3">
                       <View
-                        className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin ${
-                          isDarkColorScheme
-                            ? "border-gray-400"
-                            : "border-gray-600"
-                        }`}
+                        className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin `}
                       />
                     </View>
-                    <Text
-                      className={`font-semibold text-base ${
-                        isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
+                    <Text className={`font-semibold text-base `}>
                       Memeriksa Status...
                     </Text>
                   </>
                 ) : (
                   <>
-                    <ClipboardPenLine
-                      size={20}
-                      color={
-                        !description.trim() ||
-                        description.length < 10 ||
-                        !imageData
-                          ? isDarkColorScheme
-                            ? "#6B7280"
-                            : "#9CA3AF"
-                          : "#FFFFFF"
-                      }
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text
-                      className={`font-bold text-base ${
-                        !description.trim() ||
-                        description.length < 10 ||
-                        !imageData
-                          ? isDarkColorScheme
-                            ? "text-gray-400"
-                            : "text-gray-500"
-                          : "text-white"
-                      }`}
-                    >
+                    <ClipboardPenLine size={20} style={{ marginRight: 8 }} />
+                    <Text className={`font-bold text-base `}>
                       Kirim Pengajuan Izin
                     </Text>
                   </>
@@ -1454,22 +1078,14 @@ export default function PerizinanScreen() {
 
               {/* Validation Messages */}
               {hasSubmittedToday && (
-                <Text
-                  className={`text-xs text-center mt-2 ${
-                    isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
-                  }`}
-                >
+                <Text className={`text-xs text-center mt-2 `}>
                   ⚠️ Sudah mengajukan izin hari ini
                 </Text>
               )}
               {!hasSubmittedToday &&
                 !checkingSubmission &&
                 !description.trim() && (
-                  <Text
-                    className={`text-xs text-center mt-2 ${
-                      isDarkColorScheme ? "text-red-400" : "text-red-500"
-                    }`}
-                  >
+                  <Text className={`text-xs text-center mt-2 `}>
                     ⚠️ Deskripsi tidak boleh kosong
                   </Text>
                 )}
@@ -1477,11 +1093,7 @@ export default function PerizinanScreen() {
                 !checkingSubmission &&
                 description.trim() &&
                 description.length < 10 && (
-                  <Text
-                    className={`text-xs text-center mt-2 ${
-                      isDarkColorScheme ? "text-yellow-400" : "text-yellow-600"
-                    }`}
-                  >
+                  <Text className={`text-xs text-center mt-2 `}>
                     ⚠️ Deskripsi minimal 10 karakter
                   </Text>
                 )}
@@ -1490,11 +1102,7 @@ export default function PerizinanScreen() {
                 !imageData &&
                 description.trim() &&
                 description.length >= 10 && (
-                  <Text
-                    className={`text-xs text-center mt-2 ${
-                      isDarkColorScheme ? "text-red-400" : "text-red-500"
-                    }`}
-                  >
+                  <Text className={`text-xs text-center mt-2 `}>
                     ⚠️ Foto bukti wajib dilampirkan
                   </Text>
                 )}
@@ -1503,11 +1111,7 @@ export default function PerizinanScreen() {
                 description.trim() &&
                 description.length >= 10 &&
                 imageData && (
-                  <Text
-                    className={`text-xs text-center mt-2 ${
-                      isDarkColorScheme ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
+                  <Text className={`text-xs text-center mt-2`}>
                     ✓ Siap untuk dikirim
                   </Text>
                 )}
