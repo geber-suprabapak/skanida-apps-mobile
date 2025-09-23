@@ -13,7 +13,6 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { H1, H3 } from "~/components/ui/typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
@@ -156,9 +155,12 @@ export default function RegisterScreen() {
                 <UserCheck size={40} />
               </View>
 
-              <H1 className={`text-3xl font-bold text-center mb-3 `}>
+              <Text
+                variant="h1"
+                className={`text-3xl font-bold text-center mb-3 `}
+              >
                 Buat Akun Baru
-              </H1>
+              </Text>
 
               <Text
                 className={`text-center text-base leading-relaxed max-w-sm `}
@@ -263,9 +265,9 @@ export default function RegisterScreen() {
                   onPress={handleRegister}
                   disabled={loading}
                 >
-                  <H3 className={`font-semibold text-lg `}>
+                  <Text variant="h3" className={`font-semibold text-lg `}>
                     {loading ? "Sedang mendaftar..." : "Daftar"}
-                  </H3>
+                  </Text>
                 </Button>
               </View>
 

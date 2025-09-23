@@ -17,7 +17,6 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
-import { H3, P, Small, Muted } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { ChevronLeft } from "~/lib/icons/ChevronLeft";
@@ -521,7 +520,9 @@ export default function EditProfile() {
         <View className="px-6 pt-6 pb-4">
           <Card className={`p-6 bg-white border-gray-200`}>
             <View className="items-center">
-              <H3 className={`mb-6 text-gray-900`}>Foto Profil</H3>
+              <Text variant="h3" className={`mb-6 text-gray-900`}>
+                Foto Profil
+              </Text>
 
               <View className="relative mb-6">
                 {uploadingAvatar ? (
@@ -578,9 +579,9 @@ export default function EditProfile() {
                 )}
               </View>
 
-              <Small className={`text-center text-gray-600`}>
+              <Text variant={"small"} className={`text-center text-gray-600`}>
                 Ketuk ikon kamera untuk mengubah foto profil
-              </Small>
+              </Text>
             </View>
           </Card>
         </View>
@@ -588,13 +589,18 @@ export default function EditProfile() {
         {/* Combined Information Section */}
         <View className="px-6 mb-3">
           <Card className={`p-4 bg-white border-gray-200`}>
-            <H3 className={`mb-3 text-gray-900`}>Informasi Pribadi</H3>
+            <Text variant="h3" className={`mb-3 text-gray-900`}>
+              Informasi Pribadi
+            </Text>
 
             <View className="space-y-3">
               <View>
-                <Small className={`font-medium mb-1 text-gray-700`}>
+                <Text
+                  variant="small"
+                  className={`font-medium mb-1 text-gray-700`}
+                >
                   Nama Lengkap
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan nama lengkap"
                   value={name}
@@ -604,9 +610,12 @@ export default function EditProfile() {
               </View>
 
               <View>
-                <Small className={`font-medium mb-1 text-gray-700`}>
+                <Text
+                  variant="small"
+                  className={`font-medium mb-1 text-gray-700`}
+                >
                   Email
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan alamat email"
                   value={email}
@@ -623,13 +632,18 @@ export default function EditProfile() {
         {/* Academic Information Section */}
         <View className="px-6 mb-3">
           <Card className={`p-4 bg-white border-gray-200`}>
-            <H3 className={`mb-3 text-gray-900`}>Informasi Akademik</H3>
+            <Text variant="h3" className={`mb-3 text-gray-900`}>
+              Informasi Akademik
+            </Text>
 
             <View className="space-y-3">
               <View>
-                <Small className={`font-medium mb-1 text-gray-700`}>
+                <Text
+                  variant={"small"}
+                  className={`font-medium mb-1 text-gray-700`}
+                >
                   Nomor Absen
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan nomor absen"
                   value={absenceNumber}
@@ -640,9 +654,12 @@ export default function EditProfile() {
               </View>
 
               <View>
-                <Small className={`font-medium mb-1 text-gray-700`}>
+                <Text
+                  variant={"small"}
+                  className={`font-medium mb-1 text-gray-700`}
+                >
                   Kelas
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan kelas"
                   value={className}
