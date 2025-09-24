@@ -8,12 +8,12 @@ You are an AI coding assistant working on **Skanida Apps Mobile** (React Native 
 - **Key folders:**
     - `app/`: File-based routes; layouts in `_layout.tsx`, groups `(auth)`, `(tabs)`.
     - `components/ui/`: Reusable UI components (Button, Card, Input, etc.)—**do not modify**.
-    - `lib/`: `constants.ts`, `utils.ts` (exporting `cn()`), and icon wrappers in `lib/icons/` (legacy). Prefer importing icons from `lucide-react-native` with the shared `Icon` component.
+    - `lib/`: `constants.ts`, Must import icons from `lucide-react-native` and then wrap with `Icon` component.
     - `store/`: One Zustand store per feature (e.g., `authStore.ts`, `attendanceStore.ts`).
     - `utils/`: `supabase.ts` (central Supabase client), `attendanceCache.ts` (AsyncStorage caching).
 
 ### 2. Styling & Utilities
-- **NativeWind:** Use Tailwind utility classes in `className`; merge conditionally with `cn(...)` from `~/lib/utils.ts`.
+- **NativeWind:** Use Tailwind utility classes in `className`;
 - **Icons (updated):**
   - Import the renderer: `import { Icon } from "~/components/ui/icon"`.
   - Import icon glyphs from lucide: `import { anyLucideIconName } from "lucide-react-native"`.
@@ -66,6 +66,7 @@ import { Clock, CheckCircle, AlertCircle } from "lucide-react-native";
 - **Caching:** `utils/attendanceCache.ts` uses AsyncStorage to cache monthly attendance data for calendar views.
 
 ### 7. Developer Workflows & Scripts
+- **Lint Problem:** Don't fix lint errors manually. Instead, run `pnpm lint` to see issues and `pnpm format` to auto-fix formatting.
 - **Package manager:** pnpm (v10).
 - **Scripts (pwsh):**
     - `pnpm install`
