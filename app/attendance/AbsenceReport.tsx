@@ -16,12 +16,15 @@ import {
 } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
-import { RefreshCw } from "~/lib/icons/RefreshCw";
-import { Loader2 } from "~/lib/icons/Loader2";
-import { ChevronLeft } from "../../lib/icons/ChevronLeft";
-import { MapPin } from "~/lib/icons/MapPin";
-import { MapPinOff } from "~/lib/icons/MapPinOff";
-import { HelpCircle } from "~/lib/icons/HelpCircle";
+import { Icon } from "~/components/ui/icon";
+import {
+  RefreshCw,
+  Loader2,
+  ChevronLeft,
+  MapPin,
+  MapPinOff,
+  HelpCircle,
+} from "lucide-react-native";
 
 // --- TYPES AND INTERFACES ---
 type AbsenceType = "present" | "home";
@@ -552,14 +555,14 @@ const AbsenceReport = () => {
   ]);
 
   // --- RENDER HELPERS ---
-  const getStatusColor = (): string => {
+  const getStatusColorClass = (): string => {
     if (locationStatus === "verified" && canProceedToCamera) {
-      return "rgb(22, 163, 74)"; // green-600
+      return "text-green-600";
     }
     if (locationStatus === "out_of_range" || locationStatus === "failed") {
-      return "rgb(220, 38, 38)"; // red-600
+      return "text-red-600";
     }
-    return "rgb(107, 114, 128)"; // gray-500
+    return "text-gray-500";
   };
 
   // --- RENDER ---
@@ -570,7 +573,7 @@ const AbsenceReport = () => {
       {/* Custom Header */}
       <View className="flex-row items-center p-4 border-b border-gray-300 bg-white">
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-          <ChevronLeft size={24} color="black" />
+          <Icon as={ChevronLeft} className="size-6 text-black" />
         </TouchableOpacity>
         <Text className="text-xl font-semibold text-black">Lapor Absensi</Text>
       </View>
@@ -578,17 +581,26 @@ const AbsenceReport = () => {
       {/* Main Content */}
       <View className="flex-1 px-4 py-6 justify-center items-center bg-gray-100">
         {isLoading ? (
-          <Loader2 size={32} color="black" className="animate-spin" />
+          <Icon as={Loader2} className="size-8 text-black animate-spin" />
         ) : (
           <Card className="w-full max-w-md bg-white border-gray-300">
             <CardHeader className="items-center">
               {locationStatus === "verified" && canProceedToCamera ? (
-                <MapPin size={72} color={getStatusColor()} />
+                <Icon
+                  as={MapPin}
+                  className={`size-8 ${getStatusColorClass()}`}
+                />
               ) : locationStatus === "out_of_range" ||
                 locationStatus === "failed" ? (
-                <MapPinOff size={72} color={getStatusColor()} />
+                <Icon
+                  as={MapPinOff}
+                  className={`size-8 ${getStatusColorClass()}`}
+                />
               ) : (
-                <HelpCircle size={72} color={getStatusColor()} />
+                <Icon
+                  as={HelpCircle}
+                  className={`size-8 ${getStatusColorClass()}`}
+                />
               )}
             </CardHeader>
             <CardContent className="items-center">
@@ -654,7 +666,7 @@ const AbsenceReport = () => {
           onPress={performFullAbsenceCheck}
           disabled={isLoading}
         >
-          <RefreshCw size={20} color="#0ea5e9" style={{ marginRight: 8 }} />
+          <Icon as={RefreshCw} className="size-5 text-sky-500 mr-2" />
           <Text className="text-sky-600 font-medium">
             {isLoading ? "Memeriksa..." : "Segarkan Status"}
           </Text>

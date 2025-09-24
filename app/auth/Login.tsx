@@ -15,10 +15,8 @@ import { supabase } from "~/utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Eye } from "~/lib/icons/Eye";
-import { EyeOff } from "~/lib/icons/EyeOff";
-import { Key } from "~/lib/icons/Key";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Eye, EyeOff, Key } from "lucide-react-native";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -101,7 +99,7 @@ export default function Login() {
           onPress={() => router.back()}
           className={`w-12 h-12 rounded-full items-center justify-center  shadow-lg`}
         >
-          <ChevronLeft size={20} />
+          <Icon as={ChevronLeft} className="size-5" />
         </TouchableOpacity>
       </View>
 
@@ -121,7 +119,7 @@ export default function Login() {
               <View
                 className={`w-32 h-32 rounded-full shadow-lg mb-8  items-center justify-center`}
               >
-                <Key size={48} />
+                <Icon as={Key} className="size-12" />
               </View>
 
               <Text
@@ -171,7 +169,11 @@ export default function Login() {
                       className="absolute right-4 top-1/2 -translate-y-1/2"
                       onPress={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {showPassword ? (
+                        <Icon as={EyeOff} className="size-5" />
+                      ) : (
+                        <Icon as={Eye} className="size-5" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>

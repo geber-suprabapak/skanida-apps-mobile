@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, TouchableOpacity, BackHandler, Alert } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  BackHandler,
+  Alert,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
@@ -9,11 +15,8 @@ import AttendanceCalendar, {
   AttendanceCalendarRef,
 } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Calendar } from "~/lib/icons/Calendar";
-import { Settings } from "~/lib/icons/Settings";
-import { History } from "~/lib/icons/History";
-import { RefreshCw } from "~/lib/icons/RefreshCw";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Settings, RefreshCw } from "lucide-react-native";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
@@ -21,6 +24,8 @@ export default function Riwayat() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isFocused = useIsFocused();
+  const colorScheme = useColorScheme();
+  const isDarkColorScheme = colorScheme === "dark";
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -163,7 +168,9 @@ export default function Riwayat() {
   };
 
   return (
-    <SafeAreaView className={`flex-1 `}>
+    <SafeAreaView
+      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+    >
       <Stack.Screen
         options={{
           headerShown: false,
@@ -171,7 +178,9 @@ export default function Riwayat() {
       />
 
       {/* Header */}
-      <View className={`flex-row items-center p-4 border-b $`}>
+      <View
+        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-800" : "border-gray-200"}`}
+      >
         <TouchableOpacity
           onPress={() => {
             try {
@@ -184,15 +193,25 @@ export default function Riwayat() {
           }}
           className="mr-3"
         >
-          <ChevronLeft size={24} />
+          <Icon
+            as={ChevronLeft}
+            className={`size-6 ${isDarkColorScheme ? "text-white" : "text-black"}`}
+          />
         </TouchableOpacity>
 
-        <Text className={`text-lg font-bold flex-1 `}>Riwayat Kehadiran</Text>
+        <Text
+          className={`text-lg font-bold flex-1 ${isDarkColorScheme ? "text-white" : "text-black"}`}
+        >
+          Riwayat Kehadiran
+        </Text>
 
         {/* Cache management button (only in development) */}
         {__DEV__ && (
           <TouchableOpacity onPress={showCacheInfo} className="ml-3">
-            <Settings size={20} />
+            <Icon
+              as={Settings}
+              className={`size-5 ${isDarkColorScheme ? "text-white" : "text-black"}`}
+            />
           </TouchableOpacity>
         )}
 
@@ -202,17 +221,25 @@ export default function Riwayat() {
           className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
           disabled={isRefreshing}
         >
-          <RefreshCw size={20} className={isRefreshing ? "animate-spin" : ""} />
+          <Icon
+            as={RefreshCw}
+            className={`size-5 ${
+              isDarkColorScheme ? "text-white" : "text-black"
+            } ${isRefreshing ? "animate-spin" : ""}`}
+          />
         </TouchableOpacity>
       </View>
 
-      {/* Month/Year Selector */}
-      <View className={`p-4 border-b `}>
+      {/* Month/Year Picker */}
+      <View
+        className={`p-4 border-b ${isDarkColorScheme ? "border-gray-800" : "border-gray-200"}`}
+      >
         <MonthYearPicker
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
           minimumDate={new Date(2020, 0, 1)}
           maximumDate={new Date()}
+          isDarkColorScheme={isDarkColorScheme}
         />
       </View>
 
@@ -221,6 +248,7 @@ export default function Riwayat() {
         ref={calendarRef}
         currentYear={selectedDate.getFullYear()}
         currentMonth={selectedDate.getMonth()}
+        isDarkColorScheme={isDarkColorScheme}
         key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
       />
     </SafeAreaView>

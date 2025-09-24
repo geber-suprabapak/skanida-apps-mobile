@@ -2,7 +2,6 @@ import { useRouter, Stack } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   View,
-  TextInput,
   Alert,
   ActivityIndicator,
   ScrollView,
@@ -12,13 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
-import { LockIcon } from "~/lib/icons/LockIcon";
+import { Icon } from "~/components/ui/icon";
+import { Lock, ChevronLeft, Eye, EyeOff } from "lucide-react-native";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Key } from "~/lib/icons/Key";
-import { Eye } from "~/lib/icons/Eye";
-import { EyeOff } from "~/lib/icons/EyeOff";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 
@@ -105,7 +101,7 @@ export default function ChangePassword() {
         className={`flex-row items-center p-4 border-b border-gray-200 bg-white`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={24} color="#000000" />
+          <Icon as={ChevronLeft} className="size-6 text-black" />
         </TouchableOpacity>
 
         <Text className={`text-lg font-bold flex-1 text-gray-900`}>
@@ -132,7 +128,7 @@ export default function ChangePassword() {
                   elevation: 6,
                 }}
               >
-                <LockIcon size={24} color="#ffffff" />
+                <Icon as={Lock} className="size-6 text-white" />
               </View>
 
               <Text
@@ -176,9 +172,9 @@ export default function ChangePassword() {
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <EyeOff size={20} color="#6B7280" />
+                      <Icon as={EyeOff} className="size-5 text-gray-500" />
                     ) : (
-                      <Eye size={20} color="#6B7280" />
+                      <Icon as={Eye} className="size-5 text-gray-500" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -203,9 +199,9 @@ export default function ChangePassword() {
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <EyeOff size={20} color="#6B7280" />
+                      <Icon as={EyeOff} className="size-5 text-gray-500" />
                     ) : (
-                      <Eye size={20} color="#6B7280" />
+                      <Icon as={Eye} className="size-5 text-gray-500" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -233,9 +229,9 @@ export default function ChangePassword() {
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <EyeOff size={20} color="#6B7280" />
+                      <Icon as={EyeOff} className="size-5 text-gray-500" />
                     ) : (
-                      <Eye size={20} color="#6B7280" />
+                      <Icon as={Eye} className="size-5 text-gray-500" />
                     )}
                   </TouchableOpacity>
                 </View>

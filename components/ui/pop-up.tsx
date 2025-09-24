@@ -9,7 +9,8 @@ import {
   Image,
 } from "react-native";
 import { Text } from "./text";
-import { CheckCircle } from "~/lib/icons/CheckCircle";
+import { Icon } from "~/components/ui/icon";
+import { CheckCircle } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -322,7 +323,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               className="mb-6"
             >
               <View className="w-20 h-20 rounded-full bg-green-500 items-center justify-center">
-                <CheckCircle size={40} color="white" />
+                <Icon as={CheckCircle} className="size-10 text-white" />
               </View>
             </Animated.View>
 
@@ -373,7 +374,9 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                 >
                   <Text
                     className={`text-xs font-medium ${
-                      colorScheme === "dark" ? "text-green-300" : "text-green-700"
+                      colorScheme === "dark"
+                        ? "text-green-300"
+                        : "text-green-700"
                     }`}
                   >
                     {formatProcessingTime(processingTime)}

@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, Stack, useNavigation } from "expo-router";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Alert,
@@ -19,9 +18,8 @@ import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { User } from "~/lib/icons/User";
-import { Camera } from "~/lib/icons/Camera";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Camera } from "lucide-react-native";
 import { Card } from "~/components/ui/card";
 
 // Define interface for user profile data
@@ -503,7 +501,7 @@ export default function EditProfile() {
           }}
           className="mr-3"
         >
-          <ChevronLeft size={24} color={"#000000"} />
+          <Icon as={ChevronLeft} className="size-6 text-black" />
         </TouchableOpacity>
 
         <Text className={`text-lg font-bold flex-1 text-gray-900`}>
@@ -573,7 +571,7 @@ export default function EditProfile() {
                         elevation: 6,
                       }}
                     >
-                      <Camera size={18} color="#ffffff" />
+                      <Icon as={Camera} className="size-5 text-white" />
                     </TouchableOpacity>
                   </>
                 )}

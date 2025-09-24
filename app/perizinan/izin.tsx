@@ -14,16 +14,19 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
-import { FileText } from "~/lib/icons/FileText";
-import { Camera } from "~/lib/icons/Camera";
-import { AlertCircle } from "~/lib/icons/AlertCircle";
-import { Trash2, Image as ImageIcon } from "lucide-react-native";
+import { Icon } from "~/components/ui/icon";
+import {
+  ChevronLeft,
+  ClipboardPenLine,
+  FileText,
+  Camera,
+  AlertCircle,
+  Trash2,
+  Image as ImageIcon,
+} from "lucide-react-native";
 
 // Types
 type PermitCategory = "sakit" | "pergi";
@@ -732,7 +735,7 @@ export default function PerizinanScreen() {
         {/* Header */}
         <View className={`flex-row items-center p-4 border-b `}>
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
-            <ChevronLeft size={24} />
+            <Icon as={ChevronLeft} className="size-6" />
           </TouchableOpacity>
           <View className="flex-1">
             <Text className={`text-lg font-bold `}>Pengajuan Izin</Text>
@@ -751,7 +754,7 @@ export default function PerizinanScreen() {
               <CardContent className="p-4">
                 <View className="flex-row items-center">
                   <View className={`mr-3 p-2 rounded-lg `}>
-                    <AlertCircle size={20} />
+                    <Icon as={AlertCircle} className="size-5" />
                   </View>
                   <View className="flex-1">
                     <Text className={`font-bold text-base `}>
@@ -792,7 +795,7 @@ export default function PerizinanScreen() {
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View className={`mr-3 p-2 rounded-lg `}>
-                  <ClipboardPenLine size={20} />
+                  <Icon as={ClipboardPenLine} className="size-5" />
                 </View>
                 <View>
                   <CardTitle>
@@ -820,9 +823,9 @@ export default function PerizinanScreen() {
                     <View className="items-center">
                       <View className={`mb-2 p-2 rounded-full `}>
                         {catValue === "sakit" ? (
-                          <AlertCircle size={20} />
+                          <Icon as={AlertCircle} className="size-5" />
                         ) : (
-                          <ClipboardPenLine size={20} />
+                          <Icon as={ClipboardPenLine} className="size-5" />
                         )}
                       </View>
                       <Text className={`font-semibold text-center text-sm `}>
@@ -844,7 +847,7 @@ export default function PerizinanScreen() {
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View className={`mr-3 p-2 rounded-lg `}>
-                  <FileText size={20} />
+                  <Icon as={FileText} className="size-5" />
                 </View>
                 <View>
                   <CardTitle>
@@ -919,7 +922,7 @@ export default function PerizinanScreen() {
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View className={`mr-3 p-2 rounded-lg `}>
-                  <Camera size={20} />
+                  <Icon as={Camera} className="size-5" />
                 </View>
                 <View>
                   <CardTitle>
@@ -951,7 +954,7 @@ export default function PerizinanScreen() {
                     >
                       <View className="items-center">
                         <View className={`mb-2 p-2 rounded-full`}>
-                          <Camera size={20} />
+                          <Icon as={Camera} className="size-5" />
                         </View>
                         <Text className={`font-medium text-center text-sm `}>
                           Ambil Foto
@@ -969,7 +972,7 @@ export default function PerizinanScreen() {
                     >
                       <View className="items-center">
                         <View className={`mb-2 p-2 rounded-full `}>
-                          <ImageIcon size={20} />
+                          <Icon as={ImageIcon} className="size-5" />
                         </View>
                         <Text className={`font-medium text-center text-sm `}>
                           Pilih File
@@ -997,7 +1000,7 @@ export default function PerizinanScreen() {
                       onPress={clearImage}
                       className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm`}
                     >
-                      <Trash2 size={18} />
+                      <Icon as={Trash2} className="size-5" />
                     </TouchableOpacity>
                   </View>
                   <View className="flex-row justify-between items-center">
@@ -1050,7 +1053,11 @@ export default function PerizinanScreen() {
                   </>
                 ) : hasSubmittedToday ? (
                   <>
-                    <AlertCircle size={20} style={{ marginRight: 8 }} />
+                    <Icon
+                      as={AlertCircle}
+                      className="size-5"
+                      style={{ marginRight: 8 }}
+                    />
                     <Text className={`font-bold text-base `}>
                       Sudah Mengajukan Hari Ini
                     </Text>
@@ -1068,7 +1075,11 @@ export default function PerizinanScreen() {
                   </>
                 ) : (
                   <>
-                    <ClipboardPenLine size={20} style={{ marginRight: 8 }} />
+                    <Icon
+                      as={ClipboardPenLine}
+                      className="size-5"
+                      style={{ marginRight: 8 }}
+                    />
                     <Text className={`font-bold text-base `}>
                       Kirim Pengajuan Izin
                     </Text>

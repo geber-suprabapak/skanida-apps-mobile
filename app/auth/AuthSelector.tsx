@@ -1,7 +1,7 @@
 // filepath: e:\skanida-apps-mobile\app\auth\AuthSelector.tsx
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import {
   View,
   ScrollView,

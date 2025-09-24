@@ -26,14 +26,17 @@ import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
-import { History } from "~/lib/icons/History";
-import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
-import { Settings } from "~/lib/icons/Settings";
-import { UserCheck } from "~/lib/icons/UserCheck";
-import { Clock } from "~/lib/icons/Clock";
-import { CheckCircle } from "~/lib/icons/CheckCircle";
-import { AlertCircle } from "~/lib/icons/AlertCircle";
-import { Bell } from "~/lib/icons/Bell";
+import { Icon } from "~/components/ui/icon";
+import {
+  Clock,
+  Bell,
+  CheckCircle,
+  AlertCircle,
+  UserCheck,
+  History,
+  ClipboardPenLine,
+  Settings,
+} from "lucide-react-native";
 
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
@@ -511,7 +514,7 @@ export default function Dashboard() {
               <View className="flex-row items-center mr-3">
                 <View className={`px-3 py-2 rounded-lg `}>
                   <View className="flex-row items-center">
-                    <Clock size={16} />
+                    <Icon as={Clock} className="size-4" />
                     <Text className={`ml-1 text-xs font-medium `}>
                       Waktu Sekarang
                     </Text>
@@ -528,7 +531,7 @@ export default function Dashboard() {
                 }}
                 className={`p-2 rounded-full `}
               >
-                <Bell size={20} />
+                <Icon as={Bell} className="size-5" />
               </TouchableOpacity>
             </View>
           </View>
@@ -543,7 +546,7 @@ export default function Dashboard() {
                 <Badge
                   className={`${statusBadge.color} ${statusBadge.textColor}`}
                 >
-                  {statusBadge.text}
+                  <Text>{statusBadge.text}</Text>
                 </Badge>
               </View>
 
@@ -552,9 +555,12 @@ export default function Dashboard() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
                     {attendanceStatus.hasCheckedIn ? (
-                      <CheckCircle size={20} color="#16a34a" />
+                      <Icon
+                        as={CheckCircle}
+                        className="size-5 text-green-600"
+                      />
                     ) : (
-                      <AlertCircle size={20} color="#dc2626" />
+                      <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
                     <Text className={`ml-2 `}>Absen Masuk</Text>
                   </View>
@@ -569,9 +575,12 @@ export default function Dashboard() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
                     {attendanceStatus.hasCheckedOut ? (
-                      <CheckCircle size={20} color="#16a34a" />
+                      <Icon
+                        as={CheckCircle}
+                        className="size-5 text-green-600"
+                      />
                     ) : (
-                      <AlertCircle size={20} color="#dc2626" />
+                      <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
                     <Text className={`ml-2 `}>Absen Pulang</Text>
                   </View>
@@ -586,7 +595,7 @@ export default function Dashboard() {
                 {attendanceStatus.totalWorkHours && (
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
-                      <Clock size={20} color="#3b82f6" />
+                      <Icon as={Clock} className="size-5 text-blue-500" />
                       <Text className={`ml-2 `}>Total Jam Di Sekolah</Text>
                     </View>
                     <Text className={`text-sm font-medium `}>
@@ -611,7 +620,7 @@ export default function Dashboard() {
               >
                 <Card className={`aspect-square `}>
                   <View className="flex-1 items-center justify-center p-4">
-                    <UserCheck size={32} color="white" />
+                    <Icon as={UserCheck} className="size-8 text-white" />
                     <Text className="text-white font-semibold text-lg mt-2 text-center">
                       {!attendanceStatus.hasCheckedIn
                         ? "Absen Masuk"
@@ -632,7 +641,6 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
-
             <View className="flex-row space-x-3 gap-2">
               <TouchableOpacity
                 onPress={navigateToHistory}
@@ -640,7 +648,7 @@ export default function Dashboard() {
                 activeOpacity={0.8}
               >
                 <Card className={`p-4 `}>
-                  <History size={24} />
+                  <Icon as={History} className="size-6" />
                   <Text className={`mt-2 font-medium `}>Riwayat</Text>
                   <Text className={`text-xs `}>Lihat absensi</Text>
                 </Card>
@@ -652,7 +660,7 @@ export default function Dashboard() {
                 activeOpacity={0.8}
               >
                 <Card className={`p-4 `}>
-                  <ClipboardPenLine size={24} />
+                  <Icon as={ClipboardPenLine} className="size-6" />
                   <Text className={`mt-2 font-medium `}>Perizinan</Text>
                   <Text className={`text-xs `}>Ajukan izin</Text>
                 </Card>
@@ -664,7 +672,7 @@ export default function Dashboard() {
                 activeOpacity={0.8}
               >
                 <Card className={`p-4 `}>
-                  <Settings size={24} />
+                  <Icon as={Settings} className="size-6" />
                   <Text className={`mt-2 font-medium `}>Pengaturan</Text>
                   <Text className={`text-xs `}>Kelola akun</Text>
                 </Card>

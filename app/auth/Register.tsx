@@ -15,10 +15,8 @@ import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Eye } from "~/lib/icons/Eye";
-import { EyeOff } from "~/lib/icons/EyeOff";
-import { UserCheck } from "~/lib/icons/UserCheck";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Eye, EyeOff, UserCheck } from "lucide-react-native";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
@@ -132,7 +130,7 @@ export default function RegisterScreen() {
           onPress={() => router.back()}
           className={`w-12 h-12 rounded-full items-center justify-center  shadow-lg`}
         >
-          <ChevronLeft size={20} />
+          <Icon as={ChevronLeft} className="size-5" />
         </TouchableOpacity>
       </View>
 
@@ -152,7 +150,7 @@ export default function RegisterScreen() {
               <View
                 className={`w-28 h-28 rounded-full shadow-lg mb-6  items-center justify-center`}
               >
-                <UserCheck size={40} />
+                <Icon as={UserCheck} className="size-10" />
               </View>
 
               <Text
@@ -220,7 +218,11 @@ export default function RegisterScreen() {
                       className="absolute right-4 top-1/2 -translate-y-1/2"
                       onPress={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {showPassword ? (
+                        <Icon as={EyeOff} className="size-5" />
+                      ) : (
+                        <Icon as={Eye} className="size-5" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>

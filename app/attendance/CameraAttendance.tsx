@@ -22,11 +22,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 
 import { supabase } from "~/utils/supabase";
-import { Camera } from "~/lib/icons/Camera";
-import { CameraSwitch } from "~/lib/icons/CameraSwitch";
-import { CameraOff } from "~/lib/icons/CameraOff";
-import { Loader2 } from "~/lib/icons/Loader2";
-import { AlertCircle } from "~/lib/icons/AlertCircle";
+import { Icon } from "~/components/ui/icon";
+import {
+  Camera,
+  SwitchCamera,
+  CameraOff,
+  Loader2,
+  AlertCircle,
+} from "lucide-react-native";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
@@ -942,7 +945,7 @@ const CameraAttendance = () => {
           entering={FadeIn.duration(500)}
           className="items-center justify-center"
         >
-          <Camera size={80} color="#0066FF" />
+          <Icon as={Camera} className="size-20 text-[#0066FF]" />
           <Text className="text-white text-2xl font-bold text-center mt-4 mb-2">
             Camera Access Needed
           </Text>
@@ -954,7 +957,7 @@ const CameraAttendance = () => {
             activeOpacity={0.7}
             onPress={requestPermission}
           >
-            <Camera size={24} color="white" />
+            <Icon as={Camera} className="size-6 text-white" />
             <Text className="text-white text-base font-bold ml-2">
               Grant Permission
             </Text>
@@ -973,7 +976,7 @@ const CameraAttendance = () => {
           entering={FadeIn.duration(500)}
           className="items-center justify-center"
         >
-          <AlertCircle size={80} color="#ff4d4f" />
+          <Icon as={AlertCircle} className="size-20 text-red-600" />
           <Text className="text-red-400 text-2xl font-bold text-center mt-4 mb-2">
             Camera Error
           </Text>
@@ -985,7 +988,7 @@ const CameraAttendance = () => {
             activeOpacity={0.7}
             onPress={() => router.back()}
           >
-            <CameraOff size={24} color="white" />
+            <Icon as={CameraOff} className="size-6 text-white" />
             <Text className="text-white text-base font-bold ml-2">Kembali</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -1002,7 +1005,7 @@ const CameraAttendance = () => {
           entering={FadeIn.duration(400)}
           className="items-center justify-center w-4/5"
         >
-          <Loader2 size={32} color="#0066FF" className="animate-spin" />
+          <Icon as={Loader2} className="size-8 text-[#0066FF] animate-spin" />
           <Text className="text-white text-xl font-semibold mt-4 mb-2">
             Saving Attendance...
           </Text>
@@ -1059,7 +1062,7 @@ const CameraAttendance = () => {
                   onPress={() => router.back()}
                   activeOpacity={0.7}
                 >
-                  <CameraOff size={24} color="white" />
+                  <Icon as={CameraOff} className="size-6 text-white" />
                 </TouchableOpacity>
 
                 <Animated.View
@@ -1067,7 +1070,7 @@ const CameraAttendance = () => {
                   className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl"
                 >
                   <View className="flex-row items-center">
-                    <Camera size={16} color="#0066FF" />
+                    <Icon as={Camera} className="size-4 text-[#0066FF]" />
                     <Text className="text-white text-sm ml-1">
                       {locationData.latitude?.toFixed(4)},{" "}
                       {locationData.longitude?.toFixed(4)}
@@ -1086,7 +1089,7 @@ const CameraAttendance = () => {
                   onPress={handleToggleCameraFacing}
                   activeOpacity={0.7}
                 >
-                  <CameraSwitch size={28} color="white" />
+                  <Icon as={SwitchCamera} className="size-7 text-white" />
                 </TouchableOpacity>
 
                 <Animated.View
