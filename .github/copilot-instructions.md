@@ -8,19 +8,35 @@ You are an AI coding assistant working on **Skanida Apps Mobile** (React Native 
 - **Key folders:**
     - `app/`: File-based routes; layouts in `_layout.tsx`, groups `(auth)`, `(tabs)`.
     - `components/ui/`: Reusable UI components (Button, Card, Input, etc.)—**do not modify**.
-    - `lib/`: `constants.ts`, `utils.ts` (exporting `cn()`), and icon wrappers in `lib/icons/`.
+    - `lib/`: `constants.ts`, `utils.ts` (exporting `cn()`), and icon wrappers in `lib/icons/` (legacy). Prefer importing icons from `lucide-react-native` with the shared `Icon` component.
     - `store/`: One Zustand store per feature (e.g., `authStore.ts`, `attendanceStore.ts`).
     - `utils/`: `supabase.ts` (central Supabase client), `attendanceCache.ts` (AsyncStorage caching).
 
 ### 2. Styling & Utilities
 - **NativeWind:** Use Tailwind utility classes in `className`; merge conditionally with `cn(...)` from `~/lib/utils.ts`.
-- **Icons:** Import from `~/lib/icons/<IconName>.tsx`; these wrap `lucide-react-native` icons to accept `className`.
+- **Icons (updated):**
+  - Import the renderer: `import { Icon } from "~/components/ui/icon"`.
+  - Import icon glyphs from lucide: `import { anyLucideIconName } from "lucide-react-native"`.
+  - Usage: `<Icon as={ImportedLucideIconName} className="size-5 text-blue-500" />`
+  - Do not pass `size`/`color` props directly to lucide icons. Style via `className`:
+    - Size mapping: 16→`size-4`, 20→`size-5`, 24→`size-6`, 32→`size-8`
+    - Colors: use `text-*` utilities (e.g., `text-white`, `text-green-600`, `text-red-600`, `text-blue-500`)
+
+Example:
+```tsx
+import { Icon } from "~/components/ui/icon";
+import { Clock, CheckCircle, AlertCircle } from "lucide-react-native";
+
+<Icon as={Clock} className="size-4" />
+<Icon as={CheckCircle} className="size-5 text-green-600" />
+<Icon as={AlertCircle} className="size-5 text-red-600" />
+```
 
 ### 3. UI Components & Patterns
-- **Location & Structure:** All building-block components live in `components/ui/` (e.g., `button.tsx`, `card.tsx`, `input.tsx`, `pop-up.tsx`).
+- **Location & Structure:** All building-block components live in `components/ui/` (e.g., `button.tsx`, `card.tsx`, `input.tsx`, `pop-up.tsx`, `icon.tsx`).
 - **Variants & Styling:** Use `class-variance-authority` (`cva`) to define variant props (e.g., `buttonVariants` in `button.tsx`). Pass `variant` and `size` props and merge classes with `cn(...)`.
 - **Text Context:** UI primitives wrap children with `TextClassContext` for consistent typography (e.g., `buttonTextVariants`).
-- **Icon Primitives:** Use wrapped icons from `~/lib/icons/` (e.g., `<Camera />`), applying `className` for sizing and color (e.g., `className="text-2xl text-primary"`).
+- **Icons:** Use `<Icon as={SomeLucideIcon} className="..." />` as described in Styling & Utilities.
 - **Usage Pattern:** Always prefer these primitives over raw `View`/`Text`. They enforce theme tokens, spacing, and accessibility roles.
 
 ### 4. Data & Supabase Integration
@@ -58,5 +74,3 @@ You are an AI coding assistant working on **Skanida Apps Mobile** (React Native 
     - `pnpm android`, `pnpm ios`
     - `pnpm lint`, `pnpm format`
 - **Path aliases:** Configured in `tsconfig.json` & `metro.config.js` for `~/`.
-
----
