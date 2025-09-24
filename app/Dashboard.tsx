@@ -1,5 +1,6 @@
 // app/Dashboard.tsx
 import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -505,14 +506,16 @@ export default function Dashboard() {
                     {displayName}
                   </Text>
                   <Text className={`text-sm `}>
-                    {format(currentTime, "EEEE, dd MMMM yyyy")}
+                    {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
                   </Text>
                 </View>
               </View>
 
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
-                <View className={`px-3 py-2 rounded-lg `}>
+                <View
+                  className={`px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800`}
+                >
                   <View className="flex-row items-center">
                     <Icon as={Clock} className="size-4" />
                     <Text className={`ml-1 text-xs font-medium `}>
@@ -520,7 +523,7 @@ export default function Dashboard() {
                     </Text>
                   </View>
                   <Text className={`text-sm font-bold text-center mt-1 `}>
-                    {format(currentTime, "HH:mm:ss")}
+                    {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
                 </View>
               </View>
@@ -537,9 +540,9 @@ export default function Dashboard() {
           </View>
 
           {/* --- Today's Status Card --- */}
-          <View className="px-6 mb-6">
+          <View className="px-6 mb-4">
             <Card className={`p-4 `}>
-              <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center justify-between">
                 <Text className={`text-lg font-semibold `}>
                   Status Hari Ini
                 </Text>
@@ -609,7 +612,7 @@ export default function Dashboard() {
 
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
-            <Text className={`text-lg font-semibold mb-3 `}>Aksi Cepat</Text>
+            <Text className={`text-lg font-semibold mb-4 `}>Aksi Cepat</Text>
 
             {/* Large Square Primary Action - Attendance (Centered) */}
             <View className="items-center mb-4">
@@ -618,7 +621,7 @@ export default function Dashboard() {
                 className="w-48"
                 activeOpacity={0.8}
               >
-                <Card className={`aspect-square `}>
+                <Card className={`aspect-square bg-blue-600 dark:bg-blue-700 `}>
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
                     <Text className="text-white font-semibold text-lg mt-2 text-center">
@@ -641,16 +644,15 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
-            <View className="flex-row space-x-3 gap-2">
+            <View className="flex-row gap-4">
               <TouchableOpacity
                 onPress={navigateToHistory}
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`p-4 `}>
-                  <Icon as={History} className="size-6" />
-                  <Text className={`mt-2 font-medium `}>Riwayat</Text>
-                  <Text className={`text-xs `}>Lihat absensi</Text>
+                <Card className={`py-3 px-4 bg-gray-100 dark:bg-gray-800 `}>
+                  <Icon as={History} className="size-6 text-blue-600" />
+                  <Text className={`mt-1 font-medium `}>Riwayat</Text>
                 </Card>
               </TouchableOpacity>
 
@@ -659,10 +661,12 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`p-4 `}>
-                  <Icon as={ClipboardPenLine} className="size-6" />
-                  <Text className={`mt-2 font-medium `}>Perizinan</Text>
-                  <Text className={`text-xs `}>Ajukan izin</Text>
+                <Card className={`py-3 px-4 bg-gray-100 dark:bg-gray-800 `}>
+                  <Icon
+                    as={ClipboardPenLine}
+                    className="size-6 text-blue-600"
+                  />
+                  <Text className={`mt-1 font-medium `}>Perizinan</Text>
                 </Card>
               </TouchableOpacity>
 
@@ -671,10 +675,9 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`p-4 `}>
-                  <Icon as={Settings} className="size-6" />
-                  <Text className={`mt-2 font-medium `}>Pengaturan</Text>
-                  <Text className={`text-xs `}>Kelola akun</Text>
+                <Card className={`py-3 px-4 bg-gray-100 dark:bg-gray-800 `}>
+                  <Icon as={Settings} className="size-6 text-blue-600" />
+                  <Text className={`mt-1 font-medium `}>Setelan</Text>
                 </Card>
               </TouchableOpacity>
             </View>
