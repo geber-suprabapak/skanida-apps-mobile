@@ -10,13 +10,17 @@ import {
   Clipboard,
   InteractionManager,
   BackHandler,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { StatusBar } from "expo-status-bar";
+import { colorScheme } from "nativewind";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
@@ -27,6 +31,8 @@ import {
   Bell,
   LogOut,
   ChevronRight,
+  Moon,
+  Sun,
 } from "lucide-react-native";
 
 function Pengaturan() {
@@ -34,6 +40,7 @@ function Pengaturan() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
   const isFocused = useIsFocused();
+  const { theme, setTheme } = useThemeStore();
 
   // Memoize initial profile data to avoid recalculations
   const initialProfileData = useMemo(
@@ -52,6 +59,7 @@ function Pengaturan() {
   );
   const [copiedId, setCopiedId] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
   // Optimized navigation handlers with useCallback
   const navigateToEditProfile = useCallback(() => {
@@ -187,8 +195,25 @@ function Pengaturan() {
     }
   }, [user?.id]);
 
+  // Toggle theme handler
+  const toggleTheme = useCallback(() => {
+    const newTheme = isDarkMode ? "light" : "dark";
+    setIsDarkMode(!isDarkMode);
+    setTheme(newTheme);
+    colorScheme.set(newTheme);
+  }, [isDarkMode, setTheme]);
+
+  // Effect to sync theme state with store
+  useEffect(() => {
+    setIsDarkMode(theme === "dark");
+    if (isDataLoaded) {
+      // We could potentially save user theme preference to backend here
+    }
+  }, [theme, isDataLoaded]);
+
   return (
     <SafeAreaView className="flex-1 bg-background">
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       <Stack.Screen
         options={{
           headerShown: false,
@@ -352,6 +377,34 @@ function Pengaturan() {
             </Text>
 
             <View className="space-y-0">
+              {/* Dark Mode Toggle */}
+              <TouchableOpacity
+                className="flex-row items-center p-3 rounded-lg border-b border-border"
+                activeOpacity={0.7}
+              >
+                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
+                  <Icon
+                    as={isDarkMode ? Sun : Moon}
+                    className="size-4 text-primary"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-foreground">
+                    Mode Gelap
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {isDarkMode ? "Aktif" : "Tidak Aktif"}
+                  </Text>
+                </View>
+                <Switch
+                  value={isDarkMode}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: "#767577", true: "#4A5568" }}
+                  thumbColor={isDarkMode ? "#38B2AC" : "#f4f3f4"}
+                />
+              </TouchableOpacity>
+
+              {/* Error Testing Button */}
               <TouchableOpacity
                 className="flex-row items-center p-3 rounded-lg"
                 onPress={() => {

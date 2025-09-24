@@ -5,6 +5,9 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PortalHost } from "@rn-primitives/portal";
 import ConnectionChecker from "~/components/ConnectionChecker";
+import { useEffect } from "react";
+import { colorScheme } from "nativewind";
+import useThemeStore from "~/store/themeStore";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -36,10 +39,22 @@ export {
 } from "expo-router";
 
 export default Sentry.wrap(function RootLayout() {
+  const { theme } = useThemeStore();
+
+  // Initialize theme from store on app load
+  useEffect(() => {
+    if (theme === "system") {
+      // Reset to system preference (defaults to light)
+      colorScheme.set("light");
+    } else {
+      colorScheme.set(theme);
+    }
+  }, [theme]);
+
   return (
     <SafeAreaProvider>
       <ConnectionChecker>
-        <StatusBar />
+        <StatusBar style="auto" />
         <Stack />
         <PortalHost />
       </ConnectionChecker>

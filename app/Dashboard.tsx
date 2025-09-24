@@ -478,10 +478,10 @@ export default function Dashboard() {
         }}
       />
       {/* Apply dynamic background based on theme */}
-      <SafeAreaView className={`flex-1 `} edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
         {/* Main container with theme-based background */}
         <ScrollView
-          className={`flex-1 `}
+          className="flex-1 bg-background"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -489,7 +489,7 @@ export default function Dashboard() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* --- Header Section --- */}
-          <View className={`px-6 pt-4 pb-6 `}>
+          <View className="px-6 pt-4 pb-6 bg-background">
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center flex-1">
                 <Avatar
@@ -502,10 +502,10 @@ export default function Dashboard() {
                   }
                 />
                 <View className="flex-1">
-                  <Text className={`text-lg font-semibold `}>
+                  <Text className="text-lg font-semibold text-foreground">
                     {displayName}
                   </Text>
-                  <Text className={`text-sm `}>
+                  <Text className="text-sm text-muted-foreground">
                     {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
                   </Text>
                 </View>
@@ -517,12 +517,12 @@ export default function Dashboard() {
                   className={`px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800`}
                 >
                   <View className="flex-row items-center">
-                    <Icon as={Clock} className="size-4" />
-                    <Text className={`ml-1 text-xs font-medium `}>
+                    <Icon as={Clock} className="size-4 text-foreground" />
+                    <Text className="ml-1 text-xs font-medium text-foreground">
                       Waktu Sekarang
                     </Text>
                   </View>
-                  <Text className={`text-sm font-bold text-center mt-1 `}>
+                  <Text className="text-sm font-bold text-center mt-1 text-foreground">
                     {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
                 </View>
@@ -532,18 +532,18 @@ export default function Dashboard() {
                 onPress={() => {
                   Sentry.showFeedbackWidget();
                 }}
-                className={`p-2 rounded-full `}
+                className="p-2 rounded-full"
               >
-                <Icon as={Bell} className="size-5" />
+                <Icon as={Bell} className="size-5 text-foreground" />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* --- Today's Status Card --- */}
           <View className="px-6 mb-4">
-            <Card className={`p-4 `}>
+            <Card className="p-4 bg-card border-border">
               <View className="flex-row items-center justify-between">
-                <Text className={`text-lg font-semibold `}>
+                <Text className="text-lg font-semibold text-foreground">
                   Status Hari Ini
                 </Text>
                 <Badge
@@ -565,9 +565,9 @@ export default function Dashboard() {
                     ) : (
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
-                    <Text className={`ml-2 `}>Absen Masuk</Text>
+                    <Text className="ml-2 text-foreground">Absen Masuk</Text>
                   </View>
-                  <Text className={`text-sm `}>
+                  <Text className="text-sm text-muted-foreground">
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
                       : "Belum absen"}
@@ -585,9 +585,9 @@ export default function Dashboard() {
                     ) : (
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
-                    <Text className={`ml-2 `}>Absen Pulang</Text>
+                    <Text className="ml-2 text-foreground">Absen Pulang</Text>
                   </View>
-                  <Text className={`text-sm `}>
+                  <Text className="text-sm text-muted-foreground">
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
                       : "Belum absen"}
@@ -599,9 +599,11 @@ export default function Dashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
                       <Icon as={Clock} className="size-5 text-blue-500" />
-                      <Text className={`ml-2 `}>Total Jam Di Sekolah</Text>
+                      <Text className="ml-2 text-foreground">
+                        Total Jam Di Sekolah
+                      </Text>
                     </View>
-                    <Text className={`text-sm font-medium `}>
+                    <Text className="text-sm font-medium text-foreground">
                       {attendanceStatus.totalWorkHours}
                     </Text>
                   </View>
@@ -612,7 +614,9 @@ export default function Dashboard() {
 
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
-            <Text className={`text-lg font-semibold mb-4 `}>Aksi Cepat</Text>
+            <Text className="text-lg font-semibold mb-4 text-foreground">
+              Aksi Cepat
+            </Text>
 
             {/* Large Square Primary Action - Attendance (Centered) */}
             <View className="items-center mb-4">
@@ -621,7 +625,7 @@ export default function Dashboard() {
                 className="w-48"
                 activeOpacity={0.8}
               >
-                <Card className={`aspect-square bg-blue-600 dark:bg-blue-700 `}>
+                <Card className="aspect-square bg-blue-600 dark:bg-blue-700">
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
                     <Text className="text-white font-semibold text-lg mt-2 text-center">
@@ -650,9 +654,11 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`py-3 px-4 bg-gray-100 dark:bg-gray-800 `}>
+                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon as={History} className="size-6 text-blue-600" />
-                  <Text className={`mt-1 font-medium `}>Riwayat</Text>
+                  <Text className="mt-1 font-medium text-foreground">
+                    Riwayat
+                  </Text>
                 </Card>
               </TouchableOpacity>
 
@@ -661,12 +667,14 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`py-3 px-4 bg-gray-100 dark:bg-gray-800 `}>
+                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon
                     as={ClipboardPenLine}
                     className="size-6 text-blue-600"
                   />
-                  <Text className={`mt-1 font-medium `}>Perizinan</Text>
+                  <Text className="mt-1 font-medium text-foreground">
+                    Perizinan
+                  </Text>
                 </Card>
               </TouchableOpacity>
 
@@ -675,9 +683,11 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card className={`py-3 px-4 bg-gray-100 dark:bg-gray-800 `}>
+                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon as={Settings} className="size-6 text-blue-600" />
-                  <Text className={`mt-1 font-medium `}>Setelan</Text>
+                  <Text className="mt-1 font-medium text-foreground">
+                    Setelan
+                  </Text>
                 </Card>
               </TouchableOpacity>
             </View>
@@ -685,8 +695,8 @@ export default function Dashboard() {
         </ScrollView>
 
         {/* --- Footer Section --- */}
-        <View className={`items-center px-6 py-3 border-t `}>
-          <Text className={`text-s font-bold `}>
+        <View className="items-center px-6 py-3 border-t border-border bg-background">
+          <Text className="text-s font-bold text-foreground">
             v1.6.2-internal.1 | Branch: develop
           </Text>
         </View>
