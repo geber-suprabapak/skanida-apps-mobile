@@ -541,7 +541,10 @@ export default function Dashboard() {
                         Total Jam Di Sekolah
                       </Text>
                     </View>
-                    <Text variant="small" className="font-medium text-foreground">
+                    <Text
+                      variant="small"
+                      className="font-medium text-foreground"
+                    >
                       {attendanceStatus.totalWorkHours}
                     </Text>
                   </View>
@@ -566,14 +569,20 @@ export default function Dashboard() {
                 <Card className="aspect-square bg-blue-600 dark:bg-blue-700">
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
-                    <Text variant="large" className="text-white font-semibold mt-2 text-center">
+                    <Text
+                      variant="large"
+                      className="text-white font-semibold mt-2 text-center"
+                    >
                       {!attendanceStatus.hasCheckedIn
                         ? "Absen Masuk"
                         : !attendanceStatus.hasCheckedOut
                           ? "Absen Pulang"
                           : "Lihat Absensi"}
                     </Text>
-                    <Text variant="small" className="text-blue-100 text-center mt-1">
+                    <Text
+                      variant="small"
+                      className="text-blue-100 text-center mt-1"
+                    >
                       {!attendanceStatus.hasCheckedIn
                         ? "Mulai hari sekolah"
                         : !attendanceStatus.hasCheckedOut
@@ -594,7 +603,10 @@ export default function Dashboard() {
               >
                 <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon as={History} className="size-6 text-blue-600" />
-                  <Text variant="default" className="mt-1 font-medium text-foreground">
+                  <Text
+                    variant="default"
+                    className="mt-1 font-medium text-foreground"
+                  >
                     Riwayat
                   </Text>
                 </Card>
@@ -610,7 +622,10 @@ export default function Dashboard() {
                     as={ClipboardPenLine}
                     className="size-6 text-blue-600"
                   />
-                  <Text variant="default" className="mt-1 font-medium text-foreground">
+                  <Text
+                    variant="default"
+                    className="mt-1 font-medium text-foreground"
+                  >
                     Perizinan
                   </Text>
                 </Card>
@@ -623,7 +638,10 @@ export default function Dashboard() {
               >
                 <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon as={Settings} className="size-6 text-blue-600" />
-                  <Text variant="default" className="mt-1 font-medium text-foreground">
+                  <Text
+                    variant="default"
+                    className="mt-1 font-medium text-foreground"
+                  >
                     Setelan
                   </Text>
                 </Card>

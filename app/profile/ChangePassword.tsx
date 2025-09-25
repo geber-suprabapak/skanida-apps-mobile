@@ -216,7 +216,10 @@ export default function ChangePassword() {
 
               {/* Confirm Password */}
               <View>
-                <Text variant="small" className="font-medium mb-2 text-gray-700">
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-gray-700"
+                >
                   Konfirmasi Password Baru
                 </Text>
                 <View className="relative">

@@ -763,7 +763,10 @@ export default function PerizinanScreen() {
                       Anda sudah mengajukan izin untuk hari ini. Hanya satu
                       pengajuan izin yang diperbolehkan per hari.
                     </Text>
-                    <Text variant="small" className="text-xs mt-2 text-muted-foreground">
+                    <Text
+                      variant="small"
+                      className="text-xs mt-2 text-muted-foreground"
+                    >
                       💡 Jika perlu mengubah informasi, hubungi admin sekolah.
                     </Text>
                   </View>
@@ -836,10 +839,16 @@ export default function PerizinanScreen() {
                           />
                         )}
                       </View>
-                      <Text variant="small" className="font-semibold text-center text-foreground">
+                      <Text
+                        variant="small"
+                        className="font-semibold text-center text-foreground"
+                      >
                         {catValue.charAt(0).toUpperCase() + catValue.slice(1)}
                       </Text>
-                      <Text variant="small" className="text-xs text-center mt-1 text-muted-foreground">
+                      <Text
+                        variant="small"
+                        className="text-xs text-center mt-1 text-muted-foreground"
+                      >
                         {catValue === "sakit"
                           ? "Kondisi kesehatan"
                           : "Keperluan pribadi"}
@@ -956,7 +965,10 @@ export default function PerizinanScreen() {
                 </View>
                 {imageData && (
                   <View className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900">
-                    <Text variant="small" className="text-xs font-medium text-green-700 dark:text-green-300">
+                    <Text
+                      variant="small"
+                      className="text-xs font-medium text-green-700 dark:text-green-300"
+                    >
                       ✓ Foto dipilih
                     </Text>
                   </View>
@@ -979,10 +991,16 @@ export default function PerizinanScreen() {
                             className="size-5 text-blue-600 dark:text-blue-400"
                           />
                         </View>
-                        <Text variant="small" className="font-medium text-center text-foreground">
+                        <Text
+                          variant="small"
+                          className="font-medium text-center text-foreground"
+                        >
                           Ambil Foto
                         </Text>
-                        <Text variant="small" className="text-xs text-center mt-1 text-muted-foreground">
+                        <Text
+                          variant="small"
+                          className="text-xs text-center mt-1 text-muted-foreground"
+                        >
                           Kamera
                         </Text>
                       </View>
@@ -1000,16 +1018,25 @@ export default function PerizinanScreen() {
                             className="size-5 text-blue-600 dark:text-blue-400"
                           />
                         </View>
-                        <Text variant="small" className="font-medium text-center text-foreground">
+                        <Text
+                          variant="small"
+                          className="font-medium text-center text-foreground"
+                        >
                           Pilih File
                         </Text>
-                        <Text variant="small" className="text-xs text-center mt-1 text-muted-foreground">
+                        <Text
+                          variant="small"
+                          className="text-xs text-center mt-1 text-muted-foreground"
+                        >
                           Galeri
                         </Text>
                       </View>
                     </TouchableOpacity>
                   </View>
-                  <Text variant="small" className="text-xs text-center text-muted-foreground">
+                  <Text
+                    variant="small"
+                    className="text-xs text-center text-muted-foreground"
+                  >
                     Format: JPG, PNG • Maksimal 5MB • Wajib dilampirkan
                   </Text>
                 </View>
@@ -1033,7 +1060,10 @@ export default function PerizinanScreen() {
                     </TouchableOpacity>
                   </View>
                   <View className="flex-row justify-between items-center">
-                    <Text variant="small" className="font-medium text-foreground">
+                    <Text
+                      variant="small"
+                      className="font-medium text-foreground"
+                    >
                       ✓ Foto berhasil dipilih
                     </Text>
                     <TouchableOpacity
@@ -1046,7 +1076,10 @@ export default function PerizinanScreen() {
                       }}
                       className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900"
                     >
-                      <Text variant="small" className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      <Text
+                        variant="small"
+                        className="text-xs font-medium text-blue-700 dark:text-blue-300"
+                      >
                         Ganti Foto
                       </Text>
                     </TouchableOpacity>
@@ -1120,14 +1153,20 @@ export default function PerizinanScreen() {
 
               {/* Validation Messages */}
               {hasSubmittedToday && (
-                <Text variant="small" className="text-xs text-center mt-2 text-red-600 dark:text-red-400">
+                <Text
+                  variant="small"
+                  className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
+                >
                   ⚠️ Sudah mengajukan izin hari ini
                 </Text>
               )}
               {!hasSubmittedToday &&
                 !checkingSubmission &&
                 !description.trim() && (
-                  <Text variant="small" className="text-xs text-center mt-2 text-red-600 dark:text-red-400">
+                  <Text
+                    variant="small"
+                    className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
+                  >
                     ⚠️ Deskripsi tidak boleh kosong
                   </Text>
                 )}
@@ -1135,7 +1174,10 @@ export default function PerizinanScreen() {
                 !checkingSubmission &&
                 description.trim() &&
                 description.length < 10 && (
-                  <Text variant="small" className="text-xs text-center mt-2 text-red-600 dark:text-red-400">
+                  <Text
+                    variant="small"
+                    className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
+                  >
                     ⚠️ Deskripsi minimal 10 karakter
                   </Text>
                 )}
@@ -1144,7 +1186,10 @@ export default function PerizinanScreen() {
                 !imageData &&
                 description.trim() &&
                 description.length >= 10 && (
-                  <Text variant="small" className="text-xs text-center mt-2 text-red-600 dark:text-red-400">
+                  <Text
+                    variant="small"
+                    className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
+                  >
                     ⚠️ Foto bukti wajib dilampirkan
                   </Text>
                 )}
@@ -1153,7 +1198,10 @@ export default function PerizinanScreen() {
                 description.trim() &&
                 description.length >= 10 &&
                 imageData && (
-                  <Text variant="small" className="text-xs text-center mt-2 text-green-600 dark:text-green-400">
+                  <Text
+                    variant="small"
+                    className="text-xs text-center mt-2 text-green-600 dark:text-green-400"
+                  >
                     ✓ Siap untuk dikirim
                   </Text>
                 )}

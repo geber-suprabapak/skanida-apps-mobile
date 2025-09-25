@@ -683,7 +683,7 @@ export default function EditProfile() {
                 <Input
                   placeholder="Masukkan nama lengkap"
                   value={name}
-                  editable={false}              // added: make read-only
+                  editable={false} // added: make read-only
                   className={"border-gray-300 bg-white"}
                 />
               </View>
@@ -728,7 +728,7 @@ export default function EditProfile() {
                 <Input
                   placeholder="Masukkan nomor absen"
                   value={absenceNumber}
-                  editable={false}              // added: make read-only
+                  editable={false} // added: make read-only
                   keyboardType="numeric"
                   className={"border-gray-300 bg-white"}
                 />
@@ -744,7 +744,7 @@ export default function EditProfile() {
                 <Input
                   placeholder="Masukkan kelas"
                   value={className}
-                  editable={false}              // added: make read-only
+                  editable={false} // added: make read-only
                   className={"border-gray-300 bg-white"}
                 />
               </View>
@@ -776,9 +776,7 @@ export default function EditProfile() {
                   </Text>
                 </View>
               ) : (
-                <Text className="text-white font-medium">
-                  Simpan Perubahan
-                </Text>
+                <Text className="text-white font-medium">Simpan Perubahan</Text>
               )}
             </Button>
 
