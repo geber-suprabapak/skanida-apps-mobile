@@ -47,14 +47,6 @@ const AttendanceCalendar = forwardRef<
     const [pickerDate, setPickerDate] = useState(new Date());
 
     // Use props if provided, otherwise use current date
-    const currentDate =
-      propYear && propMonth !== undefined
-        ? new Date(propYear, propMonth, 1)
-        : new Date();
-    const currentYear = propYear || currentDate.getFullYear();
-    const currentMonth =
-      propMonth !== undefined ? propMonth : currentDate.getMonth();
-
     // Use props if provided, otherwise use internal date picker
     const displayYear =
       propYear !== undefined ? propYear : pickerDate.getFullYear();

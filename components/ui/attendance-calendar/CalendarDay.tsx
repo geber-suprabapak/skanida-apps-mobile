@@ -1,10 +1,7 @@
 import React from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Text } from "~/components/ui/text";
-import {
-  CalendarDayComponentProps,
-  CalendarDay,
-} from "~/components/ui/attendance-calendar/types";
+import { CalendarDayComponentProps } from "~/components/ui/attendance-calendar/types";
 
 export const CalendarDayComponent = ({
   day,

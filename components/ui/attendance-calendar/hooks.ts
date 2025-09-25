@@ -98,7 +98,6 @@ export const useOptimizedMonthlyAttendance = (
           const hasCheckIn = records.some(
             (r) => r.status === "Hadir" || r.status === "Datang",
           );
-          const hasCheckOut = records.some((r) => r.status === "Pulang");
           const checkInRecord = records.find(
             (r) => r.status === "Hadir" || r.status === "Datang",
           );
