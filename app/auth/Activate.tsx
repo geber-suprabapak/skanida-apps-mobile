@@ -10,18 +10,13 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ChevronLeft, UserCheck, Eye, EyeOff } from "lucide-react-native";
+import { Icon } from "~/components/ui/icon";
 
 import { supabase } from "~/utils/supabase";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { H1, H3 } from "~/components/ui/typography";
-import { cn } from "~/lib/utils";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { UserCheck } from "~/lib/icons/UserCheck";
-import { Eye } from "~/lib/icons/Eye";
-import { EyeOff } from "~/lib/icons/EyeOff";
 
 // Tipe data yang BENAR dan sesuai dengan database Anda
 type SiswaProfile = {
@@ -52,7 +47,6 @@ export default function Activate() {
   const [confirmPasswordError, setConfirmPasswordError] = useState(false);
 
   const router = useRouter();
-  const { isDarkColorScheme } = useColorScheme();
 
   useEffect(() => {
     const backAction = () => {
@@ -197,23 +191,16 @@ export default function Activate() {
   };
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${
-        isDarkColorScheme ? "bg-gray-900" : "bg-background"
-      }`}
-    >
+    <SafeAreaView className="flex-1 bg-background">
       <Stack.Screen name="auth/Activate" options={{ headerShown: false }} />
+
+      {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center ${
-            isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"
-          } shadow-lg`}
+          className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card"
         >
-          <ChevronLeft
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <Icon as={ChevronLeft} className="size-5 text-foreground" />
         </TouchableOpacity>
       </View>
 
@@ -228,67 +215,37 @@ export default function Activate() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 justify-center items-center px-8 py-8">
-            <View className="items-center mb-8">
-              <View
-                className={`w-32 h-32 rounded-full shadow-lg mb-8 ${
-                  isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"
-                } items-center justify-center`}
-              >
-                <UserCheck
-                  size={48}
-                  color={isDarkColorScheme ? "#ffffff" : "#374151"}
-                />
+            {/* Logo and Title Section */}
+            <View className="items-center mb-12">
+              <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800">
+                <Icon as={UserCheck} className="size-12 text-foreground" />
               </View>
-              <H1
-                className={`text-3xl font-bold text-center mb-3 ${
-                  isDarkColorScheme ? "text-white" : "text-gray-900"
-                }`}
+              <Text
+                variant="h3"
+                className="text-3xl font-bold text-center mb-3 text-foreground"
               >
                 Aktivasi Akun
-              </H1>
-              <Text
-                className={`text-center text-base leading-relaxed max-w-sm ${
-                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
+              </Text>
+              <Text className="text-center text-base leading-relaxed max-w-sm text-foreground">
                 {!nisExists
                   ? "Masukkan NIS Anda untuk memulai proses aktivasi akun"
                   : "Lengkapi email dan password untuk mengaktifkan akun Anda"}
               </Text>
             </View>
 
-            <View className="w-full max-w-sm space-y-4">
-              <View
-                className={`rounded-2xl p-6 shadow-xl ${
-                  isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"
-                }`}
-              >
+            {/* Form Section */}
+            <View className="w-full max-w-sm space-y-6">
+              <View className="rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800">
                 <View className="mb-4">
                   <Text
-                    className={`mb-2 text-sm font-medium ${
-                      isDarkColorScheme ? "text-gray-200" : "text-gray-700"
-                    }`}
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
                   >
                     NIS
                   </Text>
                   <Input
-                    className={cn(
-                      "h-14 rounded-xl border-2 px-4 py-3 text-base",
-                      nisError
-                        ? "border-red-500"
-                        : isDarkColorScheme
-                          ? "border-gray-600"
-                          : "border-gray-200",
-                      isDarkColorScheme
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-50",
-                      "focus:border-blue-500",
-                      "native:text-base native:leading-[1.2]",
-                    )}
                     placeholder="Masukkan NIS Anda"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
+                    placeholderTextColor="#6B7280"
                     keyboardType="numeric"
                     value={nis}
                     onChangeText={(text) => {
@@ -303,11 +260,14 @@ export default function Activate() {
                       }
                     }}
                     editable={!nisExists}
+                    className={`bg-white ${
+                      nisError ? "border-destructive" : ""
+                    }`}
                   />
 
                   {nisExists && (
                     <TouchableOpacity
-                      className="mt-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-700"
+                      className="mt-2 p-2 rounded-lg bg-muted"
                       onPress={() => {
                         setNisExists(false);
                         setUserProfile(null);
@@ -316,7 +276,10 @@ export default function Activate() {
                         setConfirmPassword("");
                       }}
                     >
-                      <Text className="text-center text-sm text-gray-600 dark:text-gray-400">
+                      <Text
+                        variant="small"
+                        className="text-center text-muted-foreground"
+                      >
                         📝 Ubah NIS
                       </Text>
                     </TouchableOpacity>
@@ -325,52 +288,55 @@ export default function Activate() {
 
                 {!nisExists && (
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="lg"
-                    className={`w-full h-14 rounded-xl mb-4 ${
-                      isDarkColorScheme ? "border-gray-600" : "border-gray-300"
-                    }`}
+                    className="w-full mb-4"
                     onPress={checkNisExists}
                     disabled={checkingNis || !nis.trim()}
                   >
-                    <H3
-                      className={`font-semibold text-base ${
-                        isDarkColorScheme ? "text-white" : "text-gray-900"
-                      }`}
+                    <Text
+                      variant="h3"
+                      className="font-semibold text-primary-foreground"
                     >
                       {checkingNis ? "Memeriksa NIS..." : "Periksa NIS"}
-                    </H3>
+                    </Text>
                   </Button>
                 )}
 
                 {nisExists && userProfile && (
-                  <View className="mb-4 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                    <Text className="text-green-800 dark:text-green-200 font-medium mb-2">
+                  <View className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/25">
+                    <Text variant="p" className="text-primary font-medium mb-2">
                       ✅ NIS ditemukan!
                     </Text>
 
                     <View className="space-y-2">
                       <View className="flex-row justify-between">
-                        <Text className="text-green-700 dark:text-green-300 text-sm font-medium">
+                        <Text
+                          variant="small"
+                          className="text-primary/80 font-medium"
+                        >
                           Nama:
                         </Text>
-                        <Text className="text-green-700 dark:text-green-300 text-sm">
+                        <Text variant="small" className="text-primary/80">
                           {userProfile.nama}
                         </Text>
                       </View>
 
                       {userProfile.kelas && (
                         <View className="flex-row justify-between">
-                          <Text className="text-green-700 dark:text-green-300 text-sm font-medium">
+                          <Text
+                            variant="small"
+                            className="text-primary/80 font-medium"
+                          >
                             Kelas:
                           </Text>
-                          <Text className="text-green-700 dark:text-green-300 text-sm">
+                          <Text variant="small" className="text-primary/80">
                             {userProfile.kelas}
                           </Text>
                         </View>
                       )}
 
-                      <Text className="text-green-600 dark:text-green-400 text-xs mt-2">
+                      <Text variant="small" className="text-primary/90 mt-2">
                         Silakan lengkapi email dan password untuk aktivasi
                       </Text>
                     </View>
@@ -379,32 +345,16 @@ export default function Activate() {
 
                 {nisExists && (
                   <>
-                    <View className="mb-4">
+                    {/* Email Field */}
+                    <View className="mb-6">
                       <Text
-                        className={`mb-2 text-sm font-medium ${
-                          isDarkColorScheme ? "text-gray-200" : "text-gray-700"
-                        }`}
+                        variant="small"
+                        className="mb-3 font-medium text-foreground"
                       >
                         Email
                       </Text>
                       <Input
-                        className={cn(
-                          "h-14 rounded-xl border-2 px-4 py-3 text-base",
-                          emailError
-                            ? "border-red-500"
-                            : isDarkColorScheme
-                              ? "border-gray-600"
-                              : "border-gray-200",
-                          isDarkColorScheme
-                            ? "bg-gray-700 text-white"
-                            : "bg-gray-50",
-                          "focus:border-blue-500",
-                          "native:text-base native:leading-[1.2]",
-                        )}
-                        placeholder="Masukkan email"
-                        placeholderTextColor={
-                          isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                        }
+                        placeholder="Masukkan email Anda"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         value={email}
@@ -412,89 +362,56 @@ export default function Activate() {
                           setEmail(text);
                           if (emailError) setEmailError(false);
                         }}
+                        className={`bg-white ${
+                          emailError ? "border-destructive" : ""
+                        }`}
                       />
                     </View>
 
-                    <View className="mb-4">
+                    {/* Password Field */}
+                    <View className="mb-6">
                       <Text
-                        className={`mb-2 text-sm font-medium ${
-                          isDarkColorScheme ? "text-gray-200" : "text-gray-700"
-                        }`}
+                        variant="small"
+                        className="mb-3 font-medium text-foreground"
                       >
                         Password
                       </Text>
                       <View className="relative">
                         <Input
-                          className={cn(
-                            "h-14 rounded-xl border-2 px-4 py-3 pr-14 text-base",
-                            passwordError
-                              ? "border-red-500"
-                              : isDarkColorScheme
-                                ? "border-gray-600"
-                                : "border-gray-200",
-                            isDarkColorScheme
-                              ? "bg-gray-700 text-white"
-                              : "bg-gray-50",
-                            "focus:border-blue-500",
-                            "native:text-base native:leading-[1.2]",
-                          )}
-                          placeholder="Masukkan password"
-                          placeholderTextColor={
-                            isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                          }
+                          placeholder="Masukkan password Anda"
                           secureTextEntry={!showPassword}
                           value={password}
                           onChangeText={(text) => {
                             setPassword(text);
                             if (passwordError) setPasswordError(false);
                           }}
+                          className={`bg-white ${
+                            passwordError ? "border-destructive" : ""
+                          }`}
                         />
                         <TouchableOpacity
                           className="absolute right-4 top-1/2 -translate-y-1/2"
                           onPress={() => setShowPassword(!showPassword)}
                         >
-                          {showPassword ? (
-                            <EyeOff
-                              size={20}
-                              color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                            />
-                          ) : (
-                            <Eye
-                              size={20}
-                              color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                            />
-                          )}
+                          <Icon
+                            as={showPassword ? EyeOff : Eye}
+                            className="size-5 text-foreground"
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
 
-                    <View className="mb-6">
+                    {/* Confirm Password Field */}
+                    <View className="mb-8">
                       <Text
-                        className={`mb-2 text-sm font-medium ${
-                          isDarkColorScheme ? "text-gray-200" : "text-gray-700"
-                        }`}
+                        variant="small"
+                        className="mb-3 font-medium text-foreground"
                       >
                         Konfirmasi Password
                       </Text>
                       <View className="relative">
                         <Input
-                          className={cn(
-                            "h-14 rounded-xl border-2 px-4 py-3 pr-14 text-base",
-                            confirmPasswordError
-                              ? "border-red-500"
-                              : isDarkColorScheme
-                                ? "border-gray-600"
-                                : "border-gray-200",
-                            isDarkColorScheme
-                              ? "bg-gray-700 text-white"
-                              : "bg-gray-50",
-                            "focus:border-blue-500",
-                            "native:text-base native:leading-[1.2]",
-                          )}
-                          placeholder="Konfirmasi password"
-                          placeholderTextColor={
-                            isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                          }
+                          placeholder="Konfirmasi password Anda"
                           secureTextEntry={!showConfirmPassword}
                           value={confirmPassword}
                           onChangeText={(text) => {
@@ -502,6 +419,9 @@ export default function Activate() {
                             if (confirmPasswordError)
                               setConfirmPasswordError(false);
                           }}
+                          className={`bg-white ${
+                            confirmPasswordError ? "border-destructive" : ""
+                          }`}
                         />
                         <TouchableOpacity
                           className="absolute right-4 top-1/2 -translate-y-1/2"
@@ -509,57 +429,41 @@ export default function Activate() {
                             setShowConfirmPassword(!showConfirmPassword)
                           }
                         >
-                          {showConfirmPassword ? (
-                            <EyeOff
-                              size={20}
-                              color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                            />
-                          ) : (
-                            <Eye
-                              size={20}
-                              color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                            />
-                          )}
+                          <Icon
+                            as={showConfirmPassword ? EyeOff : Eye}
+                            className="size-5 text-foreground"
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
 
+                    {/* Activate Button */}
                     <Button
                       variant="default"
                       size="lg"
-                      className={`w-full h-14 rounded-xl shadow-lg ${
-                        isDarkColorScheme
-                          ? "bg-white shadow-gray-900/20"
-                          : "bg-gray-900 shadow-gray-900/10"
-                      }`}
                       onPress={handleActivate}
                       disabled={loading}
                     >
-                      <H3
-                        className={`font-semibold text-base ${
-                          isDarkColorScheme ? "text-gray-900" : "text-white"
-                        }`}
+                      <Text
+                        variant="h3"
+                        className="font-semibold text-lg text-primary-foreground"
                       >
                         {loading ? "Sedang aktivasi..." : "Aktivasi Akun"}
-                      </H3>
+                      </Text>
                     </Button>
                   </>
                 )}
               </View>
 
+              {/* Login Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text
-                  className={`text-base ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
+                <Text variant="default" className="text-foreground">
                   Sudah punya akun?{" "}
                 </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Login")}>
                   <Text
-                    className={`font-semibold text-base ${
-                      isDarkColorScheme ? "text-white" : "text-gray-900"
-                    }`}
+                    variant="default"
+                    className="font-semibold text-primary ml-1"
                   >
                     Masuk
                   </Text>

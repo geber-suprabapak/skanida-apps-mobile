@@ -15,13 +15,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
-import { H3, Small } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Camera } from "~/lib/icons/Camera";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Camera } from "lucide-react-native";
 import { Card } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -51,7 +50,6 @@ const clearProfileCache = async () => {
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -428,13 +426,13 @@ export default function EditProfile() {
           {
             user_id: user?.id,
             absence_number: absenceNumber,
+            class_name: className,
             avatar_url: avatarUrl,
             full_name:
               name ||
               user?.user_metadata?.name ||
               user?.user_metadata?.full_name,
             email: email,
-            class_name: className,
             nis: nis,
             gender: gender,
           },
@@ -512,9 +510,7 @@ export default function EditProfile() {
   }, [fetchProfileError, user]);
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-    >
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -523,11 +519,7 @@ export default function EditProfile() {
 
       {/* Header */}
       <View
-        className={`flex-row items-center p-4 border-b ${
-          isDarkColorScheme
-            ? "border-gray-700 bg-gray-900"
-            : "border-gray-200 bg-white"
-        }`}
+        className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-card dark:bg-gray-800`}
       >
         <TouchableOpacity
           onPress={() => {
@@ -583,50 +575,33 @@ export default function EditProfile() {
           }}
           className="mr-3"
         >
-          <ChevronLeft
-            size={24}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text
-          className={`text-lg font-bold flex-1 ${
-            isDarkColorScheme ? "text-white" : "text-gray-900"
-          }`}
-        >
+        <Text variant="h3" className="flex-1 text-foreground">
           Edit Profil
         </Text>
       </View>
 
       <ScrollView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+        className={`flex-1`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}
       >
         {/* Profile Section with Photo and Basic Info */}
         <View className="px-6 pt-6 pb-4">
           <Card
-            className={`p-6 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-6 bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
             <View className="items-center">
-              <H3
-                className={`mb-6 ${
-                  isDarkColorScheme ? "text-white" : "text-gray-900"
-                }`}
-              >
+              <Text variant="h3" className={`mb-6 text-foreground`}>
                 Foto Profil
-              </H3>
+              </Text>
 
               <View className="relative mb-6">
                 {uploadingAvatar ? (
                   <View
-                    className={`w-32 h-32 rounded-full items-center justify-center ${
-                      isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
-                    }`}
+                    className={`w-32 h-32 rounded-full items-center justify-center bg-gray-100 dark:bg-gray-700`}
                     style={{
                       shadowColor: "#000000",
                       shadowOffset: { width: 0, height: 6 },
@@ -635,10 +610,7 @@ export default function EditProfile() {
                       elevation: 8,
                     }}
                   >
-                    <ActivityIndicator
-                      size="large"
-                      color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                    />
+                    <ActivityIndicator size="large" color={"#3b82f6"} />
                   </View>
                 ) : (
                   <>
@@ -665,7 +637,7 @@ export default function EditProfile() {
                     </View>
 
                     <TouchableOpacity
-                      className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-3"
+                      className="absolute bottom-0 right-0 bg-blue-500 dark:bg-blue-600 rounded-full p-3"
                       onPress={pickImage}
                       style={{
                         shadowColor: "#3B82F6",
@@ -675,19 +647,18 @@ export default function EditProfile() {
                         elevation: 6,
                       }}
                     >
-                      <Camera size={18} color="#ffffff" />
+                      <Icon as={Camera} className="size-5 text-white" />
                     </TouchableOpacity>
                   </>
                 )}
               </View>
 
-              <Small
-                className={`text-center ${
-                  isDarkColorScheme ? "text-gray-400" : "text-gray-600"
-                }`}
+              <Text
+                variant={"small"}
+                className={`text-center text-muted-foreground`}
               >
                 Ketuk ikon kamera untuk mengubah foto profil
-              </Small>
+              </Text>
             </View>
           </Card>
         </View>
@@ -695,94 +666,43 @@ export default function EditProfile() {
         {/* Combined Information Section */}
         <View className="px-6 mb-3">
           <Card
-            className={`p-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
-            <H3
-              className={`mb-3 ${
-                isDarkColorScheme ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
               Informasi Pribadi
-            </H3>
+            </Text>
 
             <View className="space-y-3">
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant="small"
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Nama Lengkap
-                </Small>
-                <View
-                  className={`px-3 py-3 rounded-lg border ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-gray-300 bg-gray-100"
-                  }`}
-                >
-                  <Text
-                    className={`${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    {name || "Belum diisi"}
-                  </Text>
-                </View>
+                </Text>
+                <Input
+                  placeholder="Masukkan nama lengkap"
+                  value={name}
+                  editable={false} // added: make read-only
+                  className={"border-gray-300 bg-white"}
+                />
               </View>
 
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant="small"
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Email
-                </Small>
-                <View
-                  className={`px-3 py-3 rounded-lg border ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-gray-300 bg-gray-100"
-                  }`}
-                >
-                  <Text
-                    className={`${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    {email || "Belum diisi"}
-                  </Text>
-                </View>
-              </View>
-
-              <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  NIS
-                </Small>
-                <View
-                  className={`px-3 py-3 rounded-lg border ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-gray-300 bg-gray-100"
-                  }`}
-                >
-                  <Text
-                    className={`${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    {nis || "Belum diisi"}
-                  </Text>
-                </View>
+                </Text>
+                <Input
+                  placeholder="Masukkan alamat email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  className={"border-gray-300 bg-white"}
+                />
               </View>
             </View>
           </Card>
@@ -791,105 +711,42 @@ export default function EditProfile() {
         {/* Academic Information Section */}
         <View className="px-6 mb-3">
           <Card
-            className={`p-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
-            <H3
-              className={`mb-3 ${
-                isDarkColorScheme ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
               Informasi Akademik
-            </H3>
+            </Text>
 
             <View className="space-y-3">
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  Kelas
-                </Small>
-                <View
-                  className={`px-3 py-3 rounded-lg border ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-gray-300 bg-gray-100"
-                  }`}
-                >
-                  <Text
-                    className={`${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    {className || "Belum diisi"}
-                  </Text>
-                </View>
-              </View>
-
-              <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  Jenis Kelamin
-                </Small>
-                <View
-                  className={`px-3 py-3 rounded-lg border ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-gray-300 bg-gray-100"
-                  }`}
-                >
-                  <Text
-                    className={`${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    {gender
-                      ? gender === "L"
-                        ? "Laki-laki"
-                        : "Perempuan"
-                      : "Belum diisi"}
-                  </Text>
-                </View>
-              </View>
-
-              <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant={"small"}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Nomor Absen
-                </Small>
-                <View
-                  className={`px-3 py-3 rounded-lg border ${
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700"
-                      : "border-gray-300 bg-gray-100"
-                  }`}
+                </Text>
+                <Input
+                  placeholder="Masukkan nomor absen"
+                  value={absenceNumber}
+                  editable={false} // added: make read-only
+                  keyboardType="numeric"
+                  className={"border-gray-300 bg-white"}
+                />
+              </View>
+
+              <View>
+                <Text
+                  variant={"small"}
+                  className={`font-medium mb-1 text-foreground`}
                 >
-                  <Text
-                    className={`${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    {absenceNumber || "Belum diisi"}
-                  </Text>
-                </View>
-                <Small
-                  className={`mt-1 ${
-                    isDarkColorScheme ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
-                  *Tidak dapat diubah
-                </Small>
+                  Kelas
+                </Text>
+                <Input
+                  placeholder="Masukkan kelas"
+                  value={className}
+                  editable={false} // added: make read-only
+                  className={"border-gray-300 bg-white"}
+                />
               </View>
             </View>
           </Card>
@@ -898,25 +755,14 @@ export default function EditProfile() {
         {/* Action Buttons Section */}
         <View className="px-6">
           <Card
-            className={`p-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
             <Button
               variant="default"
               size="default"
               disabled={loading}
               onPress={handleSave}
-              className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
-              style={{
-                shadowColor: "#3B82F6",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
+              className="mb-3 w-full bg-blue-500"
             >
               {loading ? (
                 <View className="flex-row items-center justify-center">
@@ -939,21 +785,9 @@ export default function EditProfile() {
               size="default"
               onPress={() => router.back()}
               disabled={loading}
-              className={`w-full ${
-                isDarkColorScheme
-                  ? "border-gray-600 bg-transparent"
-                  : "border-gray-300 bg-transparent"
-              }`}
+              className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
             >
-              <Text
-                className={
-                  isDarkColorScheme
-                    ? "text-gray-300 font-medium"
-                    : "text-gray-700 font-medium"
-                }
-              >
-                Batal
-              </Text>
+              <Text className={"text-foreground font-medium"}>Batal</Text>
             </Button>
           </Card>
         </View>

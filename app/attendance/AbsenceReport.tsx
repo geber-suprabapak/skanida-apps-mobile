@@ -16,13 +16,15 @@ import {
 } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
-import { useColorScheme } from "~/lib/useColorScheme";
-import { RefreshCw } from "~/lib/icons/RefreshCw";
-import { Loader2 } from "~/lib/icons/Loader2";
-import { ChevronLeft } from "../../lib/icons/ChevronLeft";
-import { MapPin } from "~/lib/icons/MapPin";
-import { MapPinOff } from "~/lib/icons/MapPinOff";
-import { HelpCircle } from "~/lib/icons/HelpCircle";
+import { Icon } from "~/components/ui/icon";
+import {
+  RefreshCw,
+  Loader2,
+  ChevronLeft,
+  MapPin,
+  MapPinOff,
+  HelpCircle,
+} from "lucide-react-native";
 
 // --- TYPES AND INTERFACES ---
 type AbsenceType = "present" | "home";
@@ -83,7 +85,6 @@ const logger = createLogger("AbsenceReport");
 // --- MAIN COMPONENT ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
 
   // Core state
@@ -554,73 +555,64 @@ const AbsenceReport = () => {
   ]);
 
   // --- RENDER HELPERS ---
-  const getStatusColor = () => {
+  const getStatusColorClass = (): string => {
     if (locationStatus === "verified" && canProceedToCamera) {
-      return isDarkColorScheme ? "rgb(34, 197, 94)" : "rgb(22, 163, 74)";
+      return "text-green-600";
     }
     if (locationStatus === "out_of_range" || locationStatus === "failed") {
-      return isDarkColorScheme ? "rgb(239, 68, 68)" : "rgb(220, 38, 38)";
+      return "text-red-600";
     }
-    return isDarkColorScheme ? "rgb(156, 163, 175)" : "rgb(107, 114, 128)";
+    return "text-gray-500";
   };
 
   // --- RENDER ---
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-950" : "bg-gray-100"}`}
-    >
+    <SafeAreaView className="flex-1 bg-background dark:bg-gray-900">
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Custom Header */}
-      <View
-        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-700 bg-gray-900" : "border-gray-300 bg-white"}`}
-      >
+      <View className="flex-row items-center p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-          <ChevronLeft
-            size={24}
-            color={isDarkColorScheme ? "white" : "black"}
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-black dark:text-white"
           />
         </TouchableOpacity>
-        <Text
-          className={`text-xl font-semibold ${isDarkColorScheme ? "text-white" : "text-black"}`}
-        >
+        <Text variant="h2" className="text-black dark:text-white">
           Lapor Absensi
         </Text>
       </View>
 
       {/* Main Content */}
-      <View
-        className={`flex-1 px-4 py-6 justify-center items-center ${isDarkColorScheme ? "bg-gray-950" : "bg-gray-100"}`}
-      >
+      <View className="flex-1 px-4 py-6 justify-center items-center bg-background dark:bg-gray-900">
         {isLoading ? (
-          <Loader2
-            size={32}
-            color={isDarkColorScheme ? "white" : "black"}
-            className="animate-spin"
-          />
+          <Icon as={Loader2} className="size-8 text-black dark:text-white" />
         ) : (
-          <Card
-            className={`w-full max-w-md ${isDarkColorScheme ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
-          >
+          <Card className="w-full max-w-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
             <CardHeader className="items-center">
               {locationStatus === "verified" && canProceedToCamera ? (
-                <MapPin size={72} color={getStatusColor()} />
+                <Icon
+                  as={MapPin}
+                  className={`size-8 ${getStatusColorClass()}`}
+                />
               ) : locationStatus === "out_of_range" ||
                 locationStatus === "failed" ? (
-                <MapPinOff size={72} color={getStatusColor()} />
+                <Icon
+                  as={MapPinOff}
+                  className={`size-8 ${getStatusColorClass()}`}
+                />
               ) : (
-                <HelpCircle size={72} color={getStatusColor()} />
+                <Icon
+                  as={HelpCircle}
+                  className={`size-8 ${getStatusColorClass()}`}
+                />
               )}
             </CardHeader>
             <CardContent className="items-center">
-              <CardTitle
-                className={`text-xl text-center mb-2 ${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
-              >
+              <CardTitle className="text-xl text-center mb-2 text-gray-800 dark:text-white">
                 Status Absensi
               </CardTitle>
-              <CardDescription
-                className={`text-base text-center mb-4 ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-              >
+              <CardDescription className="text-base text-center mb-4 text-gray-600 dark:text-gray-300">
                 {statusMessage}
               </CardDescription>
 
@@ -628,19 +620,13 @@ const AbsenceReport = () => {
               {locationStatus === "verified" &&
                 canProceedToCamera &&
                 currentAbsenceType && (
-                  <View
-                    className={`p-3 rounded-md ${isDarkColorScheme ? "bg-green-700" : "bg-green-100"} w-full items-center`}
-                  >
-                    <Text
-                      className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-green-700"}`}
-                    >
+                  <View className="p-3 rounded-md bg-green-100 w-full items-center">
+                    <Text variant="h3" className="text-green-700">
                       {currentAbsenceType === "present"
                         ? "Siap untuk Absen Masuk"
                         : "Siap untuk Absen Pulang"}
                     </Text>
-                    <Text
-                      className={`text-sm ${isDarkColorScheme ? "text-green-200" : "text-green-600"}`}
-                    >
+                    <Text variant="small" className="text-green-600">
                       Anda akan diarahkan ke kamera.
                     </Text>
                   </View>
@@ -649,17 +635,11 @@ const AbsenceReport = () => {
               {/* Error State */}
               {(locationStatus === "out_of_range" ||
                 locationStatus === "failed") && (
-                <View
-                  className={`p-3 rounded-md ${isDarkColorScheme ? "bg-red-700" : "bg-red-100"} w-full items-center`}
-                >
-                  <Text
-                    className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-red-700"}`}
-                  >
+                <View className="p-3 rounded-md bg-red-100 w-full items-center">
+                  <Text variant="h3" className="text-red-700">
                     Tidak Dapat Melanjutkan
                   </Text>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-red-200" : "text-red-600"}`}
-                  >
+                  <Text variant="small" className="text-red-600">
                     {locationStatus === "out_of_range"
                       ? "Anda berada di luar jangkauan sekolah."
                       : "Terjadi kesalahan saat memverifikasi lokasi."}
@@ -671,17 +651,11 @@ const AbsenceReport = () => {
               {!canProceedToCamera &&
                 !isLoading &&
                 statusMessage.includes("sudah menyelesaikan absensi") && (
-                  <View
-                    className={`p-3 rounded-md ${isDarkColorScheme ? "bg-sky-700" : "bg-sky-100"} w-full items-center`}
-                  >
-                    <Text
-                      className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-sky-700"}`}
-                    >
+                  <View className="p-3 rounded-md bg-sky-100 w-full items-center">
+                    <Text variant="h3" className="text-sky-700">
                       Absensi Selesai
                     </Text>
-                    <Text
-                      className={`text-sm ${isDarkColorScheme ? "text-sky-200" : "text-sky-600"}`}
-                    >
+                    <Text variant="small" className="text-sky-600">
                       Tidak ada tindakan lebih lanjut untuk hari ini.
                     </Text>
                   </View>
@@ -693,17 +667,17 @@ const AbsenceReport = () => {
         {/* Refresh Button */}
         <Button
           variant="outline"
-          className={`mt-8 w-full max-w-md ${isDarkColorScheme ? "border-sky-600 bg-gray-800 hover:bg-gray-700" : "border-sky-500 bg-white hover:bg-gray-50"}`}
+          className="mt-8 w-full max-w-md border-sky-500 dark:border-sky-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
           onPress={performFullAbsenceCheck}
           disabled={isLoading}
         >
-          <RefreshCw
-            size={20}
-            color={isDarkColorScheme ? "#38bdf8" : "#0ea5e9"}
-            style={{ marginRight: 8 }}
+          <Icon
+            as={RefreshCw}
+            className="size-5 text-sky-500 dark:text-sky-400 mr-2"
           />
           <Text
-            className={`${isDarkColorScheme ? "text-sky-400" : "text-sky-600"} font-medium`}
+            variant="default"
+            className="text-sky-600 dark:text-sky-400 font-medium"
           >
             {isLoading ? "Memeriksa..." : "Segarkan Status"}
           </Text>

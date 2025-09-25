@@ -8,15 +8,18 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { Text } from "./text";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { ChevronRight } from "~/lib/icons/ChevronRight";
-import { ChevronDown } from "~/lib/icons/ChevronDown";
-import { Calendar } from "~/lib/icons/Calendar";
-import { Clock } from "~/lib/icons/Clock";
-import { History } from "~/lib/icons/History";
-import { CheckCircle } from "~/lib/icons/CheckCircle";
-import { MousePointerClick } from "~/lib/icons/MousePointerClick";
+import { Text } from "~/components/ui/text";
+import { Icon } from "~/components/ui/icon";
+import {
+  Clock,
+  History,
+  CheckCircle,
+  Calendar,
+  ChevronLeft,
+  ChevronDown,
+  ChevronRight,
+  MousePointerClick,
+} from "lucide-react-native";
 
 export interface MonthYearPickerProps {
   selectedDate: Date;
@@ -236,11 +239,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
 
       switch (itemType) {
         case "month":
-          return <Clock size={18} color="#ffffff" className="mr-2" />;
+          return <Icon as={Clock} className="size-4 text-white mr-2" />;
         case "year":
-          return <History size={18} color="#ffffff" className="mr-2" />;
+          return <Icon as={History} className="size-4 text-white mr-2" />;
         default:
-          return <CheckCircle size={18} color="#ffffff" className="mr-2" />;
+          return <Icon as={CheckCircle} className="size-4 text-white mr-2" />;
       }
     };
 
@@ -321,9 +324,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
             elevation: 2,
           }}
         >
-          <ChevronLeft
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
+          <Icon
+            as={ChevronLeft}
+            className={`size-5 ${
+              isDarkColorScheme ? "text-white" : "text-black"
+            }`}
           />
         </TouchableOpacity>
 
@@ -343,10 +348,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
           }}
         >
           <View className="flex-row items-center">
-            <Calendar
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-              className="mr-3"
+            <Icon
+              as={Calendar}
+              className={`size-5 mr-3 ${
+                isDarkColorScheme ? "text-white" : "text-black"
+              }`}
             />
             <Text
               className={`
@@ -358,9 +364,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
               {formatDisplayDate()}
             </Text>
           </View>
-          <ChevronDown
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
+          <Icon
+            as={ChevronDown}
+            className={`size-5 ${
+              isDarkColorScheme ? "text-white" : "text-black"
+            }`}
           />
         </TouchableOpacity>
 
@@ -385,9 +393,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
             elevation: 2,
           }}
         >
-          <ChevronRight
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
+          <Icon
+            as={ChevronRight}
+            className={`size-5 ${
+              isDarkColorScheme ? "text-white" : "text-black"
+            }`}
           />
         </TouchableOpacity>
       </View>
@@ -433,10 +443,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
           >
             {/* Header */}
             <View className="flex-row items-center justify-center mb-6">
-              <MousePointerClick
-                size={24}
-                color={isDarkColorScheme ? "#ffffff" : "#000000"}
-                className="mr-3"
+              <Icon
+                as={MousePointerClick}
+                className={`size-6 mr-3 ${
+                  isDarkColorScheme ? "text-white" : "text-black"
+                }`}
               />
               <Text
                 className={`
@@ -453,10 +464,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
               {/* Month Selector */}
               <View className="flex-1 mr-4">
                 <View className="flex-row items-center justify-center mb-4">
-                  <Clock
-                    size={16}
-                    color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                    className="mr-2"
+                  <Icon
+                    as={Clock}
+                    className={`size-4 mr-2 ${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
                   />
                   <Text
                     className={`
@@ -494,10 +506,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
               {/* Year Selector */}
               <View className="flex-1 ml-4">
                 <View className="flex-row items-center justify-center mb-4">
-                  <History
-                    size={16}
-                    color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                    className="mr-2"
+                  <Icon
+                    as={History}
+                    className={`size-4 mr-2 ${
+                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                    }`}
                   />
                   <Text
                     className={`
