@@ -130,6 +130,18 @@ export default function Activate() {
       setConfirmPasswordError(true);
       hasError = true;
     }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      Alert.alert(
+        "Password Tidak Sesuai atau kurang kuat",
+        "Password harus memiliki setidaknya 8 karakter, termasuk huruf besar dan angka.",
+      );
+      setPasswordError(true);
+      hasError = true;
+    }
+
     return !hasError;
   };
 
@@ -426,7 +438,7 @@ export default function Activate() {
                             "focus:border-blue-500",
                             "native:text-base native:leading-[1.2]",
                           )}
-                          placeholder="Masukkan password (min. 6 karakter)"
+                          placeholder="Masukkan password"
                           placeholderTextColor={
                             isDarkColorScheme ? "#9CA3AF" : "#6B7280"
                           }

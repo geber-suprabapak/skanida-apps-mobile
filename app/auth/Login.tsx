@@ -66,6 +66,16 @@ export default function Login() {
       return;
     }
 
+    // Password validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      alert(
+        "Password harus memiliki setidaknya 8 karakter, termasuk huruf besar dan angka.",
+      );
+      setPasswordError(true);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
