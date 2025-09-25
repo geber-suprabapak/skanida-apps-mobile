@@ -68,6 +68,7 @@ function Pengaturan() {
       router.push("/profile/EditProfile");
     });
   }, [router]);
+
   const navigateToChangePassword = useCallback(() => {
     requestAnimationFrame(() => {
       router.push("/profile/ChangePassword");
@@ -88,7 +89,8 @@ function Pengaturan() {
 
     return () => backHandler.remove();
   }, [router]);
-  // Optimized profile data fetching prioritizing user_profiles with retry, then cache, then metadata
+
+  // Simplified profile data fetching that always gets fresh data from server
   const fetchProfileDataAndUpdateState = useCallback(async () => {
     if (!user) {
       setProfileFullName("Pengguna Skanida");
@@ -98,24 +100,14 @@ function Pengaturan() {
     }
 
     try {
-      // First, try to load from cache for immediate display while waiting for database
-      const cachedProfile = await getProfileFromCache(user.id);
-      if (cachedProfile) {
-        // Only use cache for initial quick load
-        setProfileFullName(cachedProfile.fullName);
-        setProfileAvatarUrl(cachedProfile.avatarUrl);
-        setIsDataLoaded(true);
-      } else {
-        // If no cache, use user metadata temporarily until we get real data
-        const initialName =
-          user.user_metadata?.name || user.email || "Pengguna Skanida";
-        const initialAvatar = user.user_metadata?.avatar_url || null;
-        setProfileFullName(initialName);
-        setProfileAvatarUrl(initialAvatar);
-        setIsDataLoaded(true);
-      }
+      // Set initial data from user metadata while fetching
+      const initialName =
+        user.user_metadata?.name || user.email || "Pengguna Skanida";
+      const initialAvatar = user.user_metadata?.avatar_url || null;
+      setProfileFullName(initialName);
+      setProfileAvatarUrl(initialAvatar);
 
-      // Prioritize fetching from user_profiles directly
+      // Always fetch fresh data from database
       const { data: userProfile, error: profileError } = await supabase
         .from("user_profiles")
         .select("full_name, avatar_url")
@@ -128,9 +120,9 @@ function Pengaturan() {
           profileError.message,
         );
       } else if (userProfile) {
-        // We got data from user_profiles (highest priority)
         console.log("Pengaturan: Profile data found in database:", userProfile);
 
+        // Always update with latest data from server
         const updatedName =
           userProfile.full_name ||
           user.user_metadata?.name ||
@@ -139,33 +131,20 @@ function Pengaturan() {
         const updatedAvatar =
           userProfile.avatar_url || user.user_metadata?.avatar_url || null;
 
-        // Update cache with latest data from database
-        await saveProfileToCache(user.id, updatedName, updatedAvatar);
-
-        // Only update state if data actually changed to avoid unnecessary re-renders
-        if (updatedName !== profileFullName) {
-          setProfileFullName(updatedName);
-        }
-        if (updatedAvatar !== profileAvatarUrl) {
-          setProfileAvatarUrl(updatedAvatar);
-        }
-      } else {
-        console.log("Pengaturan: No profile data found for user:", user?.id);
-        // If no database data was found, make sure cache is updated with metadata
-        // as fallback to keep it consistent with what we're displaying
-        const metadataName =
-          user.user_metadata?.name || user.email || "Pengguna Skanida";
-        const metadataAvatar = user.user_metadata?.avatar_url || null;
-        await saveProfileToCache(user.id, metadataName, metadataAvatar);
+        setProfileFullName(updatedName);
+        setProfileAvatarUrl(updatedAvatar);
       }
+
+      setIsDataLoaded(true);
     } catch (err) {
       console.error("Pengaturan: Unexpected error fetching profile:", err);
+      setIsDataLoaded(true);
     }
-  }, [user, profileFullName, profileAvatarUrl]);
+  }, [user]);
 
-  // Optimized useEffect with proper dependency management
+  // Fetch fresh data whenever the screen is focused
   useEffect(() => {
-    if (isFocused && user) {
+    if (isFocused) {
       fetchProfileDataAndUpdateState();
     } else if (!user) {
       setProfileFullName("Pengguna Skanida");
@@ -190,10 +169,7 @@ function Pengaturan() {
           onPress: async () => {
             try {
               await supabase.auth.signOut();
-
-              // Remove only general storage clearing; no profile cache clearing helper
               await AsyncStorage.clear();
-
               setUser(null);
               router.replace("/auth/AuthSelector");
             } catch (error) {
@@ -230,10 +206,7 @@ function Pengaturan() {
   // Effect to sync theme state with store
   useEffect(() => {
     setIsDarkMode(theme === "dark");
-    if (isDataLoaded) {
-      // We could potentially save user theme preference to backend here
-    }
-  }, [theme, isDataLoaded]);
+  }, [theme]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -250,9 +223,7 @@ function Pengaturan() {
           <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text className="text-lg font-bold flex-1 text-foreground">
-          Pengaturan
-        </Text>
+        <Text variant="large">Pengaturan</Text>
       </View>
 
       <ScrollView
@@ -263,7 +234,7 @@ function Pengaturan() {
         {/* Profile Section */}
         <View className="px-6 pt-4 pb-3">
           <Card className="p-4 bg-card border-border">
-            <Text className="text-lg font-semibold mb-3 text-foreground">
+            <Text variant="large" className="mb-3">
               Profil Pengguna
             </Text>
 
@@ -298,7 +269,7 @@ function Pengaturan() {
                     elevation: 6,
                   }}
                 >
-                  <Text className="text-xl font-bold text-primary-foreground">
+                  <Text variant="large">
                     {(profileFullName || user?.email)
                       ?.charAt(0)
                       .toUpperCase() || "U"}
@@ -307,10 +278,10 @@ function Pengaturan() {
               )}
 
               <View className="flex-1 ml-4">
-                <Text className="text-lg font-bold text-foreground">
+                <Text variant="large">
                   {profileFullName || user?.email?.split("@")[0] || "Pengguna"}
                 </Text>
-                <Text className="text-sm mt-1 text-muted-foreground">
+                <Text variant="small" className="mt-1">
                   {user?.email || "Tidak ada email"}
                 </Text>
 
@@ -321,13 +292,7 @@ function Pengaturan() {
                   }`}
                   activeOpacity={0.7}
                 >
-                  <Text
-                    className={`text-xs font-medium ${
-                      copiedId
-                        ? "text-accent-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
+                  <Text variant="small" className="font-medium">
                     {copiedId
                       ? "✓ ID Tersalin!"
                       : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
@@ -355,12 +320,10 @@ function Pengaturan() {
                   <Icon as={User} className="size-4 text-primary" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-medium text-foreground">
+                  <Text variant="default" className="font-medium">
                     Edit Profil
                   </Text>
-                  <Text className="text-sm text-muted-foreground">
-                    Ubah nama dan foto profil
-                  </Text>
+                  <Text variant="small">Ubah nama dan foto profil</Text>
                 </View>
                 <Icon
                   as={ChevronRight}
@@ -377,12 +340,10 @@ function Pengaturan() {
                   <Icon as={Key} className="size-4 text-primary" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-medium text-foreground">
+                  <Text variant="default" className="font-medium">
                     Ubah Password
                   </Text>
-                  <Text className="text-sm text-muted-foreground">
-                    Perbarui kata sandi akun
-                  </Text>
+                  <Text variant="small">Perbarui kata sandi akun</Text>
                 </View>
                 <Icon
                   as={ChevronRight}
@@ -413,10 +374,10 @@ function Pengaturan() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-medium text-foreground">
+                  <Text variant="default" className="font-medium">
                     Mode Gelap
                   </Text>
-                  <Text className="text-sm text-muted-foreground">
+                  <Text variant="small">
                     {isDarkMode ? "Aktif" : "Tidak Aktif"}
                   </Text>
                 </View>
@@ -444,10 +405,10 @@ function Pengaturan() {
                   <Icon as={Bell} className="size-4 text-primary" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-medium text-foreground">
+                  <Text variant="default" className="font-medium">
                     Test Error Reporting
                   </Text>
-                  <Text className="text-sm text-muted-foreground">
+                  <Text variant="small">
                     Kirim error ke Sentry untuk testing
                   </Text>
                 </View>
@@ -473,7 +434,9 @@ function Pengaturan() {
                   as={LogOut}
                   className="size-5 mr-2 text-destructive-foreground"
                 />
-                <Text className="font-medium">Keluar dari Akun</Text>
+                <Text variant="default" className="font-medium">
+                  Keluar dari Akun
+                </Text>
               </View>
             </Button>
           </Card>
@@ -482,27 +445,21 @@ function Pengaturan() {
         {/* App Info Section */}
         <View className="px-6">
           <Card className="p-4 bg-card border-border">
-            <Text className="text-lg font-semibold mb-3 text-foreground">
+            <Text variant="large" className="mb-3">
               Informasi Aplikasi
             </Text>
 
             <View className="space-y-3">
               <View>
-                <Text className="text-sm font-medium text-muted-foreground">
+                <Text variant="small" className="font-medium">
                   Versi Aplikasi
                 </Text>
-                <Text className="text-base text-foreground">
-                  Version 1.6.2-internal.1
-                </Text>
+                <Text variant="default">Version 1.6.2-internal.1</Text>
               </View>
 
               <View className="pt-3 border-t border-border">
-                <Text className="text-sm text-muted-foreground">
-                  © 2025 Skanida Apps
-                </Text>
-                <Text className="text-sm text-muted-foreground">
-                  Semua hak dilindungi undang-undang
-                </Text>
+                <Text variant="small">© 2025 Skanida Apps</Text>
+                <Text variant="small">Semua hak dilindungi undang-undang</Text>
               </View>
             </View>
           </Card>

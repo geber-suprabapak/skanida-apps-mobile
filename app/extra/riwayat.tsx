@@ -192,7 +192,7 @@ export default function Riwayat() {
           <Icon as={ChevronLeft} className={`size-6 text-foreground`} />
         </TouchableOpacity>
 
-        <Text variant="h3" className="flex-1 text-foreground">
+        <Text variant="large" className="flex-1 text-foreground">
           Riwayat Kehadiran
         </Text>
 

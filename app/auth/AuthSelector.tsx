@@ -96,7 +96,7 @@ export default function LoginScreen() {
               variant="outline"
               size="lg"
               className={`w-full h-16 rounded-xl border-2 border-border dark:border-gray-700`}
-              onPress={() => router.push("/auth/Register")}
+              onPress={() => router.push("/auth/Activate")}
             >
               <Text variant="h3" className={`font-semibold text-lg `}>
                 Daftar

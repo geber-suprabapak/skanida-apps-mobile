@@ -738,7 +738,7 @@ export default function PerizinanScreen() {
             <Icon as={ChevronLeft} className="size-6" />
           </TouchableOpacity>
           <View className="flex-1">
-            <Text className={`text-lg font-bold `}>Pengajuan Izin</Text>
+            <Text variant="large">Pengajuan Izin</Text>
           </View>
         </View>
 
