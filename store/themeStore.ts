@@ -18,7 +18,7 @@ const useThemeStore = create<ThemeState>()(
         // Apply the theme immediately
         if (theme === "system") {
           // Reset to system preference
-          colorScheme.set("light"); // Default to light, we will handle system detection separately
+          colorScheme.set("light"); // Default to light when 'system' is selected; system detection is not implemented
         } else {
           colorScheme.set(theme);
         }
