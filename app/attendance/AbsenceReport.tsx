@@ -581,7 +581,7 @@ const AbsenceReport = () => {
       {/* Main Content */}
       <View className="flex-1 px-4 py-6 justify-center items-center bg-gray-100">
         {isLoading ? (
-          <Icon as={Loader2} className="size-8 text-black animate-spin" />
+          <Icon as={Loader2} className="size-8 text-black" />
         ) : (
           <Card className="w-full max-w-md bg-white border-gray-300">
             <CardHeader className="items-center">

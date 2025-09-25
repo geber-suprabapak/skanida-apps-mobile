@@ -11,13 +11,7 @@ import {
   StatusBar,
   BackHandler,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  FadeIn,
-  SlideInDown,
-  withSpring,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 
@@ -137,10 +131,6 @@ const CameraAttendance = () => {
   const [isUploading, setIsUploading] = useState(false);
 
   // --- ANIMATION VALUES ---
-  const buttonScale = useSharedValue(1);
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
 
   // --- MEMOIZED VALUES ---
   const locationData: LocationData = useMemo(() => {
@@ -791,7 +781,6 @@ const CameraAttendance = () => {
     }
 
     setIsCapturingPhoto(true);
-    buttonScale.value = withSpring(0.9);
 
     try {
       logger.debug("Starting enhanced photo capture");
@@ -842,12 +831,10 @@ const CameraAttendance = () => {
       );
     } finally {
       setIsCapturingPhoto(false);
-      buttonScale.value = withSpring(1);
     }
   }, [
     isCameraReady,
     isCapturingPhoto,
-    buttonScale,
     processImageWithOptimization,
     processAndUploadPhoto,
   ]);
@@ -941,10 +928,7 @@ const CameraAttendance = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
-        <Animated.View
-          entering={FadeIn.duration(500)}
-          className="items-center justify-center"
-        >
+        <Animated.View className="items-center justify-center">
           <Icon as={Camera} className="size-20 text-[#0066FF]" />
           <Text className="text-white text-2xl font-bold text-center mt-4 mb-2">
             Camera Access Needed
@@ -972,10 +956,7 @@ const CameraAttendance = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
-        <Animated.View
-          entering={FadeIn.duration(500)}
-          className="items-center justify-center"
-        >
+        <Animated.View className="items-center justify-center">
           <Icon as={AlertCircle} className="size-20 text-red-600" />
           <Text className="text-red-400 text-2xl font-bold text-center mt-4 mb-2">
             Camera Error
@@ -1001,11 +982,8 @@ const CameraAttendance = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
-        <Animated.View
-          entering={FadeIn.duration(400)}
-          className="items-center justify-center w-4/5"
-        >
-          <Icon as={Loader2} className="size-8 text-[#0066FF] animate-spin" />
+        <Animated.View className="items-center justify-center w-4/5">
+          <Icon as={Loader2} className="size-8 text-[#0066FF]" />
           <Text className="text-white text-xl font-semibold mt-4 mb-2">
             Saving Attendance...
           </Text>
@@ -1065,10 +1043,7 @@ const CameraAttendance = () => {
                   <Icon as={CameraOff} className="size-6 text-white" />
                 </TouchableOpacity>
 
-                <Animated.View
-                  entering={SlideInDown.duration(400)}
-                  className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl"
-                >
+                <Animated.View className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl">
                   <View className="flex-row items-center">
                     <Icon as={Camera} className="size-4 text-[#0066FF]" />
                     <Text className="text-white text-sm ml-1">
@@ -1092,10 +1067,7 @@ const CameraAttendance = () => {
                   <Icon as={SwitchCamera} className="size-7 text-white" />
                 </TouchableOpacity>
 
-                <Animated.View
-                  style={animatedButtonStyle}
-                  className="w-24 h-24 rounded-full bg-white/30 justify-center items-center"
-                >
+                <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
                   <TouchableOpacity
                     className="w-20 h-20 rounded-full bg-white justify-center items-center"
                     onPress={handleTakePicture}
