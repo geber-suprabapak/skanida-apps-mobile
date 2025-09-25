@@ -477,13 +477,13 @@ export default function Dashboard() {
           <View className="px-6 mb-4">
             <Card className="p-4 bg-card border-border">
               <View className="flex-row items-center justify-between">
-                <Text className="text-lg font-semibold text-foreground">
+                <Text variant="h4" className="text-foreground">
                   Status Hari Ini
                 </Text>
                 <Badge
                   className={`${statusBadge.color} ${statusBadge.textColor}`}
                 >
-                  <Text>{statusBadge.text}</Text>
+                  <Text variant="default">{statusBadge.text}</Text>
                 </Badge>
               </View>
 
@@ -537,11 +537,11 @@ export default function Dashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
                       <Icon as={Clock} className="size-5 text-blue-500" />
-                      <Text className="ml-2 text-foreground">
+                      <Text variant="default" className="ml-2 text-foreground">
                         Total Jam Di Sekolah
                       </Text>
                     </View>
-                    <Text className="text-sm font-medium text-foreground">
+                    <Text variant="small" className="font-medium text-foreground">
                       {attendanceStatus.totalWorkHours}
                     </Text>
                   </View>
@@ -566,14 +566,14 @@ export default function Dashboard() {
                 <Card className="aspect-square bg-blue-600 dark:bg-blue-700">
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
-                    <Text className="text-white font-semibold text-lg mt-2 text-center">
+                    <Text variant="large" className="text-white font-semibold mt-2 text-center">
                       {!attendanceStatus.hasCheckedIn
                         ? "Absen Masuk"
                         : !attendanceStatus.hasCheckedOut
                           ? "Absen Pulang"
                           : "Lihat Absensi"}
                     </Text>
-                    <Text className="text-blue-100 text-sm text-center mt-1">
+                    <Text variant="small" className="text-blue-100 text-center mt-1">
                       {!attendanceStatus.hasCheckedIn
                         ? "Mulai hari sekolah"
                         : !attendanceStatus.hasCheckedOut
@@ -594,7 +594,7 @@ export default function Dashboard() {
               >
                 <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon as={History} className="size-6 text-blue-600" />
-                  <Text className="mt-1 font-medium text-foreground">
+                  <Text variant="default" className="mt-1 font-medium text-foreground">
                     Riwayat
                   </Text>
                 </Card>
@@ -610,7 +610,7 @@ export default function Dashboard() {
                     as={ClipboardPenLine}
                     className="size-6 text-blue-600"
                   />
-                  <Text className="mt-1 font-medium text-foreground">
+                  <Text variant="default" className="mt-1 font-medium text-foreground">
                     Perizinan
                   </Text>
                 </Card>
@@ -623,7 +623,7 @@ export default function Dashboard() {
               >
                 <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
                   <Icon as={Settings} className="size-6 text-blue-600" />
-                  <Text className="mt-1 font-medium text-foreground">
+                  <Text variant="default" className="mt-1 font-medium text-foreground">
                     Setelan
                   </Text>
                 </Card>
@@ -634,7 +634,7 @@ export default function Dashboard() {
 
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
-          <Text className="text-s font-bold text-foreground">
+          <Text variant="small" className="font-bold text-foreground">
             v1.7.0-internaldev | Branch: develop
           </Text>
         </View>

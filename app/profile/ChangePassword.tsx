@@ -216,10 +216,7 @@ export default function ChangePassword() {
 
               {/* Confirm Password */}
               <View>
-                <Text
-                  variant="small"
-                  className="font-medium mb-2 text-gray-700"
-                >
+                <Text variant="small" className="font-medium mb-2 text-gray-700">
                   Konfirmasi Password Baru
                 </Text>
                 <View className="relative">
@@ -243,7 +240,7 @@ export default function ChangePassword() {
                   </TouchableOpacity>
                 </View>
                 {confirmPassword && newPassword !== confirmPassword && (
-                  <Text className="text-xs mt-2 text-red-500">
+                  <Text variant="small" className="text-xs mt-2 text-red-500">
                     Password tidak cocok
                   </Text>
                 )}

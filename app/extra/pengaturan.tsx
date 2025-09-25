@@ -306,7 +306,7 @@ function Pengaturan() {
         {/* Account Settings Section */}
         <View className="px-6 mb-3">
           <Card className="p-4 bg-card border-border">
-            <Text className="text-lg font-semibold mb-3 text-foreground">
+            <Text variant="h4" className="mb-3 text-foreground">
               Pengaturan Akun
             </Text>
 
@@ -357,7 +357,7 @@ function Pengaturan() {
         {/* Preferences Section */}
         <View className="px-6 mb-3">
           <Card className="p-4 bg-card border-border">
-            <Text className="text-lg font-semibold text-foreground">
+            <Text variant="h4" className="mb-3 text-foreground">
               Lain-Lain
             </Text>
 
@@ -424,7 +424,7 @@ function Pengaturan() {
         {/* Logout Section */}
         <View className="px-6 mb-3">
           <Card className="p-4 bg-card border-border">
-            <Text className="text-lg font-semibold mb-3 text-foreground">
+            <Text variant="h4" className="mb-3 text-foreground">
               Akun
             </Text>
 

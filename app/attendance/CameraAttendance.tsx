@@ -1004,7 +1004,7 @@ const CameraAttendance = () => {
               style={{ width: `${uploadProgress.percentage}%` }}
             />
           </View>
-          <Text className="text-white/70 text-sm mt-2">
+          <Text variant="small" className="text-white/70 mt-2">
             {uploadProgress.percentage}%
           </Text>
         </Animated.View>
@@ -1054,12 +1054,12 @@ const CameraAttendance = () => {
                 <Animated.View className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl">
                   <View className="flex-row items-center">
                     <Icon as={Camera} className="size-4 text-[#0066FF]" />
-                    <Text className="text-white text-sm ml-1">
+                    <Text variant="small" className="text-white ml-1">
                       {locationData.latitude?.toFixed(4)},{" "}
                       {locationData.longitude?.toFixed(4)}
                     </Text>
                   </View>
-                  <Text className="text-white/70 text-xs">
+                  <Text variant="small" className="text-white/70 text-xs">
                     {currentDateTime.displayTime}
                   </Text>
                 </Animated.View>
@@ -1096,7 +1096,9 @@ const CameraAttendance = () => {
           ) : (
             <View className="flex-1 justify-center items-center bg-black/70">
               <ActivityIndicator size="large" color="#0066FF" />
-              <Text className="text-white mt-3">Initializing camera...</Text>
+              <Text variant="default" className="text-white mt-3">
+                Initializing camera...
+              </Text>
             </View>
           )}
         </CameraView>
