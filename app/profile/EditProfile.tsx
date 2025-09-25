@@ -20,6 +20,7 @@ import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Camera } from "lucide-react-native";
 import { Card } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -432,7 +433,6 @@ export default function EditProfile() {
               user?.user_metadata?.name ||
               user?.user_metadata?.full_name,
             email: email,
-            class_name: className,
             nis: nis,
             gender: gender,
           },
@@ -665,8 +665,10 @@ export default function EditProfile() {
 
         {/* Combined Information Section */}
         <View className="px-6 mb-3">
-          <Card className={`p-4 bg-white border-gray-200`}>
-            <Text variant="h3" className={`mb-3 text-gray-900`}>
+          <Card
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
+          >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
               Informasi Pribadi
             </Text>
 
@@ -674,14 +676,14 @@ export default function EditProfile() {
               <View>
                 <Text
                   variant="small"
-                  className={`font-medium mb-1 text-gray-700`}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Nama Lengkap
                 </Text>
                 <Input
                   placeholder="Masukkan nama lengkap"
                   value={name}
-                  onChangeText={setName}
+                  editable={false}              // added: make read-only
                   className={"border-gray-300 bg-white"}
                 />
               </View>
@@ -689,7 +691,7 @@ export default function EditProfile() {
               <View>
                 <Text
                   variant="small"
-                  className={`font-medium mb-1 text-gray-700`}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Email
                 </Text>
@@ -708,8 +710,10 @@ export default function EditProfile() {
 
         {/* Academic Information Section */}
         <View className="px-6 mb-3">
-          <Card className={`p-4 bg-white border-gray-200`}>
-            <Text variant="h3" className={`mb-3 text-gray-900`}>
+          <Card
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
+          >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
               Informasi Akademik
             </Text>
 
@@ -717,14 +721,14 @@ export default function EditProfile() {
               <View>
                 <Text
                   variant={"small"}
-                  className={`font-medium mb-1 text-gray-700`}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Nomor Absen
                 </Text>
                 <Input
                   placeholder="Masukkan nomor absen"
                   value={absenceNumber}
-                  onChangeText={setAbsenceNumber}
+                  editable={false}              // added: make read-only
                   keyboardType="numeric"
                   className={"border-gray-300 bg-white"}
                 />
@@ -733,14 +737,14 @@ export default function EditProfile() {
               <View>
                 <Text
                   variant={"small"}
-                  className={`font-medium mb-1 text-gray-700`}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Kelas
                 </Text>
                 <Input
                   placeholder="Masukkan kelas"
                   value={className}
-                  onChangeText={setClassName}
+                  editable={false}              // added: make read-only
                   className={"border-gray-300 bg-white"}
                 />
               </View>
@@ -750,20 +754,15 @@ export default function EditProfile() {
 
         {/* Action Buttons Section */}
         <View className="px-6">
-          <Card className={`p-4 bg-white border-gray-200`}>
+          <Card
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
+          >
             <Button
               variant="default"
               size="default"
               disabled={loading}
               onPress={handleSave}
-              className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
-              style={{
-                shadowColor: "#3B82F6",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
+              className="mb-3 w-full bg-blue-500"
             >
               {loading ? (
                 <View className="flex-row items-center justify-center">
@@ -777,7 +776,9 @@ export default function EditProfile() {
                   </Text>
                 </View>
               ) : (
-                <Text className="text-white font-medium">Simpan Perubahan</Text>
+                <Text className="text-white font-medium">
+                  Simpan Perubahan
+                </Text>
               )}
             </Button>
 
@@ -788,7 +789,7 @@ export default function EditProfile() {
               disabled={loading}
               className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
             >
-              <Text className={"text-gray-700 font-medium"}>Batal</Text>
+              <Text className={"text-foreground font-medium"}>Batal</Text>
             </Button>
           </Card>
         </View>
