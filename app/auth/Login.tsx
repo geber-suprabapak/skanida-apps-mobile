@@ -60,6 +60,16 @@ export default function Login() {
       return;
     }
 
+    // Password validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      alert(
+        "Password harus memiliki setidaknya 8 karakter, termasuk huruf besar dan angka.",
+      );
+      setPasswordError(true);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -212,12 +222,12 @@ export default function Login() {
                 <Text variant="default" className="text-foreground">
                   Belum memiliki akun?
                 </Text>
-                <TouchableOpacity onPress={() => router.push("/auth/Register")}>
+                <TouchableOpacity onPress={() => router.push("/auth/Activate")}>
                   <Text
                     variant="default"
                     className="font-semibold text-primary ml-1"
                   >
-                    Daftar sekarang
+                    Aktivasi sekarang
                   </Text>
                 </TouchableOpacity>
               </View>

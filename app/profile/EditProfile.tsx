@@ -13,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
@@ -25,11 +24,12 @@ import { Card } from "~/components/ui/card";
 // Define interface for user profile data
 interface UserProfile {
   id: string;
-  user_id: string;
   full_name?: string;
   email?: string;
   absence_number?: string;
   class_name?: string;
+  nis?: string;
+  gender?: string;
   avatar_url?: string;
   created_at?: string;
   updated_at?: string;
@@ -52,91 +52,169 @@ export default function EditProfile() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  const [name, setName] = useState(user?.user_metadata?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [absenceNumber, setAbsenceNumber] = useState(
-    user?.user_metadata?.absence_number || "",
-  );
-  const [className, setClassName] = useState(
-    user?.user_metadata?.class_name || "",
-  );
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [absenceNumber, setAbsenceNumber] = useState("");
+  const [className, setClassName] = useState("");
+  const [nis, setNis] = useState("");
+  const [gender, setGender] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [fetchProfileError, setFetchProfileError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const [initialName, setInitialName] = useState("");
-  const [initialEmail, setInitialEmail] = useState("");
   const [initialAbsenceNumber, setInitialAbsenceNumber] = useState("");
-  const [initialClassName, setInitialClassName] = useState("");
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchAndSetInitialProfileData = async () => {
+    const fetchAndSetProfileData = async () => {
       if (!user) {
-        setInitialName(name);
-        setInitialEmail(email);
-        setInitialAbsenceNumber(absenceNumber);
-        setInitialClassName(className);
-        setInitialAvatarUrl(avatarUrl);
         return;
       }
 
-      let currentName = user.user_metadata?.name || "";
-      let currentEmail = user.email || "";
-      let currentAbsenceNumber = user.user_metadata?.absence_number || "";
-      let currentClassName = user.user_metadata?.class_name || "";
-      let currentAvatarUrl: string | null =
-        user.user_metadata?.avatar_url || null;
+      // Set loading indicator if needed
 
-      setEmail(currentEmail);
-
+      // First try to fetch data from user_profiles table (primary source)
       try {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("full_name, email, absence_number, class_name, avatar_url")
-          .eq("user_id", user.id)
-          .single();
+        console.log("Fetching profile for user id:", user?.id);
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching profile:", error.message);
+        // Implement retry mechanism for race condition
+        const maxRetries = 3;
+        let profileData = null;
+        let fetchError = null;
+
+        // Try multiple times with a delay to handle race conditions
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          if (attempt > 0) {
+            // Wait before retry
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            console.log(`Retry attempt ${attempt + 1} for profile data...`);
+          }
+
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .select(
+              "full_name, email, absence_number, class_name, nis, gender, avatar_url",
+            )
+            .eq("user_id", user?.id)
+            .single();
+
+          if (data) {
+            profileData = data;
+            fetchError = null;
+            break; // Exit loop if we got data
+          }
+
+          fetchError = error;
+
+          // If error is something other than "not found", don't retry
+          if (error && error.code !== "PGRST116") {
+            break;
+          }
+        }
+
+        if (fetchError && fetchError.code !== "PGRST116") {
+          console.error("Error fetching profile:", fetchError.message);
+          console.error("Error details:", fetchError);
           setFetchProfileError(true);
         }
 
-        if (data) {
-          setProfileData(data as UserProfile);
-          currentName = data.full_name || currentName;
-          currentAbsenceNumber = data.absence_number || currentAbsenceNumber;
-          currentClassName = data.class_name || currentClassName;
-          currentAvatarUrl = data.avatar_url || currentAvatarUrl;
+        if (profileData) {
+          // If we have profile data from database, use it as primary source
+          console.log("Profile data found:", profileData);
+          setProfileData(profileData as UserProfile);
+
+          // Prioritize profile data, fall back to user metadata only if needed
+          const currentName =
+            user.user_metadata?.name || user.user_metadata?.full_name || "";
+          const currentEmail = user.email || "";
+          const currentAbsenceNumber = user.user_metadata?.absence_number || "";
+          const currentClassName = user.user_metadata?.class_name || "";
+          const currentNis = user.user_metadata?.nis || "";
+          const currentGender = user.user_metadata?.gender || "";
+          const currentAvatarUrl = user.user_metadata?.avatar_url || null;
+
+          setName(profileData.full_name || currentName);
+          setEmail(profileData.email || currentEmail);
+          setAbsenceNumber(profileData.absence_number || currentAbsenceNumber);
+          setClassName(profileData.class_name || currentClassName);
+          setNis(profileData.nis || currentNis);
+          setGender(profileData.gender || currentGender);
+          setAvatarUrl(profileData.avatar_url || currentAvatarUrl);
+
+          // Set initial values for change detection
+          setInitialAbsenceNumber(
+            profileData.absence_number || currentAbsenceNumber,
+          );
+          setInitialAvatarUrl(profileData.avatar_url || currentAvatarUrl);
+
+          console.log("Data set from user_profiles:", {
+            name: profileData.full_name,
+            nis: profileData.nis,
+            gender: profileData.gender,
+            className: profileData.class_name,
+            absenceNumber: profileData.absence_number,
+          });
+        } else {
+          console.log("No profile data found for user:", user.id);
+
+          // Fallback to user metadata if no profile data
+          let currentName =
+            user.user_metadata?.name || user.user_metadata?.full_name || "";
+          let currentEmail = user.email || "";
+          let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+          let currentClassName = user.user_metadata?.class_name || "";
+          let currentNis = user.user_metadata?.nis || "";
+          let currentGender = user.user_metadata?.gender || "";
+          let currentAvatarUrl: string | null =
+            user.user_metadata?.avatar_url || null;
+
+          // Set values from user metadata as fallback
+          setName(currentName);
+          setEmail(currentEmail);
+          setAbsenceNumber(currentAbsenceNumber);
+          setClassName(currentClassName);
+          setNis(currentNis);
+          setGender(currentGender);
+          setAvatarUrl(currentAvatarUrl);
+          setInitialAbsenceNumber(currentAbsenceNumber);
+          setInitialAvatarUrl(currentAvatarUrl);
+
+          console.log("Using fallback data from user metadata");
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
         setFetchProfileError(true);
-      }
 
-      setName(currentName);
-      setInitialName(currentName);
-      setInitialEmail(currentEmail);
-      setAbsenceNumber(currentAbsenceNumber);
-      setInitialAbsenceNumber(currentAbsenceNumber);
-      setClassName(currentClassName);
-      setInitialClassName(currentClassName);
-      setAvatarUrl(currentAvatarUrl);
-      setInitialAvatarUrl(currentAvatarUrl);
+        // Fallback to user metadata on error
+        let currentName =
+          user.user_metadata?.name || user.user_metadata?.full_name || "";
+        let currentEmail = user.email || "";
+        let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+        let currentClassName = user.user_metadata?.class_name || "";
+        let currentNis = user.user_metadata?.nis || "";
+        let currentGender = user.user_metadata?.gender || "";
+        let currentAvatarUrl: string | null =
+          user.user_metadata?.avatar_url || null;
+
+        setName(currentName);
+        setEmail(currentEmail);
+        setAbsenceNumber(currentAbsenceNumber);
+        setClassName(currentClassName);
+        setNis(currentNis);
+        setGender(currentGender);
+        setAvatarUrl(currentAvatarUrl);
+        setInitialAbsenceNumber(currentAbsenceNumber);
+        setInitialAvatarUrl(currentAvatarUrl);
+      }
     };
 
-    fetchAndSetInitialProfileData();
+    fetchAndSetProfileData();
   }, [user]);
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
-      const hasUnsavedChanges =
-        name !== initialName ||
-        email !== initialEmail ||
-        absenceNumber !== initialAbsenceNumber ||
-        className !== initialClassName ||
-        avatarUrl !== initialAvatarUrl;
+      const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
 
       if (!hasUnsavedChanges) {
         return;
@@ -163,28 +241,30 @@ export default function EditProfile() {
     return () => {
       navigation.removeListener("beforeRemove", onBeforeRemove);
     };
-  }, [
-    navigation,
-    name,
-    email,
-    absenceNumber,
-    className,
-    avatarUrl,
-    initialName,
-    initialEmail,
-    initialAbsenceNumber,
-    initialClassName,
-    initialAvatarUrl,
-  ]);
+  }, [navigation, avatarUrl, initialAvatarUrl]);
 
   // Handle hardware back button
   useEffect(() => {
     const backAction = () => {
-      // Check if profile is required (by checking if name is empty)
-      const isProfileRequired = !profileData?.full_name && !name;
+      // Allow navigation if user has any name data (profile, form, or auth metadata)
+      const hasAnyName =
+        (profileData?.full_name && profileData.full_name.trim().length > 0) ||
+        (name && name.trim().length > 0) ||
+        (user?.user_metadata?.name &&
+          user.user_metadata.name.trim().length > 0) ||
+        (user?.user_metadata?.full_name &&
+          user.user_metadata.full_name.trim().length > 0);
 
-      // If profile is required (empty), prevent going back
-      if (isProfileRequired) {
+      console.log("Hardware back button check:", {
+        hasAnyName,
+        profileDataFullName: profileData?.full_name,
+        formName: name,
+        userMetadataName: user?.user_metadata?.name,
+        userMetadataFullName: user?.user_metadata?.full_name,
+      });
+
+      // Only prevent navigation if user truly has no name data anywhere
+      if (!hasAnyName) {
         Alert.alert(
           "Profil Wajib Diisi",
           "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
@@ -194,12 +274,7 @@ export default function EditProfile() {
       }
 
       // Handle unsaved changes
-      const hasUnsavedChanges =
-        name !== initialName ||
-        email !== initialEmail ||
-        absenceNumber !== initialAbsenceNumber ||
-        className !== initialClassName ||
-        avatarUrl !== initialAvatarUrl;
+      const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
 
       if (hasUnsavedChanges) {
         Alert.alert(
@@ -228,17 +303,12 @@ export default function EditProfile() {
     return () => backHandler.remove();
   }, [
     router,
-    name,
-    email,
-    absenceNumber,
-    className,
     avatarUrl,
-    initialName,
-    initialEmail,
-    initialAbsenceNumber,
-    initialClassName,
     initialAvatarUrl,
     profileData,
+    name,
+    user?.user_metadata?.name,
+    user?.user_metadata?.full_name,
   ]);
 
   const pickImage = async () => {
@@ -332,35 +402,11 @@ export default function EditProfile() {
   };
 
   const handleSave = async () => {
-    if (!name) {
-      Alert.alert("Error", "Nama tidak boleh kosong");
-      return;
-    }
-
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert("Error", "Email tidak valid");
-      return;
-    }
-
     setLoading(true);
     try {
-      const { error: emailError } = await supabase.auth.updateUser({
-        email,
-      });
-
-      if (emailError) {
-        Alert.alert("Error", emailError.message);
-        setLoading(false);
-        return;
-      }
-
+      // Only update the avatar_url in user metadata (absence number is read-only)
       const { error } = await supabase.auth.updateUser({
         data: {
-          name,
-          full_name: name,
-          absence_number: absenceNumber,
-          class_name: className,
-          display_name: name,
           avatar_url: avatarUrl,
         },
       });
@@ -371,22 +417,40 @@ export default function EditProfile() {
         return;
       }
 
+      // Update absence_number and avatar_url in the profiles table using upsert
+      // Use onConflict to specify which column to use for conflict resolution
       const { error: profileError } = await supabase
         .from("user_profiles")
         .upsert(
           {
-            user_id: user.id,
-            full_name: name,
-            email,
+            user_id: user?.id,
             absence_number: absenceNumber,
             class_name: className,
             avatar_url: avatarUrl,
+            full_name:
+              name ||
+              user?.user_metadata?.name ||
+              user?.user_metadata?.full_name,
+            email: email,
+            class_name: className,
+            nis: nis,
+            gender: gender,
           },
-          { onConflict: "user_id" },
+          {
+            onConflict: "user_id",
+          },
         );
 
       if (profileError) {
         console.error("Error updating profile table:", profileError);
+        console.error("User ID:", user?.id);
+        console.error("Profile data being saved:", {
+          user_id: user?.id,
+          absence_number: absenceNumber,
+          avatar_url: avatarUrl,
+          full_name: name,
+          email: email,
+        });
         Alert.alert(
           "Perhatian",
           "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
@@ -402,10 +466,11 @@ export default function EditProfile() {
         return;
       }
 
+      // Fetch refreshed profile data
       const { data: refreshedProfile } = await supabase
         .from("user_profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (refreshedProfile) {
@@ -416,10 +481,7 @@ export default function EditProfile() {
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
 
-      setInitialName(name);
-      setInitialEmail(email);
       setInitialAbsenceNumber(absenceNumber);
-      setInitialClassName(className);
       setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
@@ -461,11 +523,26 @@ export default function EditProfile() {
       >
         <TouchableOpacity
           onPress={() => {
-            // Check if profile is required (by checking if name is empty)
-            const isProfileRequired = !profileData?.full_name && !name;
+            // Allow navigation if user has any name data (profile, form, or auth metadata)
+            const hasAnyName =
+              (profileData?.full_name &&
+                profileData.full_name.trim().length > 0) ||
+              (name && name.trim().length > 0) ||
+              (user?.user_metadata?.name &&
+                user.user_metadata.name.trim().length > 0) ||
+              (user?.user_metadata?.full_name &&
+                user.user_metadata.full_name.trim().length > 0);
 
-            // If profile is required (empty), prevent going back
-            if (isProfileRequired) {
+            console.log("Header back button check:", {
+              hasAnyName,
+              profileDataFullName: profileData?.full_name,
+              formName: name,
+              userMetadataName: user?.user_metadata?.name,
+              userMetadataFullName: user?.user_metadata?.full_name,
+            });
+
+            // Only prevent navigation if user truly has no name data anywhere
+            if (!hasAnyName) {
               Alert.alert(
                 "Profil Wajib Diisi",
                 "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
@@ -476,10 +553,7 @@ export default function EditProfile() {
 
             // Check for unsaved changes
             const hasUnsavedChanges =
-              name !== initialName ||
-              email !== initialEmail ||
               absenceNumber !== initialAbsenceNumber ||
-              className !== initialClassName ||
               avatarUrl !== initialAvatarUrl;
 
             if (hasUnsavedChanges) {

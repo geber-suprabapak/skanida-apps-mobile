@@ -45,7 +45,6 @@ const fallbackProfileImage = require("../assets/muflih.jpg");
 // Define interface for user profile data
 interface UserProfile {
   id: string;
-  user_id: string;
   full_name?: string;
   avatar_url?: string;
   created_at?: string;
@@ -158,11 +157,12 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name, avatar_url")
-        .eq("user_id", user.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (error) {
         if (error.code === "PGRST116") {
+          console.log("Dashboard: No profile data found for user:", user?.id);
           setProfileData(null);
         } else {
           console.error(
@@ -172,8 +172,10 @@ export default function Dashboard() {
           setProfileData(null);
         }
       } else if (data) {
+        console.log("Dashboard: Profile data found:", data);
         setProfileData(data as UserProfile);
       } else {
+        console.log("Dashboard: No profile data found for user:", user?.id);
         setProfileData(null);
       }
     } catch (err: any) {
@@ -271,6 +273,15 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Fetch profile and attendance data when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      console.log("Dashboard: Fetching initial data for user:", user?.id);
+      fetchProfileData();
+      fetchAttendanceData();
+    }
+  }, [user, fetchProfileData, fetchAttendanceData]);
+
   // Handle success popup close
   const handleSuccessPopupClose = useCallback(() => {
     setShowSuccessPopup(false);
@@ -302,95 +313,12 @@ export default function Dashboard() {
     setRefreshing(false);
   }, [fetchProfileData, fetchAttendanceData]);
 
-  // Check if user has completed their profile
-  const checkProfileCompleteness = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("full_name")
-        .eq("user_id", user.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error checking profile completeness:", error.message);
-        return;
-      }
-
-      // If profile doesn't exist or full_name is not set, redirect to edit profile
-      if (!data || !data.full_name) {
-        Alert.alert(
-          "Profil Belum Lengkap",
-          "Silahkan lengkapi profil Anda terlebih dahulu sebelum menggunakan aplikasi.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Navigate to EditProfile instead of replace to avoid navigation stack issues
-                router.navigate("/profile/EditProfile");
-              },
-            },
-          ],
-        );
-        return false; // Return false to indicate profile is incomplete
-      }
-
-      return true; // Return true to indicate profile is complete
-    } catch (err: any) {
-      console.error(
-        "Exception during profile completeness check:",
-        err.message,
-      );
-      return false; // Return false on error
-    }
-  }, [user, router]);
-
-  // Effects
-  useEffect(() => {
-    if (isFocused && user) {
-      fetchProfileData();
-      fetchAttendanceData();
-      checkProfileCompleteness();
-    } else if (!user) {
-      setProfileData(null);
-    }
-  }, [
-    user,
-    isFocused,
-    fetchProfileData,
-    fetchAttendanceData,
-    checkProfileCompleteness,
-  ]);
-
-  // Check profile completeness on focus
-  useFocusEffect(
-    useCallback(() => {
-      const checkAndRedirect = async () => {
-        if (user) {
-          const isProfileComplete = await checkProfileCompleteness();
-          if (!isProfileComplete) {
-            // Use navigate instead of replace to avoid navigation stack issues
-            router.navigate("/profile/EditProfile");
-          }
-        }
-      };
-
-      checkAndRedirect();
-
-      return () => {
-        // Cleanup if needed
-      };
-    }, [user, checkProfileCompleteness, router]),
-  );
-
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName = profileData?.full_name || "Pengguna";
+  const displayName = profileData?.full_name || "";
 
   // Get user's avatar URL from profile data or from metadata
-  const avatarUrl =
-    profileData?.avatar_url || user?.user_metadata?.avatar_url || null;
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -707,7 +635,7 @@ export default function Dashboard() {
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
           <Text className="text-s font-bold text-foreground">
-            v1.6.2-internal.1 | Branch: develop
+            v1.7.0-internaldev | Branch: develop
           </Text>
         </View>
       </SafeAreaView>

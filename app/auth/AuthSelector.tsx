@@ -92,7 +92,6 @@ export default function LoginScreen() {
                 Masuk
               </Text>
             </Button>
-
             <Button
               variant="outline"
               size="lg"

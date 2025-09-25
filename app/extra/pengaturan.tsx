@@ -88,7 +88,7 @@ function Pengaturan() {
 
     return () => backHandler.remove();
   }, [router]);
-  // Optimized profile data fetching without any local caching
+  // Optimized profile data fetching prioritizing user_profiles with retry, then cache, then metadata
   const fetchProfileDataAndUpdateState = useCallback(async () => {
     if (!user) {
       setProfileFullName("Pengguna Skanida");
@@ -97,46 +97,70 @@ function Pengaturan() {
       return;
     }
 
-    // Immediate fallback to user metadata for quick render (no caching)
-    const fallbackName =
-      user.user_metadata?.name || user.email || "Pengguna Skanida";
-    const fallbackAvatar = user.user_metadata?.avatar_url || null;
-    setProfileFullName(fallbackName);
-    setProfileAvatarUrl(fallbackAvatar);
-    setIsDataLoaded(true);
-
-    // Fetch fresh data directly from Supabase
-    InteractionManager.runAfterInteractions(async () => {
-      try {
-        const { data: userProfile, error: profileError } = await supabase
-          .from("user_profiles")
-          .select("full_name, avatar_url")
-          .eq("user_id", user.id)
-          .single();
-
-        if (profileError && profileError.code !== "PGRST116") {
-          console.error(
-            "Pengaturan: Error fetching from user_profiles:",
-            profileError.message,
-          );
-          return;
-        }
-
-        if (userProfile) {
-          const updatedName = userProfile.full_name || fallbackName;
-          const updatedAvatar = userProfile.avatar_url || fallbackAvatar;
-
-          if (updatedName !== profileFullName) {
-            setProfileFullName(updatedName);
-          }
-          if (updatedAvatar !== profileAvatarUrl) {
-            setProfileAvatarUrl(updatedAvatar);
-          }
-        }
-      } catch (err) {
-        console.error("Pengaturan: Unexpected error fetching profile:", err);
+    try {
+      // First, try to load from cache for immediate display while waiting for database
+      const cachedProfile = await getProfileFromCache(user.id);
+      if (cachedProfile) {
+        // Only use cache for initial quick load
+        setProfileFullName(cachedProfile.fullName);
+        setProfileAvatarUrl(cachedProfile.avatarUrl);
+        setIsDataLoaded(true);
+      } else {
+        // If no cache, use user metadata temporarily until we get real data
+        const initialName =
+          user.user_metadata?.name || user.email || "Pengguna Skanida";
+        const initialAvatar = user.user_metadata?.avatar_url || null;
+        setProfileFullName(initialName);
+        setProfileAvatarUrl(initialAvatar);
+        setIsDataLoaded(true);
       }
-    });
+
+      // Prioritize fetching from user_profiles directly
+      const { data: userProfile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("full_name, avatar_url")
+        .eq("user_id", user?.id)
+        .single();
+
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error(
+          "Pengaturan: Error fetching from user_profiles:",
+          profileError.message,
+        );
+      } else if (userProfile) {
+        // We got data from user_profiles (highest priority)
+        console.log("Pengaturan: Profile data found in database:", userProfile);
+
+        const updatedName =
+          userProfile.full_name ||
+          user.user_metadata?.name ||
+          user.email ||
+          "Pengguna Skanida";
+        const updatedAvatar =
+          userProfile.avatar_url || user.user_metadata?.avatar_url || null;
+
+        // Update cache with latest data from database
+        await saveProfileToCache(user.id, updatedName, updatedAvatar);
+
+        // Only update state if data actually changed to avoid unnecessary re-renders
+        if (updatedName !== profileFullName) {
+          setProfileFullName(updatedName);
+        }
+        if (updatedAvatar !== profileAvatarUrl) {
+          setProfileAvatarUrl(updatedAvatar);
+        }
+      } else {
+        console.log("Pengaturan: No profile data found for user:", user?.id);
+        // If no database data was found, make sure cache is updated with metadata
+        // as fallback to keep it consistent with what we're displaying
+        const metadataName =
+          user.user_metadata?.name || user.email || "Pengguna Skanida";
+        const metadataAvatar = user.user_metadata?.avatar_url || null;
+        await saveProfileToCache(user.id, metadataName, metadataAvatar);
+      }
+    } catch (err) {
+      console.error("Pengaturan: Unexpected error fetching profile:", err);
+    }
   }, [user, profileFullName, profileAvatarUrl]);
 
   // Optimized useEffect with proper dependency management
