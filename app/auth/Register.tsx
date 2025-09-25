@@ -121,16 +121,16 @@ export default function RegisterScreen() {
     }
   };
   return (
-    <SafeAreaView className={`flex-1 `}>
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen name="auth/Register" options={{ headerShown: false }} />
 
       {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center  shadow-lg`}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card dark:bg-gray-800`}
         >
-          <Icon as={ChevronLeft} className="size-5" />
+          <Icon as={ChevronLeft} className="size-5 text-foreground" />
         </TouchableOpacity>
       </View>
 
@@ -148,30 +148,32 @@ export default function RegisterScreen() {
             {/* Logo and Title Section */}
             <View className="items-center mb-10">
               <View
-                className={`w-28 h-28 rounded-full shadow-lg mb-6  items-center justify-center`}
+                className={`w-28 h-28 rounded-full shadow-lg mb-6 items-center justify-center bg-card dark:bg-gray-800`}
               >
-                <Icon as={UserCheck} className="size-10" />
+                <Icon as={UserCheck} className="size-10 text-foreground" />
               </View>
 
               <Text
                 variant="h1"
-                className={`text-3xl font-bold text-center mb-3 `}
+                className={`text-3xl font-bold text-center mb-3 text-foreground`}
               >
                 Buat Akun Baru
               </Text>
 
               <Text
-                className={`text-center text-base leading-relaxed max-w-sm `}
+                className={`text-center text-base leading-relaxed max-w-sm text-foreground`}
               >
                 Bergabunglah dengan Skanida untuk memulai perjalanan Anda
               </Text>
             </View>
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
-              <View className={`rounded-2xl p-8 shadow-xl `}>
+              <View
+                className={`rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800`}
+              >
                 {/* Name Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium `}>
+                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
                     Nama Lengkap
                   </Text>
                   <Input
@@ -182,11 +184,14 @@ export default function RegisterScreen() {
                       setName(text);
                       if (nameError) setNameError(false);
                     }}
+                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder:text-gray-300"
                   />
                 </View>
                 {/* Email Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium `}>Email</Text>
+                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                    Email
+                  </Text>
                   <Input
                     placeholder="Masukkan email Anda"
                     keyboardType="email-address"
@@ -196,11 +201,14 @@ export default function RegisterScreen() {
                       setEmail(text);
                       if (emailError) setEmailError(false);
                     }}
+                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   />
                 </View>
                 {/* Password Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium `}>Password</Text>
+                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                    Password
+                  </Text>
                   <View className="relative">
                     <Input
                       placeholder="Masukkan password"
@@ -213,22 +221,23 @@ export default function RegisterScreen() {
                           setConfirmPasswordError(false);
                         }
                       }}
+                      className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     />
                     <TouchableOpacity
                       className="absolute right-4 top-1/2 -translate-y-1/2"
                       onPress={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <Icon as={EyeOff} className="size-5" />
+                        <Icon as={EyeOff} className="size-5 text-foreground" />
                       ) : (
-                        <Icon as={Eye} className="size-5" />
+                        <Icon as={Eye} className="size-5 text-foreground" />
                       )}
                     </TouchableOpacity>
                   </View>
                 </View>
                 {/* Confirm Password Field */}
                 <View className="mb-8">
-                  <Text className={`mb-3 text-sm font-medium `}>
+                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
                     Konfirmasi Password
                   </Text>
                   <View className="relative">
@@ -244,6 +253,7 @@ export default function RegisterScreen() {
                           setPasswordError(false);
                         }
                       }}
+                      className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     />
                     <TouchableOpacity
                       className="absolute right-4 top-1/2 -translate-y-1/2"
@@ -252,9 +262,9 @@ export default function RegisterScreen() {
                       }
                     >
                       {showConfirmPassword ? (
-                        <EyeOff size={20} />
+                        <Icon as={EyeOff} className="size-5 text-foreground" />
                       ) : (
-                        <Eye size={20} />
+                        <Icon as={Eye} className="size-5 text-foreground" />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -263,11 +273,14 @@ export default function RegisterScreen() {
                 <Button
                   variant="default"
                   size="lg"
-                  className={`w-full h-16 rounded-xl shadow-lg `}
+                  className={`w-full h-16 rounded-xl shadow-lg`}
                   onPress={handleRegister}
                   disabled={loading}
                 >
-                  <Text variant="h3" className={`font-semibold text-lg `}>
+                  <Text
+                    variant="h3"
+                    className={`font-semibold text-lg text-primary-foreground`}
+                  >
                     {loading ? "Sedang mendaftar..." : "Daftar"}
                   </Text>
                 </Button>
@@ -275,9 +288,11 @@ export default function RegisterScreen() {
 
               {/* Login Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text className={`text-base `}>Sudah memiliki akun?</Text>
+                <Text className={`text-base text-foreground`}>
+                  Sudah memiliki akun?
+                </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Login")}>
-                  <Text className={`font-semibold text-base `}>
+                  <Text className={`font-semibold text-base text-primary ml-1`}>
                     Masuk sekarang
                   </Text>
                 </TouchableOpacity>

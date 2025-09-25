@@ -168,9 +168,7 @@ export default function Riwayat() {
   };
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-    >
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -178,9 +176,7 @@ export default function Riwayat() {
       />
 
       {/* Header */}
-      <View
-        className={`flex-row items-center p-4 border-b ${isDarkColorScheme ? "border-gray-800" : "border-gray-200"}`}
-      >
+      <View className={`flex-row items-center p-4 border-b border-border`}>
         <TouchableOpacity
           onPress={() => {
             try {
@@ -193,25 +189,17 @@ export default function Riwayat() {
           }}
           className="mr-3"
         >
-          <Icon
-            as={ChevronLeft}
-            className={`size-6 ${isDarkColorScheme ? "text-white" : "text-black"}`}
-          />
+          <Icon as={ChevronLeft} className={`size-6 text-foreground`} />
         </TouchableOpacity>
 
-        <Text
-          className={`text-lg font-bold flex-1 ${isDarkColorScheme ? "text-white" : "text-black"}`}
-        >
+        <Text className={`text-lg font-bold flex-1 text-foreground`}>
           Riwayat Kehadiran
         </Text>
 
         {/* Cache management button (only in development) */}
         {__DEV__ && (
           <TouchableOpacity onPress={showCacheInfo} className="ml-3">
-            <Icon
-              as={Settings}
-              className={`size-5 ${isDarkColorScheme ? "text-white" : "text-black"}`}
-            />
+            <Icon as={Settings} className={`size-5 text-foreground`} />
           </TouchableOpacity>
         )}
 
@@ -223,17 +211,13 @@ export default function Riwayat() {
         >
           <Icon
             as={RefreshCw}
-            className={`size-5 ${
-              isDarkColorScheme ? "text-white" : "text-black"
-            } ${isRefreshing ? "animate-spin" : ""}`}
+            className={`size-5 text-foreground ${isRefreshing ? "animate-spin" : ""}`}
           />
         </TouchableOpacity>
       </View>
 
       {/* Month/Year Picker */}
-      <View
-        className={`p-4 border-b ${isDarkColorScheme ? "border-gray-800" : "border-gray-200"}`}
-      >
+      <View className={`p-4 border-b border-border`}>
         <MonthYearPicker
           selectedDate={selectedDate}
           onDateChange={handleDateChange}

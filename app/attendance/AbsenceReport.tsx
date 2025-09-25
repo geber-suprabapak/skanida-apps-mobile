@@ -567,23 +567,28 @@ const AbsenceReport = () => {
 
   // --- RENDER ---
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-background dark:bg-gray-900">
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Custom Header */}
-      <View className="flex-row items-center p-4 border-b border-gray-300 bg-white">
+      <View className="flex-row items-center p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-          <Icon as={ChevronLeft} className="size-6 text-black" />
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-black dark:text-white"
+          />
         </TouchableOpacity>
-        <Text className="text-xl font-semibold text-black">Lapor Absensi</Text>
+        <Text className="text-xl font-semibold text-black dark:text-white">
+          Lapor Absensi
+        </Text>
       </View>
 
       {/* Main Content */}
-      <View className="flex-1 px-4 py-6 justify-center items-center bg-gray-100">
+      <View className="flex-1 px-4 py-6 justify-center items-center bg-background dark:bg-gray-900">
         {isLoading ? (
-          <Icon as={Loader2} className="size-8 text-black" />
+          <Icon as={Loader2} className="size-8 text-black dark:text-white" />
         ) : (
-          <Card className="w-full max-w-md bg-white border-gray-300">
+          <Card className="w-full max-w-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
             <CardHeader className="items-center">
               {locationStatus === "verified" && canProceedToCamera ? (
                 <Icon
@@ -604,10 +609,10 @@ const AbsenceReport = () => {
               )}
             </CardHeader>
             <CardContent className="items-center">
-              <CardTitle className="text-xl text-center mb-2 text-gray-800">
+              <CardTitle className="text-xl text-center mb-2 text-gray-800 dark:text-white">
                 Status Absensi
               </CardTitle>
-              <CardDescription className="text-base text-center mb-4 text-gray-600">
+              <CardDescription className="text-base text-center mb-4 text-gray-600 dark:text-gray-300">
                 {statusMessage}
               </CardDescription>
 
@@ -662,12 +667,15 @@ const AbsenceReport = () => {
         {/* Refresh Button */}
         <Button
           variant="outline"
-          className="mt-8 w-full max-w-md border-sky-500 bg-white hover:bg-gray-50"
+          className="mt-8 w-full max-w-md border-sky-500 dark:border-sky-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
           onPress={performFullAbsenceCheck}
           disabled={isLoading}
         >
-          <Icon as={RefreshCw} className="size-5 text-sky-500 mr-2" />
-          <Text className="text-sky-600 font-medium">
+          <Icon
+            as={RefreshCw}
+            className="size-5 text-sky-500 dark:text-sky-400 mr-2"
+          />
+          <Text className="text-sky-600 dark:text-sky-400 font-medium">
             {isLoading ? "Memeriksa..." : "Segarkan Status"}
           </Text>
         </Button>

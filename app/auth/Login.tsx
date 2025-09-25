@@ -90,16 +90,16 @@ export default function Login() {
     }
   };
   return (
-    <SafeAreaView className={`flex-1 `}>
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
 
       {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center  shadow-lg`}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card dark:bg-gray-800`}
         >
-          <Icon as={ChevronLeft} className="size-5" />
+          <Icon as={ChevronLeft} className="size-5 text-foreground" />
         </TouchableOpacity>
       </View>
 
@@ -117,30 +117,34 @@ export default function Login() {
             {/* Logo and Title Section */}
             <View className="items-center mb-12">
               <View
-                className={`w-32 h-32 rounded-full shadow-lg mb-8  items-center justify-center`}
+                className={`w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800`}
               >
-                <Icon as={Key} className="size-12" />
+                <Icon as={Key} className="size-12 text-foreground" />
               </View>
 
               <Text
                 variant={"h3"}
-                className={`text-3xl font-bold text-center mb-3 `}
+                className={`text-3xl font-bold text-center mb-3 text-foreground`}
               >
                 Selamat Datang Kembali
               </Text>
 
               <Text
-                className={`text-center text-base leading-relaxed max-w-sm `}
+                className={`text-center text-base leading-relaxed max-w-sm text-foreground`}
               >
                 Masuk ke akun Anda untuk melanjutkan
               </Text>
             </View>
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
-              <View className={`rounded-2xl p-8 shadow-xl `}>
+              <View
+                className={`rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800`}
+              >
                 {/* Email Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium `}>Email</Text>
+                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                    Email
+                  </Text>
                   <Input
                     placeholder="Masukkan email Anda"
                     keyboardType="email-address"
@@ -150,11 +154,14 @@ export default function Login() {
                       setEmail(text);
                       if (emailError) setEmailError(false);
                     }}
+                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder:text-gray-300"
                   />
                 </View>
                 {/* Password Field */}
                 <View className="mb-8">
-                  <Text className={`mb-3 text-sm font-medium `}>Password</Text>
+                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                    Password
+                  </Text>
                   <View className="relative">
                     <Input
                       placeholder="Masukkan password Anda"
@@ -164,15 +171,16 @@ export default function Login() {
                         setPassword(text);
                         if (passwordError) setPasswordError(false);
                       }}
+                      className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     />
                     <TouchableOpacity
                       className="absolute right-4 top-1/2 -translate-y-1/2"
                       onPress={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <Icon as={EyeOff} className="size-5" />
+                        <Icon as={EyeOff} className="size-5 text-foreground" />
                       ) : (
-                        <Icon as={Eye} className="size-5" />
+                        <Icon as={Eye} className="size-5 text-foreground" />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -184,7 +192,10 @@ export default function Login() {
                   onPress={handleLogin}
                   disabled={loading}
                 >
-                  <Text variant="h3" className={`font-semibold text-lg `}>
+                  <Text
+                    variant="h3"
+                    className={`font-semibold text-lg text-primary-foreground`}
+                  >
                     {loading ? "Sedang masuk..." : "Masuk"}
                   </Text>
                 </Button>
@@ -192,9 +203,11 @@ export default function Login() {
 
               {/* Register Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text className={`text-base `}>Belum memiliki akun?</Text>
+                <Text className={`text-base text-foreground`}>
+                  Belum memiliki akun?
+                </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Register")}>
-                  <Text className={`font-semibold text-base `}>
+                  <Text className={`font-semibold text-base text-primary ml-1`}>
                     Daftar sekarang
                   </Text>
                 </TouchableOpacity>

@@ -89,7 +89,7 @@ export default function ChangePassword() {
     }
   };
   return (
-    <SafeAreaView className={`flex-1`}>
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -98,13 +98,13 @@ export default function ChangePassword() {
 
       {/* Header */}
       <View
-        className={`flex-row items-center p-4 border-b border-gray-200 bg-white`}
+        className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-card dark:bg-gray-800`}
       >
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Icon as={ChevronLeft} className="size-6 text-black" />
+          <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text className={`text-lg font-bold flex-1 text-gray-900`}>
+        <Text className={`text-lg font-bold flex-1 text-foreground`}>
           Ubah Password
         </Text>
       </View>
@@ -119,7 +119,7 @@ export default function ChangePassword() {
           <Card className={`p-6 bg-white border-gray-200`}>
             <View className="items-center">
               <View
-                className={`w-16 h-16 rounded-full bg-blue-500 justify-center items-center mb-4`}
+                className={`w-16 h-16 rounded-full bg-blue-500 dark:bg-blue-600 justify-center items-center mb-4`}
                 style={{
                   shadowColor: "#3B82F6",
                   shadowOffset: { width: 0, height: 4 },
@@ -132,12 +132,14 @@ export default function ChangePassword() {
               </View>
 
               <Text
-                className={`text-xl font-bold text-center mb-2 text-gray-900`}
+                className={`text-xl font-bold text-center mb-2 text-foreground`}
               >
                 Keamanan Akun
               </Text>
 
-              <Text className={`text-sm text-center leading-5 text-gray-600`}>
+              <Text
+                className={`text-sm text-center leading-5 text-muted-foreground`}
+              >
                 Pastikan password baru Anda aman dan mudah diingat. Gunakan
                 kombinasi huruf, angka, dan simbol.
               </Text>
@@ -148,7 +150,7 @@ export default function ChangePassword() {
         {/* Password Form Section */}
         <View className="px-6 mb-6">
           <Card className={`p-6 bg-white border-gray-200`}>
-            <Text className={`text-lg font-semibold mb-6 text-gray-900`}>
+            <Text className={`text-lg font-semibold mb-6 text-foreground`}>
               Ubah Password
             </Text>
 
@@ -205,7 +207,7 @@ export default function ChangePassword() {
                     )}
                   </TouchableOpacity>
                 </View>
-                <Text className={`text-xs mt-2 text-gray-600`}>
+                <Text className={`text-xs mt-2 text-muted-foreground`}>
                   Minimal 6 karakter untuk keamanan yang lebih baik
                 </Text>
               </View>
@@ -283,7 +285,7 @@ export default function ChangePassword() {
               size="lg"
               onPress={() => router.back()}
               disabled={loading}
-              className={`w-full border-gray-300 bg-transparent`}
+              className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
             >
               <Text className="text-gray-700 font-medium">Batal</Text>
             </Button>
@@ -293,7 +295,7 @@ export default function ChangePassword() {
         {/* Footer */}
         <View className="px-6 pt-6">
           <View className="items-center">
-            <Text className={`text-xs text-gray-400`}>
+            <Text className={`text-xs text-muted-foreground`}>
               © 2025 Skanida Apps - Keamanan adalah prioritas kami
             </Text>
           </View>

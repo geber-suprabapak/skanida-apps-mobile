@@ -46,7 +46,7 @@ export default function LoginScreen() {
     return () => backHandler.remove();
   }, []);
   return (
-    <SafeAreaView className={`flex-1 `}>
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -59,7 +59,7 @@ export default function LoginScreen() {
           <View className="items-center mb-16">
             <TouchableOpacity
               onPress={() => {}}
-              className={`w-52 h-52 rounded-full shadow-lg mb-10  items-center justify-center`}
+              className={`w-52 h-52 rounded-full shadow-lg mb-10 items-center justify-center bg-card dark:bg-gray-800`}
               activeOpacity={0.8}
             >
               <Image
@@ -70,12 +70,12 @@ export default function LoginScreen() {
             </TouchableOpacity>
             <Text
               variant="h1"
-              className={`text-4xl font-bold text-center mb-4 `}
+              className={`text-4xl font-bold text-center mb-4 text-foreground`}
             >
               Skanida Apps
             </Text>
             <Text
-              className={`text-center text-lg leading-relaxed max-w-sm px-4 `}
+              className={`text-center text-lg leading-relaxed max-w-sm px-4 text-foreground`}
             >
               Sistem Absensi SMKN2 Magelang
             </Text>
@@ -85,7 +85,7 @@ export default function LoginScreen() {
             <Button
               variant="default"
               size="lg"
-              className={`w-full h-16 rounded-xl shadow-lg `}
+              className={`w-full h-16 rounded-xl shadow-lg`}
               onPress={() => router.push("/auth/Login")}
             >
               <Text variant="h3" className={`font-semibold text-lg `}>
@@ -96,7 +96,7 @@ export default function LoginScreen() {
             <Button
               variant="outline"
               size="lg"
-              className={`w-full h-16 rounded-xl border-2  `}
+              className={`w-full h-16 rounded-xl border-2 border-border dark:border-gray-700`}
               onPress={() => router.push("/auth/Register")}
             >
               <Text variant="h3" className={`font-semibold text-lg `}>
@@ -106,7 +106,9 @@ export default function LoginScreen() {
           </View>
           {/* Footer */}
           <View className="mt-20">
-            <Text className={`text-center text-sm `}>© 2025 Skanida Apps</Text>
+            <Text className={`text-center text-sm text-muted-foreground`}>
+              © 2025 Skanida Apps
+            </Text>
           </View>
         </View>
       </ScrollView>

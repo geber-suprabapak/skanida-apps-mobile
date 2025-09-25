@@ -448,7 +448,7 @@ export default function EditProfile() {
   }, [fetchProfileError, user]);
 
   return (
-    <SafeAreaView className={`flex-1`}>
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -457,7 +457,7 @@ export default function EditProfile() {
 
       {/* Header */}
       <View
-        className={`flex-row items-center p-4 border-b border-gray-200 bg-white`}
+        className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-card dark:bg-gray-800`}
       >
         <TouchableOpacity
           onPress={() => {
@@ -501,10 +501,10 @@ export default function EditProfile() {
           }}
           className="mr-3"
         >
-          <Icon as={ChevronLeft} className="size-6 text-black" />
+          <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text className={`text-lg font-bold flex-1 text-gray-900`}>
+        <Text className={`text-lg font-bold flex-1 text-foreground`}>
           Edit Profil
         </Text>
       </View>
@@ -516,16 +516,18 @@ export default function EditProfile() {
       >
         {/* Profile Section with Photo and Basic Info */}
         <View className="px-6 pt-6 pb-4">
-          <Card className={`p-6 bg-white border-gray-200`}>
+          <Card
+            className={`p-6 bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
+          >
             <View className="items-center">
-              <Text variant="h3" className={`mb-6 text-gray-900`}>
+              <Text variant="h3" className={`mb-6 text-foreground`}>
                 Foto Profil
               </Text>
 
               <View className="relative mb-6">
                 {uploadingAvatar ? (
                   <View
-                    className={`w-32 h-32 rounded-full items-center justify-center bg-gray-100`}
+                    className={`w-32 h-32 rounded-full items-center justify-center bg-gray-100 dark:bg-gray-700`}
                     style={{
                       shadowColor: "#000000",
                       shadowOffset: { width: 0, height: 6 },
@@ -561,7 +563,7 @@ export default function EditProfile() {
                     </View>
 
                     <TouchableOpacity
-                      className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-3"
+                      className="absolute bottom-0 right-0 bg-blue-500 dark:bg-blue-600 rounded-full p-3"
                       onPress={pickImage}
                       style={{
                         shadowColor: "#3B82F6",
@@ -577,7 +579,10 @@ export default function EditProfile() {
                 )}
               </View>
 
-              <Text variant={"small"} className={`text-center text-gray-600`}>
+              <Text
+                variant={"small"}
+                className={`text-center text-muted-foreground`}
+              >
                 Ketuk ikon kamera untuk mengubah foto profil
               </Text>
             </View>
@@ -707,7 +712,7 @@ export default function EditProfile() {
               size="default"
               onPress={() => router.back()}
               disabled={loading}
-              className={`w-full border-gray-300 bg-transparent`}
+              className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
             >
               <Text className={"text-gray-700 font-medium"}>Batal</Text>
             </Button>
