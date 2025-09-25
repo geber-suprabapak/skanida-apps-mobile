@@ -315,7 +315,8 @@ export default function Dashboard() {
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName = profileData?.full_name || "";
+  const displayName =
+    profileData?.full_name?.split(" ").slice(0, 2).join(" ") || "";
 
   // Get user's avatar URL from profile data or from metadata
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -430,7 +431,7 @@ export default function Dashboard() {
                   }
                 />
                 <View className="flex-1">
-                  <Text variant="h3" className="text-foreground">
+                  <Text variant="large" className="text-foreground">
                     {displayName}
                   </Text>
                   <Text variant="muted" className="text-muted-foreground">
