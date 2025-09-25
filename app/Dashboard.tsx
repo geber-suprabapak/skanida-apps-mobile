@@ -502,10 +502,10 @@ export default function Dashboard() {
                   }
                 />
                 <View className="flex-1">
-                  <Text className="text-lg font-semibold text-foreground">
+                  <Text variant="h3" className="text-foreground">
                     {displayName}
                   </Text>
-                  <Text className="text-sm text-muted-foreground">
+                  <Text variant="muted" className="text-muted-foreground">
                     {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
                   </Text>
                 </View>
@@ -518,11 +518,17 @@ export default function Dashboard() {
                 >
                   <View className="flex-row items-center">
                     <Icon as={Clock} className="size-4 text-foreground" />
-                    <Text className="ml-1 text-xs font-medium text-foreground">
+                    <Text
+                      variant="small"
+                      className="ml-1 font-medium text-foreground"
+                    >
                       Waktu Sekarang
                     </Text>
                   </View>
-                  <Text className="text-sm font-bold text-center mt-1 text-foreground">
+                  <Text
+                    variant="default"
+                    className="font-bold text-center mt-1 text-foreground"
+                  >
                     {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
                 </View>
@@ -565,9 +571,11 @@ export default function Dashboard() {
                     ) : (
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
-                    <Text className="ml-2 text-foreground">Absen Masuk</Text>
+                    <Text variant="default" className="ml-2 text-foreground">
+                      Absen Masuk
+                    </Text>
                   </View>
-                  <Text className="text-sm text-muted-foreground">
+                  <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
                       : "Belum absen"}
@@ -585,9 +593,11 @@ export default function Dashboard() {
                     ) : (
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
-                    <Text className="ml-2 text-foreground">Absen Pulang</Text>
+                    <Text variant="default" className="ml-2 text-foreground">
+                      Absen Pulang
+                    </Text>
                   </View>
-                  <Text className="text-sm text-muted-foreground">
+                  <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
                       : "Belum absen"}
@@ -614,7 +624,7 @@ export default function Dashboard() {
 
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
-            <Text className="text-lg font-semibold mb-4 text-foreground">
+            <Text variant="h3" className="mb-4 text-foreground">
               Aksi Cepat
             </Text>
 

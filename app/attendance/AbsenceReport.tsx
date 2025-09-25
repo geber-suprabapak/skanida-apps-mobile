@@ -578,7 +578,7 @@ const AbsenceReport = () => {
             className="size-6 text-black dark:text-white"
           />
         </TouchableOpacity>
-        <Text className="text-xl font-semibold text-black dark:text-white">
+        <Text variant="h2" className="text-black dark:text-white">
           Lapor Absensi
         </Text>
       </View>
@@ -621,12 +621,12 @@ const AbsenceReport = () => {
                 canProceedToCamera &&
                 currentAbsenceType && (
                   <View className="p-3 rounded-md bg-green-100 w-full items-center">
-                    <Text className="text-lg font-semibold text-green-700">
+                    <Text variant="h3" className="text-green-700">
                       {currentAbsenceType === "present"
                         ? "Siap untuk Absen Masuk"
                         : "Siap untuk Absen Pulang"}
                     </Text>
-                    <Text className="text-sm text-green-600">
+                    <Text variant="small" className="text-green-600">
                       Anda akan diarahkan ke kamera.
                     </Text>
                   </View>
@@ -636,10 +636,10 @@ const AbsenceReport = () => {
               {(locationStatus === "out_of_range" ||
                 locationStatus === "failed") && (
                 <View className="p-3 rounded-md bg-red-100 w-full items-center">
-                  <Text className="text-lg font-semibold text-red-700">
+                  <Text variant="h3" className="text-red-700">
                     Tidak Dapat Melanjutkan
                   </Text>
-                  <Text className="text-sm text-red-600">
+                  <Text variant="small" className="text-red-600">
                     {locationStatus === "out_of_range"
                       ? "Anda berada di luar jangkauan sekolah."
                       : "Terjadi kesalahan saat memverifikasi lokasi."}
@@ -652,10 +652,10 @@ const AbsenceReport = () => {
                 !isLoading &&
                 statusMessage.includes("sudah menyelesaikan absensi") && (
                   <View className="p-3 rounded-md bg-sky-100 w-full items-center">
-                    <Text className="text-lg font-semibold text-sky-700">
+                    <Text variant="h3" className="text-sky-700">
                       Absensi Selesai
                     </Text>
-                    <Text className="text-sm text-sky-600">
+                    <Text variant="small" className="text-sky-600">
                       Tidak ada tindakan lebih lanjut untuk hari ini.
                     </Text>
                   </View>
@@ -675,7 +675,10 @@ const AbsenceReport = () => {
             as={RefreshCw}
             className="size-5 text-sky-500 dark:text-sky-400 mr-2"
           />
-          <Text className="text-sky-600 dark:text-sky-400 font-medium">
+          <Text
+            variant="default"
+            className="text-sky-600 dark:text-sky-400 font-medium"
+          >
             {isLoading ? "Memeriksa..." : "Segarkan Status"}
           </Text>
         </Button>

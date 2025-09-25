@@ -4,13 +4,13 @@ import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   StatusBar,
   BackHandler,
 } from "react-native";
+import { Text } from "~/components/ui/text";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
@@ -916,7 +916,7 @@ const CameraAttendance = () => {
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="#0066FF" />
-        <Text className="text-white text-lg text-center mx-5 mt-4">
+        <Text variant="large" className="text-white text-center mx-5 mt-4">
           {message}
         </Text>
       </View>
@@ -930,10 +930,13 @@ const CameraAttendance = () => {
       <View className="flex-1 justify-center items-center">
         <Animated.View className="items-center justify-center">
           <Icon as={Camera} className="size-20 text-[#0066FF]" />
-          <Text className="text-white text-2xl font-bold text-center mt-4 mb-2">
+          <Text variant="h1" className="text-white text-center mt-4 mb-2">
             Camera Access Needed
           </Text>
-          <Text className="text-white/80 text-base text-center mx-10 mb-8">
+          <Text
+            variant="default"
+            className="text-white/80 text-center mx-10 mb-8"
+          >
             We need your permission to use the camera for attendance
           </Text>
           <TouchableOpacity
@@ -942,7 +945,7 @@ const CameraAttendance = () => {
             onPress={requestPermission}
           >
             <Icon as={Camera} className="size-6 text-white" />
-            <Text className="text-white text-base font-bold ml-2">
+            <Text variant="default" className="text-white font-bold ml-2">
               Grant Permission
             </Text>
           </TouchableOpacity>
@@ -958,10 +961,13 @@ const CameraAttendance = () => {
       <View className="flex-1 justify-center items-center">
         <Animated.View className="items-center justify-center">
           <Icon as={AlertCircle} className="size-20 text-red-600" />
-          <Text className="text-red-400 text-2xl font-bold text-center mt-4 mb-2">
+          <Text variant="h1" className="text-red-400 text-center mt-4 mb-2">
             Camera Error
           </Text>
-          <Text className="text-white/80 text-base text-center mx-10 mb-8">
+          <Text
+            variant="default"
+            className="text-white/80 text-center mx-10 mb-8"
+          >
             Terjadi kesalahan pada kamera. Silakan coba lagi.
           </Text>
           <TouchableOpacity
@@ -970,7 +976,9 @@ const CameraAttendance = () => {
             onPress={() => router.back()}
           >
             <Icon as={CameraOff} className="size-6 text-white" />
-            <Text className="text-white text-base font-bold ml-2">Kembali</Text>
+            <Text variant="default" className="text-white font-bold ml-2">
+              Kembali
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -984,10 +992,10 @@ const CameraAttendance = () => {
       <View className="flex-1 justify-center items-center">
         <Animated.View className="items-center justify-center w-4/5">
           <Icon as={Loader2} className="size-8 text-[#0066FF]" />
-          <Text className="text-white text-xl font-semibold mt-4 mb-2">
+          <Text variant="h2" className="text-white mt-4 mb-2">
             Saving Attendance...
           </Text>
-          <Text className="text-white/70 text-base text-center mb-8">
+          <Text variant="default" className="text-white/70 text-center mb-8">
             {uploadProgress.message}
           </Text>
           <View className="w-full h-2 bg-gray-700 rounded-full">

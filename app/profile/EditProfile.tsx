@@ -504,7 +504,7 @@ export default function EditProfile() {
           <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text className={`text-lg font-bold flex-1 text-foreground`}>
+        <Text variant="h3" className="flex-1 text-foreground">
           Edit Profil
         </Text>
       </View>

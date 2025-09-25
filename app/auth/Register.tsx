@@ -173,7 +173,10 @@ export default function RegisterScreen() {
               >
                 {/* Name Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                  <Text
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
+                  >
                     Nama Lengkap
                   </Text>
                   <Input
@@ -189,7 +192,10 @@ export default function RegisterScreen() {
                 </View>
                 {/* Email Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                  <Text
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
+                  >
                     Email
                   </Text>
                   <Input
@@ -206,7 +212,10 @@ export default function RegisterScreen() {
                 </View>
                 {/* Password Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                  <Text
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
+                  >
                     Password
                   </Text>
                   <View className="relative">
@@ -237,7 +246,10 @@ export default function RegisterScreen() {
                 </View>
                 {/* Confirm Password Field */}
                 <View className="mb-8">
-                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                  <Text
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
+                  >
                     Konfirmasi Password
                   </Text>
                   <View className="relative">
@@ -288,11 +300,14 @@ export default function RegisterScreen() {
 
               {/* Login Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text className={`text-base text-foreground`}>
+                <Text variant="default" className="text-foreground">
                   Sudah memiliki akun?
                 </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Login")}>
-                  <Text className={`font-semibold text-base text-primary ml-1`}>
+                  <Text
+                    variant="default"
+                    className="font-semibold text-primary ml-1"
+                  >
                     Masuk sekarang
                   </Text>
                 </TouchableOpacity>

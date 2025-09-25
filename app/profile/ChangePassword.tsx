@@ -104,7 +104,7 @@ export default function ChangePassword() {
           <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text className={`text-lg font-bold flex-1 text-foreground`}>
+        <Text variant="h3" className="flex-1 text-foreground">
           Ubah Password
         </Text>
       </View>
@@ -131,15 +131,11 @@ export default function ChangePassword() {
                 <Icon as={Lock} className="size-6 text-white" />
               </View>
 
-              <Text
-                className={`text-xl font-bold text-center mb-2 text-foreground`}
-              >
+              <Text variant="h2" className="text-center mb-2 text-foreground">
                 Keamanan Akun
               </Text>
 
-              <Text
-                className={`text-sm text-center leading-5 text-muted-foreground`}
-              >
+              <Text variant="muted" className="text-center leading-5">
                 Pastikan password baru Anda aman dan mudah diingat. Gunakan
                 kombinasi huruf, angka, dan simbol.
               </Text>
@@ -150,14 +146,17 @@ export default function ChangePassword() {
         {/* Password Form Section */}
         <View className="px-6 mb-6">
           <Card className={`p-6 bg-white border-gray-200`}>
-            <Text className={`text-lg font-semibold mb-6 text-foreground`}>
+            <Text variant="h3" className="mb-6 text-foreground">
               Ubah Password
             </Text>
 
             <View className="space-y-5">
               {/* Current Password */}
               <View>
-                <Text className={`text-sm font-medium mb-2 text-gray-700`}>
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-gray-700"
+                >
                   Password Saat Ini
                 </Text>
                 <View className="relative">
@@ -184,7 +183,10 @@ export default function ChangePassword() {
 
               {/* New Password */}
               <View>
-                <Text className={`text-sm font-medium mb-2 text-gray-700`}>
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-gray-700"
+                >
                   Password Baru
                 </Text>
                 <View className="relative">
@@ -214,7 +216,10 @@ export default function ChangePassword() {
 
               {/* Confirm Password */}
               <View>
-                <Text className={`text-sm font-medium mb-2 text-gray-700`}>
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-gray-700"
+                >
                   Konfirmasi Password Baru
                 </Text>
                 <View className="relative">
@@ -271,12 +276,14 @@ export default function ChangePassword() {
                     color="#ffffff"
                     style={{ marginRight: 8 }}
                   />
-                  <Text className="text-white font-medium">
+                  <Text variant="default" className="text-white font-medium">
                     Sedang menyimpan...
                   </Text>
                 </View>
               ) : (
-                <Text className="text-white font-medium">Simpan Password</Text>
+                <Text variant="default" className="text-white font-medium">
+                  Simpan Password
+                </Text>
               )}
             </Button>
 
@@ -287,7 +294,9 @@ export default function ChangePassword() {
               disabled={loading}
               className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
             >
-              <Text className="text-gray-700 font-medium">Batal</Text>
+              <Text variant="default" className="text-gray-700 font-medium">
+                Batal
+              </Text>
             </Button>
           </Card>
         </View>
@@ -295,7 +304,7 @@ export default function ChangePassword() {
         {/* Footer */}
         <View className="px-6 pt-6">
           <View className="items-center">
-            <Text className={`text-xs text-muted-foreground`}>
+            <Text variant="muted" className="text-muted-foreground">
               © 2025 Skanida Apps - Keamanan adalah prioritas kami
             </Text>
           </View>

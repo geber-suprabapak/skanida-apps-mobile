@@ -106,7 +106,7 @@ export default function LoginScreen() {
           </View>
           {/* Footer */}
           <View className="mt-20">
-            <Text className={`text-center text-sm text-muted-foreground`}>
+            <Text variant="muted" className="text-center text-muted-foreground">
               © 2025 Skanida Apps
             </Text>
           </View>

@@ -142,7 +142,10 @@ export default function Login() {
               >
                 {/* Email Field */}
                 <View className="mb-6">
-                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                  <Text
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
+                  >
                     Email
                   </Text>
                   <Input
@@ -159,7 +162,10 @@ export default function Login() {
                 </View>
                 {/* Password Field */}
                 <View className="mb-8">
-                  <Text className={`mb-3 text-sm font-medium text-foreground`}>
+                  <Text
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
+                  >
                     Password
                   </Text>
                   <View className="relative">
@@ -203,11 +209,14 @@ export default function Login() {
 
               {/* Register Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text className={`text-base text-foreground`}>
+                <Text variant="default" className="text-foreground">
                   Belum memiliki akun?
                 </Text>
                 <TouchableOpacity onPress={() => router.push("/auth/Register")}>
-                  <Text className={`font-semibold text-base text-primary ml-1`}>
+                  <Text
+                    variant="default"
+                    className="font-semibold text-primary ml-1"
+                  >
                     Daftar sekarang
                   </Text>
                 </TouchableOpacity>
