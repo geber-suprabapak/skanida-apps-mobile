@@ -12,16 +12,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { H1, H3 } from "~/components/ui/typography";
-import { cn } from "~/lib/utils";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Eye } from "~/lib/icons/Eye";
-import { EyeOff } from "~/lib/icons/EyeOff";
-import { Key } from "~/lib/icons/Key";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Eye, EyeOff, Key } from "lucide-react-native";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -32,7 +27,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
-  const { isDarkColorScheme } = useColorScheme();
   // Handle hardware back button for Android
   useEffect(() => {
     const backAction = () => {
@@ -96,21 +90,16 @@ export default function Login() {
     }
   };
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-    >
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
 
       {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} shadow-lg`}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card dark:bg-gray-800`}
         >
-          <ChevronLeft
-            size={20}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <Icon as={ChevronLeft} className="size-5 text-foreground" />
         </TouchableOpacity>
       </View>
 
@@ -128,22 +117,20 @@ export default function Login() {
             {/* Logo and Title Section */}
             <View className="items-center mb-12">
               <View
-                className={`w-32 h-32 rounded-full shadow-lg mb-8 ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/80"} items-center justify-center`}
+                className={`w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800`}
               >
-                <Key
-                  size={48}
-                  color={isDarkColorScheme ? "#ffffff" : "#374151"}
-                />
+                <Icon as={Key} className="size-12 text-foreground" />
               </View>
 
-              <H1
-                className={`text-3xl font-bold text-center mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+              <Text
+                variant={"h3"}
+                className={`text-3xl font-bold text-center mb-3 text-foreground`}
               >
                 Selamat Datang Kembali
-              </H1>
+              </Text>
 
               <Text
-                className={`text-center text-base leading-relaxed max-w-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+                className={`text-center text-base leading-relaxed max-w-sm text-foreground`}
               >
                 Masuk ke akun Anda untuk melanjutkan
               </Text>
@@ -151,33 +138,18 @@ export default function Login() {
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
               <View
-                className={`rounded-2xl p-8 shadow-xl ${isDarkColorScheme ? "bg-gray-800/50" : "bg-white/90"}`}
+                className={`rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800`}
               >
                 {/* Email Field */}
                 <View className="mb-6">
                   <Text
-                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
                   >
                     Email
                   </Text>
                   <Input
-                    className={cn(
-                      "h-16 rounded-xl border-2 px-4 py-4 text-lg",
-                      emailError
-                        ? "border-red-500"
-                        : isDarkColorScheme
-                          ? "border-gray-600"
-                          : "border-gray-200",
-                      isDarkColorScheme
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-50",
-                      "focus:border-blue-500",
-                      "native:text-lg native:leading-[1.2]",
-                    )}
                     placeholder="Masukkan email Anda"
-                    placeholderTextColor={
-                      isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                    }
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
@@ -185,55 +157,36 @@ export default function Login() {
                       setEmail(text);
                       if (emailError) setEmailError(false);
                     }}
+                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder:text-gray-300"
                   />
                 </View>
                 {/* Password Field */}
                 <View className="mb-8">
                   <Text
-                    className={`mb-3 text-sm font-medium ${isDarkColorScheme ? "text-gray-200" : "text-gray-700"}`}
+                    variant="small"
+                    className="mb-3 font-medium text-foreground"
                   >
                     Password
                   </Text>
                   <View className="relative">
                     <Input
-                      className={cn(
-                        "h-16 rounded-xl border-2 px-4 py-4 pr-16 text-lg",
-                        passwordError
-                          ? "border-red-500"
-                          : isDarkColorScheme
-                            ? "border-gray-600"
-                            : "border-gray-200",
-                        isDarkColorScheme
-                          ? "bg-gray-700 text-white"
-                          : "bg-gray-50",
-                        "focus:border-blue-500",
-                        "native:text-lg native:leading-[1.2]",
-                      )}
                       placeholder="Masukkan password Anda"
-                      placeholderTextColor={
-                        isDarkColorScheme ? "#9CA3AF" : "#6B7280"
-                      }
                       secureTextEntry={!showPassword}
                       value={password}
                       onChangeText={(text) => {
                         setPassword(text);
                         if (passwordError) setPasswordError(false);
                       }}
+                      className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     />
                     <TouchableOpacity
                       className="absolute right-4 top-1/2 -translate-y-1/2"
                       onPress={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <EyeOff
-                          size={20}
-                          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                        />
+                        <Icon as={EyeOff} className="size-5 text-foreground" />
                       ) : (
-                        <Eye
-                          size={20}
-                          color={isDarkColorScheme ? "#9CA3AF" : "#6B7280"}
-                        />
+                        <Icon as={Eye} className="size-5 text-foreground" />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -242,34 +195,29 @@ export default function Login() {
                 <Button
                   variant="default"
                   size="lg"
-                  className={`w-full h-16 rounded-xl shadow-lg ${
-                    isDarkColorScheme
-                      ? "bg-white shadow-gray-900/20"
-                      : "bg-gray-900 shadow-gray-900/10"
-                  }`}
                   onPress={handleLogin}
                   disabled={loading}
                 >
-                  <H3
-                    className={`font-semibold text-lg ${isDarkColorScheme ? "text-gray-900" : "text-white"}`}
+                  <Text
+                    variant="h3"
+                    className={`font-semibold text-lg text-primary-foreground`}
                   >
                     {loading ? "Sedang masuk..." : "Masuk"}
-                  </H3>
+                  </Text>
                 </Button>
               </View>
 
               {/* Register Link */}
               <View className="flex-row justify-center items-center mt-6">
-                <Text
-                  className={`text-base ${isDarkColorScheme ? "text-gray-400" : "text-gray-500"}`}
-                >
+                <Text variant="default" className="text-foreground">
                   Belum memiliki akun?
                 </Text>
-                <TouchableOpacity onPress={() => router.push("/auth/Register")}>
+                <TouchableOpacity onPress={() => router.push("/auth/Activate")}>
                   <Text
-                    className={`font-semibold text-base ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                    variant="default"
+                    className="font-semibold text-primary ml-1"
                   >
-                    Daftar sekarang
+                    Aktivasi sekarang
                   </Text>
                 </TouchableOpacity>
               </View>

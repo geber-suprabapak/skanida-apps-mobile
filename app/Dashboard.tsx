@@ -1,5 +1,6 @@
 // app/Dashboard.tsx
 import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -12,7 +13,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused, useFocusEffect } from "@react-navigation/native";
+import { useIsFocused } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import * as Sentry from "@sentry/react-native";
@@ -26,15 +27,17 @@ import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
-import { useColorScheme } from "~/lib/useColorScheme";
-import { History } from "~/lib/icons/History";
-import { ClipboardPenLine } from "~/lib/icons/ClipboardPenLine";
-import { Settings } from "~/lib/icons/Settings";
-import { UserCheck } from "~/lib/icons/UserCheck";
-import { Clock } from "~/lib/icons/Clock";
-import { CheckCircle } from "~/lib/icons/CheckCircle";
-import { AlertCircle } from "~/lib/icons/AlertCircle";
-import { Bell } from "~/lib/icons/Bell";
+import { Icon } from "~/components/ui/icon";
+import {
+  Clock,
+  Bell,
+  CheckCircle,
+  AlertCircle,
+  UserCheck,
+  History,
+  ClipboardPenLine,
+  Settings,
+} from "lucide-react-native";
 
 // Fallback profile image in case avatar_url is not available
 const fallbackProfileImage = require("../assets/muflih.jpg");
@@ -42,7 +45,6 @@ const fallbackProfileImage = require("../assets/muflih.jpg");
 // Define interface for user profile data
 interface UserProfile {
   id: string;
-  user_id: string;
   full_name?: string;
   avatar_url?: string;
   created_at?: string;
@@ -61,7 +63,6 @@ interface AttendanceStatus {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -156,11 +157,12 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name, avatar_url")
-        .eq("user_id", user.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (error) {
         if (error.code === "PGRST116") {
+          console.log("Dashboard: No profile data found for user:", user?.id);
           setProfileData(null);
         } else {
           console.error(
@@ -170,8 +172,10 @@ export default function Dashboard() {
           setProfileData(null);
         }
       } else if (data) {
+        console.log("Dashboard: Profile data found:", data);
         setProfileData(data as UserProfile);
       } else {
+        console.log("Dashboard: No profile data found for user:", user?.id);
         setProfileData(null);
       }
     } catch (err: any) {
@@ -269,6 +273,15 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Fetch profile and attendance data when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      console.log("Dashboard: Fetching initial data for user:", user?.id);
+      fetchProfileData();
+      fetchAttendanceData();
+    }
+  }, [user, fetchProfileData, fetchAttendanceData]);
+
   // Handle success popup close
   const handleSuccessPopupClose = useCallback(() => {
     setShowSuccessPopup(false);
@@ -300,95 +313,13 @@ export default function Dashboard() {
     setRefreshing(false);
   }, [fetchProfileData, fetchAttendanceData]);
 
-  // Check if user has completed their profile
-  const checkProfileCompleteness = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("full_name")
-        .eq("user_id", user.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error checking profile completeness:", error.message);
-        return;
-      }
-
-      // If profile doesn't exist or full_name is not set, redirect to edit profile
-      if (!data || !data.full_name) {
-        Alert.alert(
-          "Profil Belum Lengkap",
-          "Silahkan lengkapi profil Anda terlebih dahulu sebelum menggunakan aplikasi.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Navigate to EditProfile instead of replace to avoid navigation stack issues
-                router.navigate("/profile/EditProfile");
-              },
-            },
-          ],
-        );
-        return false; // Return false to indicate profile is incomplete
-      }
-
-      return true; // Return true to indicate profile is complete
-    } catch (err: any) {
-      console.error(
-        "Exception during profile completeness check:",
-        err.message,
-      );
-      return false; // Return false on error
-    }
-  }, [user, router]);
-
-  // Effects
-  useEffect(() => {
-    if (isFocused && user) {
-      fetchProfileData();
-      fetchAttendanceData();
-      checkProfileCompleteness();
-    } else if (!user) {
-      setProfileData(null);
-    }
-  }, [
-    user,
-    isFocused,
-    fetchProfileData,
-    fetchAttendanceData,
-    checkProfileCompleteness,
-  ]);
-
-  // Check profile completeness on focus
-  useFocusEffect(
-    useCallback(() => {
-      const checkAndRedirect = async () => {
-        if (user) {
-          const isProfileComplete = await checkProfileCompleteness();
-          if (!isProfileComplete) {
-            // Use navigate instead of replace to avoid navigation stack issues
-            router.navigate("/profile/EditProfile");
-          }
-        }
-      };
-
-      checkAndRedirect();
-
-      return () => {
-        // Cleanup if needed
-      };
-    }, [user, checkProfileCompleteness, router]),
-  );
-
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName = profileData?.full_name || "Pengguna";
+  const displayName =
+    profileData?.full_name?.split(" ").slice(0, 2).join(" ") || "";
 
   // Get user's avatar URL from profile data or from metadata
-  const avatarUrl =
-    profileData?.avatar_url || user?.user_metadata?.avatar_url || null;
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -476,13 +407,10 @@ export default function Dashboard() {
         }}
       />
       {/* Apply dynamic background based on theme */}
-      <SafeAreaView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-        edges={["top"]}
-      >
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
         {/* Main container with theme-based background */}
         <ScrollView
-          className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+          className="flex-1 bg-background"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -490,9 +418,7 @@ export default function Dashboard() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* --- Header Section --- */}
-          <View
-            className={`px-6 pt-4 pb-6 ${isDarkColorScheme ? "bg-gray-900" : "bg-white"}`}
-          >
+          <View className="px-6 pt-4 pb-6 bg-background">
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center flex-1">
                 <Avatar
@@ -505,15 +431,11 @@ export default function Dashboard() {
                   }
                 />
                 <View className="flex-1">
-                  <Text
-                    className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                  >
+                  <Text variant="large" className="text-foreground">
                     {displayName}
                   </Text>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    {format(currentTime, "EEEE, dd MMMM yyyy")}
+                  <Text variant="muted" className="text-muted-foreground">
+                    {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
                   </Text>
                 </View>
               </View>
@@ -521,23 +443,22 @@ export default function Dashboard() {
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
                 <View
-                  className={`px-3 py-2 rounded-lg ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-50"}`}
+                  className={`px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800`}
                 >
                   <View className="flex-row items-center">
-                    <Clock
-                      size={16}
-                      color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                    />
+                    <Icon as={Clock} className="size-4 text-foreground" />
                     <Text
-                      className={`ml-1 text-xs font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
+                      variant="small"
+                      className="ml-1 font-medium text-foreground"
                     >
                       Waktu Sekarang
                     </Text>
                   </View>
                   <Text
-                    className={`text-sm font-bold text-center mt-1 ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}
+                    variant="default"
+                    className="font-bold text-center mt-1 text-foreground"
                   >
-                    {format(currentTime, "HH:mm:ss")}
+                    {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
                 </View>
               </View>
@@ -546,31 +467,24 @@ export default function Dashboard() {
                 onPress={() => {
                   Sentry.showFeedbackWidget();
                 }}
-                className={`p-2 rounded-full ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
+                className="p-2 rounded-full"
               >
-                <Bell
-                  size={20}
-                  color={isDarkColorScheme ? "#ffffff" : "#374151"}
-                />
+                <Icon as={Bell} className="size-5 text-foreground" />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* --- Today's Status Card --- */}
-          <View className="px-6 mb-6">
-            <Card
-              className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-            >
-              <View className="flex-row items-center justify-between mb-4">
-                <Text
-                  className={`text-lg font-semibold ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-                >
+          <View className="px-6 mb-4">
+            <Card className="p-4 bg-card border-border">
+              <View className="flex-row items-center justify-between">
+                <Text variant="h4" className="text-foreground">
                   Status Hari Ini
                 </Text>
                 <Badge
                   className={`${statusBadge.color} ${statusBadge.textColor}`}
                 >
-                  {statusBadge.text}
+                  <Text variant="default">{statusBadge.text}</Text>
                 </Badge>
               </View>
 
@@ -579,19 +493,18 @@ export default function Dashboard() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
                     {attendanceStatus.hasCheckedIn ? (
-                      <CheckCircle size={20} color="#16a34a" />
+                      <Icon
+                        as={CheckCircle}
+                        className="size-5 text-green-600"
+                      />
                     ) : (
-                      <AlertCircle size={20} color="#dc2626" />
+                      <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
-                    <Text
-                      className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                    >
+                    <Text variant="default" className="ml-2 text-foreground">
                       Absen Masuk
                     </Text>
                   </View>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
+                  <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
                       : "Belum absen"}
@@ -602,19 +515,18 @@ export default function Dashboard() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
                     {attendanceStatus.hasCheckedOut ? (
-                      <CheckCircle size={20} color="#16a34a" />
+                      <Icon
+                        as={CheckCircle}
+                        className="size-5 text-green-600"
+                      />
                     ) : (
-                      <AlertCircle size={20} color="#dc2626" />
+                      <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
-                    <Text
-                      className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                    >
+                    <Text variant="default" className="ml-2 text-foreground">
                       Absen Pulang
                     </Text>
                   </View>
-                  <Text
-                    className={`text-sm ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
+                  <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
                       : "Belum absen"}
@@ -625,15 +537,14 @@ export default function Dashboard() {
                 {attendanceStatus.totalWorkHours && (
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
-                      <Clock size={20} color="#3b82f6" />
-                      <Text
-                        className={`ml-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-                      >
+                      <Icon as={Clock} className="size-5 text-blue-500" />
+                      <Text variant="default" className="ml-2 text-foreground">
                         Total Jam Di Sekolah
                       </Text>
                     </View>
                     <Text
-                      className={`text-sm font-medium ${isDarkColorScheme ? "text-blue-400" : "text-blue-600"}`}
+                      variant="small"
+                      className="font-medium text-foreground"
                     >
                       {attendanceStatus.totalWorkHours}
                     </Text>
@@ -645,9 +556,7 @@ export default function Dashboard() {
 
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
-            <Text
-              className={`text-lg font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-            >
+            <Text variant="h3" className="mb-4 text-foreground">
               Aksi Cepat
             </Text>
 
@@ -658,19 +567,23 @@ export default function Dashboard() {
                 className="w-48"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`aspect-square ${isDarkColorScheme ? "bg-blue-600 border-blue-500" : "bg-blue-600 border-blue-500"}`}
-                >
+                <Card className="aspect-square bg-blue-600 dark:bg-blue-700">
                   <View className="flex-1 items-center justify-center p-4">
-                    <UserCheck size={32} color="white" />
-                    <Text className="text-white font-semibold text-lg mt-2 text-center">
+                    <Icon as={UserCheck} className="size-8 text-white" />
+                    <Text
+                      variant="large"
+                      className="text-white font-semibold mt-2 text-center"
+                    >
                       {!attendanceStatus.hasCheckedIn
                         ? "Absen Masuk"
                         : !attendanceStatus.hasCheckedOut
                           ? "Absen Pulang"
                           : "Lihat Absensi"}
                     </Text>
-                    <Text className="text-blue-100 text-sm text-center mt-1">
+                    <Text
+                      variant="small"
+                      className="text-blue-100 text-center mt-1"
+                    >
                       {!attendanceStatus.hasCheckedIn
                         ? "Mulai hari sekolah"
                         : !attendanceStatus.hasCheckedOut
@@ -683,29 +596,19 @@ export default function Dashboard() {
             </View>
 
             {/* Secondary Actions Grid */}
-
-            <View className="flex-row space-x-3 gap-2">
+            <View className="flex-row gap-4">
               <TouchableOpacity
                 onPress={navigateToHistory}
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  <History
-                    size={24}
-                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                  />
+                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
+                  <Icon as={History} className="size-6 text-blue-600" />
                   <Text
-                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                    variant="default"
+                    className="mt-1 font-medium text-foreground"
                   >
                     Riwayat
-                  </Text>
-                  <Text
-                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    Lihat absensi
                   </Text>
                 </Card>
               </TouchableOpacity>
@@ -715,22 +618,16 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  <ClipboardPenLine
-                    size={24}
-                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
+                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
+                  <Icon
+                    as={ClipboardPenLine}
+                    className="size-6 text-blue-600"
                   />
                   <Text
-                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                    variant="default"
+                    className="mt-1 font-medium text-foreground"
                   >
                     Perizinan
-                  </Text>
-                  <Text
-                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    Ajukan izin
                   </Text>
                 </Card>
               </TouchableOpacity>
@@ -740,22 +637,13 @@ export default function Dashboard() {
                 className="flex-1"
                 activeOpacity={0.8}
               >
-                <Card
-                  className={`p-4 ${isDarkColorScheme ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  <Settings
-                    size={24}
-                    color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                  />
+                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
+                  <Icon as={Settings} className="size-6 text-blue-600" />
                   <Text
-                    className={`mt-2 font-medium ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+                    variant="default"
+                    className="mt-1 font-medium text-foreground"
                   >
-                    Pengaturan
-                  </Text>
-                  <Text
-                    className={`text-xs ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
-                  >
-                    Kelola akun
+                    Setelan
                   </Text>
                 </Card>
               </TouchableOpacity>
@@ -764,17 +652,9 @@ export default function Dashboard() {
         </ScrollView>
 
         {/* --- Footer Section --- */}
-        <View
-          className={`items-center px-6 py-3 border-t ${
-            isDarkColorScheme
-              ? "bg-gray-900 border-gray-700"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <Text
-            className={`text-s font-bold ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
-          >
-            v1.6.2-internal.1 | Branch: develop
+        <View className="items-center px-6 py-3 border-t border-border bg-background">
+          <Text variant="small" className="font-bold text-foreground">
+            v1.8.0-internaldev | Branch: develop
           </Text>
         </View>
       </SafeAreaView>

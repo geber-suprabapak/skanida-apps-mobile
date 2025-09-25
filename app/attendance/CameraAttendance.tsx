@@ -4,29 +4,26 @@ import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   StatusBar,
   BackHandler,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  FadeIn,
-  SlideInDown,
-  withSpring,
-} from "react-native-reanimated";
+import { Text } from "~/components/ui/text";
+import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 
 import { supabase } from "~/utils/supabase";
-import { Camera } from "~/lib/icons/Camera";
-import { CameraSwitch } from "~/lib/icons/CameraSwitch";
-import { CameraOff } from "~/lib/icons/CameraOff";
-import { Loader2 } from "~/lib/icons/Loader2";
-import { AlertCircle } from "~/lib/icons/AlertCircle";
+import { Icon } from "~/components/ui/icon";
+import {
+  Camera,
+  SwitchCamera,
+  CameraOff,
+  Loader2,
+  AlertCircle,
+} from "lucide-react-native";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
@@ -134,10 +131,6 @@ const CameraAttendance = () => {
   const [isUploading, setIsUploading] = useState(false);
 
   // --- ANIMATION VALUES ---
-  const buttonScale = useSharedValue(1);
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
 
   // --- MEMOIZED VALUES ---
   const locationData: LocationData = useMemo(() => {
@@ -207,24 +200,6 @@ const CameraAttendance = () => {
       throw new Error("Failed to process image data");
     }
   }, []);
-
-  const calculateDistance = useCallback(
-    (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-      const R = 6371e3; // Earth radius in meters
-      const φ1 = (lat1 * Math.PI) / 180;
-      const φ2 = (lat2 * Math.PI) / 180;
-      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return R * c;
-    },
-    [],
-  );
 
   const generateFileName = useCallback((): string => {
     const fileName = `${currentDateTime.formattedDate}_${currentDateTime.timestamp}_${locationData.userId}.png`;
@@ -788,7 +763,6 @@ const CameraAttendance = () => {
     }
 
     setIsCapturingPhoto(true);
-    buttonScale.value = withSpring(0.9);
 
     try {
       logger.debug("Starting enhanced photo capture");
@@ -839,12 +813,10 @@ const CameraAttendance = () => {
       );
     } finally {
       setIsCapturingPhoto(false);
-      buttonScale.value = withSpring(1);
     }
   }, [
     isCameraReady,
     isCapturingPhoto,
-    buttonScale,
     processImageWithOptimization,
     processAndUploadPhoto,
   ]);
@@ -926,7 +898,7 @@ const CameraAttendance = () => {
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="#0066FF" />
-        <Text className="text-white text-lg text-center mx-5 mt-4">
+        <Text variant="large" className="text-white text-center mx-5 mt-4">
           {message}
         </Text>
       </View>
@@ -938,15 +910,15 @@ const CameraAttendance = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
-        <Animated.View
-          entering={FadeIn.duration(500)}
-          className="items-center justify-center"
-        >
-          <Camera size={80} color="#0066FF" />
-          <Text className="text-white text-2xl font-bold text-center mt-4 mb-2">
+        <Animated.View className="items-center justify-center">
+          <Icon as={Camera} className="size-20 text-[#0066FF]" />
+          <Text variant="h1" className="text-white text-center mt-4 mb-2">
             Camera Access Needed
           </Text>
-          <Text className="text-white/80 text-base text-center mx-10 mb-8">
+          <Text
+            variant="default"
+            className="text-white/80 text-center mx-10 mb-8"
+          >
             We need your permission to use the camera for attendance
           </Text>
           <TouchableOpacity
@@ -954,8 +926,8 @@ const CameraAttendance = () => {
             activeOpacity={0.7}
             onPress={requestPermission}
           >
-            <Camera size={24} color="white" />
-            <Text className="text-white text-base font-bold ml-2">
+            <Icon as={Camera} className="size-6 text-white" />
+            <Text variant="default" className="text-white font-bold ml-2">
               Grant Permission
             </Text>
           </TouchableOpacity>
@@ -969,15 +941,15 @@ const CameraAttendance = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
-        <Animated.View
-          entering={FadeIn.duration(500)}
-          className="items-center justify-center"
-        >
-          <AlertCircle size={80} color="#ff4d4f" />
-          <Text className="text-red-400 text-2xl font-bold text-center mt-4 mb-2">
+        <Animated.View className="items-center justify-center">
+          <Icon as={AlertCircle} className="size-20 text-red-600" />
+          <Text variant="h1" className="text-red-400 text-center mt-4 mb-2">
             Camera Error
           </Text>
-          <Text className="text-white/80 text-base text-center mx-10 mb-8">
+          <Text
+            variant="default"
+            className="text-white/80 text-center mx-10 mb-8"
+          >
             Terjadi kesalahan pada kamera. Silakan coba lagi.
           </Text>
           <TouchableOpacity
@@ -985,8 +957,10 @@ const CameraAttendance = () => {
             activeOpacity={0.7}
             onPress={() => router.back()}
           >
-            <CameraOff size={24} color="white" />
-            <Text className="text-white text-base font-bold ml-2">Kembali</Text>
+            <Icon as={CameraOff} className="size-6 text-white" />
+            <Text variant="default" className="text-white font-bold ml-2">
+              Kembali
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -998,15 +972,12 @@ const CameraAttendance = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 justify-center items-center">
-        <Animated.View
-          entering={FadeIn.duration(400)}
-          className="items-center justify-center w-4/5"
-        >
-          <Loader2 size={32} color="#0066FF" className="animate-spin" />
-          <Text className="text-white text-xl font-semibold mt-4 mb-2">
+        <Animated.View className="items-center justify-center w-4/5">
+          <Icon as={Loader2} className="size-8 text-[#0066FF]" />
+          <Text variant="h2" className="text-white mt-4 mb-2">
             Saving Attendance...
           </Text>
-          <Text className="text-white/70 text-base text-center mb-8">
+          <Text variant="default" className="text-white/70 text-center mb-8">
             {uploadProgress.message}
           </Text>
           <View className="w-full h-2 bg-gray-700 rounded-full">
@@ -1015,7 +986,7 @@ const CameraAttendance = () => {
               style={{ width: `${uploadProgress.percentage}%` }}
             />
           </View>
-          <Text className="text-white/70 text-sm mt-2">
+          <Text variant="small" className="text-white/70 mt-2">
             {uploadProgress.percentage}%
           </Text>
         </Animated.View>
@@ -1059,21 +1030,18 @@ const CameraAttendance = () => {
                   onPress={() => router.back()}
                   activeOpacity={0.7}
                 >
-                  <CameraOff size={24} color="white" />
+                  <Icon as={CameraOff} className="size-6 text-white" />
                 </TouchableOpacity>
 
-                <Animated.View
-                  entering={SlideInDown.duration(400)}
-                  className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl"
-                >
+                <Animated.View className="flex-1 mx-3 bg-black/60 py-2 px-3 rounded-xl">
                   <View className="flex-row items-center">
-                    <Camera size={16} color="#0066FF" />
-                    <Text className="text-white text-sm ml-1">
+                    <Icon as={Camera} className="size-4 text-[#0066FF]" />
+                    <Text variant="small" className="text-white ml-1">
                       {locationData.latitude?.toFixed(4)},{" "}
                       {locationData.longitude?.toFixed(4)}
                     </Text>
                   </View>
-                  <Text className="text-white/70 text-xs">
+                  <Text variant="small" className="text-white/70 text-xs">
                     {currentDateTime.displayTime}
                   </Text>
                 </Animated.View>
@@ -1086,13 +1054,10 @@ const CameraAttendance = () => {
                   onPress={handleToggleCameraFacing}
                   activeOpacity={0.7}
                 >
-                  <CameraSwitch size={28} color="white" />
+                  <Icon as={SwitchCamera} className="size-7 text-white" />
                 </TouchableOpacity>
 
-                <Animated.View
-                  style={animatedButtonStyle}
-                  className="w-24 h-24 rounded-full bg-white/30 justify-center items-center"
-                >
+                <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
                   <TouchableOpacity
                     className="w-20 h-20 rounded-full bg-white justify-center items-center"
                     onPress={handleTakePicture}
@@ -1113,7 +1078,9 @@ const CameraAttendance = () => {
           ) : (
             <View className="flex-1 justify-center items-center bg-black/70">
               <ActivityIndicator size="large" color="#0066FF" />
-              <Text className="text-white mt-3">Initializing camera...</Text>
+              <Text variant="default" className="text-white mt-3">
+                Initializing camera...
+              </Text>
             </View>
           )}
         </CameraView>

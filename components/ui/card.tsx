@@ -1,106 +1,80 @@
-import * as React from "react";
-import { Pressable, View } from "react-native";
+import { Text, TextClassContext } from "@/components/ui/text";
+import { cn } from "@/lib/utils";
+import { View, type ViewProps } from "react-native";
 
-import { Small } from "~/components/ui/typography";
-import { cn } from "~/lib/utils";
+function Card({ className, ...props }: ViewProps & React.RefAttributes<View>) {
+  return (
+    <TextClassContext.Provider value="text-card-foreground">
+      <View
+        className={cn(
+          "bg-card border-border flex flex-col gap-6 rounded-xl border py-6 shadow-sm shadow-black/5",
+          className,
+        )}
+        {...props}
+      />
+    </TextClassContext.Provider>
+  );
+}
 
-const Card = React.forwardRef<
-  React.ElementRef<typeof View>,
-  React.ComponentPropsWithoutRef<typeof View>
->(({ className, ...props }, ref) => (
-  <View
-    ref={ref}
-    className={cn(
-      "rounded-lg border border-border bg-card px-6 py-4 shadow-sm",
-      className,
-    )}
-    {...props}
-  />
-));
-Card.displayName = "Card";
+function CardHeader({
+  className,
+  ...props
+}: ViewProps & React.RefAttributes<View>) {
+  return (
+    <View className={cn("flex flex-col gap-1.5 px-6", className)} {...props} />
+  );
+}
 
-const CardHeader = React.forwardRef<
-  React.ElementRef<typeof View>,
-  React.ComponentPropsWithoutRef<typeof View>
->(({ className, ...props }, ref) => (
-  <View
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 pb-4", className)}
-    {...props}
-  />
-));
-CardHeader.displayName = "CardHeader";
+function CardTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof Text> & React.RefAttributes<Text>) {
+  return (
+    <Text
+      role="heading"
+      aria-level={3}
+      className={cn("font-semibold leading-none", className)}
+      {...props}
+    />
+  );
+}
 
-const CardTitle = React.forwardRef<
-  React.ElementRef<typeof Small>,
-  React.ComponentPropsWithoutRef<typeof Small>
->(({ className, ...props }, ref) => (
-  <Small
-    ref={ref}
-    className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
-      className,
-    )}
-    {...props}
-  />
-));
-CardTitle.displayName = "CardTitle";
+function CardDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof Text> & React.RefAttributes<Text>) {
+  return (
+    <Text
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  );
+}
 
-const CardDescription = React.forwardRef<
-  React.ElementRef<typeof Small>,
-  React.ComponentPropsWithoutRef<typeof Small>
->(({ className, ...props }, ref) => (
-  <Small
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-CardDescription.displayName = "CardDescription";
+function CardContent({
+  className,
+  ...props
+}: ViewProps & React.RefAttributes<View>) {
+  return <View className={cn("px-6", className)} {...props} />;
+}
 
-const CardContent = React.forwardRef<
-  React.ElementRef<typeof View>,
-  React.ComponentPropsWithoutRef<typeof View>
->(({ className, ...props }, ref) => (
-  <View ref={ref} className={cn("pt-0", className)} {...props} />
-));
-CardContent.displayName = "CardContent";
-
-const CardFooter = React.forwardRef<
-  React.ElementRef<typeof View>,
-  React.ComponentPropsWithoutRef<typeof View>
->(({ className, ...props }, ref) => (
-  <View
-    ref={ref}
-    className={cn("flex flex-row items-center pt-4", className)}
-    {...props}
-  />
-));
-CardFooter.displayName = "CardFooter";
-
-const PressableCard = React.forwardRef<
-  React.ElementRef<typeof Pressable>,
-  React.ComponentPropsWithoutRef<typeof Pressable> & { disabled?: boolean }
->(({ className, disabled, ...props }, ref) => (
-  <Pressable
-    ref={ref}
-    className={cn(
-      "rounded-lg border border-border bg-card px-6 py-4 shadow-sm",
-      disabled && "opacity-50",
-      className,
-    )}
-    disabled={disabled}
-    {...props}
-  />
-));
-PressableCard.displayName = "PressableCard";
+function CardFooter({
+  className,
+  ...props
+}: ViewProps & React.RefAttributes<View>) {
+  return (
+    <View
+      className={cn("flex flex-row items-center px-6", className)}
+      {...props}
+    />
+  );
+}
 
 export {
   Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
   CardContent,
-  PressableCard,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 };

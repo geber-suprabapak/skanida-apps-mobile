@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, Stack, useNavigation } from "expo-router";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Alert,
@@ -14,26 +13,24 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
-import { H3, P, Small, Muted } from "~/components/ui/typography";
 import useAuthStore from "~/store/authStore";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { supabase } from "~/utils/supabase";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { User } from "~/lib/icons/User";
-import { Camera } from "~/lib/icons/Camera";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Camera } from "lucide-react-native";
 import { Card } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 
 // Define interface for user profile data
 interface UserProfile {
   id: string;
-  user_id: string;
   full_name?: string;
   email?: string;
   absence_number?: string;
   class_name?: string;
+  nis?: string;
+  gender?: string;
   avatar_url?: string;
   created_at?: string;
   updated_at?: string;
@@ -53,95 +50,172 @@ const clearProfileCache = async () => {
 export default function EditProfile() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const navigation = useNavigation();
 
-  const [name, setName] = useState(user?.user_metadata?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [absenceNumber, setAbsenceNumber] = useState(
-    user?.user_metadata?.absence_number || "",
-  );
-  const [className, setClassName] = useState(
-    user?.user_metadata?.class_name || "",
-  );
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [absenceNumber, setAbsenceNumber] = useState("");
+  const [className, setClassName] = useState("");
+  const [nis, setNis] = useState("");
+  const [gender, setGender] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [fetchProfileError, setFetchProfileError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const [initialName, setInitialName] = useState("");
-  const [initialEmail, setInitialEmail] = useState("");
   const [initialAbsenceNumber, setInitialAbsenceNumber] = useState("");
-  const [initialClassName, setInitialClassName] = useState("");
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchAndSetInitialProfileData = async () => {
+    const fetchAndSetProfileData = async () => {
       if (!user) {
-        setInitialName(name);
-        setInitialEmail(email);
-        setInitialAbsenceNumber(absenceNumber);
-        setInitialClassName(className);
-        setInitialAvatarUrl(avatarUrl);
         return;
       }
 
-      let currentName = user.user_metadata?.name || "";
-      let currentEmail = user.email || "";
-      let currentAbsenceNumber = user.user_metadata?.absence_number || "";
-      let currentClassName = user.user_metadata?.class_name || "";
-      let currentAvatarUrl: string | null =
-        user.user_metadata?.avatar_url || null;
+      // Set loading indicator if needed
 
-      setEmail(currentEmail);
-
+      // First try to fetch data from user_profiles table (primary source)
       try {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("full_name, email, absence_number, class_name, avatar_url")
-          .eq("user_id", user.id)
-          .single();
+        console.log("Fetching profile for user id:", user?.id);
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching profile:", error.message);
+        // Implement retry mechanism for race condition
+        const maxRetries = 3;
+        let profileData = null;
+        let fetchError = null;
+
+        // Try multiple times with a delay to handle race conditions
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          if (attempt > 0) {
+            // Wait before retry
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            console.log(`Retry attempt ${attempt + 1} for profile data...`);
+          }
+
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .select(
+              "full_name, email, absence_number, class_name, nis, gender, avatar_url",
+            )
+            .eq("user_id", user?.id)
+            .single();
+
+          if (data) {
+            profileData = data;
+            fetchError = null;
+            break; // Exit loop if we got data
+          }
+
+          fetchError = error;
+
+          // If error is something other than "not found", don't retry
+          if (error && error.code !== "PGRST116") {
+            break;
+          }
+        }
+
+        if (fetchError && fetchError.code !== "PGRST116") {
+          console.error("Error fetching profile:", fetchError.message);
+          console.error("Error details:", fetchError);
           setFetchProfileError(true);
         }
 
-        if (data) {
-          setProfileData(data as UserProfile);
-          currentName = data.full_name || currentName;
-          currentAbsenceNumber = data.absence_number || currentAbsenceNumber;
-          currentClassName = data.class_name || currentClassName;
-          currentAvatarUrl = data.avatar_url || currentAvatarUrl;
+        if (profileData) {
+          // If we have profile data from database, use it as primary source
+          console.log("Profile data found:", profileData);
+          setProfileData(profileData as UserProfile);
+
+          // Prioritize profile data, fall back to user metadata only if needed
+          const currentName =
+            user.user_metadata?.name || user.user_metadata?.full_name || "";
+          const currentEmail = user.email || "";
+          const currentAbsenceNumber = user.user_metadata?.absence_number || "";
+          const currentClassName = user.user_metadata?.class_name || "";
+          const currentNis = user.user_metadata?.nis || "";
+          const currentGender = user.user_metadata?.gender || "";
+          const currentAvatarUrl = user.user_metadata?.avatar_url || null;
+
+          setName(profileData.full_name || currentName);
+          setEmail(profileData.email || currentEmail);
+          setAbsenceNumber(profileData.absence_number || currentAbsenceNumber);
+          setClassName(profileData.class_name || currentClassName);
+          setNis(profileData.nis || currentNis);
+          setGender(profileData.gender || currentGender);
+          setAvatarUrl(profileData.avatar_url || currentAvatarUrl);
+
+          // Set initial values for change detection
+          setInitialAbsenceNumber(
+            profileData.absence_number || currentAbsenceNumber,
+          );
+          setInitialAvatarUrl(profileData.avatar_url || currentAvatarUrl);
+
+          console.log("Data set from user_profiles:", {
+            name: profileData.full_name,
+            nis: profileData.nis,
+            gender: profileData.gender,
+            className: profileData.class_name,
+            absenceNumber: profileData.absence_number,
+          });
+        } else {
+          console.log("No profile data found for user:", user.id);
+
+          // Fallback to user metadata if no profile data
+          let currentName =
+            user.user_metadata?.name || user.user_metadata?.full_name || "";
+          let currentEmail = user.email || "";
+          let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+          let currentClassName = user.user_metadata?.class_name || "";
+          let currentNis = user.user_metadata?.nis || "";
+          let currentGender = user.user_metadata?.gender || "";
+          let currentAvatarUrl: string | null =
+            user.user_metadata?.avatar_url || null;
+
+          // Set values from user metadata as fallback
+          setName(currentName);
+          setEmail(currentEmail);
+          setAbsenceNumber(currentAbsenceNumber);
+          setClassName(currentClassName);
+          setNis(currentNis);
+          setGender(currentGender);
+          setAvatarUrl(currentAvatarUrl);
+          setInitialAbsenceNumber(currentAbsenceNumber);
+          setInitialAvatarUrl(currentAvatarUrl);
+
+          console.log("Using fallback data from user metadata");
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
         setFetchProfileError(true);
-      }
 
-      setName(currentName);
-      setInitialName(currentName);
-      setInitialEmail(currentEmail);
-      setAbsenceNumber(currentAbsenceNumber);
-      setInitialAbsenceNumber(currentAbsenceNumber);
-      setClassName(currentClassName);
-      setInitialClassName(currentClassName);
-      setAvatarUrl(currentAvatarUrl);
-      setInitialAvatarUrl(currentAvatarUrl);
+        // Fallback to user metadata on error
+        let currentName =
+          user.user_metadata?.name || user.user_metadata?.full_name || "";
+        let currentEmail = user.email || "";
+        let currentAbsenceNumber = user.user_metadata?.absence_number || "";
+        let currentClassName = user.user_metadata?.class_name || "";
+        let currentNis = user.user_metadata?.nis || "";
+        let currentGender = user.user_metadata?.gender || "";
+        let currentAvatarUrl: string | null =
+          user.user_metadata?.avatar_url || null;
+
+        setName(currentName);
+        setEmail(currentEmail);
+        setAbsenceNumber(currentAbsenceNumber);
+        setClassName(currentClassName);
+        setNis(currentNis);
+        setGender(currentGender);
+        setAvatarUrl(currentAvatarUrl);
+        setInitialAbsenceNumber(currentAbsenceNumber);
+        setInitialAvatarUrl(currentAvatarUrl);
+      }
     };
 
-    fetchAndSetInitialProfileData();
+    fetchAndSetProfileData();
   }, [user]);
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
-      const hasUnsavedChanges =
-        name !== initialName ||
-        email !== initialEmail ||
-        absenceNumber !== initialAbsenceNumber ||
-        className !== initialClassName ||
-        avatarUrl !== initialAvatarUrl;
+      const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
 
       if (!hasUnsavedChanges) {
         return;
@@ -168,28 +242,30 @@ export default function EditProfile() {
     return () => {
       navigation.removeListener("beforeRemove", onBeforeRemove);
     };
-  }, [
-    navigation,
-    name,
-    email,
-    absenceNumber,
-    className,
-    avatarUrl,
-    initialName,
-    initialEmail,
-    initialAbsenceNumber,
-    initialClassName,
-    initialAvatarUrl,
-  ]);
+  }, [navigation, avatarUrl, initialAvatarUrl]);
 
   // Handle hardware back button
   useEffect(() => {
     const backAction = () => {
-      // Check if profile is required (by checking if name is empty)
-      const isProfileRequired = !profileData?.full_name && !name;
+      // Allow navigation if user has any name data (profile, form, or auth metadata)
+      const hasAnyName =
+        (profileData?.full_name && profileData.full_name.trim().length > 0) ||
+        (name && name.trim().length > 0) ||
+        (user?.user_metadata?.name &&
+          user.user_metadata.name.trim().length > 0) ||
+        (user?.user_metadata?.full_name &&
+          user.user_metadata.full_name.trim().length > 0);
 
-      // If profile is required (empty), prevent going back
-      if (isProfileRequired) {
+      console.log("Hardware back button check:", {
+        hasAnyName,
+        profileDataFullName: profileData?.full_name,
+        formName: name,
+        userMetadataName: user?.user_metadata?.name,
+        userMetadataFullName: user?.user_metadata?.full_name,
+      });
+
+      // Only prevent navigation if user truly has no name data anywhere
+      if (!hasAnyName) {
         Alert.alert(
           "Profil Wajib Diisi",
           "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
@@ -199,12 +275,7 @@ export default function EditProfile() {
       }
 
       // Handle unsaved changes
-      const hasUnsavedChanges =
-        name !== initialName ||
-        email !== initialEmail ||
-        absenceNumber !== initialAbsenceNumber ||
-        className !== initialClassName ||
-        avatarUrl !== initialAvatarUrl;
+      const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
 
       if (hasUnsavedChanges) {
         Alert.alert(
@@ -233,17 +304,12 @@ export default function EditProfile() {
     return () => backHandler.remove();
   }, [
     router,
-    name,
-    email,
-    absenceNumber,
-    className,
     avatarUrl,
-    initialName,
-    initialEmail,
-    initialAbsenceNumber,
-    initialClassName,
     initialAvatarUrl,
     profileData,
+    name,
+    user?.user_metadata?.name,
+    user?.user_metadata?.full_name,
   ]);
 
   const pickImage = async () => {
@@ -337,35 +403,11 @@ export default function EditProfile() {
   };
 
   const handleSave = async () => {
-    if (!name) {
-      Alert.alert("Error", "Nama tidak boleh kosong");
-      return;
-    }
-
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert("Error", "Email tidak valid");
-      return;
-    }
-
     setLoading(true);
     try {
-      const { error: emailError } = await supabase.auth.updateUser({
-        email,
-      });
-
-      if (emailError) {
-        Alert.alert("Error", emailError.message);
-        setLoading(false);
-        return;
-      }
-
+      // Only update the avatar_url in user metadata (absence number is read-only)
       const { error } = await supabase.auth.updateUser({
         data: {
-          name,
-          full_name: name,
-          absence_number: absenceNumber,
-          class_name: className,
-          display_name: name,
           avatar_url: avatarUrl,
         },
       });
@@ -376,22 +418,39 @@ export default function EditProfile() {
         return;
       }
 
+      // Update absence_number and avatar_url in the profiles table using upsert
+      // Use onConflict to specify which column to use for conflict resolution
       const { error: profileError } = await supabase
         .from("user_profiles")
         .upsert(
           {
-            user_id: user.id,
-            full_name: name,
-            email,
+            user_id: user?.id,
             absence_number: absenceNumber,
             class_name: className,
             avatar_url: avatarUrl,
+            full_name:
+              name ||
+              user?.user_metadata?.name ||
+              user?.user_metadata?.full_name,
+            email: email,
+            nis: nis,
+            gender: gender,
           },
-          { onConflict: "user_id" },
+          {
+            onConflict: "user_id",
+          },
         );
 
       if (profileError) {
         console.error("Error updating profile table:", profileError);
+        console.error("User ID:", user?.id);
+        console.error("Profile data being saved:", {
+          user_id: user?.id,
+          absence_number: absenceNumber,
+          avatar_url: avatarUrl,
+          full_name: name,
+          email: email,
+        });
         Alert.alert(
           "Perhatian",
           "Profil berhasil diperbarui, tetapi ada masalah menyimpan data profil. Beberapa informasi mungkin tidak tersimpan dengan benar.",
@@ -407,10 +466,11 @@ export default function EditProfile() {
         return;
       }
 
+      // Fetch refreshed profile data
       const { data: refreshedProfile } = await supabase
         .from("user_profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (refreshedProfile) {
@@ -421,10 +481,7 @@ export default function EditProfile() {
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
 
-      setInitialName(name);
-      setInitialEmail(email);
       setInitialAbsenceNumber(absenceNumber);
-      setInitialClassName(className);
       setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
@@ -453,9 +510,7 @@ export default function EditProfile() {
   }, [fetchProfileError, user]);
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
-    >
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -464,19 +519,30 @@ export default function EditProfile() {
 
       {/* Header */}
       <View
-        className={`flex-row items-center p-4 border-b ${
-          isDarkColorScheme
-            ? "border-gray-700 bg-gray-900"
-            : "border-gray-200 bg-white"
-        }`}
+        className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-card dark:bg-gray-800`}
       >
         <TouchableOpacity
           onPress={() => {
-            // Check if profile is required (by checking if name is empty)
-            const isProfileRequired = !profileData?.full_name && !name;
+            // Allow navigation if user has any name data (profile, form, or auth metadata)
+            const hasAnyName =
+              (profileData?.full_name &&
+                profileData.full_name.trim().length > 0) ||
+              (name && name.trim().length > 0) ||
+              (user?.user_metadata?.name &&
+                user.user_metadata.name.trim().length > 0) ||
+              (user?.user_metadata?.full_name &&
+                user.user_metadata.full_name.trim().length > 0);
 
-            // If profile is required (empty), prevent going back
-            if (isProfileRequired) {
+            console.log("Header back button check:", {
+              hasAnyName,
+              profileDataFullName: profileData?.full_name,
+              formName: name,
+              userMetadataName: user?.user_metadata?.name,
+              userMetadataFullName: user?.user_metadata?.full_name,
+            });
+
+            // Only prevent navigation if user truly has no name data anywhere
+            if (!hasAnyName) {
               Alert.alert(
                 "Profil Wajib Diisi",
                 "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
@@ -487,10 +553,7 @@ export default function EditProfile() {
 
             // Check for unsaved changes
             const hasUnsavedChanges =
-              name !== initialName ||
-              email !== initialEmail ||
               absenceNumber !== initialAbsenceNumber ||
-              className !== initialClassName ||
               avatarUrl !== initialAvatarUrl;
 
             if (hasUnsavedChanges) {
@@ -512,50 +575,33 @@ export default function EditProfile() {
           }}
           className="mr-3"
         >
-          <ChevronLeft
-            size={24}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <Icon as={ChevronLeft} className="size-6 text-foreground" />
         </TouchableOpacity>
 
-        <Text
-          className={`text-lg font-bold flex-1 ${
-            isDarkColorScheme ? "text-white" : "text-gray-900"
-          }`}
-        >
+        <Text variant="h3" className="flex-1 text-foreground">
           Edit Profil
         </Text>
       </View>
 
       <ScrollView
-        className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-gray-50"}`}
+        className={`flex-1`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}
       >
         {/* Profile Section with Photo and Basic Info */}
         <View className="px-6 pt-6 pb-4">
           <Card
-            className={`p-6 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-6 bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
             <View className="items-center">
-              <H3
-                className={`mb-6 ${
-                  isDarkColorScheme ? "text-white" : "text-gray-900"
-                }`}
-              >
+              <Text variant="h3" className={`mb-6 text-foreground`}>
                 Foto Profil
-              </H3>
+              </Text>
 
               <View className="relative mb-6">
                 {uploadingAvatar ? (
                   <View
-                    className={`w-32 h-32 rounded-full items-center justify-center ${
-                      isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
-                    }`}
+                    className={`w-32 h-32 rounded-full items-center justify-center bg-gray-100 dark:bg-gray-700`}
                     style={{
                       shadowColor: "#000000",
                       shadowOffset: { width: 0, height: 6 },
@@ -564,10 +610,7 @@ export default function EditProfile() {
                       elevation: 8,
                     }}
                   >
-                    <ActivityIndicator
-                      size="large"
-                      color={isDarkColorScheme ? "#60a5fa" : "#3b82f6"}
-                    />
+                    <ActivityIndicator size="large" color={"#3b82f6"} />
                   </View>
                 ) : (
                   <>
@@ -594,7 +637,7 @@ export default function EditProfile() {
                     </View>
 
                     <TouchableOpacity
-                      className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-3"
+                      className="absolute bottom-0 right-0 bg-blue-500 dark:bg-blue-600 rounded-full p-3"
                       onPress={pickImage}
                       style={{
                         shadowColor: "#3B82F6",
@@ -604,19 +647,18 @@ export default function EditProfile() {
                         elevation: 6,
                       }}
                     >
-                      <Camera size={18} color="#ffffff" />
+                      <Icon as={Camera} className="size-5 text-white" />
                     </TouchableOpacity>
                   </>
                 )}
               </View>
 
-              <Small
-                className={`text-center ${
-                  isDarkColorScheme ? "text-gray-400" : "text-gray-600"
-                }`}
+              <Text
+                variant={"small"}
+                className={`text-center text-muted-foreground`}
               >
                 Ketuk ikon kamera untuk mengubah foto profil
-              </Small>
+              </Text>
             </View>
           </Card>
         </View>
@@ -624,60 +666,42 @@ export default function EditProfile() {
         {/* Combined Information Section */}
         <View className="px-6 mb-3">
           <Card
-            className={`p-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
-            <H3
-              className={`mb-3 ${
-                isDarkColorScheme ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
               Informasi Pribadi
-            </H3>
+            </Text>
 
             <View className="space-y-3">
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant="small"
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Nama Lengkap
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan nama lengkap"
                   value={name}
-                  onChangeText={setName}
-                  className={
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
+                  editable={false} // added: make read-only
+                  className={"border-gray-300 bg-white"}
                 />
               </View>
 
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant="small"
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Email
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan alamat email"
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  className={
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
+                  className={"border-gray-300 bg-white"}
                 />
               </View>
             </View>
@@ -687,59 +711,41 @@ export default function EditProfile() {
         {/* Academic Information Section */}
         <View className="px-6 mb-3">
           <Card
-            className={`p-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
-            <H3
-              className={`mb-3 ${
-                isDarkColorScheme ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
               Informasi Akademik
-            </H3>
+            </Text>
 
             <View className="space-y-3">
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant={"small"}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Nomor Absen
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan nomor absen"
                   value={absenceNumber}
-                  onChangeText={setAbsenceNumber}
+                  editable={false} // added: make read-only
                   keyboardType="numeric"
-                  className={
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
+                  className={"border-gray-300 bg-white"}
                 />
               </View>
 
               <View>
-                <Small
-                  className={`font-medium mb-1 ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
-                  }`}
+                <Text
+                  variant={"small"}
+                  className={`font-medium mb-1 text-foreground`}
                 >
                   Kelas
-                </Small>
+                </Text>
                 <Input
                   placeholder="Masukkan kelas"
                   value={className}
-                  onChangeText={setClassName}
-                  className={
-                    isDarkColorScheme
-                      ? "border-gray-600 bg-gray-700 text-white placeholder:text-gray-400"
-                      : "border-gray-300 bg-white"
-                  }
+                  editable={false} // added: make read-only
+                  className={"border-gray-300 bg-white"}
                 />
               </View>
             </View>
@@ -749,25 +755,14 @@ export default function EditProfile() {
         {/* Action Buttons Section */}
         <View className="px-6">
           <Card
-            className={`p-4 ${
-              isDarkColorScheme
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
           >
             <Button
               variant="default"
               size="default"
               disabled={loading}
               onPress={handleSave}
-              className="mb-3 w-full bg-blue-500 hover:bg-blue-600"
-              style={{
-                shadowColor: "#3B82F6",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
+              className="mb-3 w-full bg-blue-500"
             >
               {loading ? (
                 <View className="flex-row items-center justify-center">
@@ -790,21 +785,9 @@ export default function EditProfile() {
               size="default"
               onPress={() => router.back()}
               disabled={loading}
-              className={`w-full ${
-                isDarkColorScheme
-                  ? "border-gray-600 bg-transparent"
-                  : "border-gray-300 bg-transparent"
-              }`}
+              className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
             >
-              <Text
-                className={
-                  isDarkColorScheme
-                    ? "text-gray-300 font-medium"
-                    : "text-gray-700 font-medium"
-                }
-              >
-                Batal
-              </Text>
+              <Text className={"text-foreground font-medium"}>Batal</Text>
             </Button>
           </Card>
         </View>
