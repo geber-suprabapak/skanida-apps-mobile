@@ -17,7 +17,6 @@ import { supabase } from "~/utils/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
-import { cn } from "~/lib/utils";
 
 // Tipe data yang BENAR dan sesuai dengan database Anda
 type SiswaProfile = {

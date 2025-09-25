@@ -8,7 +8,6 @@ import {
   Alert,
   Image,
   Clipboard,
-  InteractionManager,
   BackHandler,
   Switch,
 } from "react-native";

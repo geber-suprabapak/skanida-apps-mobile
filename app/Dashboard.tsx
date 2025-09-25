@@ -13,7 +13,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused, useFocusEffect } from "@react-navigation/native";
+import { useIsFocused } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import * as Sentry from "@sentry/react-native";

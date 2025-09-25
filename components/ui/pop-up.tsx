@@ -6,7 +6,6 @@ import {
   Dimensions,
   TouchableOpacity,
   Easing,
-  Image,
 } from "react-native";
 import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
