@@ -34,8 +34,8 @@ import { Clock, CheckCircle, AlertCircle } from "lucide-react-native";
 
 ### 3. UI Components & Patterns
 - **Location & Structure:** All building-block components live in `components/ui/` (e.g., `button.tsx`, `card.tsx`, `input.tsx`, `pop-up.tsx`, `icon.tsx`).
-- **Variants & Styling:** Use `class-variance-authority` (`cva`) to define variant props (e.g., `buttonVariants` in `button.tsx`). Pass `variant` and `size` props and merge classes with `cn(...)`.
-- **Text Context:** UI primitives wrap children with `TextClassContext` for consistent typography (e.g., `buttonTextVariants`).
+- **Variants & Styling:** Use `class-variance-authority` (`cva`) to define variant props (e.g., `buttonVariants` in `button.tsx`).
+- **Text Context:** Use `<Text>` component for all text elements to ensure consistent styling and accessibility. Available variants: default, h1 , h2, h3, h4, p, block-quote, code, lead, large, small, and muted
 - **Icons:** Use `<Icon as={SomeLucideIcon} className="..." />` as described in Styling & Utilities.
 - **Usage Pattern:** Always prefer these primitives over raw `View`/`Text`. They enforce theme tokens, spacing, and accessibility roles.
 
