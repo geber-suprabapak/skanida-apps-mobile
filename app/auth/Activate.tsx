@@ -10,7 +10,13 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, UserCheck, Eye, EyeOff } from "lucide-react-native";
+import {
+  ChevronLeft,
+  UserCheck,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+} from "lucide-react-native";
 import { Icon } from "~/components/ui/icon";
 
 import { supabase } from "~/utils/supabase";
@@ -304,41 +310,54 @@ export default function Activate() {
                 )}
 
                 {nisExists && userProfile && (
-                  <View className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/25">
-                    <Text variant="p" className="text-primary font-medium mb-2">
-                      ✅ NIS ditemukan!
-                    </Text>
-
-                    <View className="space-y-2">
-                      <View className="flex-row justify-between">
+                  <View className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+                    <View className="flex-row items-start">
+                      <Icon
+                        as={CheckCircle2}
+                        className="size-6 text-emerald-600"
+                      />
+                      <View className="ml-3 flex-1 space-y-1">
                         <Text
-                          variant="small"
-                          className="text-primary/80 font-medium"
+                          variant="p"
+                          className="font-semibold text-emerald-700"
                         >
-                          Nama:
+                          NIS ditemukan!
                         </Text>
-                        <Text variant="small" className="text-primary/80">
-                          {userProfile.nama}
+                        <Text className="text-muted-foreground">
+                          Silakan lengkapi email dan password untuk aktivasi akun Anda.
                         </Text>
                       </View>
+                    </View>
 
-                      {userProfile.kelas && (
-                        <View className="flex-row justify-between">
-                          <Text
-                            variant="small"
-                            className="text-primary/80 font-medium"
-                          >
-                            Kelas:
+                    <View className="mt-4 space-y-3 rounded-xl bg-white/70 p-4">
+                      <View className="space-y-2">
+                        <View className="flex-row">
+                          <Text className="w-20 font-medium text-muted-foreground">
+                            Nama
                           </Text>
-                          <Text variant="small" className="text-primary/80">
-                            {userProfile.kelas}
+                          <Text className="flex-1 text-foreground">
+                            {userProfile.nama || "-"}
                           </Text>
                         </View>
-                      )}
-
-                      <Text variant="small" className="text-primary/90 mt-2">
-                        Silakan lengkapi email dan password untuk aktivasi
-                      </Text>
+                        {userProfile.kelas ? (
+                          <View className="flex-row">
+                            <Text className="w-20 font-medium text-muted-foreground">
+                              Kelas
+                            </Text>
+                            <Text className="flex-1 text-foreground">
+                              {userProfile.kelas}
+                            </Text>
+                          </View>
+                        ) : null}
+                        <View className="flex-row">
+                          <Text className="w-20 font-medium text-muted-foreground">
+                            NIS
+                          </Text>
+                          <Text className="flex-1 text-foreground">
+                            {userProfile.nis}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
                 )}
