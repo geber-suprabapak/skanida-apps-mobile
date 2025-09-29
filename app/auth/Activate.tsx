@@ -106,37 +106,49 @@ export default function Activate() {
     }
   };
 
-  const validateForm = () => {
-    let hasError = false;
+  const validateForm = (): boolean => {
+    const validationMessages: string[] = [];
+    const passwordRegex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$/;
+
     setEmailError(false);
     setPasswordError(false);
     setConfirmPasswordError(false);
 
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError(true);
-      hasError = true;
-    }
-    if (!password || password.length < 6) {
-      setPasswordError(true);
-      hasError = true;
-    }
-    if (!confirmPassword || password !== confirmPassword) {
-      setConfirmPasswordError(true);
-      hasError = true;
-    }
-
-    // Password validation
-    const passwordRegex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$/;
-    if (!passwordRegex.test(password)) {
-      Alert.alert(
-        "Password Tidak Sesuai atau kurang kuat",
-        "Password harus memiliki setidaknya 8 karakter, termasuk huruf besar, huruf kecil dan angka.",
+      validationMessages.push(
+        "Email wajib diisi dan harus menggunakan format yang valid.",
       );
-      setPasswordError(true);
-      hasError = true;
     }
 
-    return !hasError;
+    if (!password.trim()) {
+      setPasswordError(true);
+      validationMessages.push("Password wajib diisi.");
+    } else if (!passwordRegex.test(password)) {
+      setPasswordError(true);
+      validationMessages.push(
+        "Password harus minimal 8 karakter dan mengandung huruf besar, huruf kecil, serta angka.",
+      );
+    }
+
+    if (!confirmPassword.trim()) {
+      setConfirmPasswordError(true);
+      validationMessages.push("Konfirmasi password wajib diisi.");
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError(true);
+      validationMessages.push(
+        "Konfirmasi password harus sama dengan password.",
+      );
+    }
+
+    if (validationMessages.length > 0) {
+      Alert.alert(
+        "Periksa kembali data Anda",
+        validationMessages.map((message) => `• ${message}`).join("\n"),
+      );
+    }
+
+    return validationMessages.length === 0;
   };
 
   const handleActivate = async () => {
@@ -146,7 +158,6 @@ export default function Activate() {
     }
 
     if (!validateForm()) {
-      Alert.alert("Error", "Mohon lengkapi semua field dengan benar");
       return;
     }
 
