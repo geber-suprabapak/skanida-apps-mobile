@@ -12,4 +12,4 @@ pnpm install
 pnpm android / pnpm start
 ```
 
-> **Note:** Please configure ANDROID_HOME enviroment variable properly before running pnpm android
+> **Note:** Please configure ANDROID_HOME environment variable properly before running pnpm android
