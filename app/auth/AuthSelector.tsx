@@ -1,7 +1,7 @@
 // filepath: e:\skanida-apps-mobile\app\auth\AuthSelector.tsx
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -14,20 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { H1, H3 } from "~/components/ui/typography";
-import { useColorScheme } from "~/lib/useColorScheme";
 
 const SkanidaLogo = require("../../assets/skanidatransparan.png");
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { isDarkColorScheme, setColorScheme } = useColorScheme();
-
-  // Optimized color scheme toggle with useCallback
-  const toggleColorScheme = useCallback((): void => {
-    const newTheme: "light" | "dark" = isDarkColorScheme ? "light" : "dark";
-    setColorScheme(newTheme);
-  }, [isDarkColorScheme, setColorScheme]);
 
   // Handle hardware back button - show exit confirmation
   useEffect(() => {
@@ -55,9 +46,7 @@ export default function LoginScreen() {
     return () => backHandler.remove();
   }, []);
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-    >
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -69,8 +58,8 @@ export default function LoginScreen() {
           {/* Logo Section */}
           <View className="items-center mb-16">
             <TouchableOpacity
-              onPress={toggleColorScheme}
-              className={`w-52 h-52 rounded-full shadow-lg mb-10 ${isDarkColorScheme ? "bg-white" : "bg-white/80"} items-center justify-center`}
+              onPress={() => {}}
+              className={`w-52 h-52 rounded-full shadow-lg mb-10 items-center justify-center bg-card dark:bg-gray-800`}
               activeOpacity={0.8}
             >
               <Image
@@ -79,13 +68,14 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
             </TouchableOpacity>
-            <H1
-              className={`text-4xl font-bold text-center mb-4 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
+            <Text
+              variant="h1"
+              className={`text-4xl font-bold text-center mb-4 text-foreground`}
             >
               Skanida Apps
-            </H1>
+            </Text>
             <Text
-              className={`text-center text-lg leading-relaxed max-w-sm px-4 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+              className={`text-center text-lg leading-relaxed max-w-sm px-4 text-foreground`}
             >
               Sistem Absensi SMKN2 Magelang
             </Text>
@@ -95,42 +85,27 @@ export default function LoginScreen() {
             <Button
               variant="default"
               size="lg"
-              className={`w-full h-16 rounded-xl shadow-lg ${
-                isDarkColorScheme
-                  ? "bg-white shadow-gray-900/20"
-                  : "bg-gray-900 shadow-gray-900/10"
-              }`}
+              className={`w-full h-16 rounded-xl shadow-lg`}
               onPress={() => router.push("/auth/Login")}
             >
-              <H3
-                className={`font-semibold text-lg ${isDarkColorScheme ? "text-gray-900" : "text-white"}`}
-              >
+              <Text variant="h3" className={`font-semibold text-lg `}>
                 Masuk
-              </H3>
+              </Text>
             </Button>
-
             <Button
               variant="outline"
               size="lg"
-              className={`w-full h-16 rounded-xl border-2  ${
-                isDarkColorScheme
-                  ? "border-gray-600 bg-transparent"
-                  : "border-gray-300 bg-transparent"
-              }`}
-              onPress={() => router.push("/auth/Register")}
+              className={`w-full h-16 rounded-xl border-2 border-border dark:border-gray-700`}
+              onPress={() => router.push("/auth/Activate")}
             >
-              <H3
-                className={`font-semibold text-lg ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-              >
+              <Text variant="h3" className={`font-semibold text-lg `}>
                 Daftar
-              </H3>
+              </Text>
             </Button>
           </View>
           {/* Footer */}
           <View className="mt-20">
-            <Text
-              className={`text-center text-sm ${isDarkColorScheme ? "text-gray-500" : "text-gray-400"}`}
-            >
+            <Text variant="muted" className="text-center text-muted-foreground">
               © 2025 Skanida Apps
             </Text>
           </View>

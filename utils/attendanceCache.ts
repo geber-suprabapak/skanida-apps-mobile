@@ -21,12 +21,21 @@ interface AttendanceRecord {
 export class AttendanceCache {
   private static instance: AttendanceCache;
   private readonly CACHE_PREFIX = "attendance_cache_";
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-  private readonly MAX_CACHE_SIZE = 50; // Maximum number of cached months
+  private readonly CACHE_DURATION = 2 * 60 * 1000; // 2 minutes for faster refresh
+  private readonly MAX_CACHE_SIZE = 30; // Reduced cache size for better performance
+  private readonly MEMORY_CACHE = new Map<
+    string,
+    CacheItem<Record<string, AttendanceRecord>>
+  >();
+  private readonly MEMORY_CACHE_DURATION = 30 * 1000; // 30 seconds in memory
 
   public static getInstance(): AttendanceCache {
     if (!AttendanceCache.instance) {
       AttendanceCache.instance = new AttendanceCache();
+      // Setup memory cleanup interval
+      setInterval(() => {
+        AttendanceCache.instance.cleanupMemoryCache();
+      }, 60000); // Clean every minute
     }
     return AttendanceCache.instance;
   }
@@ -53,11 +62,20 @@ export class AttendanceCache {
         expiry: Date.now() + this.CACHE_DURATION,
       };
 
+      // Store in memory cache for ultra-fast access
+      this.MEMORY_CACHE.set(key, {
+        ...cacheItem,
+        expiry: Date.now() + this.MEMORY_CACHE_DURATION,
+      });
+
+      // Store in AsyncStorage for persistence
       await AsyncStorage.setItem(key, JSON.stringify(cacheItem));
       await this.updateMetadata(key);
       await this.cleanupOldCache();
 
-      console.log(`✅ Cached attendance data for ${year}-${month + 1}`);
+      console.log(
+        `✅ Cached attendance data for ${year}-${month + 1} (memory + storage)`,
+      );
     } catch (error) {
       console.error("Error setting cache:", error);
     }
@@ -70,6 +88,20 @@ export class AttendanceCache {
   ): Promise<Record<string, AttendanceRecord> | null> {
     try {
       const key = this.getKey(userId, year, month);
+
+      // Check memory cache first (ultra-fast)
+      const memoryCache = this.MEMORY_CACHE.get(key);
+      if (memoryCache && Date.now() < memoryCache.expiry) {
+        console.log(`🚀 Memory cache hit for ${year}-${month + 1}`);
+        return memoryCache.data;
+      }
+
+      // Remove expired memory cache
+      if (memoryCache) {
+        this.MEMORY_CACHE.delete(key);
+      }
+
+      // Check AsyncStorage cache
       const cached = await AsyncStorage.getItem(key);
 
       if (!cached) {
@@ -88,7 +120,13 @@ export class AttendanceCache {
         return null;
       }
 
-      console.log(`✅ Cache hit for ${year}-${month + 1}`);
+      // Store in memory for next access
+      this.MEMORY_CACHE.set(key, {
+        ...cacheItem,
+        expiry: Date.now() + this.MEMORY_CACHE_DURATION,
+      });
+
+      console.log(`✅ Storage cache hit for ${year}-${month + 1}`);
       return cacheItem.data;
     } catch (error) {
       console.error("Error getting cache:", error);
@@ -99,6 +137,11 @@ export class AttendanceCache {
   async invalidate(userId: string, year: number, month: number): Promise<void> {
     try {
       const key = this.getKey(userId, year, month);
+
+      // Remove from memory cache
+      this.MEMORY_CACHE.delete(key);
+
+      // Remove from AsyncStorage
       await AsyncStorage.removeItem(key);
       await this.removeFromMetadata(key);
       console.log(`🗑️ Invalidated cache for ${year}-${month + 1}`);
@@ -109,6 +152,13 @@ export class AttendanceCache {
 
   async invalidateUser(userId: string): Promise<void> {
     try {
+      // Clear memory cache for user
+      const memoryKeysToDelete = Array.from(this.MEMORY_CACHE.keys()).filter(
+        (key) => key.includes(`${this.CACHE_PREFIX}${userId}_`),
+      );
+      memoryKeysToDelete.forEach((key) => this.MEMORY_CACHE.delete(key));
+
+      // Clear AsyncStorage cache for user
       const metadata = await this.getMetadata();
       const userKeys = metadata.filter((key) =>
         key.includes(`${this.CACHE_PREFIX}${userId}_`),
@@ -119,7 +169,9 @@ export class AttendanceCache {
         this.setMetadata(metadata.filter((key) => !userKeys.includes(key))),
       ]);
 
-      console.log(`🗑️ Invalidated all cache for user ${userId}`);
+      console.log(
+        `🗑️ Invalidated all cache for user ${userId} (memory + storage)`,
+      );
     } catch (error) {
       console.error("Error invalidating user cache:", error);
     }
@@ -127,14 +179,52 @@ export class AttendanceCache {
 
   async clear(): Promise<void> {
     try {
+      // Clear memory cache
+      this.MEMORY_CACHE.clear();
+
+      // Clear AsyncStorage cache
       const metadata = await this.getMetadata();
       await Promise.all([
         ...metadata.map((key) => AsyncStorage.removeItem(key)),
         AsyncStorage.removeItem(this.getMetadataKey()),
       ]);
-      console.log("🗑️ Cleared all attendance cache");
+      console.log("🗑️ Cleared all attendance cache (memory + storage)");
     } catch (error) {
       console.error("Error clearing cache:", error);
+    }
+  }
+
+  // Add method to force refresh current month
+  async forceRefreshCurrentMonth(userId: string): Promise<void> {
+    try {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      await this.invalidate(userId, currentYear, currentMonth);
+      console.log(`🔄 Force refreshed current month cache for user ${userId}`);
+    } catch (error) {
+      console.error("Error force refreshing current month:", error);
+    }
+  }
+
+  // Clean up expired memory cache periodically
+  cleanupMemoryCache(): void {
+    const now = Date.now();
+    const expiredKeys: string[] = [];
+
+    this.MEMORY_CACHE.forEach((value, key) => {
+      if (now > value.expiry) {
+        expiredKeys.push(key);
+      }
+    });
+
+    expiredKeys.forEach((key) => this.MEMORY_CACHE.delete(key));
+
+    if (expiredKeys.length > 0) {
+      console.log(
+        `🧹 Cleaned ${expiredKeys.length} expired memory cache items`,
+      );
     }
   }
 

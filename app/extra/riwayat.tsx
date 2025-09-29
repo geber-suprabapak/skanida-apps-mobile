@@ -1,26 +1,73 @@
-import React, { useEffect, useState } from "react";
-import { View, TouchableOpacity, BackHandler, Alert } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import {
+  View,
+  TouchableOpacity,
+  BackHandler,
+  Alert,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 
 import { Text } from "~/components/ui/text";
-import AttendanceCalendar from "~/components/ui/attendance-calendar";
+import AttendanceCalendar, {
+  AttendanceCalendarRef,
+} from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
-import { useColorScheme } from "~/lib/useColorScheme";
-import { ChevronLeft } from "~/lib/icons/ChevronLeft";
-import { Calendar } from "~/lib/icons/Calendar";
-import { Settings } from "~/lib/icons/Settings";
-import { History } from "~/lib/icons/History";
+import { Icon } from "~/components/ui/icon";
+import { ChevronLeft, Settings, RefreshCw } from "lucide-react-native";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 
 export default function Riwayat() {
-  const { isDarkColorScheme } = useColorScheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isFocused = useIsFocused();
+  const colorScheme = useColorScheme();
+  const isDarkColorScheme = colorScheme === "dark";
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const calendarRef = useRef<AttendanceCalendarRef>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh when screen becomes focused
+  useEffect(() => {
+    if (isFocused && user?.id) {
+      const autoRefresh = async () => {
+        try {
+          // Clear cache for current and selected months for fresh data
+          const currentDate = new Date();
+          const selectedYear = selectedDate.getFullYear();
+          const selectedMonth = selectedDate.getMonth();
+          const currentYear = currentDate.getFullYear();
+          const currentMonth = currentDate.getMonth();
+
+          // Clear cache for both current and selected months
+          await Promise.all([
+            attendanceCache.invalidate(user.id, currentYear, currentMonth),
+            selectedYear !== currentYear || selectedMonth !== currentMonth
+              ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
+              : Promise.resolve(),
+          ]);
+
+          // Trigger calendar refresh
+          if (calendarRef.current) {
+            await calendarRef.current.refetch(true);
+          }
+
+          console.log("📅 Auto-refreshed riwayat data on focus");
+        } catch (error) {
+          console.error("Error auto-refreshing riwayat:", error);
+        }
+      };
+
+      // Small delay to ensure screen is fully loaded
+      const timeoutId = setTimeout(autoRefresh, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isFocused, user?.id, selectedDate]);
 
   // Handle back button
   useEffect(() => {
@@ -66,21 +113,62 @@ export default function Riwayat() {
       if (user?.id) {
         await attendanceCache.invalidateUser(user.id);
         Alert.alert("✅ Success", "Cache cleared successfully");
+        // Force refresh the calendar after clearing cache
+        window.location?.reload?.(); // For web
       }
     } catch (error) {
       Alert.alert("❌ Error", "Failed to clear cache");
     }
   };
 
-  // Date change handler for custom picker
-  const handleDateChange = (date: Date) => {
+  // Force refresh function for manual data refresh
+  const forceRefresh = async () => {
+    if (isRefreshing) return; // Prevent double-refresh
+
+    setIsRefreshing(true);
+    try {
+      if (user?.id) {
+        // Clear cache for selected month first for instant feedback
+        const selectedYear = selectedDate.getFullYear();
+        const selectedMonth = selectedDate.getMonth();
+
+        await attendanceCache.invalidate(user.id, selectedYear, selectedMonth);
+
+        // Trigger calendar refetch with force refresh
+        if (calendarRef.current) {
+          await calendarRef.current.refetch(true);
+        }
+
+        console.log("🔄 Manual refresh completed");
+      }
+    } catch (error) {
+      console.error("Error force refreshing:", error);
+      Alert.alert("Error", "Failed to refresh data. Please try again.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Optimized date change handler
+  const handleDateChange = async (date: Date) => {
     setSelectedDate(date);
+
+    // Pre-clear cache for the new month to ensure fresh data
+    if (user?.id) {
+      try {
+        await attendanceCache.invalidate(
+          user.id,
+          date.getFullYear(),
+          date.getMonth(),
+        );
+      } catch (error) {
+        console.error("Error clearing cache for new date:", error);
+      }
+    }
   };
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDarkColorScheme ? "bg-gray-900" : "bg-background"}`}
-    >
+    <SafeAreaView className={`flex-1 bg-background`}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -88,13 +176,7 @@ export default function Riwayat() {
       />
 
       {/* Header */}
-      <View
-        className={`flex-row items-center p-4 border-b ${
-          isDarkColorScheme
-            ? "border-gray-700 bg-gray-900"
-            : "border-border bg-background"
-        }`}
-      >
+      <View className={`flex-row items-center p-4 border-b border-border`}>
         <TouchableOpacity
           onPress={() => {
             try {
@@ -107,56 +189,51 @@ export default function Riwayat() {
           }}
           className="mr-3"
         >
-          <ChevronLeft
-            size={24}
-            color={isDarkColorScheme ? "#ffffff" : "#000000"}
-          />
+          <Icon as={ChevronLeft} className={`size-6 text-foreground`} />
         </TouchableOpacity>
-        
-        <Text
-          className={`text-lg font-bold flex-1 ${
-            isDarkColorScheme ? "text-white" : "text-foreground"
-          }`}
-        >
+
+        <Text variant="large" className="flex-1 text-foreground">
           Riwayat Kehadiran
         </Text>
 
         {/* Cache management button (only in development) */}
         {__DEV__ && (
-          <TouchableOpacity
-            onPress={showCacheInfo}
-            className="ml-3"
-          >
-            <Settings
-              size={20}
-              color={isDarkColorScheme ? "#ffffff" : "#000000"}
-            />
+          <TouchableOpacity onPress={showCacheInfo} className="ml-3">
+            <Icon as={Settings} className={`size-5 text-foreground`} />
           </TouchableOpacity>
         )}
+
+        {/* Force refresh button with loading state */}
+        <TouchableOpacity
+          onPress={forceRefresh}
+          className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
+          disabled={isRefreshing}
+        >
+          <Icon
+            as={RefreshCw}
+            className={`size-5 text-foreground ${isRefreshing ? "animate-spin" : ""}`}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Month/Year Selector */}
-      <View
-        className={`p-4 border-b ${
-          isDarkColorScheme
-            ? "border-gray-700 bg-gray-800"
-            : "border-border bg-background"
-        }`}
-      >
+      {/* Month/Year Picker */}
+      <View className={`p-4 border-b border-border`}>
         <MonthYearPicker
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
-          isDarkColorScheme={isDarkColorScheme}
           minimumDate={new Date(2020, 0, 1)}
           maximumDate={new Date()}
+          isDarkColorScheme={isDarkColorScheme}
         />
       </View>
 
       {/* Calendar Component */}
       <AttendanceCalendar
-        isDarkColorScheme={isDarkColorScheme}
+        ref={calendarRef}
         currentYear={selectedDate.getFullYear()}
         currentMonth={selectedDate.getMonth()}
+        isDarkColorScheme={isDarkColorScheme}
+        key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
       />
     </SafeAreaView>
   );

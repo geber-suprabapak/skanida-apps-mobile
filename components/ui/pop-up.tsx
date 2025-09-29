@@ -6,11 +6,11 @@ import {
   Dimensions,
   TouchableOpacity,
   Easing,
-  Image,
 } from "react-native";
 import { Text } from "./text";
-import { CheckCircle } from "~/lib/icons/CheckCircle";
-import { useColorScheme } from "~/lib/useColorScheme";
+import { Icon } from "~/components/ui/icon";
+import { CheckCircle } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -54,7 +54,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   time,
   processingTime,
 }) => {
-  const { isDarkColorScheme } = useColorScheme();
+  const { colorScheme } = useColorScheme();
 
   // Animation values
   const modalScale = useRef(new Animated.Value(0)).current;
@@ -303,7 +303,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               opacity: modalOpacity,
             }}
             className={`w-full max-w-sm rounded-3xl p-8 items-center ${
-              isDarkColorScheme ? "bg-gray-800" : "bg-white"
+              colorScheme ? "bg-gray-800" : "bg-white"
             }`}
           >
             {/* Success Icon */}
@@ -322,7 +322,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               className="mb-6"
             >
               <View className="w-20 h-20 rounded-full bg-green-500 items-center justify-center">
-                <CheckCircle size={40} color="white" />
+                <Icon as={CheckCircle} className="size-10 text-white" />
               </View>
             </Animated.View>
 
@@ -335,7 +335,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
             >
               <Text
                 className={`text-2xl font-bold text-center mb-2 ${
-                  isDarkColorScheme ? "text-white" : "text-gray-900"
+                  colorScheme === "dark" ? "text-white" : "text-gray-900"
                 }`}
               >
                 {message.title}
@@ -343,7 +343,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
 
               <Text
                 className={`text-base text-center mb-4 ${
-                  isDarkColorScheme ? "text-gray-300" : "text-gray-600"
+                  colorScheme === "dark" ? "text-gray-300" : "text-gray-600"
                 }`}
               >
                 {message.subtitle}
@@ -352,12 +352,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               {/* Time Display */}
               <View
                 className={`px-4 py-2 rounded-full mb-2 ${
-                  isDarkColorScheme ? "bg-gray-700" : "bg-gray-100"
+                  colorScheme === "dark" ? "bg-gray-700" : "bg-gray-100"
                 }`}
               >
                 <Text
                   className={`text-sm font-medium ${
-                    isDarkColorScheme ? "text-gray-300" : "text-gray-700"
+                    colorScheme === "dark" ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
                   {currentTime}
@@ -368,12 +368,14 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               {processingTime && (
                 <View
                   className={`px-3 py-1 rounded-full ${
-                    isDarkColorScheme ? "bg-green-800/30" : "bg-green-100"
+                    colorScheme === "dark" ? "bg-green-800/30" : "bg-green-100"
                   }`}
                 >
                   <Text
                     className={`text-xs font-medium ${
-                      isDarkColorScheme ? "text-green-300" : "text-green-700"
+                      colorScheme === "dark"
+                        ? "text-green-300"
+                        : "text-green-700"
                     }`}
                   >
                     {formatProcessingTime(processingTime)}
