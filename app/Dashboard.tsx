@@ -673,7 +673,7 @@ export default function Dashboard() {
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
           <Text variant="small" className="font-bold text-foreground">
-            v1.8.1-internaldev | Branch: develop
+            v1.8.2-internaldev | Branch: develop
           </Text>
         </View>
       </SafeAreaView>
