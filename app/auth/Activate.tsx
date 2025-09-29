@@ -324,13 +324,23 @@ export default function Activate() {
                           NIS ditemukan!
                         </Text>
                         <Text className="text-muted-foreground">
-                          Silakan lengkapi email dan password untuk aktivasi akun Anda.
+                          Silakan lengkapi email dan password untuk aktivasi
+                          akun Anda.
                         </Text>
                       </View>
                     </View>
 
                     <View className="mt-4 space-y-3 rounded-xl bg-white/70 p-4">
                       <View className="space-y-2">
+                        <View className="flex-row">
+                          <Text className="w-20 font-medium text-muted-foreground">
+                            NIS
+                          </Text>
+                          <Text className="flex-1 text-foreground">
+                            {userProfile.nis}
+                          </Text>
+                        </View>
+
                         <View className="flex-row">
                           <Text className="w-20 font-medium text-muted-foreground">
                             Nama
@@ -349,14 +359,6 @@ export default function Activate() {
                             </Text>
                           </View>
                         ) : null}
-                        <View className="flex-row">
-                          <Text className="w-20 font-medium text-muted-foreground">
-                            NIS
-                          </Text>
-                          <Text className="flex-1 text-foreground">
-                            {userProfile.nis}
-                          </Text>
-                        </View>
                       </View>
                     </View>
                   </View>
