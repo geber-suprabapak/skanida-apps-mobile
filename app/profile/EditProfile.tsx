@@ -10,9 +10,11 @@ import {
   TouchableWithoutFeedback,
   Modal,
   BackHandler,
+  Image as RNImage,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -54,6 +56,39 @@ const clearProfileCache = async () => {
   } catch (error) {
     console.log("Failed to clear profile cache:", error);
   }
+};
+
+const base64ToUint8Array = (base64: string): Uint8Array => {
+  const cleaned = base64.replace(/\s/g, "");
+  const base64Chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+  let bufferLength = cleaned.length * 0.75;
+  if (cleaned.endsWith("==")) {
+    bufferLength -= 2;
+  } else if (cleaned.endsWith("=")) {
+    bufferLength -= 1;
+  }
+
+  const bytes = new Uint8Array(bufferLength);
+
+  let p = 0;
+  for (let i = 0; i < cleaned.length; i += 4) {
+    const encoded1 = base64Chars.indexOf(cleaned[i]);
+    const encoded2 = base64Chars.indexOf(cleaned[i + 1]);
+    const encoded3 = base64Chars.indexOf(cleaned[i + 2]);
+    const encoded4 = base64Chars.indexOf(cleaned[i + 3]);
+
+    bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+    if (encoded3 !== 64 && encoded3 !== -1) {
+      bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+    }
+    if (encoded4 !== 64 && encoded4 !== -1) {
+      bytes[p++] = ((encoded3 & 3) << 6) | encoded4;
+    }
+  }
+
+  return bytes;
 };
 
 export default function EditProfile() {
@@ -442,17 +477,15 @@ export default function EditProfile() {
       const fileNameInBucket = `avatar_${user.id}_${Date.now()}.${fileExt}`;
       const contentType = `image/${fileExt === "jpg" ? "jpeg" : fileExt}`;
 
-      const formData = new FormData();
-      formData.append("file", {
-        uri: uri,
-        name: fileNameInBucket,
-        type: contentType,
-      } as any);
+      const base64Data = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const fileBytes = base64ToUint8Array(base64Data);
 
       const { data: storageData, error: storageError } = await supabase.storage
         .from("avatars")
-        .upload(fileNameInBucket, formData, {
-          contentType: contentType,
+        .upload(fileNameInBucket, fileBytes, {
+          contentType,
           upsert: true,
         });
 
@@ -865,7 +898,7 @@ export default function EditProfile() {
                   <View className="flex-1 bg-black/90 items-center justify-center">
                     {avatarUrl ? (
                       <View className="w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
-                        <Image
+                        <RNImage
                           source={{ uri: avatarUrl }}
                           style={{ width: "100%", height: "100%" }}
                           resizeMode="cover"
