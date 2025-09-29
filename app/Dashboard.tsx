@@ -40,7 +40,7 @@ import {
 } from "lucide-react-native";
 
 // Fallback profile image in case avatar_url is not available
-const fallbackProfileImage = require("../assets/skanidatransparan.png");
+const fallbackProfileImage = require("../assets/user-round.png");
 
 // Define interface for user profile data
 interface UserProfile {
