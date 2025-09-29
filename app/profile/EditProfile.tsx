@@ -7,7 +7,10 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  Modal,
   BackHandler,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,7 +21,14 @@ import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
-import { ChevronLeft, Camera } from "lucide-react-native";
+import {
+  ChevronLeft,
+  Camera,
+  Image as ImageIcon,
+  Trash2,
+  X,
+  Eye,
+} from "lucide-react-native";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 
@@ -64,6 +74,8 @@ export default function EditProfile() {
   const [fetchProfileError, setFetchProfileError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [isAvatarOptionsVisible, setIsAvatarOptionsVisible] = useState(false);
+  const [isViewAvatarVisible, setIsViewAvatarVisible] = useState(false);
 
   const [initialAbsenceNumber, setInitialAbsenceNumber] = useState("");
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
@@ -312,7 +324,7 @@ export default function EditProfile() {
     user?.user_metadata?.full_name,
   ]);
 
-  const pickImage = async () => {
+  const pickImageFromGallery = async () => {
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -340,6 +352,85 @@ export default function EditProfile() {
       console.error("Error picking image:", error);
       Alert.alert("Error", "Failed to pick image");
     }
+  };
+
+  const captureImageWithCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission denied",
+          "Kami membutuhkan izin kamera untuk mengambil foto profil.",
+        );
+        return;
+      }
+
+      setIsAvatarOptionsVisible(false);
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        await uploadAvatar(imageUri);
+      }
+    } catch (error) {
+      console.error("Error capturing image:", error);
+      Alert.alert("Error", "Gagal mengambil foto dari kamera");
+    }
+  };
+
+  const handleChooseFromGallery = async () => {
+    setIsAvatarOptionsVisible(false);
+    await pickImageFromGallery();
+  };
+
+  const handleRemoveAvatar = () => {
+    if (!avatarUrl) {
+      Alert.alert(
+        "Tidak Ada Foto",
+        "Anda belum memiliki foto profil untuk dihapus.",
+      );
+      return;
+    }
+
+    setIsAvatarOptionsVisible(false);
+
+    Alert.alert(
+      "Hapus Foto Profil",
+      "Foto profil akan dihapus setelah Anda menekan Simpan Perubahan. Lanjutkan?",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: () => {
+            setAvatarUrl(null);
+            Alert.alert(
+              "Perlu Simpan",
+              "Tekan Simpan Perubahan untuk menghapus foto profil sepenuhnya.",
+            );
+          },
+        },
+      ],
+    );
+  };
+
+  const handleViewAvatar = () => {
+    if (!avatarUrl) {
+      Alert.alert(
+        "Tidak Ada Foto",
+        "Unggah foto profil terlebih dahulu untuk menampilkannya.",
+      );
+      return;
+    }
+
+    setIsAvatarOptionsVisible(false);
+    setIsViewAvatarVisible(true);
   };
 
   const uploadAvatar = async (uri: string) => {
@@ -638,13 +729,15 @@ export default function EditProfile() {
 
                     <TouchableOpacity
                       className="absolute bottom-0 right-0 bg-blue-500 dark:bg-blue-600 rounded-full p-3"
-                      onPress={pickImage}
+                      onPress={() => setIsAvatarOptionsVisible(true)}
+                      disabled={uploadingAvatar}
                       style={{
                         shadowColor: "#3B82F6",
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.3,
                         shadowRadius: 8,
                         elevation: 6,
+                        opacity: uploadingAvatar ? 0.6 : 1,
                       }}
                     >
                       <Icon as={Camera} className="size-5 text-white" />
@@ -653,6 +746,138 @@ export default function EditProfile() {
                 )}
               </View>
 
+              <Modal
+                visible={isAvatarOptionsVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setIsAvatarOptionsVisible(false)}
+              >
+                <View className="flex-1 justify-end">
+                  <TouchableWithoutFeedback
+                    onPress={() => setIsAvatarOptionsVisible(false)}
+                  >
+                    <View className="flex-1 bg-black/40" />
+                  </TouchableWithoutFeedback>
+
+                  <SafeAreaView
+                    edges={["bottom"]}
+                    className="bg-card dark:bg-gray-900 rounded-t-3xl px-6 pt-4 pb-6"
+                  >
+                    <View className="items-center">
+                      <View className="w-12 h-1 rounded-full bg-muted mb-4" />
+                      <Text variant="h3" className="text-foreground mb-6">
+                        Foto Profil
+                      </Text>
+
+                      <View className="flex-row justify-between w-full">
+                        <TouchableOpacity
+                          className="items-center flex-1"
+                          onPress={handleViewAvatar}
+                          activeOpacity={0.85}
+                          disabled={!avatarUrl}
+                        >
+                          <View
+                            className={`w-14 h-14 rounded-full items-center justify-center mb-2 ${avatarUrl ? "bg-blue-500/10 dark:bg-blue-500/20" : "bg-muted"}`}
+                          >
+                            <Icon
+                              as={Eye}
+                              className={`size-7 ${avatarUrl ? "text-blue-500" : "text-muted-foreground"}`}
+                            />
+                          </View>
+                          <Text
+                            variant="small"
+                            className={`font-medium ${avatarUrl ? "text-foreground" : "text-muted-foreground"}`}
+                          >
+                            Lihat Foto
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          className="items-center flex-1"
+                          onPress={captureImageWithCamera}
+                          activeOpacity={0.85}
+                        >
+                          <View className="w-14 h-14 rounded-full items-center justify-center mb-2 bg-blue-500/10 dark:bg-blue-500/20">
+                            <Icon as={Camera} className="size-7 text-blue-500" />
+                          </View>
+                          <Text variant="small" className="font-medium text-foreground">
+                            Kamera
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          className="items-center flex-1"
+                          onPress={handleChooseFromGallery}
+                          activeOpacity={0.85}
+                        >
+                          <View className="w-14 h-14 rounded-full items-center justify-center mb-2 bg-blue-500/10 dark:bg-blue-500/20">
+                            <Icon as={ImageIcon} className="size-7 text-blue-500" />
+                          </View>
+                          <Text variant="small" className="font-medium text-foreground">
+                            Galeri
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          className="items-center flex-1"
+                          onPress={handleRemoveAvatar}
+                          activeOpacity={0.85}
+                          disabled={!avatarUrl}
+                        >
+                          <View
+                            className={`w-14 h-14 rounded-full items-center justify-center mb-2 ${avatarUrl ? "bg-red-500/10" : "bg-muted"}`}
+                          >
+                            <Icon
+                              as={Trash2}
+                              className={`size-7 ${avatarUrl ? "text-red-500" : "text-muted-foreground"}`}
+                            />
+                          </View>
+                          <Text
+                            variant="small"
+                            className={`font-medium ${avatarUrl ? "text-red-500" : "text-muted-foreground"}`}
+                          >
+                            Hapus
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={() => setIsAvatarOptionsVisible(false)}
+                        className="mt-6 w-full py-3 rounded-full bg-muted items-center"
+                        activeOpacity={0.75}
+                      >
+                        <Text variant="default" className="text-foreground">
+                          Batal
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </SafeAreaView>
+                </View>
+              </Modal>
+              <Modal
+                visible={isViewAvatarVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsViewAvatarVisible(false)}
+              >
+                <TouchableWithoutFeedback
+                  onPress={() => setIsViewAvatarVisible(false)}
+                >
+                  <View className="flex-1 bg-black/90 items-center justify-center">
+                    {avatarUrl ? (
+                      <View className="w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
+                        <Image
+                          source={{ uri: avatarUrl }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    ) : (
+                      <Text className="text-white">Foto profil tidak tersedia.</Text>
+                    )}
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
               <Text
                 variant={"small"}
                 className={`text-center text-muted-foreground`}

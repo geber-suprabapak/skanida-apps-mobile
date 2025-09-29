@@ -40,7 +40,7 @@ import {
 } from "lucide-react-native";
 
 // Fallback profile image in case avatar_url is not available
-const fallbackProfileImage = require("../assets/muflih.jpg");
+const fallbackProfileImage = require("../assets/skanidatransparan.png");
 
 // Define interface for user profile data
 interface UserProfile {
@@ -563,7 +563,7 @@ export default function Dashboard() {
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
             <Text variant="h3" className="mb-4 text-foreground">
-              Aksi Cepat
+              Halo, {displayName || "User"}
             </Text>
 
             {/* Large Square Primary Action - Attendance (Centered) */}
