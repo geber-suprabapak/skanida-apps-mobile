@@ -7,7 +7,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
   BackHandler,
   Alert,
   RefreshControl,
@@ -37,10 +36,10 @@ import {
   History,
   ClipboardPenLine,
   Settings,
+  UserRound,
 } from "lucide-react-native";
 
-// Fallback profile image in case avatar_url is not available
-const fallbackProfileImage = require("../assets/user-round.png");
+
 
 // Define interface for user profile data
 interface UserProfile {
@@ -315,11 +314,20 @@ export default function Dashboard() {
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName =
-    profileData?.full_name?.split(" ").slice(0, 2).join(" ") || "";
+  const rawName =
+    profileData?.full_name ??
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    "";
 
-  // Get user's avatar URL from profile data or from metadata
-  const avatarUrl = user?.user_metadata?.avatar_url;
+  const displayName = rawName
+    ? rawName.split(" ").slice(0, 2).join(" ")
+    : "Pengguna";
+
+  // Get user's avatar URL prioritizing profile data and falling back to metadata
+  const avatarUrl =
+    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
+  const hasCustomAvatar = Boolean(avatarUrl);
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -427,15 +435,20 @@ export default function Dashboard() {
                 activeOpacity={0.85}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Avatar
-                  size="md"
-                  fallback={displayName.charAt(0).toUpperCase() || "?"}
-                  className="mr-3"
-                  source={
-                    avatarUrl ||
-                    Image.resolveAssetSource(fallbackProfileImage).uri
-                  }
-                />
+                {hasCustomAvatar ? (
+                  <Avatar
+                    size="md"
+                    fallback={displayName.charAt(0).toUpperCase() || "?"}
+                    className="mr-3"
+                    source={avatarUrl ?? undefined}
+                  />
+                ) : (
+                  <View className="mr-3">
+                    <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
+                      <Icon as={UserRound} className="size-6 text-blue-500 dark:text-blue-400" />
+                    </View>
+                  </View>
+                )}
                 <View className="flex-1">
                   <Text variant="large" className="text-foreground">
                     {displayName}
