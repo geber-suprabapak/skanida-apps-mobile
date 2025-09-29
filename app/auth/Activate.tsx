@@ -126,11 +126,11 @@ export default function Activate() {
     }
 
     // Password validation
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$/;
     if (!passwordRegex.test(password)) {
       Alert.alert(
         "Password Tidak Sesuai atau kurang kuat",
-        "Password harus memiliki setidaknya 8 karakter, termasuk huruf besar dan angka.",
+        "Password harus memiliki setidaknya 8 karakter, termasuk huruf besar, huruf kecil dan angka.",
       );
       setPasswordError(true);
       hasError = true;
