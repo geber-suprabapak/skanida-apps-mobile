@@ -338,6 +338,7 @@ export default function Dashboard() {
   };
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
+  const navigateToEditProfile = () => router.push("/profile/EditProfile");
 
   // Prevent back navigation
   useEffect(() => {
@@ -420,7 +421,12 @@ export default function Dashboard() {
           {/* --- Header Section --- */}
           <View className="px-6 pt-4 pb-6 bg-background">
             <View className="flex-row items-center justify-between mb-4">
-              <View className="flex-row items-center flex-1">
+              <TouchableOpacity
+                className="flex-row items-center flex-1"
+                onPress={navigateToEditProfile}
+                activeOpacity={0.85}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Avatar
                   size="md"
                   fallback={displayName.charAt(0).toUpperCase() || "?"}
@@ -438,7 +444,7 @@ export default function Dashboard() {
                     {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
 
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
