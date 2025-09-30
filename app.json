@@ -32,8 +32,18 @@
         {
           "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
       ]
-      
     ],
     "experiments": {
       "typedRoutes": true,

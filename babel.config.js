@@ -1,6 +1,5 @@
 module.exports = function (api) {
   api.cache(true);
-  const plugins = [];
 
   return {
     presets: [
@@ -14,6 +13,9 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
 
-    plugins: [["react-native-worklets-core/plugin"]],
+    plugins: [
+      ["react-native-worklets-core/plugin"],
+      "react-native-reanimated/plugin",
+    ],
   };
 };
