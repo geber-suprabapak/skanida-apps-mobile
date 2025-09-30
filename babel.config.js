@@ -14,6 +14,6 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
 
-    plugins,
+    plugins: [["react-native-worklets-core/plugin"]],
   };
 };
