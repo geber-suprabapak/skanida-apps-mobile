@@ -528,7 +528,6 @@ export default function EditProfile() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Only update the avatar_url in user metadata (absence number is read-only)
       const { error } = await supabase.auth.updateUser({
         data: {
           avatar_url: avatarUrl,
@@ -604,8 +603,8 @@ export default function EditProfile() {
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
 
-      setInitialAbsenceNumber(absenceNumber);
-      setInitialAvatarUrl(avatarUrl);
+  setInitialAbsenceNumber(absenceNumber);
+  setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
         {
@@ -955,9 +954,7 @@ export default function EditProfile() {
                 <Input
                   placeholder="Masukkan alamat email"
                   value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
+                  editable={false}
                   className={"border-gray-300 bg-white"}
                 />
               </View>
