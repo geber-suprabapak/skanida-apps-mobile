@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Image,
+  Clipboard,
   BackHandler,
   Switch,
 } from "react-native";
@@ -55,6 +56,7 @@ function Pengaturan() {
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(
     initialProfileData.avatar,
   );
+  const [copiedId, setCopiedId] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
@@ -184,6 +186,13 @@ function Pengaturan() {
   }, [setUser, router]);
 
   // Optimized copy ID handler with useCallback
+  const handleCopyId = useCallback(async () => {
+    if (user?.id) {
+      Clipboard.setString(user.id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  }, [user?.id]);
 
   // Toggle theme handler
   const toggleTheme = useCallback(() => {
@@ -274,6 +283,20 @@ function Pengaturan() {
                 <Text variant="small" className="mt-1">
                   {user?.email || "Tidak ada email"}
                 </Text>
+
+                <TouchableOpacity
+                  onPress={handleCopyId}
+                  className={`self-start mt-2 px-3 py-1.5 rounded-full ${
+                    copiedId ? "bg-accent" : "bg-muted"
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <Text variant="small" className="font-medium">
+                    {copiedId
+                      ? "✓ ID Tersalin!"
+                      : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
+                  </Text>
+                </TouchableOpacity>
 
               </View>
             </View>
