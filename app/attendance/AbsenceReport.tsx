@@ -16,6 +16,7 @@ import {
 } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import { supabase } from "~/utils/supabase";
+import { checkAttendanceTime } from "~/lib/utils";
 import { Icon } from "~/components/ui/icon";
 import {
   RefreshCw,
@@ -28,7 +29,12 @@ import {
 
 // --- TYPES AND INTERFACES ---
 type AbsenceType = "present" | "home";
-type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
+type LocationCheckStatus =
+  | "checking"
+  | "verified"
+  | "failed"
+  | "out_of_range"
+  | "time_outside";
 
 // --- CONSTANTS ---
 
@@ -477,6 +483,33 @@ const AbsenceReport = () => {
       }
       setCurrentAbsenceType(absenceType);
 
+      // Check if current time is within allowed attendance hours
+      setStatusMessage("Memeriksa jam absen...");
+      const timeCheck = checkAttendanceTime();
+      const isTimeValid =
+        (absenceType === "present" && timeCheck.canCheckIn) ||
+        (absenceType === "home" && timeCheck.canCheckOut);
+
+      if (!isTimeValid) {
+        logger.warn("Time validation failed", {
+          absenceType,
+          canCheckIn: timeCheck.canCheckIn,
+          canCheckOut: timeCheck.canCheckOut,
+          currentTime: new Date().toLocaleTimeString("id-ID"),
+        });
+
+        setLocationStatus("time_outside");
+        setStatusMessage("Di luar jam absen. Silakan cek jadwal Anda.");
+        setIsLoading(false);
+
+        Alert.alert(
+          "Di luar Jam Absen",
+          "Di luar jam absen. Silakan cek jadwal Anda.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+
       const actionText =
         absenceType === "present" ? "absen masuk" : "absen pulang";
       setStatusMessage(`Memverifikasi lokasi untuk ${actionText}...`);
@@ -559,7 +592,11 @@ const AbsenceReport = () => {
     if (locationStatus === "verified" && canProceedToCamera) {
       return "text-green-600";
     }
-    if (locationStatus === "out_of_range" || locationStatus === "failed") {
+    if (
+      locationStatus === "out_of_range" ||
+      locationStatus === "failed" ||
+      locationStatus === "time_outside"
+    ) {
       return "text-red-600";
     }
     return "text-gray-500";
@@ -634,7 +671,8 @@ const AbsenceReport = () => {
 
               {/* Error State */}
               {(locationStatus === "out_of_range" ||
-                locationStatus === "failed") && (
+                locationStatus === "failed" ||
+                locationStatus === "time_outside") && (
                 <View className="p-3 rounded-md bg-red-100 w-full items-center">
                   <Text variant="h3" className="text-red-700">
                     Tidak Dapat Melanjutkan
@@ -642,7 +680,9 @@ const AbsenceReport = () => {
                   <Text variant="small" className="text-red-600">
                     {locationStatus === "out_of_range"
                       ? "Anda berada di luar jangkauan sekolah."
-                      : "Terjadi kesalahan saat memverifikasi lokasi."}
+                      : locationStatus === "time_outside"
+                        ? "Di luar jam absen. Silakan cek jadwal Anda."
+                        : "Terjadi kesalahan saat memverifikasi lokasi."}
                   </Text>
                 </View>
               )}

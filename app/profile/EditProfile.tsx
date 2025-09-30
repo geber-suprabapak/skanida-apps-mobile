@@ -830,9 +830,15 @@ export default function EditProfile() {
                           activeOpacity={0.85}
                         >
                           <View className="w-14 h-14 rounded-full items-center justify-center mb-2 bg-blue-500/10 dark:bg-blue-500/20">
-                            <Icon as={Camera} className="size-7 text-blue-500" />
+                            <Icon
+                              as={Camera}
+                              className="size-7 text-blue-500"
+                            />
                           </View>
-                          <Text variant="small" className="font-medium text-foreground">
+                          <Text
+                            variant="small"
+                            className="font-medium text-foreground"
+                          >
                             Kamera
                           </Text>
                         </TouchableOpacity>
@@ -843,9 +849,15 @@ export default function EditProfile() {
                           activeOpacity={0.85}
                         >
                           <View className="w-14 h-14 rounded-full items-center justify-center mb-2 bg-blue-500/10 dark:bg-blue-500/20">
-                            <Icon as={ImageIcon} className="size-7 text-blue-500" />
+                            <Icon
+                              as={ImageIcon}
+                              className="size-7 text-blue-500"
+                            />
                           </View>
-                          <Text variant="small" className="font-medium text-foreground">
+                          <Text
+                            variant="small"
+                            className="font-medium text-foreground"
+                          >
                             Galeri
                           </Text>
                         </TouchableOpacity>
@@ -905,7 +917,9 @@ export default function EditProfile() {
                         />
                       </View>
                     ) : (
-                      <Text className="text-white">Foto profil tidak tersedia.</Text>
+                      <Text className="text-white">
+                        Foto profil tidak tersedia.
+                      </Text>
                     )}
                   </View>
                 </TouchableWithoutFeedback>
