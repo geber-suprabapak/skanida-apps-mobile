@@ -52,36 +52,6 @@ const LOCATION_CONFIG = {
   HIGH_TIMEOUT: 10000,
 } as const;
 
-// --- UTILITY FUNCTIONS ---
-const createLogger = (component: string) => ({
-  debug: (message: string, data?: any) => {
-    console.log(
-      `${new Date().toISOString()} 🔍 [${component}] ${message}`,
-      data || "",
-    );
-  },
-  info: (message: string, data?: any) => {
-    console.info(
-      `${new Date().toISOString()} ℹ️ [${component}] ${message}`,
-      data || "",
-    );
-  },
-  warn: (message: string, data?: any) => {
-    console.warn(
-      `${new Date().toISOString()} ⚠️ [${component}] ${message}`,
-      data || "",
-    );
-  },
-  error: (message: string, error?: any) => {
-    console.error(
-      `${new Date().toISOString()} ❌ [${component}] ${message}`,
-      error || "",
-    );
-  },
-});
-
-const logger = createLogger("AbsenceReport");
-
 // --- MAIN COMPONENT ---
 const AbsenceReport = () => {
   // --- HOOKS AND STATE ---
@@ -115,7 +85,6 @@ const AbsenceReport = () => {
       "hardwareBackPress",
       backAction,
     );
-
     return () => backHandler.remove();
   }, [router]);
 
@@ -148,7 +117,6 @@ const AbsenceReport = () => {
   const getLocationWithHighAccuracy =
     useCallback(async (): Promise<Location.LocationObject | null> => {
       try {
-        logger.debug("Getting location with high accuracy");
         setStatusMessage("Mendapatkan lokasi dengan akurasi tinggi...");
 
         const locationPromise = Location.getCurrentPositionAsync({
@@ -164,14 +132,8 @@ const AbsenceReport = () => {
 
         const location = await Promise.race([locationPromise, timeoutPromise]);
 
-        logger.info("High accuracy location acquired successfully", {
-          accuracy: location.coords.accuracy,
-        });
-
         return location;
       } catch (error: any) {
-        logger.error("High accuracy location failed", error);
-
         if (error?.message?.includes("timeout")) {
           setStatusMessage(
             "Gagal mendapatkan lokasi: Waktu habis. Pastikan GPS aktif.",
@@ -192,12 +154,6 @@ const AbsenceReport = () => {
       !currentAbsenceType ||
       !canProceedToCamera
     ) {
-      logger.error("Cannot navigate to camera - missing required data", {
-        hasLocation: !!currentLocation,
-        hasUserId: !!userId,
-        hasAbsenceType: !!currentAbsenceType,
-        canProceed: canProceedToCamera,
-      });
       Alert.alert(
         "Error",
         "Tidak dapat melanjutkan, data tidak lengkap atau kondisi tidak terpenuhi.",
@@ -205,7 +161,6 @@ const AbsenceReport = () => {
       return;
     }
 
-    logger.info("Navigating to camera", { absenceType: currentAbsenceType });
     router.push({
       pathname: "/attendance/CameraAttendance",
       params: {
@@ -222,16 +177,13 @@ const AbsenceReport = () => {
     string | null
   > => {
     try {
-      logger.debug("Checking user authentication");
       const { data, error } = await supabase.auth.getUser();
 
       if (error) {
-        logger.error("Authentication error", error);
         throw error;
       }
 
       if (!data?.user) {
-        logger.warn("No authenticated user found");
         Alert.alert(
           "Error",
           "Pengguna tidak ditemukan. Silakan login kembali.",
@@ -240,10 +192,8 @@ const AbsenceReport = () => {
         return null;
       }
 
-      logger.info("User authenticated successfully", { userId: data.user.id });
       return data.user.id;
     } catch (error) {
-      logger.error("Error in user authentication check", error);
       Alert.alert("Error", "Gagal mendapatkan data pengguna");
       throw error;
     }
@@ -251,14 +201,8 @@ const AbsenceReport = () => {
 
   const determineAbsenceType = useCallback(
     async (currentUserId: string): Promise<AbsenceType | null> => {
-      logger.debug("Determining absence type for user", {
-        userId: currentUserId,
-        date: todayDateString,
-      });
-
       // Check local state first for performance
       if (morningAbsenceCompleted === todayDateString) {
-        logger.info("Morning absence already completed (local state)");
         return "home";
       }
 
@@ -267,7 +211,6 @@ const AbsenceReport = () => {
         morningAbsenceCompleted &&
         morningAbsenceCompleted !== todayDateString
       ) {
-        logger.debug("Resetting morning absence state for new day");
         setMorningAbsenceCompleted(null);
       }
 
@@ -275,16 +218,14 @@ const AbsenceReport = () => {
       try {
         const netInfoState = await NetInfo.fetch();
         if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
-          logger.warn("No internet connection available");
           setStatusMessage(
             "Tidak ada koneksi internet. Silakan periksa koneksi Anda.",
           );
           return null;
         }
-      } catch (error) {
-        logger.warn("Network check failed", error);
+      } catch {
+        // Ignore network info failures; continue without connection status.
       }
-
       // Query database for today's attendance
       try {
         const { data: lastAbsenceData, error: lastAbsenceError } =
@@ -300,8 +241,6 @@ const AbsenceReport = () => {
         if (lastAbsenceError) {
           if (lastAbsenceError.code === "PGRST116") {
             // No data found for today - check if there's any record from previous days
-            logger.info("No absence record found for today (PGRST116)");
-
             // Query for the most recent absence record regardless of date
             const { data: lastAnyAbsenceData, error: lastAnyAbsenceError } =
               await supabase
@@ -316,10 +255,6 @@ const AbsenceReport = () => {
               lastAnyAbsenceError &&
               lastAnyAbsenceError.code !== "PGRST116"
             ) {
-              logger.error(
-                "Error querying previous absence records",
-                lastAnyAbsenceError,
-              );
               setStatusMessage(
                 `Gagal memeriksa riwayat absensi: ${lastAnyAbsenceError.message}`,
               );
@@ -330,27 +265,16 @@ const AbsenceReport = () => {
               const lastAbsenceDate = new Date(lastAnyAbsenceData.created_at)
                 .toISOString()
                 .split("T")[0];
-              logger.info("Found previous absence record", {
-                status: lastAnyAbsenceData.status,
-                date: lastAnyAbsenceData.date,
-                createdDate: lastAbsenceDate,
-                today: todayDateString,
-              });
 
               // If the last record is from a previous day, allow morning attendance
               if (lastAbsenceDate !== todayDateString) {
-                logger.info(
-                  "Last absence record is from previous day, allowing morning attendance",
-                );
                 return "present";
               }
             }
 
             // No previous records or same day record, default to morning attendance
-            logger.info("Defaulting to morning attendance (present)");
             return "present";
           } else {
-            logger.error("Database query failed", lastAbsenceError);
             setStatusMessage(
               `Gagal memeriksa status absensi: ${lastAbsenceError.message}`,
             );
@@ -364,17 +288,8 @@ const AbsenceReport = () => {
             .toISOString()
             .split("T")[0];
 
-          logger.info("Found existing absence record", {
-            status: lastAbsenceData.status,
-            recordDate,
-            today: todayDateString,
-          });
-
           // If the record is from a previous day, allow morning attendance
           if (recordDate !== todayDateString) {
-            logger.info(
-              "Found record is from previous day, allowing morning attendance",
-            );
             return "present";
           }
 
@@ -389,20 +304,13 @@ const AbsenceReport = () => {
               );
               return null;
             default:
-              logger.debug(
-                "Found incomplete absence record, proceeding with morning attendance",
-              );
               return "present";
           }
         } else {
           // This should not happen after handling PGRST116, but keeping as fallback
-          logger.info(
-            "No absence record found for today, proceeding with morning attendance",
-          );
           return "present";
         }
-      } catch (error) {
-        logger.error("Error querying absence data", error);
+      } catch {
         setStatusMessage("Gagal memeriksa status absensi dari database.");
         return null;
       }
@@ -413,19 +321,15 @@ const AbsenceReport = () => {
   const requestLocationPermissionAndGet =
     useCallback(async (): Promise<Location.LocationObject | null> => {
       try {
-        logger.debug("Checking location permission");
-
         let { status } = await Location.getForegroundPermissionsAsync();
 
         if (status !== "granted") {
-          logger.debug("Requesting location permission");
           setStatusMessage("Meminta izin lokasi...");
 
           const result = await Location.requestForegroundPermissionsAsync();
           status = result.status;
 
           if (status !== "granted") {
-            logger.warn("Location permission denied");
             setStatusMessage(
               "Izin lokasi ditolak. Aktifkan izin lokasi untuk melanjutkan.",
             );
@@ -434,8 +338,7 @@ const AbsenceReport = () => {
         }
 
         return await getLocationWithHighAccuracy();
-      } catch (error: any) {
-        logger.error("Location permission or acquisition failed", error);
+      } catch {
         setStatusMessage(
           "Gagal mendapatkan izin lokasi atau lokasi tidak tersedia.",
         );
@@ -444,7 +347,6 @@ const AbsenceReport = () => {
     }, [getLocationWithHighAccuracy]);
 
   const performFullAbsenceCheck = useCallback(async () => {
-    logger.info("Starting optimized absence check");
     setIsLoading(true);
     setLocationStatus("checking");
     setCanProceedToCamera(false);
@@ -491,27 +393,18 @@ const AbsenceReport = () => {
       const withinRange = distance <= MAX_DISTANCE_METERS;
 
       if (withinRange) {
-        logger.info("Location verified - within range", {
-          distance: Math.round(distance),
-          accuracy: location.coords.accuracy,
-        });
         setLocationStatus("verified");
         setCanProceedToCamera(true);
         setStatusMessage(
           `${absenceType === "present" ? "Absen Masuk" : "Absen Pulang"}: Lokasi terverifikasi (${Math.round(distance)}m). Lanjut ke kamera.`,
         );
       } else {
-        logger.warn("Location verification failed - out of range", {
-          distance: Math.round(distance),
-          accuracy: location.coords.accuracy,
-        });
         setLocationStatus("out_of_range");
         setStatusMessage(
           `Anda berada di luar jangkauan (${Math.round(distance)}m dari sekolah). Tidak dapat melanjutkan absensi.`,
         );
       }
-    } catch (error) {
-      logger.error("Error in optimized absence check", error);
+    } catch {
       setLocationStatus("failed");
       setStatusMessage("Terjadi kesalahan saat memeriksa status absensi.");
     } finally {
@@ -526,7 +419,6 @@ const AbsenceReport = () => {
 
   // --- EFFECTS ---
   useEffect(() => {
-    logger.info("Component mounted, starting initial check");
     performFullAbsenceCheck();
   }, [performFullAbsenceCheck]);
 
@@ -539,9 +431,6 @@ const AbsenceReport = () => {
       canProceedToCamera &&
       currentAbsenceType
     ) {
-      logger.debug("Auto-navigating to camera", {
-        delay: AUTO_NAVIGATE_DELAY_MS,
-      });
       const timer = setTimeout(navigateToCamera, AUTO_NAVIGATE_DELAY_MS);
       return () => clearTimeout(timer);
     }
