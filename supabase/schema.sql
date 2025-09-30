@@ -71,6 +71,80 @@ create table if not exists public.absences (
 create index if not exists absences_user_date_idx on public.absences(user_id, date);
 create index if not exists absences_user_created_idx on public.absences(user_id, created_at desc);
 
+-- Function to validate attendance time based on school schedule
+create or replace function public.is_valid_attendance_time(
+  check_time timestamptz,
+  attendance_status text
+)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  day_of_week integer;
+  time_minutes integer;
+  check_in_start integer;
+  check_in_end integer;
+  check_out_start integer;
+  check_out_end integer;
+begin
+  -- Extract day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  -- Convert to local timezone (Asia/Jakarta) before checking
+  day_of_week := extract(dow from check_time at time zone 'Asia/Jakarta');
+  
+  -- Extract time in minutes from midnight
+  time_minutes := extract(hour from check_time at time zone 'Asia/Jakarta') * 60 + 
+                  extract(minute from check_time at time zone 'Asia/Jakarta');
+  
+  -- Skip weekends (Saturday = 6, Sunday = 0)
+  if day_of_week = 0 or day_of_week = 6 then
+    return false;
+  end if;
+  
+  -- Define schedule based on day of week
+  if day_of_week = 1 then
+    -- Monday
+    check_in_start := 7 * 60; -- 07:00
+    check_in_end := 8 * 60;   -- 08:00
+    check_out_start := 15 * 60; -- 15:00
+    check_out_end := 16 * 60;   -- 16:00
+  elsif day_of_week >= 2 and day_of_week <= 4 then
+    -- Tuesday - Thursday
+    check_in_start := 7 * 60; -- 07:00
+    check_in_end := 8 * 60;   -- 08:00
+    check_out_start := 14 * 60; -- 14:00
+    check_out_end := 15 * 60;   -- 15:00
+  elsif day_of_week = 5 then
+    -- Friday
+    check_in_start := 7 * 60; -- 07:00
+    check_in_end := 8 * 60;   -- 08:00
+    check_out_start := 11 * 60 + 30; -- 11:30
+    check_out_end := 12 * 60 + 30;   -- 12:30
+  else
+    return false;
+  end if;
+  
+  -- Check if time is valid based on attendance status
+  if attendance_status in ('Hadir', 'Datang') then
+    -- Check-in validation
+    return time_minutes >= check_in_start and time_minutes <= check_in_end;
+  elsif attendance_status = 'Pulang' then
+    -- Check-out validation
+    return time_minutes >= check_out_start and time_minutes <= check_out_end;
+  else
+    -- Unknown status
+    return false;
+  end if;
+end;
+$$;
+
+comment on function public.is_valid_attendance_time is 
+'Validates if attendance can be recorded at the given time based on school schedule:
+- Monday: Check-in 07:00-08:00, Check-out 15:00-16:00
+- Tuesday-Thursday: Check-in 07:00-08:00, Check-out 14:00-15:00
+- Friday: Check-in 07:00-08:00, Check-out 11:30-12:30
+- Weekends: Not allowed';
+
 -- 3) perizinan
 -- Notes:
 -- - kategori_izin: 'sakit' | 'pergi'
@@ -204,11 +278,11 @@ do $$ begin
   end if;
 
   if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='absences' and policyname='absences_insert_own'
+    select 1 from pg_policies where schemaname='public' and tablename='absences' and policyname='absences_insert_with_time_validation'
   ) then
-    create policy absences_insert_own
+    create policy absences_insert_with_time_validation
       on public.absences for insert
-      with check (auth.uid() = user_id);
+      with check (auth.uid() = user_id and public.is_valid_attendance_time(created_at, status));
   end if;
 
   if not exists (
@@ -396,6 +470,9 @@ grant usage on schema storage to anon, authenticated;
 grant select, insert, update, delete on table public.user_profiles to anon, authenticated;
 grant select, insert, update, delete on table public.absences to anon, authenticated;
 grant select, insert, update, delete on table public.perizinan to anon, authenticated;
+
+-- Grant execute permission on attendance time validation function
+grant execute on function public.is_valid_attendance_time to anon, authenticated;
 
 -- Storage objects table privileges (RLS still restricts access via policies above)
 grant select, insert, update, delete on table storage.objects to anon, authenticated;
