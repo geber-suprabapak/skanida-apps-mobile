@@ -116,7 +116,7 @@ export default function ChangePassword() {
       >
         {/* Security Info Section */}
         <View className="px-6 pt-6 pb-4">
-          <Card className={`p-6 bg-white border-gray-200`}>
+          <Card className="p-6 bg-card border-border">
             <View className="items-center">
               <View
                 className={`w-16 h-16 rounded-full bg-blue-500 dark:bg-blue-600 justify-center items-center mb-4`}
@@ -135,7 +135,7 @@ export default function ChangePassword() {
                 Keamanan Akun
               </Text>
 
-              <Text variant="muted" className="text-center leading-5">
+              <Text variant="muted" className="text-center leading-5 text-muted-foreground">
                 Pastikan password baru Anda aman dan mudah diingat. Gunakan
                 kombinasi huruf, angka, dan simbol.
               </Text>
@@ -145,7 +145,7 @@ export default function ChangePassword() {
 
         {/* Password Form Section */}
         <View className="px-6 mb-6">
-          <Card className={`p-6 bg-white border-gray-200`}>
+          <Card className="p-6 bg-card border-border">
             <Text variant="h3" className="mb-6 text-foreground">
               Ubah Password
             </Text>
@@ -153,10 +153,7 @@ export default function ChangePassword() {
             <View className="space-y-5">
               {/* Current Password */}
               <View>
-                <Text
-                  variant="small"
-                  className="font-medium mb-2 text-gray-700"
-                >
+                <Text variant="small" className="font-medium mb-2 text-foreground">
                   Password Saat Ini
                 </Text>
                 <View className="relative">
@@ -166,16 +163,16 @@ export default function ChangePassword() {
                     onChangeText={setCurrentPassword}
                     secureTextEntry={!showAllPasswords}
                     autoCapitalize="none"
-                    className={`pr-12 border-gray-300 bg-white placeholder:text-gray-500`}
+                    className="pr-12"
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <Icon as={EyeOff} className="size-5 text-gray-500" />
+                      <Icon as={EyeOff} className="size-5 text-muted-foreground" />
                     ) : (
-                      <Icon as={Eye} className="size-5 text-gray-500" />
+                      <Icon as={Eye} className="size-5 text-muted-foreground" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -183,10 +180,7 @@ export default function ChangePassword() {
 
               {/* New Password */}
               <View>
-                <Text
-                  variant="small"
-                  className="font-medium mb-2 text-gray-700"
-                >
+                <Text variant="small" className="font-medium mb-2 text-foreground">
                   Password Baru
                 </Text>
                 <View className="relative">
@@ -196,16 +190,16 @@ export default function ChangePassword() {
                     onChangeText={setNewPassword}
                     secureTextEntry={!showAllPasswords}
                     autoCapitalize="none"
-                    className={`pr-12 border-gray-300 bg-white placeholder:text-gray-500`}
+                    className="pr-12"
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <Icon as={EyeOff} className="size-5 text-gray-500" />
+                      <Icon as={EyeOff} className="size-5 text-muted-foreground" />
                     ) : (
-                      <Icon as={Eye} className="size-5 text-gray-500" />
+                      <Icon as={Eye} className="size-5 text-muted-foreground" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -216,10 +210,7 @@ export default function ChangePassword() {
 
               {/* Confirm Password */}
               <View>
-                <Text
-                  variant="small"
-                  className="font-medium mb-2 text-gray-700"
-                >
+                <Text variant="small" className="font-medium mb-2 text-foreground">
                   Konfirmasi Password Baru
                 </Text>
                 <View className="relative">
@@ -229,16 +220,16 @@ export default function ChangePassword() {
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showAllPasswords}
                     autoCapitalize="none"
-                    className={`pr-12 border-gray-300 bg-white placeholder:text-gray-500`}
+                    className="pr-12"
                   />
                   <TouchableOpacity
                     onPress={() => setShowAllPasswords(!showAllPasswords)}
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <Icon as={EyeOff} className="size-5 text-gray-500" />
+                      <Icon as={EyeOff} className="size-5 text-muted-foreground" />
                     ) : (
-                      <Icon as={Eye} className="size-5 text-gray-500" />
+                      <Icon as={Eye} className="size-5 text-muted-foreground" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -254,7 +245,7 @@ export default function ChangePassword() {
 
         {/* Action Buttons Section */}
         <View className="px-6">
-          <Card className={`p-6 bg-white border-gray-200`}>
+          <Card className="p-6 bg-card border-border">
             <Button
               variant="default"
               size="lg"
@@ -292,9 +283,9 @@ export default function ChangePassword() {
               size="lg"
               onPress={() => router.back()}
               disabled={loading}
-              className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
+              className="w-full"
             >
-              <Text variant="default" className="text-gray-700 font-medium">
+              <Text variant="default" className="font-medium text-foreground">
                 Batal
               </Text>
             </Button>
