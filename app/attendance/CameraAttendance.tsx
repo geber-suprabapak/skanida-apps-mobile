@@ -163,11 +163,19 @@ const CameraAttendance = () => {
 
   const currentDateTime = useMemo(() => {
     const now = new Date();
+    // Adjust for local timezone offset to prevent day-before errors
+    const timezoneOffset = now.getTimezoneOffset() * 60000;
+    const localNow = new Date(now.getTime() - timezoneOffset);
+
     return {
-      date: now.toISOString().split("T")[0],
-      formattedDate: now.toISOString().split("T")[0].replace(/-/g, ""),
+      date: localNow.toISOString().split("T")[0],
+      formattedDate: localNow.toISOString().split("T")[0].replace(/-/g, ""),
       timestamp: Date.now(),
-      displayTime: now.toLocaleString(),
+      displayTime: now.toLocaleString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
     };
   }, []);
 
