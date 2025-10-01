@@ -190,7 +190,7 @@ function Pengaturan() {
     if (user?.id) {
       Clipboard.setString(user.id);
       setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000); // Reset after 2 seconds
+      setTimeout(() => setCopiedId(false), 2000);
     }
   }, [user?.id]);
 
@@ -297,6 +297,7 @@ function Pengaturan() {
                       : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
                   </Text>
                 </TouchableOpacity>
+
               </View>
             </View>
           </Card>
