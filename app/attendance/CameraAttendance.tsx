@@ -1014,7 +1014,7 @@ const CameraAttendance = () => {
       <View className="flex-1">
         <CameraView
           ref={cameraRef}
-          style={{ flex: 1 }}
+          className="w-full h-full"
           facing={cameraFacing}
           onCameraReady={handleCameraReady}
         >
