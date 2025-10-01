@@ -71,7 +71,7 @@ create table if not exists public.absences (
 create index if not exists absences_user_date_idx on public.absences(user_id, date);
 create index if not exists absences_user_created_idx on public.absences(user_id, created_at desc);
 
--- Function to validate attendance time based on school schedule
+-- Function to validate attendance time based on school schedule from time table
 create or replace function public.is_valid_attendance_time(
   check_time timestamptz,
   attendance_status text
@@ -81,56 +81,75 @@ language plpgsql
 security definer
 as $$
 declare
+  day_name text;
+  time_of_day time;
+  check_in_record record;
+  check_out_record record;
   day_of_week integer;
-  time_minutes integer;
-  check_in_start integer;
-  check_in_end integer;
-  check_out_start integer;
-  check_out_end integer;
 begin
   -- Extract day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
   -- Convert to local timezone (Asia/Jakarta) before checking
   day_of_week := extract(dow from check_time at time zone 'Asia/Jakarta');
   
-  -- Extract time in minutes from midnight
-  time_minutes := extract(hour from check_time at time zone 'Asia/Jakarta') * 60 + 
-                  extract(minute from check_time at time zone 'Asia/Jakarta');
+  -- Extract time of day
+  time_of_day := (check_time at time zone 'Asia/Jakarta')::time;
   
   -- Skip weekends (Saturday = 6, Sunday = 0)
   if day_of_week = 0 or day_of_week = 6 then
     return false;
   end if;
   
-  -- Define schedule based on day of week (from actual school schedule)
+  -- Map day of week number to day name
   if day_of_week = 1 then
-    -- Monday (SENIN) - UPACARA starts at 07:00, classes until 15:15
-    check_in_start := 7 * 60; -- 07:00
-    check_in_end := 7 * 60 + 45;   -- 07:45
-    check_out_start := 15 * 60; -- 15:00
-    check_out_end := 16 * 60;   -- 16:00
+    day_name := 'SENIN';
   elsif day_of_week >= 2 and day_of_week <= 4 then
-    -- Tuesday - Thursday (SELASA, RABU, KAMIS) - Classes from 07:00 to 16:00
-    check_in_start := 7 * 60; -- 07:00
-    check_in_end := 7 * 60 + 45;   -- 07:45
-    check_out_start := 15 * 60 + 15; -- 15:15
-    check_out_end := 16 * 60;   -- 16:00
+    day_name := 'SELASA, RABU, KAMIS';
   elsif day_of_week = 5 then
-    -- Friday (JUMAT) - Classes from 07:00 to 12:00
-    check_in_start := 7 * 60; -- 07:00
-    check_in_end := 7 * 60 + 45;   -- 07:45
-    check_out_start := 11 * 60 + 30; -- 11:30
-    check_out_end := 12 * 60;   -- 12:00
+    day_name := 'JUMAT';
   else
     return false;
   end if;
   
   -- Check if time is valid based on attendance status
   if attendance_status in ('Hadir', 'Datang') then
-    -- Check-in validation
-    return time_minutes >= check_in_start and time_minutes <= check_in_end;
+    -- Check-in validation: find the earliest start time for the day
+    select start_time, end_time into check_in_record
+    from public.time
+    where day_of_week = day_name
+    order by start_time asc
+    limit 1;
+    
+    if check_in_record is null then
+      -- No schedule found, fall back to default validation
+      return time_of_day >= '07:00:00' and time_of_day <= '07:45:00';
+    end if;
+    
+    -- Allow check-in from start_time until 45 minutes after
+    return time_of_day >= check_in_record.start_time 
+       and time_of_day <= (check_in_record.start_time + interval '45 minutes');
+       
   elsif attendance_status = 'Pulang' then
-    -- Check-out validation
-    return time_minutes >= check_out_start and time_minutes <= check_out_end;
+    -- Check-out validation: find the latest end time for the day
+    select start_time, end_time into check_out_record
+    from public.time
+    where day_of_week = day_name
+    order by end_time desc
+    limit 1;
+    
+    if check_out_record is null then
+      -- No schedule found, fall back to default validation
+      if day_name = 'SENIN' then
+        return time_of_day >= '15:00:00' and time_of_day <= '16:00:00';
+      elsif day_name = 'SELASA, RABU, KAMIS' then
+        return time_of_day >= '15:15:00' and time_of_day <= '16:00:00';
+      elsif day_name = 'JUMAT' then
+        return time_of_day >= '11:30:00' and time_of_day <= '12:00:00';
+      end if;
+    end if;
+    
+    -- Allow check-out from 30 minutes before end_time until 45 minutes after
+    return time_of_day >= (check_out_record.end_time - interval '30 minutes')
+       and time_of_day <= (check_out_record.end_time + interval '45 minutes');
   else
     -- Unknown status
     return false;
@@ -139,10 +158,12 @@ end;
 $$;
 
 comment on function public.is_valid_attendance_time is 
-'Validates if attendance can be recorded at the given time based on school schedule:
+'Validates if attendance can be recorded at the given time based on school schedule from time table.
+Falls back to hardcoded schedule if table is empty:
 - Monday (SENIN): Check-in 07:00-07:45, Check-out 15:00-16:00
 - Tuesday-Thursday (SELASA, RABU, KAMIS): Check-in 07:00-07:45, Check-out 15:15-16:00
 - Friday (JUMAT): Check-in 07:00-07:45, Check-out 11:30-12:00
+- Weekends: Not allowed';
 - Weekends: Not allowed';
 - Weekends: Not allowed';
 
