@@ -6,7 +6,7 @@ import {
 } from "react-native-vision-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -34,7 +34,7 @@ import { Buffer } from "buffer";
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
   RESIZE_WIDTH: 800,
-  FORMAT: ImageManipulator.SaveFormat.JPEG, // JPEG keeps quality with smaller size
+  FORMAT: ImageManipulator.SaveFormat.JPEG,
   MAX_FILE_SIZE: 2 * 1024 * 1024, // 2MB max
   QUALITY_STEPS: [0.85, 0.7, 0.55, 0.4],
 } as const;
@@ -43,19 +43,79 @@ const UPLOAD_CONFIG = {
   MAX_RETRIES: 3,
   RETRY_DELAY_BASE: 1000,
   STORAGE_BUCKET: "attendance-photos",
-  // Timeout 30 detik diperlukan karena:
-  // 1. Foto attendance biasanya berukuran besar (high quality untuk verifikasi)
-  // 2. Koneksi mobile bisa tidak stabil, membutuhkan waktu lebih lama
-  // 3. Supabase storage perlu waktu untuk memproses dan generate public URL
-  // 4. Mencegah abort upload yang sebenarnya masih berlangsung
-  // 5. Memberikan buffer untuk retry mechanism jika ada gangguan sementara
-  TIMEOUT_MS: 30000, // 30 seconds timeout
+  TIMEOUT_MS: 30000, // 30 seconds
 } as const;
 
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
 type AbsenceType = "present" | "home";
 type UploadStage = "processing" | "uploading" | "saving";
+
+// --- MEMOIZED COMPONENTS ---
+const ProgressBar = memo<{ percentage: number }>(({ percentage }) => (
+  <View className="w-full h-2 bg-gray-700 rounded-full">
+    <View
+      className="h-full bg-[#0066FF] rounded-full"
+      style={{ width: `${percentage}%` }}
+    />
+  </View>
+));
+ProgressBar.displayName = "ProgressBar";
+
+const CaptureButton = memo<{
+  isCapturing: boolean;
+  isReady: boolean;
+  isUploading: boolean;
+  onPress: () => void;
+}>(({ isCapturing, isReady, isUploading, onPress }) => (
+  <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
+    <TouchableOpacity
+      className="w-20 h-20 rounded-full bg-white justify-center items-center"
+      onPress={onPress}
+      disabled={isCapturing || !isReady || isUploading}
+      activeOpacity={0.8}
+    >
+      {isCapturing ? (
+        <ActivityIndicator size="large" color="#0066FF" />
+      ) : (
+        <View className="w-16 h-16 rounded-full bg-[#0066FF]" />
+      )}
+    </TouchableOpacity>
+  </Animated.View>
+));
+CaptureButton.displayName = "CaptureButton";
+
+const UploadOverlay = memo<{
+  message: string;
+  percentage: number;
+}>(({ message, percentage }) => (
+  <View className="absolute inset-0 bg-black/80 justify-center items-center px-8">
+    <Animated.View className="items-center justify-center w-full">
+      <Icon as={Loader2} className="size-8 text-[#0066FF]" />
+      <Text variant="h2" className="text-white mt-4 mb-2">
+        Menyimpan absensi...
+      </Text>
+      <Text variant="default" className="text-white/70 text-center mb-8">
+        {message}
+      </Text>
+      <ProgressBar percentage={percentage} />
+      <Text variant="small" className="text-white/70 mt-2">
+        {percentage}%
+      </Text>
+    </Animated.View>
+  </View>
+));
+UploadOverlay.displayName = "UploadOverlay";
+
+const CameraReadyOverlay = memo(() => (
+  <View className="absolute inset-0 bg-black/70 justify-center items-center">
+    <ActivityIndicator size="large" color="#0066FF" />
+    <Text variant="default" className="text-white mt-3">
+      Menyiapkan kamera...
+    </Text>
+  </View>
+));
+CameraReadyOverlay.displayName = "CameraReadyOverlay";
 
 interface LocationData {
   latitude: number | null;
@@ -74,15 +134,6 @@ interface CompressionResult {
   base64: string;
   size: number;
   quality: number;
-  uri: string;
-}
-
-interface UploadMetrics {
-  startTime: number;
-  fileSize: number;
-  compressionTime: number;
-  uploadTime: number;
-  totalTime: number;
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -123,108 +174,90 @@ const CameraAttendance = () => {
   }, [params]);
 
   const isLocationDataValid = useMemo(() => {
-    const isValid =
+    return (
       locationData.userId !== null &&
       locationData.latitude !== null &&
-      locationData.longitude !== null;
-
-    if (!isValid) {
-    }
-
-    return isValid;
+      locationData.longitude !== null
+    );
   }, [locationData]);
 
   const currentDateTime = useMemo(() => {
     const now = new Date();
+
+    // Convert to WIB (UTC+7)
+    const wibOffset = 7 * 60; // 7 hours in minutes
+    const localOffset = now.getTimezoneOffset(); // device timezone offset
+    const wibTime = new Date(now.getTime() + (wibOffset + localOffset) * 60000);
+
+    // Get WIB date components
+    const year = wibTime.getUTCFullYear();
+    const month = String(wibTime.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(wibTime.getUTCDate()).padStart(2, "0");
+    const wibDate = `${year}-${month}-${day}`; // YYYY-MM-DD for database
+
     return {
-      date: now.toISOString().split("T")[0],
-      formattedDate: now.toISOString().split("T")[0].replace(/-/g, ""),
-      timestamp: Date.now(),
-      displayTime: now.toLocaleString(),
+      date: wibDate, // WIB date for database (YYYY-MM-DD)
+      formattedDate: `${day}${month}${year}`, // DDMMYYYY for filename
+      timestamp: now.getTime(), // epoch ms for uniqueness
+      timestampIso: now.toISOString(), // full ISO UTC for audit
+      displayTime:
+        wibTime.toLocaleString("id-ID", {
+          timeZone: "Asia/Jakarta",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }) + " WIB",
     };
   }, []);
 
   // --- UTILITY FUNCTIONS (HOOKED) ---
   const base64ToUint8Array = useCallback((base64: string): Uint8Array => {
-    if (!base64) {
-      throw new Error("Invalid base64 string provided");
-    }
-
-    try {
-      const buffer = Buffer.from(base64, "base64");
-      return buffer;
-    } catch {
-      throw new Error("Failed to process image data");
-    }
+    if (!base64) throw new Error("Invalid base64 string");
+    return Buffer.from(base64, "base64");
   }, []);
 
-  const generateFileName = useCallback((): string => {
-    const fileName = `${currentDateTime.formattedDate}_${currentDateTime.timestamp}_${locationData.userId}.png`;
-    return fileName;
-  }, [currentDateTime, locationData.userId]);
+  const generateFileName = useCallback(
+    () =>
+      `${currentDateTime.formattedDate}_${currentDateTime.timestamp}_${locationData.userId}.jpg`,
+    [currentDateTime, locationData.userId],
+  );
 
-  const getOptimalImageCompression = useCallback(
-    async (
-      imageUri: string,
-      targetSize: number = IMAGE_CONFIG.MAX_FILE_SIZE,
-    ): Promise<CompressionResult> => {
+  const compressImage = useCallback(
+    async (imageUri: string): Promise<CompressionResult> => {
       for (const quality of IMAGE_CONFIG.QUALITY_STEPS) {
-        try {
-          const result = await ImageManipulator.manipulateAsync(
-            imageUri,
-            [{ resize: { width: IMAGE_CONFIG.RESIZE_WIDTH } }],
-            {
-              compress: quality,
-              format: IMAGE_CONFIG.FORMAT,
-              base64: true,
-            },
-          );
+        const result = await ImageManipulator.manipulateAsync(
+          imageUri,
+          [{ resize: { width: IMAGE_CONFIG.RESIZE_WIDTH } }],
+          { compress: quality, format: IMAGE_CONFIG.FORMAT, base64: true },
+        );
 
-          if (!result.base64) {
-            throw new Error(`Compression failed at quality ${quality}`);
-          }
+        if (!result.base64) continue;
 
-          const fileSize = (result.base64.length * 3) / 4; // Approximate size
-
-          if (fileSize <= targetSize) {
-            return {
-              base64: result.base64,
-              size: fileSize,
-              quality,
-              uri: result.uri,
-            };
-          }
-        } catch {
-          // Continue with next quality level if compression fails
+        const fileSize = (result.base64.length * 3) / 4;
+        if (fileSize <= IMAGE_CONFIG.MAX_FILE_SIZE) {
+          return { base64: result.base64, size: fileSize, quality };
         }
       }
 
-      throw new Error("Unable to compress image to target size");
+      throw new Error("Gagal mengompresi gambar");
     },
     [],
   );
 
-  const uploadDirectWithRetry = useCallback(
-    async (
-      fileName: string,
-      fileBuffer: Uint8Array,
-      onProgress?: (progress: number) => void,
-      metrics?: Partial<UploadMetrics>,
-    ): Promise<string> => {
+  const uploadToStorage = useCallback(
+    async (fileName: string, fileBuffer: Uint8Array): Promise<string> => {
       let lastError: Error | null = null;
 
       for (let attempt = 1; attempt <= UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
         try {
-          onProgress?.(15 + (attempt - 1) * 10);
-
-          const uploadStartTime = Date.now();
+          // Upload file
           const uploadPromise = supabase.storage
             .from(UPLOAD_CONFIG.STORAGE_BUCKET)
             .upload(fileName, fileBuffer, {
-              contentType:
-                IMAGE_CONFIG.FORMAT === ImageManipulator.SaveFormat.JPEG
-                  ? "image/jpeg"
-                  : "image/png",
+              contentType: "image/jpeg",
               upsert: true,
             });
 
@@ -238,80 +271,32 @@ const CameraAttendance = () => {
           const { error } = await Promise.race([uploadPromise, timeoutPromise]);
           if (error) throw error;
 
-          const uploadTime = Date.now() - uploadStartTime;
-          if (metrics) metrics.uploadTime = uploadTime;
-
-          onProgress?.(85);
-
-          const { data: signedData, error: signedErr } = await supabase.storage
+          // Get signed URL
+          const { data, error: urlError } = await supabase.storage
             .from(UPLOAD_CONFIG.STORAGE_BUCKET)
             .createSignedUrl(fileName, 60 * 60 * 24);
 
-          if (signedErr) throw signedErr;
-          if (!signedData?.signedUrl) {
-            throw new Error("Failed to generate signed URL");
-          }
+          if (urlError || !data?.signedUrl)
+            throw urlError || new Error("Failed to get URL");
 
-          onProgress?.(100);
-
-          if (metrics) {
-            metrics.totalTime = Date.now() - metrics.startTime!;
-          }
-
-          return signedData.signedUrl;
+          return data.signedUrl;
         } catch (error: any) {
           lastError = error;
 
           if (attempt < UPLOAD_CONFIG.MAX_RETRIES) {
-            const delay =
-              UPLOAD_CONFIG.RETRY_DELAY_BASE * Math.pow(2, attempt - 1);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            onProgress?.(20 + attempt * 10);
+            await new Promise((resolve) =>
+              setTimeout(
+                resolve,
+                UPLOAD_CONFIG.RETRY_DELAY_BASE * Math.pow(2, attempt - 1),
+              ),
+            );
           }
         }
       }
 
-      throw lastError || new Error("Upload failed after multiple attempts");
+      throw lastError || new Error("Upload gagal setelah 3 percobaan");
     },
     [],
-  );
-
-  const uploadWithRetry = useCallback(
-    async (
-      fileName: string,
-      fileBuffer: Uint8Array,
-      onProgress?: (progress: number) => void,
-    ): Promise<string> => {
-      const metrics: Partial<UploadMetrics> = {
-        startTime: Date.now(),
-        fileSize: fileBuffer.length,
-      };
-
-      return uploadDirectWithRetry(fileName, fileBuffer, onProgress, metrics);
-    },
-    [uploadDirectWithRetry],
-  );
-
-  const processImageWithOptimization = useCallback(
-    async (
-      imageUri: string,
-      onProgress?: (progress: number) => void,
-    ): Promise<CompressionResult> => {
-      onProgress?.(10);
-
-      try {
-        const compressionResult = await getOptimalImageCompression(imageUri);
-
-        onProgress?.(55);
-
-        onProgress?.(100);
-
-        return compressionResult;
-      } catch {
-        throw new Error("Failed to optimize image for upload");
-      }
-    },
-    [getOptimalImageCompression],
   );
 
   const saveAttendanceRecord = useCallback(
@@ -340,97 +325,61 @@ const CameraAttendance = () => {
   );
 
   const processAndUploadPhoto = useCallback(
-    async (optimizedResult: CompressionResult): Promise<void> => {
+    async (compressed: CompressionResult): Promise<void> => {
       setIsUploading(true);
       const startTime = Date.now();
 
       try {
+        // Check connection
         setUploadProgress({
           stage: "processing",
-          percentage: 5,
+          percentage: 10,
           message: "Memeriksa koneksi...",
         });
-
-        try {
-          const netInfo = await NetInfo.fetch();
-          if (!netInfo.isConnected) {
-            throw new Error(
-              "Tidak ada koneksi internet. Silakan cek koneksi Anda.",
-            );
-          }
-        } catch (netErr) {
-          console.warn("NetInfo check failed, continuing anyway", netErr);
+        const netInfo = await NetInfo.fetch();
+        if (!netInfo.isConnected) {
+          throw new Error("Tidak ada koneksi internet");
         }
 
+        // Prepare file
         setUploadProgress({
           stage: "processing",
-          percentage: 20,
-          message: "Menyiapkan file untuk diunggah...",
+          percentage: 30,
+          message: "Memproses foto...",
         });
-
-        const fileBuffer = base64ToUint8Array(optimizedResult.base64);
-        if (fileBuffer.length > IMAGE_CONFIG.MAX_FILE_SIZE) {
-          throw new Error(
-            "Image file terlalu besar setelah optimasi. Coba ambil foto lagi.",
-          );
-        }
-
+        const fileBuffer = base64ToUint8Array(compressed.base64);
         const fileName = generateFileName();
 
+        // Upload
         setUploadProgress({
           stage: "uploading",
-          percentage: 35,
+          percentage: 50,
           message: "Mengunggah foto...",
         });
+        const photoUrl = await uploadToStorage(fileName, fileBuffer);
 
-        const photoUrl = await uploadWithRetry(
-          fileName,
-          fileBuffer,
-          (progress: number) => {
-            const stageProgress = 35 + (progress / 100) * 45;
-            setUploadProgress({
-              stage: "uploading",
-              percentage: Math.round(stageProgress),
-              message:
-                progress === 100
-                  ? "Foto berhasil diunggah!"
-                  : `Mengunggah... ${Math.round(progress)}%`,
-            });
-          },
-        );
-
+        // Save to database
         setUploadProgress({
           stage: "saving",
-          percentage: 85,
-          message: "Memverifikasi unggahan...",
+          percentage: 80,
+          message: "Menyimpan data...",
         });
-
-        try {
-          const response = await fetch(photoUrl, { method: "HEAD" });
-          if (!response.ok) {
-            throw new Error("Uploaded file validation failed");
-          }
-        } catch (validationError) {
-          console.warn(
-            "Upload validation failed, continuing anyway",
-            validationError,
-          );
-        }
-
         await saveAttendanceRecord(photoUrl);
 
+        // Success
         setUploadProgress({
           stage: "saving",
           percentage: 100,
-          message: "Absensi berhasil disimpan!",
+          message: "Berhasil!",
         });
 
         const totalTime = Date.now() - startTime;
-
-        const currentTime = new Date().toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+        const currentTime =
+          new Date().toLocaleTimeString("id-ID", {
+            timeZone: "Asia/Jakarta",
+            hour: "2-digit",
+            minute: "2-digit",
+          }) + " WIB";
 
         router.replace({
           pathname: "/Dashboard",
@@ -442,26 +391,11 @@ const CameraAttendance = () => {
           },
         });
       } catch (error: any) {
-        try {
-          const fileName = generateFileName();
-          await supabase.storage
-            .from(UPLOAD_CONFIG.STORAGE_BUCKET)
-            .remove([fileName]);
-        } catch (cleanupError) {
-          console.warn("Failed to cleanup file after error", cleanupError);
-        }
-
-        let errorMessage = "Gagal menyimpan data absensi. Silakan coba lagi.";
-
-        if (error?.message?.includes("timeout")) {
-          errorMessage =
-            "Upload timeout. Periksa koneksi internet dan coba lagi.";
-        } else if (error?.message?.includes("network")) {
-          errorMessage =
-            "Masalah koneksi jaringan. Pastikan koneksi internet stabil.";
-        } else if (error?.message?.includes("terlalu besar")) {
-          errorMessage = "Ukuran file terlalu besar. Coba ambil foto lagi.";
-        }
+        const errorMessage = error?.message?.includes("timeout")
+          ? "Upload timeout. Cek koneksi internet Anda"
+          : error?.message?.includes("koneksi")
+            ? error.message
+            : "Gagal menyimpan absensi";
 
         Alert.alert("Error", error?.message || errorMessage);
       } finally {
@@ -472,7 +406,7 @@ const CameraAttendance = () => {
       locationData,
       base64ToUint8Array,
       generateFileName,
-      uploadWithRetry,
+      uploadToStorage,
       saveAttendanceRecord,
       router,
     ],
@@ -524,9 +458,8 @@ const CameraAttendance = () => {
         ? photo.path
         : `file://${photo.path}`;
 
-      const optimizationResult = await processImageWithOptimization(photoUri);
-
-      await processAndUploadPhoto(optimizationResult);
+      const compressed = await compressImage(photoUri);
+      await processAndUploadPhoto(compressed);
     } catch (error) {
       Alert.alert(
         "Error",
@@ -537,13 +470,7 @@ const CameraAttendance = () => {
     } finally {
       setIsCapturingPhoto(false);
     }
-  }, [
-    cameraFacing,
-    isCameraReady,
-    isCapturingPhoto,
-    processImageWithOptimization,
-    processAndUploadPhoto,
-  ]);
+  }, [isCameraReady, isCapturingPhoto, compressImage, processAndUploadPhoto]);
 
   const handleToggleCameraFacing = useCallback(() => {
     setCameraFacing((current) => (current === "front" ? "back" : "front"));
@@ -578,8 +505,6 @@ const CameraAttendance = () => {
         [{ text: "OK", onPress: () => router.back() }],
       );
     }
-
-    return () => {};
   }, [isLocationDataValid, router]);
 
   useEffect(() => {
@@ -598,30 +523,25 @@ const CameraAttendance = () => {
   }, [hasPermission, requestCameraAccess]);
 
   // --- RENDER HELPERS ---
-  const renderFullScreenMessage = useCallback(
-    (message: string) => (
-      <SafeAreaView
-        className="flex-1 bg-black"
-        edges={["top", "left", "right"]}
-      >
-        <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <View className="flex-1 items-center justify-center px-8">
-          <ActivityIndicator size="large" color="#0066FF" />
-          <Text variant="large" className="text-white text-center mt-4">
-            {message}
-          </Text>
-        </View>
-      </SafeAreaView>
-    ),
-    [],
-  );
+  const FullScreenMessage = memo<{ message: string }>(({ message }) => (
+    <SafeAreaView className="flex-1 bg-black" edges={["top", "left", "right"]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <View className="flex-1 items-center justify-center px-8">
+        <ActivityIndicator size="large" color="#0066FF" />
+        <Text variant="large" className="text-white text-center mt-4">
+          {message}
+        </Text>
+      </View>
+    </SafeAreaView>
+  ));
+  FullScreenMessage.displayName = "FullScreenMessage";
 
   // --- MAIN RENDER ---
   const permissionResolved = typeof hasPermission === "boolean";
 
   if (!permissionResolved) {
-    return renderFullScreenMessage("Memeriksa izin kamera...");
+    return <FullScreenMessage message="Memeriksa izin kamera..." />;
   }
 
   if (!hasPermission) {
@@ -658,7 +578,7 @@ const CameraAttendance = () => {
   }
 
   if (!device) {
-    return renderFullScreenMessage("Menyiapkan kamera perangkat...");
+    return <FullScreenMessage message="Menyiapkan kamera perangkat..." />;
   }
 
   return (
@@ -707,20 +627,12 @@ const CameraAttendance = () => {
                 <Icon as={SwitchCamera} className="size-7 text-white" />
               </TouchableOpacity>
 
-              <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
-                <TouchableOpacity
-                  className="w-20 h-20 rounded-full bg-white justify-center items-center"
-                  onPress={handleTakePicture}
-                  disabled={isCapturingPhoto || !isCameraReady || isUploading}
-                  activeOpacity={0.8}
-                >
-                  {isCapturingPhoto ? (
-                    <ActivityIndicator size="large" color="#0066FF" />
-                  ) : (
-                    <View className="w-16 h-16 rounded-full bg-[#0066FF]" />
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+              <CaptureButton
+                isCapturing={isCapturingPhoto}
+                isReady={isCameraReady}
+                isUploading={isUploading}
+                onPress={handleTakePicture}
+              />
 
               <View className="w-16 h-16" />
             </View>
@@ -728,36 +640,13 @@ const CameraAttendance = () => {
         </SafeAreaView>
       </View>
 
-      {!isCameraReady && (
-        <View className="absolute inset-0 bg-black/70 justify-center items-center">
-          <ActivityIndicator size="large" color="#0066FF" />
-          <Text variant="default" className="text-white mt-3">
-            Menyiapkan kamera...
-          </Text>
-        </View>
-      )}
+      {!isCameraReady && <CameraReadyOverlay />}
 
       {isUploading && (
-        <View className="absolute inset-0 bg-black/80 justify-center items-center px-8">
-          <Animated.View className="items-center justify-center w-full">
-            <Icon as={Loader2} className="size-8 text-[#0066FF]" />
-            <Text variant="h2" className="text-white mt-4 mb-2">
-              Menyimpan absensi...
-            </Text>
-            <Text variant="default" className="text-white/70 text-center mb-8">
-              {uploadProgress.message}
-            </Text>
-            <View className="w-full h-2 bg-gray-700 rounded-full">
-              <View
-                className="h-full bg-[#0066FF] rounded-full"
-                style={{ width: `${uploadProgress.percentage}%` }}
-              />
-            </View>
-            <Text variant="small" className="text-white/70 mt-2">
-              {uploadProgress.percentage}%
-            </Text>
-          </Animated.View>
-        </View>
+        <UploadOverlay
+          message={uploadProgress.message}
+          percentage={uploadProgress.percentage}
+        />
       )}
     </View>
   );
