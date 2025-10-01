@@ -956,6 +956,7 @@ export default function EditProfile() {
                   value={email}
                   editable={false}
                   className={"border-gray-300 bg-white"}
+                  accessibilityHint="Email address, read-only"
                 />
               </View>
             </View>
