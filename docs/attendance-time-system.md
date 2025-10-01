@@ -7,10 +7,10 @@ Implementasi sistem validasi jam absen masuk dan pulang untuk aplikasi Skanida A
 
 ### 1. Client-Side Time Validation (`lib/utils.ts`)
 - ✅ Fungsi `checkAttendanceTime()` yang memvalidasi waktu berdasarkan jadwal sekolah
-- ✅ Support untuk jadwal berbeda per hari:
-  - **Senin**: Masuk 07:00-08:00, Pulang 15:00-16:00
-  - **Selasa-Kamis**: Masuk 07:00-08:00, Pulang 14:00-15:00  
-  - **Jumat**: Masuk 07:00-08:00, Pulang 11:30-12:30
+- ✅ Support untuk jadwal berbeda per hari (berdasarkan jadwal sekolah aktual):
+  - **Senin (SENIN)**: Masuk 07:00-07:45, Pulang 15:00-16:00
+  - **Selasa-Kamis (SELASA, RABU, KAMIS)**: Masuk 07:00-07:45, Pulang 15:15-16:00  
+  - **Jumat (JUMAT)**: Masuk 07:00-07:45, Pulang 11:30-12:00
   - **Weekend**: Tidak diizinkan
 - ✅ Return type `AttendanceTimeResult` dengan `canCheckIn` dan `canCheckOut`
 
@@ -66,10 +66,11 @@ SELECT public.is_valid_attendance_time(
 ## Testing
 
 ### Client-Side Testing
-Function tested with various scenarios:
+Function tested with various scenarios (updated with actual schedule):
 - ✅ Monday 7:30 AM (check-in): `{ canCheckIn: true, canCheckOut: false }`
 - ✅ Monday 3:30 PM (check-out): `{ canCheckIn: false, canCheckOut: true }`
-- ✅ Friday 12:00 PM (check-out): `{ canCheckIn: false, canCheckOut: true }`
+- ✅ Tuesday 3:30 PM (check-out): `{ canCheckIn: false, canCheckOut: true }`
+- ✅ Friday 11:45 AM (check-out): `{ canCheckIn: false, canCheckOut: true }`
 - ✅ Monday 10:00 AM (outside): `{ canCheckIn: false, canCheckOut: false }`
 - ✅ Saturday (weekend): `{ canCheckIn: false, canCheckOut: false }`
 

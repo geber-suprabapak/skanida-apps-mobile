@@ -32,25 +32,25 @@ BEGIN
     RETURN false;
   END IF;
   
-  -- Define schedule based on day of week
+  -- Define schedule based on day of week (from actual school schedule)
   IF day_of_week = 1 THEN
-    -- Monday
+    -- Monday (SENIN) - UPACARA starts at 07:00, classes until 15:15
     check_in_start := 7 * 60; -- 07:00
-    check_in_end := 8 * 60;   -- 08:00
+    check_in_end := 7 * 60 + 45;   -- 07:45
     check_out_start := 15 * 60; -- 15:00
     check_out_end := 16 * 60;   -- 16:00
   ELSIF day_of_week >= 2 AND day_of_week <= 4 THEN
-    -- Tuesday - Thursday
+    -- Tuesday - Thursday (SELASA, RABU, KAMIS) - Classes from 07:00 to 16:00
     check_in_start := 7 * 60; -- 07:00
-    check_in_end := 8 * 60;   -- 08:00
-    check_out_start := 14 * 60; -- 14:00
-    check_out_end := 15 * 60;   -- 15:00
+    check_in_end := 7 * 60 + 45;   -- 07:45
+    check_out_start := 15 * 60 + 15; -- 15:15
+    check_out_end := 16 * 60;   -- 16:00
   ELSIF day_of_week = 5 THEN
-    -- Friday
+    -- Friday (JUMAT) - Classes from 07:00 to 12:00
     check_in_start := 7 * 60; -- 07:00
-    check_in_end := 8 * 60;   -- 08:00
+    check_in_end := 7 * 60 + 45;   -- 07:45
     check_out_start := 11 * 60 + 30; -- 11:30
-    check_out_end := 12 * 60 + 30;   -- 12:30
+    check_out_end := 12 * 60;   -- 12:00
   ELSE
     RETURN false;
   END IF;
@@ -89,7 +89,7 @@ GRANT EXECUTE ON FUNCTION public.is_valid_attendance_time TO authenticated;
 -- Add a comment to document the function
 COMMENT ON FUNCTION public.is_valid_attendance_time IS 
 'Validates if attendance can be recorded at the given time based on school schedule:
-- Monday: Check-in 07:00-08:00, Check-out 15:00-16:00
-- Tuesday-Thursday: Check-in 07:00-08:00, Check-out 14:00-15:00
-- Friday: Check-in 07:00-08:00, Check-out 11:30-12:30
+- Monday (SENIN): Check-in 07:00-07:45, Check-out 15:00-16:00
+- Tuesday-Thursday (SELASA, RABU, KAMIS): Check-in 07:00-07:45, Check-out 15:15-16:00
+- Friday (JUMAT): Check-in 07:00-07:45, Check-out 11:30-12:00
 - Weekends: Not allowed';

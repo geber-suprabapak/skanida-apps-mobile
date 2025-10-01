@@ -47,25 +47,25 @@ export function checkAttendanceTime(
     checkOutStart: number,
     checkOutEnd: number;
 
-  // Define schedule based on day of week
+  // Define schedule based on day of week (from actual school schedule)
   if (dayOfWeek === 1) {
-    // Senin
+    // Senin (Monday) - UPACARA starts at 07:00, classes until 15:15
     checkInStart = timeToMinutes("07:00");
-    checkInEnd = timeToMinutes("08:00");
+    checkInEnd = timeToMinutes("07:45");
     checkOutStart = timeToMinutes("15:00");
     checkOutEnd = timeToMinutes("16:00");
   } else if (dayOfWeek >= 2 && dayOfWeek <= 4) {
-    // Selasa - Kamis
+    // Selasa, Rabu, Kamis (Tuesday - Thursday) - Classes from 07:00 to 16:00
     checkInStart = timeToMinutes("07:00");
-    checkInEnd = timeToMinutes("08:00");
-    checkOutStart = timeToMinutes("14:00");
-    checkOutEnd = timeToMinutes("15:00");
+    checkInEnd = timeToMinutes("07:45");
+    checkOutStart = timeToMinutes("15:15");
+    checkOutEnd = timeToMinutes("16:00");
   } else if (dayOfWeek === 5) {
-    // Jumat
+    // Jumat (Friday) - Classes from 07:00 to 12:00
     checkInStart = timeToMinutes("07:00");
-    checkInEnd = timeToMinutes("08:00");
+    checkInEnd = timeToMinutes("07:45");
     checkOutStart = timeToMinutes("11:30");
-    checkOutEnd = timeToMinutes("12:30");
+    checkOutEnd = timeToMinutes("12:00");
   } else {
     // Default case (shouldn't happen for weekdays)
     return { canCheckIn: false, canCheckOut: false };
