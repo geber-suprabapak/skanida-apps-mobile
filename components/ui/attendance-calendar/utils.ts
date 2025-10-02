@@ -1,5 +1,10 @@
 import { CalendarDay } from "./types";
+import { getWIBDate } from "~/lib/utils";
 
+/**
+ * Format date to YYYY-MM-DD string
+ * Note: Input date should already be in correct timezone context
+ */
 export const formatDate = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -29,7 +34,7 @@ export const getMonthDays = (year: number, month: number): CalendarDay[] => {
   const startDate = firstDay.getDay(); // 0 = Sunday
 
   const days: CalendarDay[] = [];
-  const today = new Date();
+  const today = getWIBDate(); // Use WIB (UTC+7) for consistency
   const todayString = formatDate(today);
 
   // Add previous month's trailing days

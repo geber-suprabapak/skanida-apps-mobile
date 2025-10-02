@@ -30,6 +30,7 @@ import {
   Loader2,
 } from "lucide-react-native";
 import { Buffer } from "buffer";
+import { getWIBDate, getWIBDateString, getWIBISOString } from "~/lib/utils";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
@@ -183,26 +184,22 @@ const CameraAttendance = () => {
 
   const currentDateTime = useMemo(() => {
     const now = new Date();
+    const wibTime = getWIBDate();
+    const wibDate = getWIBDateString();
 
-    // Convert to WIB (UTC+7)
-    const wibOffset = 7 * 60; // 7 hours in minutes
-    const localOffset = now.getTimezoneOffset(); // device timezone offset
-    const wibTime = new Date(now.getTime() + (wibOffset + localOffset) * 60000);
-
-    // Get WIB date components
+    // Extract components for filename (DDMMYYYY)
     const year = wibTime.getUTCFullYear();
     const month = String(wibTime.getUTCMonth() + 1).padStart(2, "0");
     const day = String(wibTime.getUTCDate()).padStart(2, "0");
-    const wibDate = `${year}-${month}-${day}`; // YYYY-MM-DD for database
 
     return {
       date: wibDate, // WIB date for database (YYYY-MM-DD)
       formattedDate: `${day}${month}${year}`, // DDMMYYYY for filename
       timestamp: now.getTime(), // epoch ms for uniqueness
-      timestampIso: now.toISOString(), // full ISO UTC for audit
+      timestampIso: getWIBISOString(), // full ISO UTC for audit
       displayTime:
         wibTime.toLocaleString("id-ID", {
-          timeZone: "Asia/Jakarta",
+          timeZone: "UTC",
           year: "numeric",
           month: "2-digit",
           day: "2-digit",

@@ -27,6 +27,7 @@ import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
 import { Icon } from "~/components/ui/icon";
+import { getWIBDateString } from "~/lib/utils";
 import {
   Clock,
   Bell,
@@ -189,7 +190,7 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = getWIBDateString(); // Use WIB (UTC+7) for consistency
 
       // Fetch today's attendance
       const { data: todayAttendance } = await supabase
