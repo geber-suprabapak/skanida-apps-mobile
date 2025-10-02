@@ -28,6 +28,13 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
       xl: "size-16",
     } as const;
 
+    const fallbackTextClasses: Record<NonNullable<AvatarProps["size"]>, string> = {
+      sm: "text-xs",
+      md: "text-sm",
+      lg: "text-3xl",
+      xl: "text-5xl",
+    };
+
     return (
       <View
         ref={ref}
@@ -47,7 +54,10 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
           <View className="flex h-full w-full items-center justify-center bg-muted">
             {fallback ? (
               <Text
-                className={`font-medium text-muted-foreground ${size === "lg" || size === "xl" ? "text-3xl" : "text-sm"}`}
+                className={cn(
+                  "font-medium text-muted-foreground",
+                  fallbackTextClasses[size],
+                )}
               >
                 {fallback}
               </Text>
