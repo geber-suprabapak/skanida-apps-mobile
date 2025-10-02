@@ -599,7 +599,7 @@ const CameraAttendance = () => {
 
       <View className="absolute inset-0" pointerEvents="box-none">
         <SafeAreaView
-          className="flex-1"
+          className="absolute inset-0"
           edges={["top", "left", "right"]}
           pointerEvents="box-none"
         >
