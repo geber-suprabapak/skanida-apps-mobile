@@ -603,8 +603,8 @@ export default function EditProfile() {
       // Clear profile cache to ensure fresh data is loaded in other screens
       await clearProfileCache();
 
-  setInitialAbsenceNumber(absenceNumber);
-  setInitialAvatarUrl(avatarUrl);
+      setInitialAbsenceNumber(absenceNumber);
+      setInitialAvatarUrl(avatarUrl);
 
       Alert.alert("Sukses", "Profil berhasil diperbarui", [
         {

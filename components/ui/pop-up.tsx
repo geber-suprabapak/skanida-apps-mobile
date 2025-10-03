@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Modal,
@@ -11,6 +11,11 @@ import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
 import { CheckCircle } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
+import {
+  fetchRandomQuote,
+  getFallbackQuote,
+  type MotivationalQuote,
+} from "~/lib/motivationalQuotes";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -55,6 +60,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
+  const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(
+    {
+      quote: "",
+      author: "",
+    },
+  );
 
   // Animation values
   const modalScale = useRef(new Animated.Value(0)).current;
@@ -122,7 +133,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   };
 
   // Show animation
-  const showAnimation = () => {
+  const showAnimation = useCallback(() => {
     // Reset all values
     modalScale.setValue(0);
     modalOpacity.setValue(0);
@@ -188,7 +199,14 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     setTimeout(() => {
       animateConfetti();
     }, 500);
-  };
+  }, [
+    modalScale,
+    modalOpacity,
+    checkIconScale,
+    checkIconRotation,
+    textSlideY,
+    buttonScale,
+  ]);
 
   // Hide animation
   const hideAnimation = () => {
@@ -209,23 +227,47 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   };
 
   useEffect(() => {
+    let isActive = true;
+
+    const loadQuote = async () => {
+      try {
+        const remoteQuote = await fetchRandomQuote();
+
+        if (isActive && remoteQuote?.quote?.trim()) {
+          setMotivationalQuote(remoteQuote);
+        } else if (isActive) {
+          setMotivationalQuote(getFallbackQuote());
+        }
+      } catch {
+        if (isActive) {
+          setMotivationalQuote(getFallbackQuote());
+        }
+        // Error handled by setting fallback quote; do not re-throw.
+      }
+    };
+
     if (visible) {
+      loadQuote();
       showAnimation();
     }
-  }, [visible]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [visible, showAnimation]);
 
   const getSuccessMessage = () => {
     if (attendanceType === "present") {
       return {
         title: "Berhasil absen masuk",
-        subtitle: "Semangat sekolah hari ini! 🔥🔥",
-        emoji: "🎉",
+        defaultSubtitle:
+          "Semangat praktik dan belajar hari ini, langkah kecil menuju karier impian. 🔥",
       };
     } else {
       return {
         title: "Berhasil absen pulang",
-        subtitle: "Terima kasih sudah belajar dengan giat! 📚✨",
-        emoji: "👋",
+        defaultSubtitle:
+          "Hebat! Hari ini kamu sudah selangkah lebih dekat jadi lulusan SMK kebanggaan. 📚✨",
       };
     }
   };
@@ -243,6 +285,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   };
 
   const message = getSuccessMessage();
+  const motivationalMessage = motivationalQuote.quote
+    ? `${motivationalQuote.quote}${
+        motivationalQuote.author ? ` — ${motivationalQuote.author}` : ""
+      }`
+    : message.defaultSubtitle;
   const currentTime =
     time ||
     new Date().toLocaleTimeString("id-ID", {
@@ -346,7 +393,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                   colorScheme === "dark" ? "text-gray-300" : "text-gray-600"
                 }`}
               >
-                {message.subtitle}
+                {motivationalMessage}
               </Text>
 
               {/* Time Display */}
