@@ -1,4 +1,5 @@
 // components/TimeSyncIndicator.tsx
+import { useCallback } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
@@ -65,7 +66,7 @@ export const TimeSyncIndicator: React.FC<TimeSyncIndicatorProps> = ({
     }
   };
 
-  const formatLastSync = () => {
+  const formatLastSync = useCallback(() => {
     if (!lastSyncTime) return "Never";
     const now = Date.now();
     const diff = now - lastSyncTime;
@@ -76,7 +77,7 @@ export const TimeSyncIndicator: React.FC<TimeSyncIndicatorProps> = ({
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;
     return `${seconds}s ago`;
-  };
+  }, [lastSyncTime]);
 
   return (
     <TouchableOpacity

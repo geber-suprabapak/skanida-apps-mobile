@@ -21,6 +21,47 @@ interface PersistedSyncData {
   source: "server" | "ntp" | "local";
 }
 
+/**
+ * TimeSync - Centralized time synchronization system
+ *
+ * This singleton class manages time synchronization between the device and server,
+ * ensuring consistent and accurate time across the application.
+ *
+ * **Synchronization Strategy:**
+ * 1. Primary: Supabase Edge Function (timesync) - Most reliable, uses app's own backend
+ * 2. Fallback: WorldTimeAPI (NTP alternative) - Public API when backend is unavailable
+ * 3. Last Resort: Local device time - Used when all network sync methods fail
+ *
+ * **Features:**
+ * - Persistent offset caching (1-hour expiry) for fast cold starts
+ * - Background sync every 15 minutes when app is active
+ * - Automatic sync on app resume
+ * - Drift detection (5-second threshold) for clock changes
+ * - Network delay compensation using round-trip time
+ *
+ * **Usage Pattern:**
+ * ```typescript
+ * // Initialize on app startup (in _layout.tsx)
+ * await timeSync.initialize();
+ *
+ * // Get current server-synced time
+ * const now = timeSync.getSyncedTime(); // Returns Date object
+ *
+ * // Display time (auto-converts to device timezone)
+ * const displayTime = format(now, "HH:mm:ss");
+ *
+ * // Get date for database queries
+ * const dateString = formatDateWIB(now); // "YYYY-MM-DD"
+ *
+ * // Cleanup on unmount
+ * timeSync.cleanup();
+ * ```
+ *
+ * **Important Notes:**
+ * - getSyncedTime() returns UTC Date object that auto-displays in device timezone
+ * - DO NOT manually add timezone offset for display - it's automatic!
+ * - Offset is time difference between server and device, NOT timezone offset
+ */
 class TimeSync {
   private timeOffset: number = 0;
   private lastSyncTime: number = 0;
@@ -183,6 +224,9 @@ class TimeSync {
       });
 
       useTimeSyncStore.getState().setDriftDetected(true);
+    } else {
+      // Reset drift flag when within acceptable limits
+      useTimeSyncStore.getState().setDriftDetected(false);
     }
 
     return hasDrift;
@@ -195,8 +239,13 @@ class TimeSync {
   async syncWithServer(): Promise<boolean> {
     // If there's an ongoing sync, wait for it
     if (this.syncPromise) {
-      await this.syncPromise;
-      return true;
+      try {
+        await this.syncPromise;
+        return true;
+      } catch {
+        // If waiting sync failed, allow retry
+        this.syncPromise = null;
+      }
     }
 
     // If recently synced, no need to sync again
