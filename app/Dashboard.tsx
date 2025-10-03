@@ -27,6 +27,7 @@ import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
 import { Icon } from "~/components/ui/icon";
+import { getWIBDateString } from "~/lib/utils";
 import {
   Clock,
   Bell,
@@ -38,8 +39,6 @@ import {
   Settings,
   UserRound,
 } from "lucide-react-native";
-
-
 
 // Define interface for user profile data
 interface UserProfile {
@@ -191,7 +190,7 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = getWIBDateString(); // Use WIB (UTC+7) for consistency
 
       // Fetch today's attendance
       const { data: todayAttendance } = await supabase
@@ -445,7 +444,10 @@ export default function Dashboard() {
                 ) : (
                   <View className="mr-3">
                     <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
-                      <Icon as={UserRound} className="size-6 text-blue-500 dark:text-blue-400" />
+                      <Icon
+                        as={UserRound}
+                        className="size-6 text-blue-500 dark:text-blue-400"
+                      />
                     </View>
                   </View>
                 )}
