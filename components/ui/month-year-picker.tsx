@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
+import { timeSync } from "~/utils/timeSync";
 import {
   Clock,
   History,
@@ -54,7 +55,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   onDateChange,
   isDarkColorScheme = false,
   minimumDate,
-  maximumDate = new Date(),
+  maximumDate = timeSync.getSyncedTime(),
   buttonStyle,
   textStyle,
 }) => {
@@ -69,7 +70,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   const yearScrollRef = useRef<ScrollView>(null);
 
   // Generate year range
-  const currentYear = new Date().getFullYear();
+  const currentYear = timeSync.getSyncedTime().getFullYear();
   const startYear = minimumDate ? minimumDate.getFullYear() : currentYear - 10;
   const endYear = maximumDate ? maximumDate.getFullYear() : currentYear + 5;
   const years = Array.from(

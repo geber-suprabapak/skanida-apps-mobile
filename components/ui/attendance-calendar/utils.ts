@@ -1,5 +1,6 @@
 import { CalendarDay } from "./types";
-import { getWIBDate } from "~/lib/utils";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 
 /**
  * Format date to YYYY-MM-DD string
@@ -34,8 +35,8 @@ export const getMonthDays = (year: number, month: number): CalendarDay[] => {
   const startDate = firstDay.getDay(); // 0 = Sunday
 
   const days: CalendarDay[] = [];
-  const today = getWIBDate(); // Use WIB (UTC+7) for consistency
-  const todayString = formatDate(today);
+  const todayUTC = timeSync.getSyncedTime();
+  const todayString = formatDateWIB(todayUTC);
 
   // Add previous month's trailing days
   const prevMonth = new Date(year, month - 1, 0);
