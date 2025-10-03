@@ -28,6 +28,7 @@ import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
 import { Icon } from "~/components/ui/icon";
 import { getWIBDateString } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 import {
   Clock,
   Bell,
@@ -72,6 +73,7 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
+  const [isTimeSynced, setIsTimeSynced] = useState(false);
 
   // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
@@ -142,10 +144,35 @@ export default function Dashboard() {
     showAlphaReleaseAlert();
   }, []);
 
+  // Sync time with server on mount and set up interval for updating time
   useEffect(() => {
-    const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
+    const syncTime = async () => {
+      const success = await timeSync.syncWithServer();
+      setIsTimeSynced(success);
+    };
+
+    // Initial sync
+    syncTime();
+
+    // Update current time every second using synced time
+    const timerId = setInterval(() => {
+      setCurrentTime(timeSync.getSyncedTime());
+    }, 1000);
+
     return () => clearInterval(timerId);
   }, []);
+
+  // Re-sync when screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      timeSync.syncWithServer().then((success) => {
+        setIsTimeSynced(success);
+        if (success) {
+          setCurrentTime(timeSync.getSyncedTime());
+        }
+      });
+    }
+  }, [isFocused]);
 
   // Fetch profile data from Supabase
   const fetchProfileData = useCallback(async () => {
@@ -307,7 +334,16 @@ export default function Dashboard() {
   // Refresh function
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfileData(), fetchAttendanceData()]);
+    await Promise.all([
+      fetchProfileData(),
+      fetchAttendanceData(),
+      timeSync.forceSyncWithServer().then((success) => {
+        setIsTimeSynced(success);
+        if (success) {
+          setCurrentTime(timeSync.getSyncedTime());
+        }
+      }),
+    ]);
     setRefreshing(false);
   }, [fetchProfileData, fetchAttendanceData]);
 
@@ -464,15 +500,30 @@ export default function Dashboard() {
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
                 <View
-                  className={`px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800`}
+                  className={`px-3 py-2 rounded-lg ${
+                    isTimeSynced
+                      ? "bg-gray-200 dark:bg-gray-800"
+                      : "bg-yellow-100 dark:bg-yellow-900/30"
+                  }`}
                 >
                   <View className="flex-row items-center">
-                    <Icon as={Clock} className="size-4 text-foreground" />
+                    <Icon
+                      as={Clock}
+                      className={`size-4 ${
+                        isTimeSynced
+                          ? "text-foreground"
+                          : "text-yellow-700 dark:text-yellow-500"
+                      }`}
+                    />
                     <Text
                       variant="small"
-                      className="ml-1 font-medium text-foreground"
+                      className={`ml-1 font-medium ${
+                        isTimeSynced
+                          ? "text-foreground"
+                          : "text-yellow-700 dark:text-yellow-500"
+                      }`}
                     >
-                      Waktu Sekarang
+                      Waktu
                     </Text>
                   </View>
                   <Text
