@@ -6,32 +6,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Get current date/time in WIB timezone (UTC+7)
- * This ensures consistent timezone across the entire app
+ * Convert UTC Date to WIB (UTC+7) for DISPLAY ONLY
+ * DO NOT use for database operations
  */
-export function getWIBDate(): Date {
-  const now = new Date();
-  const wibOffset = 7 * 60; // 7 hours in minutes
-  const localOffset = now.getTimezoneOffset(); // device timezone offset in minutes
-  const wibTime = new Date(now.getTime() + (wibOffset + localOffset) * 60000);
-  return wibTime;
+export function toWIB(utcDate: Date): Date {
+  return new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
 }
 
 /**
- * Format WIB date to YYYY-MM-DD string
- * Used for database queries and comparisons
+ * Format date as YYYY-MM-DD in WIB timezone
+ * Used for database queries that expect WIB dates
  */
-export function getWIBDateString(): string {
-  const wibTime = getWIBDate();
-  const year = wibTime.getUTCFullYear();
-  const month = String(wibTime.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(wibTime.getUTCDate()).padStart(2, "0");
+export function formatDateWIB(date: Date): string {
+  const wibDate = toWIB(date);
+  const year = wibDate.getUTCFullYear();
+  const month = String(wibDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(wibDate.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-/**
- * Get WIB timestamp as ISO string
- */
-export function getWIBISOString(): string {
-  return new Date().toISOString(); // Keep as UTC for database
 }

@@ -1,5 +1,8 @@
 // utils/timeSync.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, AppStateStatus } from "react-native";
 import { supabase } from "./supabase";
+import useTimeSyncStore from "~/store/timeSyncStore";
 
 interface ServerTimeResponse {
   serverTime: string;
@@ -7,11 +10,140 @@ interface ServerTimeResponse {
   formattedUTC7: string;
 }
 
+interface NTPResponse {
+  datetime: string;
+  unixtime: number;
+}
+
+interface PersistedSyncData {
+  offset: number;
+  timestamp: number;
+  source: "server" | "ntp" | "local";
+}
+
 class TimeSync {
   private timeOffset: number = 0;
   private lastSyncTime: number = 0;
   private readonly SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private readonly BACKGROUND_SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
+  private readonly DRIFT_THRESHOLD = 5000; // 5 seconds
+  private readonly STORAGE_KEY = "time_sync_data";
   private syncPromise: Promise<void> | null = null;
+  private backgroundSyncTimer: NodeJS.Timeout | null = null;
+  private appStateSubscription: any = null;
+  private isInitialized: boolean = false;
+
+  constructor() {
+    this.setupBackgroundSync();
+  }
+
+  /**
+   * Initialize time sync with persisted data
+   */
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+
+    try {
+      // Load persisted offset
+      await this.loadPersistedOffset();
+
+      // Perform initial sync
+      await this.syncWithServer();
+
+      this.isInitialized = true;
+      console.log("✅ TimeSync initialized");
+    } catch (error) {
+      console.error("TimeSync initialization failed:", error);
+      useTimeSyncStore.getState().setStatus("failed");
+    }
+  }
+
+  /**
+   * Load persisted offset from AsyncStorage
+   */
+  private async loadPersistedOffset(): Promise<void> {
+    try {
+      const stored = await AsyncStorage.getItem(this.STORAGE_KEY);
+
+      if (stored) {
+        const data: PersistedSyncData = JSON.parse(stored);
+        const age = Date.now() - data.timestamp;
+
+        // Use persisted offset if less than 1 hour old
+        if (age < 60 * 60 * 1000) {
+          this.timeOffset = data.offset;
+          this.lastSyncTime = data.timestamp;
+
+          useTimeSyncStore.getState().setOffset(data.offset);
+          useTimeSyncStore.getState().setSyncSource(data.source);
+          useTimeSyncStore.getState().setLastSyncTime(data.timestamp);
+
+          console.log("📦 Loaded persisted offset:", {
+            offset: data.offset,
+            age: `${Math.round(age / 1000)}s`,
+            source: data.source,
+          });
+        } else {
+          console.log("⏰ Persisted offset too old, will sync fresh");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load persisted offset:", error);
+    }
+  }
+
+  /**
+   * Persist offset to AsyncStorage
+   */
+  private async persistOffset(
+    offset: number,
+    source: "server" | "ntp" | "local",
+  ): Promise<void> {
+    try {
+      const data: PersistedSyncData = {
+        offset,
+        timestamp: Date.now(),
+        source,
+      };
+
+      await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+      console.log("💾 Persisted offset to storage");
+    } catch (error) {
+      console.error("Failed to persist offset:", error);
+    }
+  }
+
+  /**
+   * Setup background sync when app is in foreground
+   */
+  private setupBackgroundSync(): void {
+    // Background sync timer
+    this.backgroundSyncTimer = setInterval(() => {
+      this.syncWithServer().catch((error) => {
+        console.error("Background sync failed:", error);
+      });
+    }, this.BACKGROUND_SYNC_INTERVAL);
+
+    // App state listener for sync on resume
+    this.appStateSubscription = AppState.addEventListener(
+      "change",
+      this.handleAppStateChange.bind(this),
+    );
+
+    console.log("🔄 Background sync enabled");
+  }
+
+  /**
+   * Handle app state changes
+   */
+  private handleAppStateChange(nextAppState: AppStateStatus): void {
+    if (nextAppState === "active") {
+      console.log("📱 App became active, syncing time...");
+      this.syncWithServer().catch((error) => {
+        console.error("App resume sync failed:", error);
+      });
+    }
+  }
 
   /**
    * Get synchronized time based on server offset
@@ -32,6 +164,28 @@ class TimeSync {
    */
   private shouldSync(): boolean {
     return Date.now() - this.lastSyncTime > this.SYNC_INTERVAL;
+  }
+
+  /**
+   * Detect time drift by comparing old and new offset
+   */
+  private detectDrift(newOffset: number): boolean {
+    if (this.timeOffset === 0) return false; // First sync
+
+    const drift = Math.abs(newOffset - this.timeOffset);
+    const hasDrift = drift > this.DRIFT_THRESHOLD;
+
+    if (hasDrift) {
+      console.warn("⚠️ Time drift detected:", {
+        oldOffset: this.timeOffset,
+        newOffset,
+        drift: `${drift}ms`,
+      });
+
+      useTimeSyncStore.getState().setDriftDetected(true);
+    }
+
+    return hasDrift;
   }
 
   /**
@@ -56,6 +210,10 @@ class TimeSync {
       return true;
     } catch (error) {
       console.error("Time sync failed:", error);
+      useTimeSyncStore.getState().setStatus("failed");
+      useTimeSyncStore
+        .getState()
+        .setError(error instanceof Error ? error.message : "Unknown error");
       return false;
     } finally {
       this.syncPromise = null;
@@ -64,43 +222,154 @@ class TimeSync {
 
   private async _performSync(): Promise<void> {
     try {
-      const requestTime = Date.now();
+      useTimeSyncStore.getState().setStatus("syncing");
 
-      const { data, error } =
-        await supabase.functions.invoke<ServerTimeResponse>("timesync", {
-          method: "GET",
-        });
-
-      const responseTime = Date.now();
-      const roundTripTime = responseTime - requestTime;
-
-      if (error) {
-        throw new Error(`Time sync error: ${error.message}`);
+      // Try server sync first
+      try {
+        await this._syncWithServerEdgeFunction();
+        return;
+      } catch (serverError) {
+        console.warn("Server sync failed, trying NTP fallback...", serverError);
       }
 
-      if (!data || !data.serverTimeUTC7) {
-        throw new Error("Invalid server time response");
+      // Fallback to NTP
+      try {
+        await this._syncWithNTP();
+        return;
+      } catch (ntpError) {
+        console.warn("NTP sync failed", ntpError);
       }
 
-      // Parse server time (UTC+7)
-      const serverTime = new Date(data.serverTimeUTC7).getTime();
-
-      // Estimate server time accounting for network delay (assume symmetric)
-      const estimatedServerTime = serverTime + roundTripTime / 2;
-
-      // Calculate offset
-      this.timeOffset = estimatedServerTime - responseTime;
+      // If both fail, use local time (offset = 0)
+      console.warn("All sync methods failed, using local time");
+      this.timeOffset = 0;
       this.lastSyncTime = Date.now();
 
-      console.log("Time sync successful", {
-        offset: this.timeOffset,
-        roundTripTime,
-        serverTime: data.serverTimeUTC7,
-      });
+      useTimeSyncStore.getState().setOffset(0);
+      useTimeSyncStore.getState().setSyncSource("local");
+      useTimeSyncStore.getState().setStatus("failed");
+
+      await this.persistOffset(0, "local");
     } catch (error) {
-      console.error("Failed to sync time with server:", error);
+      console.error("Sync process failed:", error);
       throw error;
     }
+  }
+
+  /**
+   * Sync with Supabase Edge Function
+   */
+  private async _syncWithServerEdgeFunction(): Promise<void> {
+    const requestTime = Date.now();
+
+    const { data, error } = await supabase.functions.invoke<ServerTimeResponse>(
+      "timesync",
+      {
+        method: "GET",
+      },
+    );
+
+    const responseTime = Date.now();
+    const roundTripTime = responseTime - requestTime;
+
+    if (error) {
+      throw new Error(`Time sync error: ${error.message}`);
+    }
+
+    if (!data || !data.serverTime) {
+      throw new Error("Invalid server time response");
+    }
+
+    // Parse server time (UTC) - edge function returns both UTC and UTC+7
+    // We use UTC to avoid timezone confusion
+    const serverTime = new Date(data.serverTime).getTime();
+
+    // Estimate server time accounting for network delay (assume symmetric)
+    const estimatedServerTime = serverTime + roundTripTime / 2;
+
+    // Calculate offset (difference between server UTC and local time)
+    const newOffset = estimatedServerTime - responseTime;
+
+    // Detect drift
+    this.detectDrift(newOffset);
+
+    // Update offset
+    this.timeOffset = newOffset;
+    this.lastSyncTime = Date.now();
+
+    // Update store
+    useTimeSyncStore.getState().setOffset(newOffset);
+    useTimeSyncStore.getState().setSyncSource("server");
+    useTimeSyncStore.getState().setStatus("synced");
+    useTimeSyncStore.getState().setLastSyncTime(Date.now());
+    useTimeSyncStore.getState().setError(null);
+
+    // Persist
+    await this.persistOffset(newOffset, "server");
+
+    console.log("✅ Server sync successful", {
+      offset: newOffset,
+      roundTripTime,
+      serverTime: data.serverTime,
+      localTime: new Date(responseTime).toISOString(),
+    });
+  }
+
+  /**
+   * Sync with NTP server (fallback)
+   */
+  private async _syncWithNTP(): Promise<void> {
+    const requestTime = Date.now();
+
+    // Using WorldTimeAPI as NTP alternative
+    const response = await fetch(
+      "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
+    );
+
+    const responseTime = Date.now();
+    const roundTripTime = responseTime - requestTime;
+
+    if (!response.ok) {
+      throw new Error(`NTP request failed: ${response.status}`);
+    }
+
+    const data: NTPResponse = await response.json();
+
+    if (!data.datetime) {
+      throw new Error("Invalid NTP response");
+    }
+
+    // Parse NTP time
+    const ntpTime = new Date(data.datetime).getTime();
+
+    // Estimate NTP time accounting for network delay
+    const estimatedNtpTime = ntpTime + roundTripTime / 2;
+
+    // Calculate new offset
+    const newOffset = estimatedNtpTime - responseTime;
+
+    // Detect drift
+    this.detectDrift(newOffset);
+
+    // Update offset
+    this.timeOffset = newOffset;
+    this.lastSyncTime = Date.now();
+
+    // Update store
+    useTimeSyncStore.getState().setOffset(newOffset);
+    useTimeSyncStore.getState().setSyncSource("ntp");
+    useTimeSyncStore.getState().setStatus("synced");
+    useTimeSyncStore.getState().setLastSyncTime(Date.now());
+    useTimeSyncStore.getState().setError(null);
+
+    // Persist
+    await this.persistOffset(newOffset, "ntp");
+
+    console.log("✅ NTP sync successful", {
+      offset: newOffset,
+      roundTripTime,
+      ntpTime: data.datetime,
+    });
   }
 
   /**
@@ -109,6 +378,23 @@ class TimeSync {
   async forceSyncWithServer(): Promise<boolean> {
     this.lastSyncTime = 0; // Reset last sync time to force sync
     return this.syncWithServer();
+  }
+
+  /**
+   * Cleanup timers and subscriptions
+   */
+  cleanup(): void {
+    if (this.backgroundSyncTimer) {
+      clearInterval(this.backgroundSyncTimer);
+      this.backgroundSyncTimer = null;
+    }
+
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
+
+    console.log("🧹 TimeSync cleanup complete");
   }
 }
 
