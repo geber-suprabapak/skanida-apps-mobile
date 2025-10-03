@@ -242,8 +242,9 @@ class TimeSync {
       try {
         await this.syncPromise;
         return true;
-      } catch {
+      } catch (error) {
         // If waiting sync failed, allow retry
+        console.error("Previous time sync attempt failed:", error);
         this.syncPromise = null;
       }
     }
