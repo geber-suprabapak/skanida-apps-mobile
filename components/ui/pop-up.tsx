@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Modal,
@@ -133,7 +133,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   };
 
   // Show animation
-  const showAnimation = () => {
+  const showAnimation = useCallback(() => {
     // Reset all values
     modalScale.setValue(0);
     modalOpacity.setValue(0);
@@ -199,7 +199,14 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     setTimeout(() => {
       animateConfetti();
     }, 500);
-  };
+  }, [
+    modalScale,
+    modalOpacity,
+    checkIconScale,
+    checkIconRotation,
+    textSlideY,
+    buttonScale,
+  ]);
 
   // Hide animation
   const hideAnimation = () => {
@@ -231,7 +238,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         } else if (isActive) {
           setMotivationalQuote(getFallbackQuote());
         }
-      } catch (error) {
+      } catch {
         if (isActive) {
           setMotivationalQuote(getFallbackQuote());
         }
@@ -240,16 +247,14 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     };
 
     if (visible) {
-      loadQuote().catch((error) => {
-        console.warn("AttendanceSuccessPopup: quote fetch failed", error);
-      });
+      loadQuote();
       showAnimation();
     }
 
     return () => {
       isActive = false;
     };
-  }, [visible]);
+  }, [visible, showAnimation]);
 
   const getSuccessMessage = () => {
     if (attendanceType === "present") {

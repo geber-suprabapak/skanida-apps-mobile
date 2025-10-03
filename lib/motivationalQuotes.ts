@@ -94,15 +94,13 @@ const sanitizeQuote = (quote?: string) =>
  * Falls back to local quotes when the request fails.
  */
 export const fetchRandomQuote = async (): Promise<MotivationalQuote> => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
+  try {
     const response = await fetch("https://zenquotes.io/api/random", {
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch quote: ${response.status}`);
@@ -125,6 +123,8 @@ export const fetchRandomQuote = async (): Promise<MotivationalQuote> => {
   } catch (error) {
     console.warn("Failed to fetch motivational quote, using fallback", error);
     return getFallbackQuote();
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
