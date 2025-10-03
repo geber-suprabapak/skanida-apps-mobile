@@ -235,7 +235,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         if (isActive) {
           setMotivationalQuote(getFallbackQuote());
         }
-        throw error;
+        // Error handled by setting fallback quote; do not re-throw.
       }
     };
 
