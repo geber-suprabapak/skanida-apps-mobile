@@ -39,8 +39,6 @@ import {
   UserRound,
 } from "lucide-react-native";
 
-
-
 // Define interface for user profile data
 interface UserProfile {
   id: string;
@@ -445,7 +443,10 @@ export default function Dashboard() {
                 ) : (
                   <View className="mr-3">
                     <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
-                      <Icon as={UserRound} className="size-6 text-blue-500 dark:text-blue-400" />
+                      <Icon
+                        as={UserRound}
+                        className="size-6 text-blue-500 dark:text-blue-400"
+                      />
                     </View>
                   </View>
                 )}

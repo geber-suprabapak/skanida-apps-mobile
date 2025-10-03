@@ -20,10 +20,6 @@ export const motivationalQuotes: MotivationalQuote[] = [
     author: "Instruktur Produktif",
   },
   {
-    quote: "SMK Bisa! Skill kamu hari ini adalah modal usaha besok.",
-    author: "Motivator SMK Nasional",
-  },
-  {
     quote:
       "Jangan remehkan tugas laporan. Administrasi rapi bikin kamu dipercaya di industri.",
     author: "Guru Produktif",
@@ -90,7 +86,8 @@ const getFallbackQuote = (): MotivationalQuote => {
   return motivationalQuotes[randomIndex];
 };
 
-const sanitizeQuote = (quote?: string) => quote?.trim().replace(/\s+/g, " ") || "";
+const sanitizeQuote = (quote?: string) =>
+  quote?.trim().replace(/\s+/g, " ") || "";
 
 /**
  * Fetch a random motivational quote from the internet.

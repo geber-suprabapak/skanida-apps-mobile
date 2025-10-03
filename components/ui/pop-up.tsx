@@ -60,10 +60,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
-  const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>({
-    quote: "",
-    author: "",
-  });
+  const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(
+    {
+      quote: "",
+      author: "",
+    },
+  );
 
   // Animation values
   const modalScale = useRef(new Animated.Value(0)).current;
@@ -221,14 +223,19 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     let isActive = true;
 
     const loadQuote = async () => {
-      const fallbackQuote = getFallbackQuote();
-      if (isActive) {
-        setMotivationalQuote(fallbackQuote);
-      }
+      try {
+        const remoteQuote = await fetchRandomQuote();
 
-      const remoteQuote = await fetchRandomQuote();
-      if (isActive) {
-        setMotivationalQuote(remoteQuote);
+        if (isActive && remoteQuote?.quote?.trim()) {
+          setMotivationalQuote(remoteQuote);
+        } else if (isActive) {
+          setMotivationalQuote(getFallbackQuote());
+        }
+      } catch (error) {
+        if (isActive) {
+          setMotivationalQuote(getFallbackQuote());
+        }
+        throw error;
       }
     };
 
@@ -275,9 +282,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   const message = getSuccessMessage();
   const motivationalMessage = motivationalQuote.quote
     ? `${motivationalQuote.quote}${
-        motivationalQuote.author
-          ? ` — ${motivationalQuote.author}`
-          : ""
+        motivationalQuote.author ? ` — ${motivationalQuote.author}` : ""
       }`
     : message.defaultSubtitle;
   const currentTime =
@@ -419,7 +424,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                   </Text>
                 </View>
               )}
-
             </Animated.View>
 
             {/* Confirm Button */}

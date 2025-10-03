@@ -135,7 +135,10 @@ export default function ChangePassword() {
                 Keamanan Akun
               </Text>
 
-              <Text variant="muted" className="text-center leading-5 text-muted-foreground">
+              <Text
+                variant="muted"
+                className="text-center leading-5 text-muted-foreground"
+              >
                 Pastikan password baru Anda aman dan mudah diingat. Gunakan
                 kombinasi huruf, angka, dan simbol.
               </Text>
@@ -153,7 +156,10 @@ export default function ChangePassword() {
             <View className="space-y-5">
               {/* Current Password */}
               <View>
-                <Text variant="small" className="font-medium mb-2 text-foreground">
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-foreground"
+                >
                   Password Saat Ini
                 </Text>
                 <View className="relative">
@@ -170,7 +176,10 @@ export default function ChangePassword() {
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <Icon as={EyeOff} className="size-5 text-muted-foreground" />
+                      <Icon
+                        as={EyeOff}
+                        className="size-5 text-muted-foreground"
+                      />
                     ) : (
                       <Icon as={Eye} className="size-5 text-muted-foreground" />
                     )}
@@ -180,7 +189,10 @@ export default function ChangePassword() {
 
               {/* New Password */}
               <View>
-                <Text variant="small" className="font-medium mb-2 text-foreground">
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-foreground"
+                >
                   Password Baru
                 </Text>
                 <View className="relative">
@@ -197,7 +209,10 @@ export default function ChangePassword() {
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <Icon as={EyeOff} className="size-5 text-muted-foreground" />
+                      <Icon
+                        as={EyeOff}
+                        className="size-5 text-muted-foreground"
+                      />
                     ) : (
                       <Icon as={Eye} className="size-5 text-muted-foreground" />
                     )}
@@ -210,7 +225,10 @@ export default function ChangePassword() {
 
               {/* Confirm Password */}
               <View>
-                <Text variant="small" className="font-medium mb-2 text-foreground">
+                <Text
+                  variant="small"
+                  className="font-medium mb-2 text-foreground"
+                >
                   Konfirmasi Password Baru
                 </Text>
                 <View className="relative">
@@ -227,7 +245,10 @@ export default function ChangePassword() {
                     className="absolute right-3 top-0 bottom-0 justify-center items-center w-10"
                   >
                     {showAllPasswords ? (
-                      <Icon as={EyeOff} className="size-5 text-muted-foreground" />
+                      <Icon
+                        as={EyeOff}
+                        className="size-5 text-muted-foreground"
+                      />
                     ) : (
                       <Icon as={Eye} className="size-5 text-muted-foreground" />
                     )}

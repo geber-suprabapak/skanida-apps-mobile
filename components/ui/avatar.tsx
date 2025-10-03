@@ -28,7 +28,10 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
       xl: "size-16",
     } as const;
 
-    const fallbackTextClasses: Record<NonNullable<AvatarProps["size"]>, string> = {
+    const fallbackTextClasses: Record<
+      NonNullable<AvatarProps["size"]>,
+      string
+    > = {
       sm: "text-xs",
       md: "text-sm",
       lg: "text-3xl",

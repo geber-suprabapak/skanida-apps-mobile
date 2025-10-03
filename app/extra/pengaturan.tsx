@@ -297,7 +297,6 @@ function Pengaturan() {
                       : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
                   </Text>
                 </TouchableOpacity>
-
               </View>
             </View>
           </Card>
