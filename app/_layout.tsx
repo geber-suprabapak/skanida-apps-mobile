@@ -8,6 +8,7 @@ import ConnectionChecker from "~/components/ConnectionChecker";
 import { useEffect } from "react";
 import { colorScheme } from "nativewind";
 import useThemeStore from "~/store/themeStore";
+import { timeSync } from "~/utils/timeSync";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -50,6 +51,18 @@ export default Sentry.wrap(function RootLayout() {
       colorScheme.set(theme);
     }
   }, [theme]);
+
+  // Initialize time sync on app start
+  useEffect(() => {
+    timeSync.initialize().catch((error) => {
+      console.error("TimeSync initialization failed:", error);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      timeSync.cleanup();
+    };
+  }, []);
 
   return (
     <SafeAreaProvider>

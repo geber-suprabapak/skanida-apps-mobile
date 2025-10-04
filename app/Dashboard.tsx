@@ -24,10 +24,12 @@ import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
+import useTimeSyncStore from "~/store/timeSyncStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
 import { Icon } from "~/components/ui/icon";
-import { getWIBDateString } from "~/lib/utils";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 import {
   Clock,
   Bell,
@@ -38,6 +40,8 @@ import {
   ClipboardPenLine,
   Settings,
   UserRound,
+  WifiOff,
+  Wifi,
 } from "lucide-react-native";
 
 // Define interface for user profile data
@@ -61,9 +65,12 @@ interface AttendanceStatus {
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
+  const syncStatus = useTimeSyncStore((state) => state.status);
+  const syncSource = useTimeSyncStore((state) => state.syncSource);
+  const driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
@@ -142,10 +149,28 @@ export default function Dashboard() {
     showAlphaReleaseAlert();
   }, []);
 
+  // Sync time with server on mount and set up interval for updating time
   useEffect(() => {
-    const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
+    // Initial sync handled by _layout.tsx
+    // Update current time every second
+    // Date object automatically displays in device timezone (WIB)
+    const timerId = setInterval(() => {
+      setCurrentTime(timeSync.getSyncedTime());
+    }, 1000);
+
     return () => clearInterval(timerId);
   }, []);
+
+  // Re-sync when screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      timeSync.syncWithServer().then((success) => {
+        if (success) {
+          setCurrentTime(timeSync.getSyncedTime());
+        }
+      });
+    }
+  }, [isFocused]);
 
   // Fetch profile data from Supabase
   const fetchProfileData = useCallback(async () => {
@@ -190,7 +215,7 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      const today = getWIBDateString(); // Use WIB (UTC+7) for consistency
+      const today = formatDateWIB(timeSync.getSyncedTime());
 
       // Fetch today's attendance
       const { data: todayAttendance } = await supabase
@@ -307,7 +332,15 @@ export default function Dashboard() {
   // Refresh function
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfileData(), fetchAttendanceData()]);
+    await Promise.all([
+      fetchProfileData(),
+      fetchAttendanceData(),
+      timeSync.forceSyncWithServer().then((success) => {
+        if (success) {
+          setCurrentTime(timeSync.getSyncedTime());
+        }
+      }),
+    ]);
     setRefreshing(false);
   }, [fetchProfileData, fetchAttendanceData]);
 
@@ -464,15 +497,38 @@ export default function Dashboard() {
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
                 <View
-                  className={`px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800`}
+                  className={`px-3 py-2 rounded-lg ${
+                    syncStatus === "synced"
+                      ? "bg-gray-200 dark:bg-gray-800"
+                      : syncStatus === "syncing"
+                        ? "bg-blue-100 dark:bg-blue-900/30"
+                        : "bg-yellow-100 dark:bg-yellow-900/30"
+                  }`}
                 >
                   <View className="flex-row items-center">
-                    <Icon as={Clock} className="size-4 text-foreground" />
+                    {syncStatus === "synced" ? (
+                      <Icon as={Wifi} className="size-4 text-green-600" />
+                    ) : syncStatus === "syncing" ? (
+                      <Icon as={Clock} className="size-4 text-blue-600" />
+                    ) : (
+                      <Icon as={WifiOff} className="size-4 text-yellow-700" />
+                    )}
                     <Text
                       variant="small"
-                      className="ml-1 font-medium text-foreground"
+                      className={`ml-1 font-medium ${
+                        syncStatus === "synced"
+                          ? "text-foreground"
+                          : syncStatus === "syncing"
+                            ? "text-blue-700 dark:text-blue-500"
+                            : "text-yellow-700 dark:text-yellow-500"
+                      }`}
                     >
-                      Waktu Sekarang
+                      Waktu{" "}
+                      {driftDetected && (
+                        <Text variant="small" className="text-red-600">
+                          (drift)
+                        </Text>
+                      )}
                     </Text>
                   </View>
                   <Text
@@ -481,6 +537,14 @@ export default function Dashboard() {
                   >
                     {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
+                  {syncSource !== "local" && (
+                    <Text
+                      variant="small"
+                      className="text-xs text-center text-muted-foreground"
+                    >
+                      {syncSource === "server" ? "Server" : "NTP"}
+                    </Text>
+                  )}
                 </View>
               </View>
 

@@ -16,6 +16,7 @@ import {
   getFallbackQuote,
   type MotivationalQuote,
 } from "~/lib/motivationalQuotes";
+import { timeSync } from "~/utils/timeSync";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -292,7 +293,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     : message.defaultSubtitle;
   const currentTime =
     time ||
-    new Date().toLocaleTimeString("id-ID", {
+    timeSync.getSyncedTime().toLocaleTimeString("id-ID", {
       hour: "2-digit",
       minute: "2-digit",
     });

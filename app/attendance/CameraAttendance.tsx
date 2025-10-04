@@ -30,7 +30,8 @@ import {
   Loader2,
 } from "lucide-react-native";
 import { Buffer } from "buffer";
-import { getWIBDate, getWIBDateString, getWIBISOString } from "~/lib/utils";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
@@ -183,30 +184,25 @@ const CameraAttendance = () => {
   }, [locationData]);
 
   const currentDateTime = useMemo(() => {
-    const now = new Date();
-    const wibTime = getWIBDate();
-    const wibDate = getWIBDateString();
+    const now = timeSync.getSyncedTime(); // UTC from server, auto-displays in device timezone
 
-    // Extract components for filename (DDMMYYYY)
-    const year = wibTime.getUTCFullYear();
-    const month = String(wibTime.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(wibTime.getUTCDate()).padStart(2, "0");
+    // Extract date components (will be in device timezone = WIB)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
 
     return {
-      date: wibDate, // WIB date for database (YYYY-MM-DD)
+      date: formatDateWIB(now), // WIB date for database (YYYY-MM-DD)
       formattedDate: `${day}${month}${year}`, // DDMMYYYY for filename
       timestamp: now.getTime(), // epoch ms for uniqueness
-      timestampIso: getWIBISOString(), // full ISO UTC for audit
-      displayTime:
-        wibTime.toLocaleString("id-ID", {
-          timeZone: "UTC",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }) + " WIB",
+      displayTime: now.toLocaleString("id-ID", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
     };
   }, []);
 
@@ -371,12 +367,14 @@ const CameraAttendance = () => {
         });
 
         const totalTime = Date.now() - startTime;
-        const currentTime =
-          new Date().toLocaleTimeString("id-ID", {
-            timeZone: "Asia/Jakarta",
+
+        // Get current time (auto-displays in device timezone)
+        const currentTime = timeSync
+          .getSyncedTime()
+          .toLocaleTimeString("id-ID", {
             hour: "2-digit",
             minute: "2-digit",
-          }) + " WIB";
+          });
 
         router.replace({
           pathname: "/Dashboard",
