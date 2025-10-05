@@ -13,7 +13,13 @@
       "env": { "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact" }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": false,
+      "android":{
+        "buildType": "apk",
+	},
+      "env": { 
+	"EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact"
+	 }
     }
   },
   "submit": {
