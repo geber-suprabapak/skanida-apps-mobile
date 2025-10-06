@@ -8,6 +8,9 @@
 -- ============================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS plpgsql;
+CREATE EXTENSION IF NOT EXISTS cube; -- Required by earthdistance
+CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE; -- Automatically installs cube if not present
 
 -- ============================================================================
 -- Table: biodata_siswa
@@ -121,6 +124,18 @@ CREATE TABLE IF NOT EXISTS jadwal_absensi (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+-- Insert default schedule data
+INSERT INTO jadwal_absensi (id, hari, mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu, is_active)
+VALUES
+    (1, 'senin', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, TRUE),
+    (2, 'selasa', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 20, TRUE),
+    (3, 'rabu', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, TRUE),
+    (4, 'kamis', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, TRUE),
+    (5, 'jumat', '06:30:00', '07:30:00', '15:00:00', '12:00:00', 15, TRUE),
+    (6, 'sabtu', '06:30:00', '07:30:00', '12:00:00', '13:00:00', 15, FALSE),
+    (7, 'minggu', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, FALSE)
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- Indexes for Performance
@@ -665,6 +680,66 @@ $$;
 
 -- Grant execute permission to anon role (for pre-login activation check)
 GRANT EXECUTE ON FUNCTION get_biodata_siswa(TEXT) TO anon;
+
+-- Function to check nearest location and validate user distance
+CREATE OR REPLACE FUNCTION check_nearest_location(
+  user_lat DOUBLE PRECISION,
+  user_lon DOUBLE PRECISION
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  result JSON;
+BEGIN
+  SELECT json_build_object(
+    'location_id', l.id,
+    'location_name', l.name,
+    'distance_m', (
+      6371000 * acos(
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(user_lat)) 
+          * cos(radians(l.latitude)) 
+          * cos(radians(l.longitude) - radians(user_lon)) 
+          + sin(radians(user_lat)) 
+          * sin(radians(l.latitude))
+        ))
+      )
+    ),
+    'is_within_range', (
+      6371000 * acos(
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(user_lat)) 
+          * cos(radians(l.latitude)) 
+          * cos(radians(l.longitude) - radians(user_lon)) 
+          + sin(radians(user_lat)) 
+          * sin(radians(l.latitude))
+        ))
+      )
+    ) <= l.distance
+  ) INTO result
+  FROM location AS l
+  WHERE l.is_active = TRUE
+  ORDER BY (
+    6371000 * acos(
+      LEAST(1.0, GREATEST(-1.0,
+        cos(radians(user_lat)) 
+        * cos(radians(l.latitude)) 
+        * cos(radians(l.longitude) - radians(user_lon)) 
+        + sin(radians(user_lat)) 
+        * sin(radians(l.latitude))
+      ))
+    )
+  ) ASC
+  LIMIT 1;
+  
+  RETURN result;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION check_nearest_location(DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
 
 -- ============================================================================
 -- End of Schema
