@@ -14,12 +14,12 @@
     },
     "production": {
       "autoIncrement": false,
-      "android":{
-        "buildType": "apk",
-	},
-      "env": { 
-	"EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact"
-	 }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact"
+      }
     }
   },
   "submit": {
