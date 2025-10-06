@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -63,6 +64,28 @@ interface AttendanceStatus {
   todayStatus: "present" | "absent" | "leave" | "pending";
 }
 
+// Define interface for RPC check_absensi_status result
+interface AbsensiCheckResult {
+  status_code:
+    | "VALID"
+    | "OUT_OF_RANGE"
+    | "NOT_SCHEDULED"
+    | "ALREADY_COMPLETED"
+    | "TIME_OUT"
+    | "FAILED_LOCATION";
+  required_action: "present" | "home" | "none";
+  location_name: string;
+  distance_m: number;
+  message: string;
+}
+
+// Define interface for validation status state
+interface ValidationStatus {
+  canCheckIn: boolean;
+  actionType: "present" | "home" | "none";
+  message: string;
+}
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const syncStatus = useTimeSyncStore((state) => state.status);
@@ -79,6 +102,13 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
+
+  // Validation status for live schedule checking
+  const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
+    canCheckIn: false,
+    actionType: "none",
+    message: "Memeriksa status jadwal...",
+  });
 
   // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
@@ -296,6 +326,86 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Check live validation status using RPC
+  const checkLiveValidationStatus = useCallback(async () => {
+    if (!user?.id) {
+      setValidationStatus({
+        canCheckIn: false,
+        actionType: "none",
+        message: "User tidak ditemukan",
+      });
+      return;
+    }
+
+    try {
+      // Request location permission
+      let { status } = await Location.getForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+        const result = await Location.requestForegroundPermissionsAsync();
+        status = result.status;
+
+        if (status !== "granted") {
+          setValidationStatus({
+            canCheckIn: false,
+            actionType: "none",
+            message: "Izin lokasi ditolak. Aktifkan untuk melanjutkan.",
+          });
+          return;
+        }
+      }
+
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      if (!location) {
+        setValidationStatus({
+          canCheckIn: false,
+          actionType: "none",
+          message: "Gagal mendapatkan lokasi. Pastikan GPS aktif.",
+        });
+        return;
+      }
+
+      const { latitude, longitude } = location.coords;
+
+      // Call RPC function
+      const { data, error } = await supabase.rpc("check_absensi_status", {
+        p_user_id: user.id,
+        p_user_lat: latitude,
+        p_user_lon: longitude,
+      });
+
+      if (error) {
+        console.error("Error calling check_absensi_status:", error);
+        setValidationStatus({
+          canCheckIn: false,
+          actionType: "none",
+          message: "Gagal memeriksa status absensi",
+        });
+        return;
+      }
+
+      const result = data as AbsensiCheckResult;
+
+      // Interpret the result
+      setValidationStatus({
+        canCheckIn: result.status_code === "VALID",
+        actionType: result.required_action,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Exception during validation check:", error);
+      setValidationStatus({
+        canCheckIn: false,
+        actionType: "none",
+        message: "Terjadi kesalahan saat memeriksa status",
+      });
+    }
+  }, [user]);
+
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
     if (user) {
@@ -304,6 +414,22 @@ export default function Dashboard() {
       fetchAttendanceData();
     }
   }, [user, fetchProfileData, fetchAttendanceData]);
+
+  // Polling for live validation status every 15 seconds when screen is focused
+  useEffect(() => {
+    if (!isFocused || !user?.id) return;
+
+    // Initial check when screen becomes focused
+    checkLiveValidationStatus();
+
+    // Set up interval for polling every 15 seconds
+    const validationInterval = setInterval(() => {
+      checkLiveValidationStatus();
+    }, 15000); // 15 seconds
+
+    // Cleanup interval on unmount or when focus changes
+    return () => clearInterval(validationInterval);
+  }, [isFocused, user?.id, checkLiveValidationStatus]);
 
   // Handle success popup close
   const handleSuccessPopupClose = useCallback(() => {
@@ -335,6 +461,7 @@ export default function Dashboard() {
     await Promise.all([
       fetchProfileData(),
       fetchAttendanceData(),
+      checkLiveValidationStatus(), // Refresh validation status, location, and time
       timeSync.forceSyncWithServer().then((success) => {
         if (success) {
           setCurrentTime(timeSync.getSyncedTime());
@@ -342,7 +469,7 @@ export default function Dashboard() {
       }),
     ]);
     setRefreshing(false);
-  }, [fetchProfileData, fetchAttendanceData]);
+  }, [fetchProfileData, fetchAttendanceData, checkLiveValidationStatus]);
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
@@ -651,29 +778,36 @@ export default function Dashboard() {
                 onPress={navigateToCheckIn}
                 className="w-48"
                 activeOpacity={0.8}
+                disabled={!validationStatus.canCheckIn || refreshing}
               >
-                <Card className="aspect-square bg-blue-600 dark:bg-blue-700">
+                <Card
+                  className={`aspect-square ${
+                    !validationStatus.canCheckIn || refreshing
+                      ? "bg-gray-400 dark:bg-gray-600"
+                      : "bg-blue-600 dark:bg-blue-700"
+                  }`}
+                >
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
                     <Text
                       variant="large"
                       className="text-white font-semibold mt-2 text-center"
                     >
-                      {!attendanceStatus.hasCheckedIn
+                      {validationStatus.actionType === "present"
                         ? "Absen Masuk"
-                        : !attendanceStatus.hasCheckedOut
+                        : validationStatus.actionType === "home"
                           ? "Absen Pulang"
-                          : "Lihat Absensi"}
+                          : "Cek Status Absen"}
                     </Text>
                     <Text
                       variant="small"
-                      className="text-blue-100 text-center mt-1"
+                      className={`text-center mt-1 px-2 ${
+                        !validationStatus.canCheckIn || refreshing
+                          ? "text-gray-200 dark:text-gray-300"
+                          : "text-blue-100"
+                      }`}
                     >
-                      {!attendanceStatus.hasCheckedIn
-                        ? "Mulai hari sekolah"
-                        : !attendanceStatus.hasCheckedOut
-                          ? "Selesaikan hari"
-                          : "Absensi selesai"}
+                      {validationStatus.message}
                     </Text>
                   </View>
                 </Card>
