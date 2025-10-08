@@ -8,6 +8,9 @@
 -- ============================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS plpgsql;
+CREATE EXTENSION IF NOT EXISTS cube; -- Required by earthdistance
+CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE; -- Automatically installs cube if not present
 
 -- ============================================================================
 -- Table: biodata_siswa
@@ -121,6 +124,18 @@ CREATE TABLE IF NOT EXISTS jadwal_absensi (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+-- Insert default schedule data
+INSERT INTO jadwal_absensi (id, hari, mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu, is_active)
+VALUES
+    (1, 'senin', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, TRUE),
+    (2, 'selasa', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 20, TRUE),
+    (3, 'rabu', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, TRUE),
+    (4, 'kamis', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, TRUE),
+    (5, 'jumat', '06:30:00', '07:30:00', '15:00:00', '12:00:00', 15, TRUE),
+    (6, 'sabtu', '06:30:00', '07:30:00', '12:00:00', '13:00:00', 15, FALSE),
+    (7, 'minggu', '06:30:00', '07:30:00', '15:00:00', '16:00:00', 15, FALSE)
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- Indexes for Performance
@@ -665,6 +680,249 @@ $$;
 
 -- Grant execute permission to anon role (for pre-login activation check)
 GRANT EXECUTE ON FUNCTION get_biodata_siswa(TEXT) TO anon;
+
+-- Function to check nearest location and validate user distance
+CREATE OR REPLACE FUNCTION check_nearest_location(
+  user_lat DOUBLE PRECISION,
+  user_lon DOUBLE PRECISION
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  result JSON;
+BEGIN
+  SELECT json_build_object(
+    'location_id', l.id,
+    'location_name', l.name,
+    'distance_m', (
+      6371000 * acos(
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(user_lat)) 
+          * cos(radians(l.latitude)) 
+          * cos(radians(l.longitude) - radians(user_lon)) 
+          + sin(radians(user_lat)) 
+          * sin(radians(l.latitude))
+        ))
+      )
+    ),
+    'is_within_range', (
+      6371000 * acos(
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(user_lat)) 
+          * cos(radians(l.latitude)) 
+          * cos(radians(l.longitude) - radians(user_lon)) 
+          + sin(radians(user_lat)) 
+          * sin(radians(l.latitude))
+        ))
+      )
+    ) <= l.distance
+  ) INTO result
+  FROM location AS l
+  WHERE l.is_active = TRUE
+  ORDER BY (
+    6371000 * acos(
+      LEAST(1.0, GREATEST(-1.0,
+        cos(radians(user_lat)) 
+        * cos(radians(l.latitude)) 
+        * cos(radians(l.longitude) - radians(user_lon)) 
+        + sin(radians(user_lat)) 
+        * sin(radians(l.latitude))
+      ))
+    )
+  ) ASC
+  LIMIT 1;
+  
+  RETURN result;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION check_nearest_location(DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
+
+-- ============================================================================
+-- RPC Function: check_absensi_status
+-- Description: Comprehensive validation for attendance check-in/out
+-- ============================================================================
+
+-- Step 1: Create custom type for function output
+DROP TYPE IF EXISTS public.absensi_check_result CASCADE;
+CREATE TYPE public.absensi_check_result AS (
+    status_code TEXT,       -- VALID, OUT_OF_RANGE, NOT_SCHEDULED, TIME_OUT, ALREADY_COMPLETED
+    required_action TEXT,   -- present (Masuk), home (Pulang), none
+    location_name TEXT,     -- Name of nearest location
+    distance_m DOUBLE PRECISION,  -- Distance to nearest location in meters
+    message TEXT            -- User-friendly message
+);
+
+-- Step 2: Create the main RPC function
+CREATE OR REPLACE FUNCTION check_absensi_status(
+    p_user_id UUID,
+    p_user_lat DOUBLE PRECISION,
+    p_user_lon DOUBLE PRECISION
+)
+RETURNS public.absensi_check_result
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    v_result public.absensi_check_result;
+    v_current_time TIME;
+    v_current_date DATE;
+    v_current_day TEXT;
+    v_jadwal RECORD;
+    v_nearest_location RECORD;
+    v_distance_m DOUBLE PRECISION;
+    v_last_absence RECORD;
+    v_mulai_masuk TIME;
+    v_selesai_masuk TIME;
+    v_selesai_masuk_with_kompensasi TIME;
+    v_mulai_pulang TIME;
+    v_selesai_pulang TIME;
+BEGIN
+    -- Get current time and date in Asia/Jakarta timezone (WIB)
+    v_current_time := (NOW() AT TIME ZONE 'Asia/Jakarta')::TIME;
+    v_current_date := (NOW() AT TIME ZONE 'Asia/Jakarta')::DATE;
+    
+    -- Get current day name in Indonesian (lowercase)
+    v_current_day := CASE EXTRACT(DOW FROM (NOW() AT TIME ZONE 'Asia/Jakarta'))
+        WHEN 0 THEN 'minggu'
+        WHEN 1 THEN 'senin'
+        WHEN 2 THEN 'selasa'
+        WHEN 3 THEN 'rabu'
+        WHEN 4 THEN 'kamis'
+        WHEN 5 THEN 'jumat'
+        WHEN 6 THEN 'sabtu'
+    END;
+    
+    -- Step 1: Check if today's schedule exists and is active
+    SELECT * INTO v_jadwal
+    FROM jadwal_absensi
+    WHERE LOWER(hari) = v_current_day
+      AND is_active = TRUE
+    LIMIT 1;
+    
+    IF NOT FOUND THEN
+        v_result.status_code := 'NOT_SCHEDULED';
+        v_result.required_action := 'none';
+        v_result.location_name := NULL;
+        v_result.distance_m := NULL;
+        v_result.message := 'Tidak ada jadwal absensi untuk hari ini';
+        RETURN v_result;
+    END IF;
+    
+    -- Parse time fields from jadwal
+    v_mulai_masuk := v_jadwal.mulai_masuk::TIME;
+    v_selesai_masuk := v_jadwal.selesai_masuk::TIME;
+    v_selesai_masuk_with_kompensasi := (v_jadwal.selesai_masuk::TIME + (v_jadwal.kompensasi_waktu || ' minutes')::INTERVAL);
+    v_mulai_pulang := v_jadwal.mulai_pulang::TIME;
+    v_selesai_pulang := v_jadwal.selesai_pulang::TIME;
+    
+    -- Step 2: Find nearest active location and calculate distance
+    SELECT
+        l.id,
+        l.name,
+        l.distance AS max_distance,
+        (
+            6371000 * acos(
+                LEAST(1.0, GREATEST(-1.0,
+                    cos(radians(p_user_lat)) 
+                    * cos(radians(l.latitude)) 
+                    * cos(radians(l.longitude) - radians(p_user_lon)) 
+                    + sin(radians(p_user_lat)) 
+                    * sin(radians(l.latitude))
+                ))
+            )
+        ) AS calculated_distance
+    INTO v_nearest_location
+    FROM location AS l
+    WHERE l.is_active = TRUE
+    ORDER BY calculated_distance ASC
+    LIMIT 1;
+    
+    IF NOT FOUND THEN
+        v_result.status_code := 'OUT_OF_RANGE';
+        v_result.required_action := 'none';
+        v_result.location_name := NULL;
+        v_result.distance_m := NULL;
+        v_result.message := 'Tidak ada lokasi aktif yang tersedia';
+        RETURN v_result;
+    END IF;
+    
+    v_distance_m := v_nearest_location.calculated_distance;
+    
+    -- Step 3: Check if user is within allowed radius
+    IF v_distance_m > v_nearest_location.max_distance THEN
+        v_result.status_code := 'OUT_OF_RANGE';
+        v_result.required_action := 'none';
+        v_result.location_name := v_nearest_location.name;
+        v_result.distance_m := v_distance_m;
+        v_result.message := 'Anda berada ' || ROUND(v_distance_m)::TEXT || ' meter dari ' || v_nearest_location.name || '. Jarak maksimal: ' || v_nearest_location.max_distance::TEXT || ' meter';
+        RETURN v_result;
+    END IF;
+    
+    -- Step 4: Check last absence record for today
+    SELECT * INTO v_last_absence
+    FROM absences
+    WHERE user_id = p_user_id
+      AND date = v_current_date
+    ORDER BY created_at DESC
+    LIMIT 1;
+    
+    -- Step 5: Determine required action based on last absence
+    IF NOT FOUND OR v_last_absence.status NOT IN ('Hadir', 'Datang', 'Pulang') THEN
+        -- No absence yet today -> Need to check in (present/Datang)
+        -- Validate time window for check-in
+        IF v_current_time >= v_mulai_masuk AND v_current_time <= v_selesai_masuk_with_kompensasi THEN
+            v_result.status_code := 'VALID';
+            v_result.required_action := 'present';
+            v_result.location_name := v_nearest_location.name;
+            v_result.distance_m := v_distance_m;
+            v_result.message := 'Silakan absen masuk di ' || v_nearest_location.name || ' (' || ROUND(v_distance_m)::TEXT || ' meter)';
+        ELSE
+            v_result.status_code := 'TIME_OUT';
+            v_result.required_action := 'present';
+            v_result.location_name := v_nearest_location.name;
+            v_result.distance_m := v_distance_m;
+            v_result.message := 'Waktu absen masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk::TEXT || ' (kompensasi: +' || v_jadwal.kompensasi_waktu::TEXT || ' menit).';
+        END IF;
+        
+    ELSIF v_last_absence.status IN ('Hadir', 'Datang') THEN
+        -- Already checked in -> Need to check out (home/Pulang)
+        -- Validate time window for check-out
+        IF v_current_time >= v_mulai_pulang AND v_current_time <= v_selesai_pulang THEN
+            v_result.status_code := 'VALID';
+            v_result.required_action := 'home';
+            v_result.location_name := v_nearest_location.name;
+            v_result.distance_m := v_distance_m;
+            v_result.message := 'Silakan absen pulang di ' || v_nearest_location.name || ' (' || ROUND(v_distance_m)::TEXT || ' meter)';
+        ELSE
+            v_result.status_code := 'TIME_OUT';
+            v_result.required_action := 'home';
+            v_result.location_name := v_nearest_location.name;
+            v_result.distance_m := v_distance_m;
+            v_result.message := 'Waktu absen pulang: ' || v_mulai_pulang::TEXT || ' - ' || v_selesai_pulang::TEXT;
+        END IF;
+        
+    ELSIF v_last_absence.status = 'Pulang' THEN
+        -- Already completed both check-in and check-out
+        v_result.status_code := 'ALREADY_COMPLETED';
+        v_result.required_action := 'none';
+        v_result.location_name := v_nearest_location.name;
+        v_result.distance_m := v_distance_m;
+        v_result.message := 'Absensi hari ini sudah lengkap (masuk dan pulang)';
+    END IF;
+    
+    RETURN v_result;
+END;
+$$;
+
+-- Step 3: Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION check_absensi_status(UUID, DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
+
+-- Add comment for documentation
+COMMENT ON FUNCTION check_absensi_status IS 'Validates attendance check-in/out based on schedule, location proximity, and previous attendance records. Uses Asia/Jakarta timezone.';
 
 -- ============================================================================
 -- End of Schema

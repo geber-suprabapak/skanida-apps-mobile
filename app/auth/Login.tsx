@@ -80,6 +80,24 @@ export default function Login() {
       }
 
       if (data?.user) {
+        // Cek metadata role user. Prioritaskan user_metadata lalu app_metadata sebagai fallback.
+        const userMetadata = data.user?.user_metadata;
+        const role = userMetadata?.role as string;
+
+        if (role === "admin") {
+          // Sign out agar sesi tidak tersimpan di device
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.warn(
+              "Gagal sign out setelah deteksi role tidak valid",
+              signOutErr,
+            );
+          }
+          alert("Admin tidak bisa masuk.");
+          return; // Jangan lanjutkan login
+        }
+
         setUser(data.user);
         router.replace("/Dashboard");
       }
@@ -157,7 +175,7 @@ export default function Login() {
                       setEmail(text);
                       if (emailError) setEmailError(false);
                     }}
-                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder:text-gray-300"
+                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   />
                 </View>
                 {/* Password Field */}

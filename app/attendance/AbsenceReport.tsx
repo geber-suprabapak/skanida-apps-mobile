@@ -31,13 +31,6 @@ type AbsenceType = "present" | "home";
 type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
 
 // --- CONSTANTS ---
-
-const SCHOOL_COORDINATES = {
-  latitude: -7.4503,
-  longitude: 110.2241,
-} as const;
-
-const MAX_DISTANCE_METERS = 500;
 const AUTO_NAVIGATE_DELAY_MS = 1000;
 
 // Location optimization constants (removed fast location)
@@ -95,20 +88,68 @@ const AbsenceReport = () => {
   );
 
   // --- UTILITY FUNCTIONS ---
-  const calculateDistance = useCallback(
-    (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-      const R = 6371e3;
-      const φ1 = (lat1 * Math.PI) / 180;
-      const φ2 = (lat2 * Math.PI) / 180;
-      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  // Check location via RPC
+  const checkLocationViaRpc = useCallback(
+    async (location: Location.LocationObject): Promise<boolean> => {
+      try {
+        setStatusMessage("Memverifikasi lokasi dengan server...");
 
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const { data, error } = await supabase.rpc("check_nearest_location", {
+          user_lat: location.coords.latitude,
+          user_lon: location.coords.longitude,
+        });
 
-      return R * c;
+        if (error) {
+          setStatusMessage(`Gagal memverifikasi lokasi: ${error.message}`);
+          setLocationStatus("failed");
+          return false;
+        }
+
+        // RPC now returns JSON object directly
+        if (!data) {
+          setStatusMessage(
+            "Tidak ada lokasi aktif yang tersedia. Hubungi administrator.",
+          );
+          setLocationStatus("failed");
+          return false;
+        }
+
+        const nearestLocation = data as {
+          location_id: number;
+          location_name: string;
+          distance_m: number;
+          is_within_range: boolean;
+        };
+
+        if (!nearestLocation.location_id) {
+          setStatusMessage(
+            "Tidak dapat menemukan lokasi terdekat. Hubungi administrator.",
+          );
+          setLocationStatus("failed");
+          return false;
+        }
+
+        if (nearestLocation.is_within_range) {
+          setLocationStatus("verified");
+          setCanProceedToCamera(true);
+          setStatusMessage(
+            `Lokasi terverifikasi di ${nearestLocation.location_name} (${Math.round(nearestLocation.distance_m)}m). Lanjut ke kamera.`,
+          );
+          return true;
+        } else {
+          setLocationStatus("out_of_range");
+          setStatusMessage(
+            `Anda berada di luar jangkauan. Lokasi terdekat: ${nearestLocation.location_name} (${Math.round(nearestLocation.distance_m)}m). Tidak dapat melanjutkan absensi.`,
+          );
+          return false;
+        }
+      } catch (err: any) {
+        setStatusMessage(
+          `Terjadi kesalahan saat memverifikasi lokasi: ${err.message || "Unknown error"}`,
+        );
+        setLocationStatus("failed");
+        return false;
+      }
     },
     [],
   );
@@ -383,27 +424,8 @@ const AbsenceReport = () => {
         absenceType === "present" ? "absen masuk" : "absen pulang";
       setStatusMessage(`Memverifikasi lokasi untuk ${actionText}...`);
 
-      const distance = calculateDistance(
-        location.coords.latitude,
-        location.coords.longitude,
-        SCHOOL_COORDINATES.latitude,
-        SCHOOL_COORDINATES.longitude,
-      );
-
-      const withinRange = distance <= MAX_DISTANCE_METERS;
-
-      if (withinRange) {
-        setLocationStatus("verified");
-        setCanProceedToCamera(true);
-        setStatusMessage(
-          `${absenceType === "present" ? "Absen Masuk" : "Absen Pulang"}: Lokasi terverifikasi (${Math.round(distance)}m). Lanjut ke kamera.`,
-        );
-      } else {
-        setLocationStatus("out_of_range");
-        setStatusMessage(
-          `Anda berada di luar jangkauan (${Math.round(distance)}m dari sekolah). Tidak dapat melanjutkan absensi.`,
-        );
-      }
+      // Use RPC to check location
+      await checkLocationViaRpc(location);
     } catch {
       setLocationStatus("failed");
       setStatusMessage("Terjadi kesalahan saat memeriksa status absensi.");
@@ -414,7 +436,7 @@ const AbsenceReport = () => {
     checkUserAuthentication,
     requestLocationPermissionAndGet,
     determineAbsenceType,
-    calculateDistance,
+    checkLocationViaRpc,
   ]);
 
   // --- EFFECTS ---
