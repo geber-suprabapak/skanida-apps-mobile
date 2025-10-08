@@ -885,7 +885,7 @@ BEGIN
             v_result.required_action := 'present';
             v_result.location_name := v_nearest_location.name;
             v_result.distance_m := v_distance_m;
-            v_result.message := 'Waktu absen masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk::TEXT || ' (kompensasi: +' || v_jadwal.kompensasi_waktu::TEXT || ' menit). Sekarang: ' || v_current_time::TEXT;
+            v_result.message := 'Waktu absen masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk::TEXT || ' (kompensasi: +' || v_jadwal.kompensasi_waktu::TEXT || ' menit).';
         END IF;
         
     ELSIF v_last_absence.status IN ('Hadir', 'Datang') THEN
@@ -902,7 +902,7 @@ BEGIN
             v_result.required_action := 'home';
             v_result.location_name := v_nearest_location.name;
             v_result.distance_m := v_distance_m;
-            v_result.message := 'Waktu absen pulang: ' || v_mulai_pulang::TEXT || ' - ' || v_selesai_pulang::TEXT || '. Sekarang: ' || v_current_time::TEXT;
+            v_result.message := 'Waktu absen pulang: ' || v_mulai_pulang::TEXT || ' - ' || v_selesai_pulang::TEXT;
         END IF;
         
     ELSIF v_last_absence.status = 'Pulang' THEN
