@@ -177,6 +177,7 @@ export default function Activate() {
           data: {
             full_name: userProfile.nama,
             nis: userProfile.nis,
+            role: "siswa",
           },
         },
       });
