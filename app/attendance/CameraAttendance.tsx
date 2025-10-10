@@ -50,7 +50,7 @@ const UPLOAD_CONFIG = {
 
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
-type AbsenceType = "present" | "home";
+type AbsenceType = "present" | "home" | "late";
 type UploadStage = "processing" | "uploading" | "saving";
 
 // --- MEMOIZED COMPONENTS ---
@@ -294,8 +294,13 @@ const CameraAttendance = () => {
 
   const saveAttendanceRecord = useCallback(
     async (photoUrl: string): Promise<void> => {
-      const status =
-        locationData.absenceType === "present" ? "Hadir" : "Pulang";
+      // Determine status: Hadir, Terlambat, Pulang
+      let status = "Hadir";
+      if (locationData.absenceType === "home") {
+        status = "Pulang";
+      } else if (locationData.absenceType === "late") {
+        status = "Terlambat";
+      }
 
       const attendanceData = {
         user_id: locationData.userId,

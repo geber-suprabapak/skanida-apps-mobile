@@ -27,7 +27,7 @@ import {
 } from "lucide-react-native";
 
 // --- TYPES AND INTERFACES ---
-type AbsenceType = "present" | "home";
+type AbsenceType = "present" | "home" | "late";
 type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
 
 // --- CONSTANTS ---
@@ -344,6 +344,10 @@ const AbsenceReport = () => {
                 "Anda sudah menyelesaikan absensi (Hadir dan Pulang) untuk hari ini.",
               );
               return null;
+            case "Terlambat":
+              // If status is 'Terlambat', allow pulang
+              setMorningAbsenceCompleted(todayDateString);
+              return "home";
             default:
               return "present";
           }
