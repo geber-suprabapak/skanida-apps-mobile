@@ -337,11 +337,18 @@ const AbsenceReport = () => {
           // Record is from today, check status
           switch (lastAbsenceData.status) {
             case "Hadir":
+            case "Terlambat":
+            case "Datang":
               setMorningAbsenceCompleted(todayDateString);
               return "home";
             case "Pulang":
               setStatusMessage(
                 "Anda sudah menyelesaikan absensi (Hadir dan Pulang) untuk hari ini.",
+              );
+              return null;
+            case "Alpha":
+              setStatusMessage(
+                "Status absensi Anda hari ini adalah Alpha. Tidak dapat melakukan absensi mandiri.",
               );
               return null;
             default:
