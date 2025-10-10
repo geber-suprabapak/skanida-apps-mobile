@@ -294,8 +294,7 @@ const CameraAttendance = () => {
 
   const saveAttendanceRecord = useCallback(
     async (photoUrl: string): Promise<void> => {
-      let status =
-        locationData.absenceType === "present" ? "Hadir" : "Pulang";
+      let status = locationData.absenceType === "present" ? "Hadir" : "Pulang";
 
       if (locationData.absenceType === "present") {
         try {
