@@ -60,6 +60,7 @@ interface AttendanceStatus {
   hasCheckedOut: boolean;
   checkInTime?: string;
   checkOutTime?: string;
+  checkInStatus?: "Hadir" | "Terlambat" | "Datang";
   totalWorkHours?: string;
   todayStatus: "present" | "absent" | "leave" | "pending";
 }
@@ -267,6 +268,7 @@ export default function Dashboard() {
       let hasCheckedOut = false;
       let checkInTime = "";
       let checkOutTime = "";
+      let checkInStatus: "Hadir" | "Terlambat" | "Datang" | undefined;
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
       // Check for leave requests first (they take priority)
@@ -285,9 +287,14 @@ export default function Dashboard() {
         todayAttendance.length > 0
       ) {
         todayAttendance.forEach((record) => {
-          if (record.status === "Hadir" || record.status === "Datang") {
+          if (
+            record.status === "Hadir" ||
+            record.status === "Datang" ||
+            record.status === "Terlambat"
+          ) {
             hasCheckedIn = true;
             checkInTime = record.created_at;
+            checkInStatus = record.status as "Hadir" | "Terlambat" | "Datang";
           } else if (record.status === "Pulang") {
             hasCheckedOut = true;
             checkOutTime = record.created_at;
@@ -318,6 +325,7 @@ export default function Dashboard() {
         hasCheckedOut,
         checkInTime,
         checkOutTime,
+        checkInStatus,
         totalWorkHours,
         todayStatus,
       });
@@ -538,6 +546,13 @@ export default function Dashboard() {
   const getStatusBadge = () => {
     switch (attendanceStatus.todayStatus) {
       case "present":
+        if (attendanceStatus.checkInStatus === "Terlambat") {
+          return {
+            color: "bg-orange-500",
+            text: "Terlambat",
+            textColor: "text-white",
+          };
+        }
         return {
           color: "bg-green-500",
           text: "Hadir",

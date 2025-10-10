@@ -294,8 +294,44 @@ const CameraAttendance = () => {
 
   const saveAttendanceRecord = useCallback(
     async (photoUrl: string): Promise<void> => {
-      const status =
+      let status =
         locationData.absenceType === "present" ? "Hadir" : "Pulang";
+
+      if (locationData.absenceType === "present") {
+        try {
+          const now = timeSync.getSyncedTime();
+          const currentDay = [
+            "minggu",
+            "senin",
+            "selasa",
+            "rabu",
+            "kamis",
+            "jumat",
+            "sabtu",
+          ][now.getDay()];
+          const currentTime = now.toTimeString().split(" ")[0]; // HH:MM:SS
+
+          const { data: schedule, error: scheduleError } = await supabase
+            .from("jadwal_absensi")
+            .select("selesai_masuk")
+            .eq("hari", currentDay)
+            .single();
+
+          if (scheduleError) {
+            console.warn(
+              'Could not fetch schedule, defaulting to "Hadir".',
+              scheduleError,
+            );
+          } else if (schedule && currentTime > schedule.selesai_masuk) {
+            status = "Terlambat";
+          }
+        } catch (e) {
+          console.warn(
+            'Error checking for late status, defaulting to "Hadir".',
+            e,
+          );
+        }
+      }
 
       const attendanceData = {
         user_id: locationData.userId,

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS absences (
     status TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     CONSTRAINT fk_absences_user_id FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-    CONSTRAINT absences_status_check CHECK (status = ANY (ARRAY['Hadir'::TEXT, 'Datang'::TEXT, 'Pulang'::TEXT]))
+    CONSTRAINT absences_status_check CHECK (status = ANY (ARRAY['Hadir'::TEXT, 'Terlambat'::TEXT, 'Pulang'::TEXT, 'Alpha'::TEXT]))
 );
 
 -- ============================================================================
@@ -235,7 +235,7 @@ COMMENT ON TABLE perizinan IS 'Permission/leave requests with approval workflow'
 COMMENT ON TABLE location IS 'System configuration for location-based attendance validation';
 COMMENT ON TABLE jadwal_absensi IS 'Schedule configuration for attendance time windows';
 
-COMMENT ON COLUMN absences.status IS 'Attendance status: Hadir (present), Datang (check-in), Pulang (check-out)';
+COMMENT ON COLUMN absences.status IS 'Attendance status: Hadir (present), Terlambat (late), Pulang (check-out), Alpha (absent without notice)';
 COMMENT ON COLUMN perizinan.kategori_izin IS 'Permission category: sakit (sick), pergi (other leave)';
 COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pending, approved, rejected';
 COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries';
@@ -871,24 +871,30 @@ BEGIN
     LIMIT 1;
     
     -- Step 5: Determine required action based on last absence
-    IF NOT FOUND OR v_last_absence.status NOT IN ('Hadir', 'Datang', 'Pulang') THEN
-        -- No absence yet today -> Need to check in (present/Datang)
+    IF NOT FOUND OR v_last_absence.status NOT IN ('Hadir', 'Terlambat', 'Pulang') THEN
+        -- No absence yet today -> Need to check in (present)
         -- Validate time window for check-in
         IF v_current_time >= v_mulai_masuk AND v_current_time <= v_selesai_masuk_with_kompensasi THEN
             v_result.status_code := 'VALID';
             v_result.required_action := 'present';
             v_result.location_name := v_nearest_location.name;
             v_result.distance_m := v_distance_m;
-            v_result.message := 'Silakan absen masuk di ' || v_nearest_location.name || ' (' || ROUND(v_distance_m)::TEXT || ' meter)';
+            
+            -- Check if the user is late and set message accordingly
+            IF v_current_time > v_selesai_masuk THEN
+                v_result.message := 'Anda terlambat. Silakan lanjutkan absensi.';
+            ELSE
+                v_result.message := 'Tepat waktu! Silakan absen masuk.';
+            END IF;
         ELSE
             v_result.status_code := 'TIME_OUT';
             v_result.required_action := 'present';
             v_result.location_name := v_nearest_location.name;
             v_result.distance_m := v_distance_m;
-            v_result.message := 'Waktu absen masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk::TEXT || ' (kompensasi: +' || v_jadwal.kompensasi_waktu::TEXT || ' menit).';
+            v_result.message := 'Waktu absen masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk_with_kompensasi::TEXT || '.';
         END IF;
         
-    ELSIF v_last_absence.status IN ('Hadir', 'Datang') THEN
+    ELSIF v_last_absence.status IN ('Hadir', 'Terlambat') THEN
         -- Already checked in -> Need to check out (home/Pulang)
         -- Validate time window for check-out
         IF v_current_time >= v_mulai_pulang AND v_current_time <= v_selesai_pulang THEN
