@@ -49,7 +49,7 @@ export const useOptimizedMonthlyAttendance = (
         // Fetch attendance records with abort signal
         const attendancePromise = supabase
           .from("absences")
-          .select("id, date, status, reason, photo_url, created_at")
+          .select("id, date, status, photo_url, created_at")
           .eq("user_id", userId)
           .gte("date", startDate)
           .lte("date", endDate);
@@ -95,22 +95,26 @@ export const useOptimizedMonthlyAttendance = (
         });
 
         Object.entries(attendanceByDate).forEach(([date, records]) => {
-          const hasCheckIn = records.some(
-            (r) => r.status === "Hadir" || r.status === "Datang",
-          );
+          const hasAlphaRecord = records.some((r) => r.status === "Alpha");
           const checkInRecord = records.find(
-            (r) => r.status === "Hadir" || r.status === "Datang",
+            (r) => r.status === "Hadir" || r.status === "Terlambat",
           );
           const checkOutRecord = records.find((r) => r.status === "Pulang");
 
-          if (hasCheckIn) {
+          if (hasAlphaRecord) {
+            processedData[date] = {
+              id: records[0].id,
+              date,
+              status: "absent",
+              photo_url: records[0].photo_url,
+            };
+          } else if (checkInRecord || checkOutRecord) {
             processedData[date] = {
               id: records[0].id,
               date,
               status: "present",
               checkInTime: checkInRecord?.created_at,
               checkOutTime: checkOutRecord?.created_at,
-              description: records[0].reason,
               photo_url: records[0].photo_url,
             };
           }
@@ -254,7 +258,7 @@ export const useOptimizedMonthlyAttendance = (
           const [attendanceResult, leaveResult] = await Promise.all([
             supabase
               .from("absences")
-              .select("id, date, status, reason, photo_url, created_at")
+              .select("id, date, status, photo_url, created_at")
               .eq("user_id", userId)
               .gte("date", startDate)
               .lte("date", endDate),
@@ -282,22 +286,26 @@ export const useOptimizedMonthlyAttendance = (
             });
 
             Object.entries(attendanceByDate).forEach(([date, records]) => {
-              const hasCheckIn = records.some(
-                (r) => r.status === "Hadir" || r.status === "Datang",
-              );
+              const hasAlphaRecord = records.some((r) => r.status === "Alpha");
               const checkInRecord = records.find(
-                (r) => r.status === "Hadir" || r.status === "Datang",
+                (r) => r.status === "Hadir" || r.status === "Terlambat",
               );
               const checkOutRecord = records.find((r) => r.status === "Pulang");
 
-              if (hasCheckIn) {
+              if (hasAlphaRecord) {
+                processedData[date] = {
+                  id: records[0].id,
+                  date,
+                  status: "absent",
+                  photo_url: records[0].photo_url,
+                };
+              } else if (checkInRecord || checkOutRecord) {
                 processedData[date] = {
                   id: records[0].id,
                   date,
                   status: "present",
                   checkInTime: checkInRecord?.created_at,
                   checkOutTime: checkOutRecord?.created_at,
-                  description: records[0].reason,
                   photo_url: records[0].photo_url,
                 };
               }

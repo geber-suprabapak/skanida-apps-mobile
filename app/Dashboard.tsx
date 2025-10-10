@@ -60,7 +60,7 @@ interface AttendanceStatus {
   hasCheckedOut: boolean;
   checkInTime?: string;
   checkOutTime?: string;
-  checkInStatus?: "Hadir" | "Terlambat" | "Datang";
+  checkInStatus?: "Hadir" | "Terlambat";
   totalWorkHours?: string;
   todayStatus: "present" | "absent" | "leave" | "pending";
 }
@@ -268,7 +268,7 @@ export default function Dashboard() {
       let hasCheckedOut = false;
       let checkInTime = "";
       let checkOutTime = "";
-      let checkInStatus: "Hadir" | "Terlambat" | "Datang" | undefined;
+      let checkInStatus: "Hadir" | "Terlambat" | undefined;
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
       // Check for leave requests first (they take priority)
@@ -286,23 +286,35 @@ export default function Dashboard() {
         todayAttendance &&
         todayAttendance.length > 0
       ) {
-        todayAttendance.forEach((record) => {
-          if (
-            record.status === "Hadir" ||
-            record.status === "Datang" ||
-            record.status === "Terlambat"
-          ) {
-            hasCheckedIn = true;
-            checkInTime = record.created_at;
-            checkInStatus = record.status as "Hadir" | "Terlambat" | "Datang";
-          } else if (record.status === "Pulang") {
-            hasCheckedOut = true;
-            checkOutTime = record.created_at;
-          }
-        });
+        const hasAlphaRecord = todayAttendance.some(
+          (record) => record.status === "Alpha",
+        );
 
-        if (hasCheckedIn) {
-          todayStatus = "present";
+        if (hasAlphaRecord) {
+          todayStatus = "absent";
+        } else {
+          const checkInRecord = todayAttendance.find(
+            (record) =>
+              record.status === "Hadir" || record.status === "Terlambat",
+          );
+          const checkOutRecord = todayAttendance.find(
+            (record) => record.status === "Pulang",
+          );
+
+          if (checkInRecord) {
+            hasCheckedIn = true;
+            checkInTime = checkInRecord.created_at;
+            checkInStatus = checkInRecord.status as "Hadir" | "Terlambat";
+          }
+
+          if (checkOutRecord) {
+            hasCheckedOut = true;
+            checkOutTime = checkOutRecord.created_at;
+          }
+
+          if (hasCheckedIn) {
+            todayStatus = "present";
+          }
         }
       }
 

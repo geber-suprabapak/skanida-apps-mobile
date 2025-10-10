@@ -25,6 +25,7 @@ import {
   MapPinOff,
   HelpCircle,
 } from "lucide-react-native";
+import { timeSync } from "~/utils/timeSync";
 
 // --- TYPES AND INTERFACES ---
 type AbsenceType = "present" | "home";
@@ -83,9 +84,27 @@ const AbsenceReport = () => {
 
   // --- MEMOIZED VALUES ---
   const todayDateString = useMemo(
-    () => new Date().toISOString().split("T")[0],
+    () => timeSync.getSyncedTime().toISOString().split("T")[0],
     [],
   );
+
+  const getCurrentDayInfo = useCallback(() => {
+    const now = timeSync.getSyncedTime();
+    const dayNames = [
+      "minggu",
+      "senin",
+      "selasa",
+      "rabu",
+      "kamis",
+      "jumat",
+      "sabtu",
+    ] as const;
+
+    const currentDayKey = dayNames[now.getDay()];
+    const currentTime = now.toLocaleTimeString("en-GB", { hour12: false });
+
+    return { currentDayKey, currentTime };
+  }, []);
 
   // --- UTILITY FUNCTIONS ---
   // Check location via RPC
@@ -337,10 +356,170 @@ const AbsenceReport = () => {
           // Record is from today, check status
           switch (lastAbsenceData.status) {
             case "Hadir":
-            case "Terlambat":
-            case "Datang":
-              setMorningAbsenceCompleted(todayDateString);
-              return "home";
+            case "Terlambat": {
+              try {
+                const { currentDayKey } = getCurrentDayInfo();
+                const now = timeSync.getSyncedTime();
+
+                const parseScheduleTime = (
+                  value?: string | null,
+                ): Date | null => {
+                  if (!value) {
+                    return null;
+                  }
+
+                  const normalized = value.replace(/\./g, ":").trim();
+                  const parts = normalized
+                    .split(":")
+                    .map((part) => part.trim())
+                    .filter(Boolean);
+
+                  if (parts.length < 2) {
+                    return null;
+                  }
+
+                  const [hourStr, minuteStr, secondStr] = parts;
+                  const hour = Number(hourStr);
+                  const minute = Number(minuteStr);
+                  const second = secondStr ? Number(secondStr) : 0;
+
+                  if (
+                    [hour, minute, second].some((timeUnit) =>
+                      Number.isNaN(timeUnit),
+                    )
+                  ) {
+                    return null;
+                  }
+
+                  const reference = new Date(now);
+                  reference.setHours(hour, minute, second, 0);
+                  return reference;
+                };
+
+                const { data: schedule, error: scheduleError } = await supabase
+                  .from("jadwal_absensi")
+                  .select(
+                    "mulai_pulang, selesai_pulang, is_active, kompensasi_waktu",
+                  )
+                  .eq("hari", currentDayKey)
+                  .eq("is_active", true)
+                  .single();
+
+                if (scheduleError && scheduleError.code !== "PGRST116") {
+                  setStatusMessage(
+                    `Gagal memeriksa jadwal pulang: ${scheduleError.message}`,
+                  );
+                  return null;
+                }
+
+                if (!schedule) {
+                  setStatusMessage(
+                    "Tidak ada jadwal absensi pulang yang aktif untuk hari ini.",
+                  );
+                  return null;
+                }
+
+                const {
+                  mulai_pulang: mulaiPulang,
+                  selesai_pulang: selesaiPulang,
+                  kompensasi_waktu: kompensasiWaktu,
+                } = schedule;
+
+                const startWindow = parseScheduleTime(mulaiPulang);
+                const endWindow = parseScheduleTime(selesaiPulang);
+
+                const parseCompensationMinutes = (
+                  value: number | string | null,
+                ): number => {
+                  if (value === null || value === undefined) {
+                    return 0;
+                  }
+
+                  const parsed =
+                    typeof value === "number" ? value : Number(value);
+
+                  if (Number.isNaN(parsed)) {
+                    return 0;
+                  }
+
+                  return Math.max(0, parsed);
+                };
+
+                const addMinutes = (date: Date, minutes: number): Date => {
+                  const adjusted = new Date(date);
+                  adjusted.setMinutes(adjusted.getMinutes() + minutes);
+                  return adjusted;
+                };
+
+                const formatTimeForDisplay = (date: Date): string =>
+                  date.toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  });
+
+                const compensationMinutes =
+                  parseCompensationMinutes(kompensasiWaktu);
+
+                const shouldDelayPulang =
+                  lastAbsenceData.status === "Terlambat" &&
+                  compensationMinutes > 0 &&
+                  startWindow !== null;
+
+                const effectiveStartWindow = shouldDelayPulang
+                  ? addMinutes(startWindow as Date, compensationMinutes)
+                  : startWindow;
+
+                // Debug logging
+                console.log("🔍 Pulang Check Debug:", {
+                  status: lastAbsenceData.status,
+                  mulaiPulang,
+                  kompensasiWaktu,
+                  compensationMinutes,
+                  shouldDelayPulang,
+                  now: now.toISOString(),
+                  effectiveStartWindow: effectiveStartWindow?.toISOString(),
+                  canProceed: effectiveStartWindow
+                    ? now >= effectiveStartWindow
+                    : false,
+                });
+
+                if (effectiveStartWindow && now < effectiveStartWindow) {
+                  const earliestTime =
+                    formatTimeForDisplay(effectiveStartWindow);
+                  const baseMessage = `Belum waktunya absen pulang. Jam pulang dimulai pukul ${earliestTime}.`;
+
+                  setStatusMessage(
+                    shouldDelayPulang
+                      ? `${baseMessage} (Penalti keterlambatan ${compensationMinutes} menit berlaku).`
+                      : baseMessage,
+                  );
+                  return null;
+                }
+
+                if (endWindow && now > endWindow) {
+                  setStatusMessage(
+                    `Jendela absensi pulang telah berakhir pada pukul ${selesaiPulang}.`,
+                  );
+                  return null;
+                }
+
+                if (!startWindow) {
+                  setStatusMessage(
+                    "Jadwal pulang hari ini tidak valid. Hubungi administrator.",
+                  );
+                  return null;
+                }
+
+                setMorningAbsenceCompleted(todayDateString);
+                return "home";
+              } catch (error: any) {
+                setStatusMessage(
+                  `Terjadi kesalahan saat memeriksa jadwal pulang: ${error.message || "Unknown error"}`,
+                );
+                return null;
+              }
+            }
             case "Pulang":
               setStatusMessage(
                 "Anda sudah menyelesaikan absensi (Hadir dan Pulang) untuk hari ini.",
@@ -363,7 +542,7 @@ const AbsenceReport = () => {
         return null;
       }
     },
-    [todayDateString, morningAbsenceCompleted],
+    [todayDateString, morningAbsenceCompleted, getCurrentDayInfo],
   );
 
   const requestLocationPermissionAndGet =
