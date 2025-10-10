@@ -1,5 +1,5 @@
 // app/Dashboard.tsx
-import { format } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
 import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
@@ -61,7 +61,19 @@ interface AttendanceStatus {
   checkInTime?: string;
   checkOutTime?: string;
   totalWorkHours?: string;
-  todayStatus: "present" | "absent" | "leave" | "pending";
+  todayStatus: "present" | "absent" | "leave" | "pending" | "alpha";
+  statusNote?: string;
+  isLate: boolean;
+  isAlpha: boolean;
+}
+
+interface DailySchedule {
+  hari: string;
+  mulai_masuk: string | null;
+  selesai_masuk: string | null;
+  kompensasi_waktu: number | null;
+  mulai_pulang: string | null;
+  selesai_pulang: string | null;
 }
 
 // Define interface for RPC check_absensi_status result
@@ -99,6 +111,9 @@ export default function Dashboard() {
     hasCheckedIn: false,
     hasCheckedOut: false,
     todayStatus: "pending",
+    statusNote: undefined,
+    isLate: false,
+    isAlpha: false,
   });
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused(); // Add isFocused hook
@@ -245,37 +260,65 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      const today = formatDateWIB(timeSync.getSyncedTime());
+      const now = timeSync.getSyncedTime();
+      const today = formatDateWIB(now);
+      const dayName = format(now, "EEEE", { locale: id });
+      const normalizedDay =
+        dayName.charAt(0).toUpperCase() + dayName.slice(1).toLowerCase();
 
-      // Fetch today's attendance
-      const { data: todayAttendance } = await supabase
-        .from("absences")
-        .select("status, created_at")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .order("created_at", { ascending: true });
+      const [
+        { data: todayAttendance },
+        { data: leaveRequests },
+        { data: scheduleRows },
+      ] = await Promise.all([
+        supabase
+          .from("absences")
+          .select("status, created_at")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("perizinan")
+          .select("approval_status, kategori_izin, status")
+          .eq("user_id", user.id)
+          .gte("tanggal", `${today}T00:00:00.000Z`)
+          .lt("tanggal", `${today}T23:59:59.999Z`),
+        supabase
+          .from("jadwal_absensi")
+          .select(
+            "hari, mulai_masuk, selesai_masuk, kompensasi_waktu, mulai_pulang, selesai_pulang",
+          )
+          .eq("is_active", true)
+          .ilike("hari", normalizedDay)
+          .limit(1),
+      ]);
 
-      // Fetch leave requests for today
-      const { data: leaveRequests } = await supabase
-        .from("perizinan")
-        .select("approval_status, kategori_izin, status")
-        .eq("user_id", user.id)
-        .gte("tanggal", `${today}T00:00:00.000Z`)
-        .lt("tanggal", `${today}T23:59:59.999Z`);
+      const schedule =
+        scheduleRows && scheduleRows.length > 0
+          ? (scheduleRows[0] as DailySchedule)
+          : null;
+
+      const ensureTimeFormat = (value: string) =>
+        value.length === 5 ? `${value}:00` : value;
+
+      const combineWithToday = (timeValue?: string | null) => {
+        if (!timeValue) return null;
+        const sanitized = ensureTimeFormat(timeValue);
+        return new Date(`${today}T${sanitized}+07:00`);
+      };
 
       let hasCheckedIn = false;
       let hasCheckedOut = false;
       let checkInTime = "";
       let checkOutTime = "";
-      let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
+      let todayStatus: AttendanceStatus["todayStatus"] = "pending";
+      let statusNote: string | undefined;
+      let isLate = false;
+      let isAlpha = false;
 
       // Check for leave requests first (they take priority)
       if (leaveRequests && leaveRequests.length > 0) {
-        // Check if there's any leave request for today (any submitted request counts)
-        const hasLeaveRequest = leaveRequests.length > 0;
-        if (hasLeaveRequest) {
-          todayStatus = "leave";
-        }
+        todayStatus = "leave";
       }
 
       // Only check attendance if no leave request exists
@@ -299,11 +342,59 @@ export default function Dashboard() {
         }
       }
 
-      // If no attendance and no leave request, mark as absent
+      const checkInCutoff = schedule
+        ? combineWithToday(schedule.selesai_masuk)
+        : null;
+      const kompensasiDeadline =
+        checkInCutoff && schedule
+          ? new Date(
+              checkInCutoff.getTime() +
+                Number(schedule.kompensasi_waktu ?? 0) * 60 * 1000,
+            )
+          : null;
+
+      if (schedule && todayStatus !== "leave") {
+        // Handle late or alpha conditions when user has checked in
+        if (hasCheckedIn && checkInCutoff) {
+          const checkInDate = new Date(checkInTime);
+          if (checkInDate > checkInCutoff) {
+            isLate = true;
+            const lateMinutes = Math.max(
+              1,
+              differenceInMinutes(checkInDate, checkInCutoff),
+            );
+            statusNote = `Terlambat ${lateMinutes} menit`;
+          }
+        }
+
+        // Handle late or alpha conditions when user hasn't checked in yet
+        if (!hasCheckedIn && checkInCutoff) {
+          if (
+            kompensasiDeadline &&
+            now.getTime() > checkInCutoff.getTime() &&
+            now.getTime() <= kompensasiDeadline.getTime()
+          ) {
+            isLate = true;
+            todayStatus = "pending";
+            statusNote = "Belum absen - dalam waktu kompensasi";
+          } else if (
+            (!kompensasiDeadline ||
+              now.getTime() > kompensasiDeadline.getTime()) &&
+            now.getTime() > checkInCutoff.getTime()
+          ) {
+            isAlpha = true;
+            todayStatus = "alpha";
+            statusNote = "Alpha - tidak absen masuk";
+          }
+        }
+      }
+
+      // If still pending with no data and not within late/alpha window, mark absent
       if (
         todayStatus === "pending" &&
-        !todayAttendance?.length &&
-        !leaveRequests?.length
+        !hasCheckedIn &&
+        !leaveRequests?.length &&
+        !schedule
       ) {
         todayStatus = "absent";
       }
@@ -320,6 +411,9 @@ export default function Dashboard() {
         checkOutTime,
         totalWorkHours,
         todayStatus,
+        statusNote,
+        isLate,
+        isAlpha,
       });
     } catch (error) {
       console.error("Error fetching attendance data:", error);
@@ -333,6 +427,15 @@ export default function Dashboard() {
         canCheckIn: false,
         actionType: "none",
         message: "User tidak ditemukan",
+      });
+      return;
+    }
+
+    if (attendanceStatus.isAlpha) {
+      setValidationStatus({
+        canCheckIn: false,
+        actionType: "none",
+        message: "Anda sudah dinyatakan alpha untuk hari ini",
       });
       return;
     }
@@ -404,7 +507,7 @@ export default function Dashboard() {
         message: "Terjadi kesalahan saat memeriksa status",
       });
     }
-  }, [user]);
+  }, [user, attendanceStatus.isAlpha]);
 
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
@@ -440,6 +543,16 @@ export default function Dashboard() {
       fetchAttendanceData();
     }
   }, [isFocused, fetchAttendanceData]);
+
+  useEffect(() => {
+    if (attendanceStatus.isAlpha) {
+      setValidationStatus({
+        canCheckIn: false,
+        actionType: "none",
+        message: "Anda sudah dinyatakan alpha untuk hari ini",
+      });
+    }
+  }, [attendanceStatus.isAlpha]);
 
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
@@ -536,13 +649,37 @@ export default function Dashboard() {
 
   // Get status badge color and text
   const getStatusBadge = () => {
+    if (attendanceStatus.isAlpha || attendanceStatus.todayStatus === "alpha") {
+      return {
+        color: "bg-red-600",
+        text: "Alpha",
+        textColor: "text-white",
+      };
+    }
+
+    if (attendanceStatus.todayStatus === "present") {
+      return attendanceStatus.isLate
+        ? {
+            color: "bg-yellow-600",
+            text: "Hadir (Terlambat)",
+            textColor: "text-white",
+          }
+        : {
+            color: "bg-green-500",
+            text: "Hadir",
+            textColor: "text-white",
+          };
+    }
+
+    if (attendanceStatus.isLate) {
+      return {
+        color: "bg-orange-500",
+        text: "Terlambat",
+        textColor: "text-white",
+      };
+    }
+
     switch (attendanceStatus.todayStatus) {
-      case "present":
-        return {
-          color: "bg-green-500",
-          text: "Hadir",
-          textColor: "text-white",
-        };
       case "leave":
         return {
           color: "bg-yellow-500",
@@ -565,6 +702,25 @@ export default function Dashboard() {
   };
 
   const statusBadge = getStatusBadge();
+  const statusNoteColor = attendanceStatus.isAlpha
+    ? "text-red-600 dark:text-red-400"
+    : attendanceStatus.isLate
+      ? "text-yellow-600 dark:text-yellow-400"
+      : "text-muted-foreground";
+  const actionDisabled =
+    !validationStatus.canCheckIn || refreshing || attendanceStatus.isAlpha;
+  const primaryActionLabel = attendanceStatus.isAlpha
+    ? "Alpha - Tidak Dapat Absen"
+    : validationStatus.actionType === "present"
+      ? "Absen Masuk"
+      : validationStatus.actionType === "home"
+        ? "Absen Pulang"
+        : "Cek Status Absen";
+  const secondaryActionMessage = attendanceStatus.isAlpha
+    ? "Anda sudah dinyatakan alpha untuk hari ini."
+    : attendanceStatus.isLate && attendanceStatus.statusNote
+      ? attendanceStatus.statusNote
+      : validationStatus.message;
 
   return (
     <>
@@ -700,6 +856,15 @@ export default function Dashboard() {
                 </Badge>
               </View>
 
+              {attendanceStatus.statusNote && (
+                <Text
+                  variant="small"
+                  className={`mt-2 font-medium ${statusNoteColor}`}
+                >
+                  {attendanceStatus.statusNote}
+                </Text>
+              )}
+
               <View className="space-y-3">
                 {/* Check In Status */}
                 <View className="flex-row items-center justify-between">
@@ -778,11 +943,11 @@ export default function Dashboard() {
                 onPress={navigateToCheckIn}
                 className="w-48"
                 activeOpacity={0.8}
-                disabled={!validationStatus.canCheckIn || refreshing}
+                disabled={actionDisabled}
               >
                 <Card
                   className={`aspect-square ${
-                    !validationStatus.canCheckIn || refreshing
+                    actionDisabled
                       ? "bg-gray-400 dark:bg-gray-600"
                       : "bg-blue-600 dark:bg-blue-700"
                   }`}
@@ -793,21 +958,17 @@ export default function Dashboard() {
                       variant="large"
                       className="text-white font-semibold mt-2 text-center"
                     >
-                      {validationStatus.actionType === "present"
-                        ? "Absen Masuk"
-                        : validationStatus.actionType === "home"
-                          ? "Absen Pulang"
-                          : "Cek Status Absen"}
+                      {primaryActionLabel}
                     </Text>
                     <Text
                       variant="small"
                       className={`text-center mt-1 px-2 ${
-                        !validationStatus.canCheckIn || refreshing
+                        actionDisabled
                           ? "text-gray-200 dark:text-gray-300"
                           : "text-blue-100"
                       }`}
                     >
-                      {validationStatus.message}
+                      {secondaryActionMessage}
                     </Text>
                   </View>
                 </Card>
