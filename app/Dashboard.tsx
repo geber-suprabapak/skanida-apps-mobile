@@ -661,7 +661,7 @@ export default function Dashboard() {
       return attendanceStatus.isLate
         ? {
             color: "bg-yellow-600",
-            text: "Hadir (Terlambat)",
+            text: "Terlambat",
             textColor: "text-white",
           }
         : {
