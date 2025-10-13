@@ -579,14 +579,29 @@ export default function Dashboard() {
 
   const statusBadge = getStatusBadge();
 
+  const derivedActionType =
+    attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+      ? "home"
+      : validationStatus.actionType;
+
   const isPrimaryActionDisabled = refreshing || !validationStatus.canCheckIn;
 
   const primaryActionLabel =
-    validationStatus.actionType === "present"
+    derivedActionType === "present"
       ? "Absen Masuk"
-      : validationStatus.actionType === "home"
+      : derivedActionType === "home"
         ? "Absen Pulang"
         : "Cek Status";
+
+  const primaryActionSubtitle = (() => {
+    if (derivedActionType === "home") {
+      return "Silakan absen pulang";
+    }
+    if (derivedActionType === "present") {
+      return "Silakan absen masuk";
+    }
+    return "Cek jadwal absensi";
+  })();
 
   return (
     <>
@@ -816,6 +831,16 @@ export default function Dashboard() {
                       className="text-white font-semibold mt-2 text-center"
                     >
                       {primaryActionLabel}
+                    </Text>
+                    <Text
+                      variant="small"
+                      className={`text-center mt-1 px-2 ${
+                        isPrimaryActionDisabled
+                          ? "text-gray-200 dark:text-gray-300"
+                          : "text-blue-100"
+                      }`}
+                    >
+                      {primaryActionSubtitle} di SMK N 02 Kota Magelang
                     </Text>
                     <Text
                       variant="small"

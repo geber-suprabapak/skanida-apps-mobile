@@ -547,43 +547,25 @@ const AbsenceReport = () => {
                 const {
                   mulai_pulang: mulaiPulang,
                   selesai_pulang: selesaiPulang,
-                  kompensasi_waktu: kompensasiWaktu,
                 } = schedule;
 
                 const startWindow = parseScheduleTime(mulaiPulang, now);
                 const endWindow = parseScheduleTime(selesaiPulang, now);
-                const compensationMinutes =
-                  parseCompensationMinutes(kompensasiWaktu);
-
-                const shouldDelayPulang =
-                  lastAbsenceData.status === "Terlambat" &&
-                  compensationMinutes > 0 &&
-                  startWindow !== null;
-
-                const effectiveStartWindow = shouldDelayPulang
-                  ? addMinutes(startWindow as Date, compensationMinutes)
-                  : startWindow;
-
-                if (effectiveStartWindow && now < effectiveStartWindow) {
-                  const earliestTime =
-                    formatTimeForDisplay(effectiveStartWindow);
-                  const baseMessage = `Belum waktunya absen pulang. Jam pulang dimulai pukul ${earliestTime}.`;
-
-                  setStatusMessage(
-                    shouldDelayPulang
-                      ? `${baseMessage} (Penalti keterlambatan ${compensationMinutes} menit berlaku).`
-                      : baseMessage,
-                  );
-                  setAttendanceStatus(null);
-                  setCanProceedToCamera(false);
-                  return null;
-                }
 
                 if (!startWindow) {
                   setStatusMessage(
                     "Jadwal pulang hari ini tidak valid. Hubungi administrator.",
                   );
                   resetAttendanceStatus();
+                  return null;
+                }
+
+                if (now < startWindow) {
+                  setStatusMessage(
+                    `Belum waktunya absen pulang. Jam pulang dimulai pukul ${formatTimeForDisplay(startWindow)}.`,
+                  );
+                  setAttendanceStatus(null);
+                  setCanProceedToCamera(false);
                   return null;
                 }
 
