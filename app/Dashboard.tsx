@@ -584,7 +584,9 @@ export default function Dashboard() {
       ? "home"
       : validationStatus.actionType;
 
-  const isPrimaryActionDisabled = refreshing || !validationStatus.canCheckIn;
+  const isPrimaryActionDisabled =
+    refreshing ||
+    (derivedActionType !== "home" && !validationStatus.canCheckIn);
 
   const primaryActionLabel =
     derivedActionType === "present"
