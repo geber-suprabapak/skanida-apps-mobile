@@ -25,10 +25,12 @@ import {
   MapPinOff,
   HelpCircle,
 } from "lucide-react-native";
+import { timeSync } from "~/utils/timeSync";
 
 // --- TYPES AND INTERFACES ---
 type AbsenceType = "present" | "home";
 type LocationCheckStatus = "checking" | "verified" | "failed" | "out_of_range";
+type AttendanceStatus = "Hadir" | "Terlambat" | "Pulang" | "Alpha";
 
 // --- CONSTANTS ---
 const AUTO_NAVIGATE_DELAY_MS = 1000;
@@ -44,6 +46,66 @@ const LOCATION_CONFIG = {
   // 5. Mencegah false negative pada kondisi sinyal GPS yang sedang loading
   HIGH_TIMEOUT: 10000,
 } as const;
+
+// --- HELPER FUNCTIONS ---
+const parseScheduleTime = (
+  value: string | null | undefined,
+  reference: Date,
+): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replace(/\./g, ":").trim();
+  const parts = normalized
+    .split(":")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const [hourStr, minuteStr, secondStr] = parts;
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  const second = secondStr ? Number(secondStr) : 0;
+
+  if ([hour, minute, second].some((timeUnit) => Number.isNaN(timeUnit))) {
+    return null;
+  }
+
+  const scheduleTime = new Date(reference);
+  scheduleTime.setHours(hour, minute, second, 0);
+  return scheduleTime;
+};
+
+const parseCompensationMinutes = (value: number | string | null): number => {
+  if (value === null || value === undefined) {
+    return 0;
+  }
+
+  const parsed = typeof value === "number" ? value : Number(value);
+
+  if (Number.isNaN(parsed)) {
+    return 0;
+  }
+
+  return Math.max(0, parsed);
+};
+
+const addMinutes = (date: Date, minutes: number): Date => {
+  const adjusted = new Date(date);
+  adjusted.setMinutes(adjusted.getMinutes() + minutes);
+  return adjusted;
+};
+
+const formatTimeForDisplay = (date: Date): string =>
+  date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
 // --- MAIN COMPONENT ---
 const AbsenceReport = () => {
@@ -63,6 +125,8 @@ const AbsenceReport = () => {
   const [currentAbsenceType, setCurrentAbsenceType] =
     useState<AbsenceType | null>(null);
   const [canProceedToCamera, setCanProceedToCamera] = useState(false);
+  const [attendanceStatus, setAttendanceStatus] =
+    useState<AttendanceStatus | null>(null);
   const [morningAbsenceCompleted, setMorningAbsenceCompleted] = useState<
     string | null
   >(null);
@@ -83,9 +147,27 @@ const AbsenceReport = () => {
 
   // --- MEMOIZED VALUES ---
   const todayDateString = useMemo(
-    () => new Date().toISOString().split("T")[0],
+    () => timeSync.getSyncedTime().toISOString().split("T")[0],
     [],
   );
+
+  const getCurrentDayInfo = useCallback(() => {
+    const now = timeSync.getSyncedTime();
+    const dayNames = [
+      "minggu",
+      "senin",
+      "selasa",
+      "rabu",
+      "kamis",
+      "jumat",
+      "sabtu",
+    ] as const;
+
+    const currentDayKey = dayNames[now.getDay()];
+    const currentTime = now.toLocaleTimeString("en-GB", { hour12: false });
+
+    return { currentDayKey, currentTime };
+  }, []);
 
   // --- UTILITY FUNCTIONS ---
   // Check location via RPC
@@ -193,7 +275,8 @@ const AbsenceReport = () => {
       !currentLocation ||
       !userId ||
       !currentAbsenceType ||
-      !canProceedToCamera
+      !canProceedToCamera ||
+      !attendanceStatus
     ) {
       Alert.alert(
         "Error",
@@ -209,9 +292,17 @@ const AbsenceReport = () => {
         longitude: currentLocation.coords.longitude.toString(),
         userId,
         absenceType: currentAbsenceType,
+        attendanceStatus,
       },
     });
-  }, [currentLocation, userId, currentAbsenceType, canProceedToCamera, router]);
+  }, [
+    currentLocation,
+    userId,
+    currentAbsenceType,
+    canProceedToCamera,
+    attendanceStatus,
+    router,
+  ]);
 
   // --- CORE FUNCTIONS ---
   const checkUserAuthentication = useCallback(async (): Promise<
@@ -242,8 +333,16 @@ const AbsenceReport = () => {
 
   const determineAbsenceType = useCallback(
     async (currentUserId: string): Promise<AbsenceType | null> => {
+      const now = timeSync.getSyncedTime();
+
+      const resetAttendanceStatus = () => {
+        setAttendanceStatus(null);
+        setCanProceedToCamera(false);
+      };
+
       // Check local state first for performance
       if (morningAbsenceCompleted === todayDateString) {
+        setAttendanceStatus("Pulang");
         return "home";
       }
 
@@ -255,6 +354,84 @@ const AbsenceReport = () => {
         setMorningAbsenceCompleted(null);
       }
 
+      const { currentDayKey } = getCurrentDayInfo();
+
+      const evaluateMorningAttendanceWindow = async (): Promise<boolean> => {
+        try {
+          const { data: schedule, error: scheduleError } = await supabase
+            .from("jadwal_absensi")
+            .select("mulai_masuk, selesai_masuk, kompensasi_waktu, is_active")
+            .eq("hari", currentDayKey)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (scheduleError && scheduleError.code !== "PGRST116") {
+            setStatusMessage(
+              `Gagal memeriksa jadwal absensi masuk: ${scheduleError.message}`,
+            );
+            resetAttendanceStatus();
+            return false;
+          }
+
+          if (!schedule) {
+            setStatusMessage(
+              "Tidak ada jadwal absensi masuk yang aktif untuk hari ini.",
+            );
+            resetAttendanceStatus();
+            return false;
+          }
+
+          const startWindow = parseScheduleTime(schedule.mulai_masuk, now);
+          const endWindow = parseScheduleTime(schedule.selesai_masuk, now);
+          const compensationMinutes = parseCompensationMinutes(
+            schedule.kompensasi_waktu,
+          );
+          const compensationWindow =
+            endWindow !== null
+              ? addMinutes(endWindow, compensationMinutes)
+              : null;
+
+          if (!startWindow || !endWindow) {
+            setStatusMessage(
+              "Jadwal absensi masuk tidak valid. Hubungi administrator.",
+            );
+            resetAttendanceStatus();
+            return false;
+          }
+
+          if (now < startWindow) {
+            setStatusMessage(
+              `Belum waktunya absen masuk. Absensi dimulai pukul ${formatTimeForDisplay(startWindow)}.`,
+            );
+            resetAttendanceStatus();
+            return false;
+          }
+
+          if (now <= endWindow) {
+            setAttendanceStatus("Hadir");
+            return true;
+          }
+
+          if (compensationWindow && now <= compensationWindow) {
+            setAttendanceStatus("Terlambat");
+            return true;
+          }
+
+          setAttendanceStatus("Alpha");
+          setStatusMessage(
+            `Jendela absensi masuk sudah berakhir. Status Anda Alpha sejak pukul ${formatTimeForDisplay(endWindow)}.`,
+          );
+          setCanProceedToCamera(false);
+          return false;
+        } catch (error: any) {
+          setStatusMessage(
+            `Terjadi kesalahan saat mengevaluasi jadwal absensi masuk: ${error.message || "Unknown error"}`,
+          );
+          resetAttendanceStatus();
+          return false;
+        }
+      };
+
       // Check network connectivity
       try {
         const netInfoState = await NetInfo.fetch();
@@ -262,11 +439,13 @@ const AbsenceReport = () => {
           setStatusMessage(
             "Tidak ada koneksi internet. Silakan periksa koneksi Anda.",
           );
+          resetAttendanceStatus();
           return null;
         }
       } catch {
         // Ignore network info failures; continue without connection status.
       }
+
       // Query database for today's attendance
       try {
         const { data: lastAbsenceData, error: lastAbsenceError } =
@@ -275,6 +454,7 @@ const AbsenceReport = () => {
             .select("status, created_at")
             .eq("user_id", currentUserId)
             .eq("date", todayDateString)
+            .in("status", ["Hadir", "Terlambat", "Pulang", "Alpha"])
             .order("created_at", { ascending: false })
             .limit(1)
             .single();
@@ -282,12 +462,12 @@ const AbsenceReport = () => {
         if (lastAbsenceError) {
           if (lastAbsenceError.code === "PGRST116") {
             // No data found for today - check if there's any record from previous days
-            // Query for the most recent absence record regardless of date
             const { data: lastAnyAbsenceData, error: lastAnyAbsenceError } =
               await supabase
                 .from("absences")
                 .select("status, created_at, date")
                 .eq("user_id", currentUserId)
+                .in("status", ["Hadir", "Terlambat", "Pulang", "Alpha"])
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .single();
@@ -299,6 +479,7 @@ const AbsenceReport = () => {
               setStatusMessage(
                 `Gagal memeriksa riwayat absensi: ${lastAnyAbsenceError.message}`,
               );
+              resetAttendanceStatus();
               return null;
             }
 
@@ -307,56 +488,141 @@ const AbsenceReport = () => {
                 .toISOString()
                 .split("T")[0];
 
-              // If the last record is from a previous day, allow morning attendance
               if (lastAbsenceDate !== todayDateString) {
-                return "present";
+                const canProceed = await evaluateMorningAttendanceWindow();
+                return canProceed ? "present" : null;
               }
             }
 
-            // No previous records or same day record, default to morning attendance
-            return "present";
-          } else {
-            setStatusMessage(
-              `Gagal memeriksa status absensi: ${lastAbsenceError.message}`,
-            );
-            return null;
+            const canProceed = await evaluateMorningAttendanceWindow();
+            return canProceed ? "present" : null;
           }
+
+          setStatusMessage(
+            `Gagal memeriksa status absensi: ${lastAbsenceError.message}`,
+          );
+          resetAttendanceStatus();
+          return null;
         }
 
         if (lastAbsenceData) {
-          // Check if the record is actually from today by comparing created_at date
           const recordDate = new Date(lastAbsenceData.created_at)
             .toISOString()
             .split("T")[0];
 
-          // If the record is from a previous day, allow morning attendance
           if (recordDate !== todayDateString) {
-            return "present";
+            const canProceed = await evaluateMorningAttendanceWindow();
+            return canProceed ? "present" : null;
           }
 
-          // Record is from today, check status
           switch (lastAbsenceData.status) {
             case "Hadir":
-              setMorningAbsenceCompleted(todayDateString);
-              return "home";
+            case "Terlambat": {
+              try {
+                const { data: schedule, error: scheduleError } = await supabase
+                  .from("jadwal_absensi")
+                  .select(
+                    "mulai_pulang, selesai_pulang, is_active, kompensasi_waktu",
+                  )
+                  .eq("hari", currentDayKey)
+                  .eq("is_active", true)
+                  .single();
+
+                if (scheduleError && scheduleError.code !== "PGRST116") {
+                  setStatusMessage(
+                    `Gagal memeriksa jadwal pulang: ${scheduleError.message}`,
+                  );
+                  resetAttendanceStatus();
+                  return null;
+                }
+
+                if (!schedule) {
+                  setStatusMessage(
+                    "Tidak ada jadwal absensi pulang yang aktif untuk hari ini.",
+                  );
+                  resetAttendanceStatus();
+                  return null;
+                }
+
+                const {
+                  mulai_pulang: mulaiPulang,
+                  selesai_pulang: selesaiPulang,
+                } = schedule;
+
+                const startWindow = parseScheduleTime(mulaiPulang, now);
+                const endWindow = parseScheduleTime(selesaiPulang, now);
+
+                if (!startWindow) {
+                  setStatusMessage(
+                    "Jadwal pulang hari ini tidak valid. Hubungi administrator.",
+                  );
+                  resetAttendanceStatus();
+                  return null;
+                }
+
+                if (now < startWindow) {
+                  setStatusMessage(
+                    `Belum waktunya absen pulang. Jam pulang dimulai pukul ${formatTimeForDisplay(startWindow)}.`,
+                  );
+                  setAttendanceStatus(null);
+                  setCanProceedToCamera(false);
+                  return null;
+                }
+
+                if (endWindow && now > endWindow) {
+                  setStatusMessage(
+                    `Jendela absensi pulang telah berakhir pada pukul ${selesaiPulang}.`,
+                  );
+                  resetAttendanceStatus();
+                  return null;
+                }
+
+                setAttendanceStatus("Pulang");
+                setMorningAbsenceCompleted(todayDateString);
+                return "home";
+              } catch (error: any) {
+                setStatusMessage(
+                  `Terjadi kesalahan saat memeriksa jadwal pulang: ${error.message || "Unknown error"}`,
+                );
+                resetAttendanceStatus();
+                return null;
+              }
+            }
             case "Pulang":
+              setAttendanceStatus("Pulang");
               setStatusMessage(
                 "Anda sudah menyelesaikan absensi (Hadir dan Pulang) untuk hari ini.",
               );
+              setCanProceedToCamera(false);
               return null;
-            default:
-              return "present";
+            case "Alpha":
+              setAttendanceStatus("Alpha");
+              setStatusMessage(
+                "Status absensi Anda hari ini adalah Alpha. Tidak dapat melakukan absensi mandiri.",
+              );
+              setCanProceedToCamera(false);
+              return null;
+            default: {
+              const canProceed = await evaluateMorningAttendanceWindow();
+              return canProceed ? "present" : null;
+            }
           }
-        } else {
-          // This should not happen after handling PGRST116, but keeping as fallback
-          return "present";
         }
+
+        const canProceed = await evaluateMorningAttendanceWindow();
+        return canProceed ? "present" : null;
       } catch {
         setStatusMessage("Gagal memeriksa status absensi dari database.");
+        resetAttendanceStatus();
         return null;
       }
     },
-    [todayDateString, morningAbsenceCompleted],
+    [
+      todayDateString,
+      morningAbsenceCompleted,
+      getCurrentDayInfo,
+      setMorningAbsenceCompleted,
+    ],
   );
 
   const requestLocationPermissionAndGet =
@@ -391,6 +657,7 @@ const AbsenceReport = () => {
     setIsLoading(true);
     setLocationStatus("checking");
     setCanProceedToCamera(false);
+    setAttendanceStatus(null);
     setStatusMessage("Memeriksa status absensi dan lokasi...");
 
     try {
@@ -476,6 +743,21 @@ const AbsenceReport = () => {
     return "text-gray-500";
   };
 
+  const getAttendanceStatusColor = (): string => {
+    switch (attendanceStatus) {
+      case "Hadir":
+        return "text-green-700";
+      case "Terlambat":
+        return "text-amber-600";
+      case "Pulang":
+        return "text-sky-700";
+      case "Alpha":
+        return "text-red-700";
+      default:
+        return "text-gray-600";
+    }
+  };
+
   // --- RENDER ---
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-gray-900">
@@ -540,6 +822,14 @@ const AbsenceReport = () => {
                     <Text variant="small" className="text-green-600">
                       Anda akan diarahkan ke kamera.
                     </Text>
+                    {attendanceStatus && (
+                      <Text
+                        variant="small"
+                        className={`${getAttendanceStatusColor()} mt-1`}
+                      >
+                        Status absensi: {attendanceStatus}
+                      </Text>
+                    )}
                   </View>
                 )}
 
@@ -555,6 +845,14 @@ const AbsenceReport = () => {
                       ? "Anda berada di luar jangkauan sekolah."
                       : "Terjadi kesalahan saat memverifikasi lokasi."}
                   </Text>
+                  {attendanceStatus === "Alpha" && (
+                    <Text
+                      variant="small"
+                      className={`${getAttendanceStatusColor()} mt-1`}
+                    >
+                      Status absensi: Alpha
+                    </Text>
+                  )}
                 </View>
               )}
 

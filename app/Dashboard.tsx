@@ -60,6 +60,7 @@ interface AttendanceStatus {
   hasCheckedOut: boolean;
   checkInTime?: string;
   checkOutTime?: string;
+  checkInStatus?: "Hadir" | "Terlambat";
   totalWorkHours?: string;
   todayStatus: "present" | "absent" | "leave" | "pending";
 }
@@ -267,6 +268,7 @@ export default function Dashboard() {
       let hasCheckedOut = false;
       let checkInTime = "";
       let checkOutTime = "";
+      let checkInStatus: "Hadir" | "Terlambat" | undefined;
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
       // Check for leave requests first (they take priority)
@@ -284,18 +286,35 @@ export default function Dashboard() {
         todayAttendance &&
         todayAttendance.length > 0
       ) {
-        todayAttendance.forEach((record) => {
-          if (record.status === "Hadir" || record.status === "Datang") {
-            hasCheckedIn = true;
-            checkInTime = record.created_at;
-          } else if (record.status === "Pulang") {
-            hasCheckedOut = true;
-            checkOutTime = record.created_at;
-          }
-        });
+        const hasAlphaRecord = todayAttendance.some(
+          (record) => record.status === "Alpha",
+        );
 
-        if (hasCheckedIn) {
-          todayStatus = "present";
+        if (hasAlphaRecord) {
+          todayStatus = "absent";
+        } else {
+          const checkInRecord = todayAttendance.find(
+            (record) =>
+              record.status === "Hadir" || record.status === "Terlambat",
+          );
+          const checkOutRecord = todayAttendance.find(
+            (record) => record.status === "Pulang",
+          );
+
+          if (checkInRecord) {
+            hasCheckedIn = true;
+            checkInTime = checkInRecord.created_at;
+            checkInStatus = checkInRecord.status as "Hadir" | "Terlambat";
+          }
+
+          if (checkOutRecord) {
+            hasCheckedOut = true;
+            checkOutTime = checkOutRecord.created_at;
+          }
+
+          if (hasCheckedIn) {
+            todayStatus = "present";
+          }
         }
       }
 
@@ -318,6 +337,7 @@ export default function Dashboard() {
         hasCheckedOut,
         checkInTime,
         checkOutTime,
+        checkInStatus,
         totalWorkHours,
         todayStatus,
       });
@@ -328,83 +348,69 @@ export default function Dashboard() {
 
   // Check live validation status using RPC
   const checkLiveValidationStatus = useCallback(async () => {
-    if (!user?.id) {
+    if (!user?.id || attendanceStatus.hasCheckedOut) {
       setValidationStatus({
         canCheckIn: false,
         actionType: "none",
-        message: "User tidak ditemukan",
+        message: attendanceStatus.hasCheckedOut
+          ? "Absensi hari ini sudah lengkap."
+          : "User tidak ditemukan",
       });
       return;
     }
 
     try {
-      // Request location permission
       let { status } = await Location.getForegroundPermissionsAsync();
-
       if (status !== "granted") {
-        const result = await Location.requestForegroundPermissionsAsync();
-        status = result.status;
-
+        status = (await Location.requestForegroundPermissionsAsync()).status;
         if (status !== "granted") {
           setValidationStatus({
             canCheckIn: false,
             actionType: "none",
-            message: "Izin lokasi ditolak. Aktifkan untuk melanjutkan.",
+            message: "Izin lokasi ditolak.",
           });
           return;
         }
       }
 
-      // Get current location
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-
       if (!location) {
         setValidationStatus({
           canCheckIn: false,
           actionType: "none",
-          message: "Gagal mendapatkan lokasi. Pastikan GPS aktif.",
+          message: "Gagal mendapatkan lokasi GPS.",
         });
         return;
       }
 
-      const { latitude, longitude } = location.coords;
-
-      // Call RPC function
       const { data, error } = await supabase.rpc("check_absensi_status", {
         p_user_id: user.id,
-        p_user_lat: latitude,
-        p_user_lon: longitude,
+        p_user_lat: location.coords.latitude,
+        p_user_lon: location.coords.longitude,
       });
 
       if (error) {
-        console.error("Error calling check_absensi_status:", error);
-        setValidationStatus({
-          canCheckIn: false,
-          actionType: "none",
-          message: "Gagal memeriksa status absensi",
-        });
-        return;
+        throw error;
       }
 
       const result = data as AbsensiCheckResult;
 
-      // Interpret the result
       setValidationStatus({
         canCheckIn: result.status_code === "VALID",
         actionType: result.required_action,
         message: result.message,
       });
     } catch (error) {
-      console.error("Exception during validation check:", error);
+      console.error("Error during live validation:", error);
       setValidationStatus({
         canCheckIn: false,
         actionType: "none",
-        message: "Terjadi kesalahan saat memeriksa status",
+        message: "Gagal memeriksa status absensi.",
       });
     }
-  }, [user]);
+  }, [user, attendanceStatus.hasCheckedOut]);
 
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
@@ -538,6 +544,13 @@ export default function Dashboard() {
   const getStatusBadge = () => {
     switch (attendanceStatus.todayStatus) {
       case "present":
+        if (attendanceStatus.checkInStatus === "Terlambat") {
+          return {
+            color: "bg-orange-500",
+            text: "Terlambat",
+            textColor: "text-white",
+          };
+        }
         return {
           color: "bg-green-500",
           text: "Hadir",
@@ -565,6 +578,32 @@ export default function Dashboard() {
   };
 
   const statusBadge = getStatusBadge();
+
+  const derivedActionType =
+    attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+      ? "home"
+      : validationStatus.actionType;
+
+  const isPrimaryActionDisabled =
+    refreshing ||
+    (derivedActionType !== "home" && !validationStatus.canCheckIn);
+
+  const primaryActionLabel =
+    derivedActionType === "present"
+      ? "Absen Masuk"
+      : derivedActionType === "home"
+        ? "Absen Pulang"
+        : "Cek Status";
+
+  const primaryActionSubtitle = (() => {
+    if (derivedActionType === "home") {
+      return "Silakan absen pulang";
+    }
+    if (derivedActionType === "present") {
+      return "Silakan absen masuk";
+    }
+    return "Cek jadwal absensi";
+  })();
 
   return (
     <>
@@ -778,11 +817,11 @@ export default function Dashboard() {
                 onPress={navigateToCheckIn}
                 className="w-48"
                 activeOpacity={0.8}
-                disabled={!validationStatus.canCheckIn || refreshing}
+                disabled={isPrimaryActionDisabled}
               >
                 <Card
                   className={`aspect-square ${
-                    !validationStatus.canCheckIn || refreshing
+                    isPrimaryActionDisabled
                       ? "bg-gray-400 dark:bg-gray-600"
                       : "bg-blue-600 dark:bg-blue-700"
                   }`}
@@ -793,16 +832,22 @@ export default function Dashboard() {
                       variant="large"
                       className="text-white font-semibold mt-2 text-center"
                     >
-                      {validationStatus.actionType === "present"
-                        ? "Absen Masuk"
-                        : validationStatus.actionType === "home"
-                          ? "Absen Pulang"
-                          : "Cek Status Absen"}
+                      {primaryActionLabel}
                     </Text>
                     <Text
                       variant="small"
                       className={`text-center mt-1 px-2 ${
-                        !validationStatus.canCheckIn || refreshing
+                        isPrimaryActionDisabled
+                          ? "text-gray-200 dark:text-gray-300"
+                          : "text-blue-100"
+                      }`}
+                    >
+                      {primaryActionSubtitle} di SMK N 02 Kota Magelang
+                    </Text>
+                    <Text
+                      variant="small"
+                      className={`text-center mt-1 px-2 ${
+                        isPrimaryActionDisabled
                           ? "text-gray-200 dark:text-gray-300"
                           : "text-blue-100"
                       }`}

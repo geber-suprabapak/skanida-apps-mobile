@@ -52,6 +52,14 @@ const UPLOAD_CONFIG = {
 type CameraFacing = "front" | "back";
 type AbsenceType = "present" | "home";
 type UploadStage = "processing" | "uploading" | "saving";
+type AttendanceStatus = "Hadir" | "Terlambat" | "Pulang" | "Alpha";
+
+const ALLOWED_ATTENDANCE_STATUSES: AttendanceStatus[] = [
+  "Hadir",
+  "Terlambat",
+  "Pulang",
+  "Alpha",
+];
 
 // --- MEMOIZED COMPONENTS ---
 const ProgressBar = memo<{ percentage: number }>(({ percentage }) => (
@@ -124,6 +132,7 @@ interface LocationData {
   longitude: number | null;
   userId: string | null;
   absenceType: AbsenceType;
+  status: AttendanceStatus | null;
 }
 
 interface UploadProgress {
@@ -164,22 +173,36 @@ const CameraAttendance = () => {
   const locationData: LocationData = useMemo(() => {
     const latitude = parseFloat(params.latitude as string);
     const longitude = parseFloat(params.longitude as string);
+    const rawStatus = params.attendanceStatus as string | undefined;
+
+    const normalizedStatus =
+      typeof rawStatus === "string" &&
+      ALLOWED_ATTENDANCE_STATUSES.includes(rawStatus as AttendanceStatus)
+        ? (rawStatus as AttendanceStatus)
+        : null;
 
     const data: LocationData = {
       latitude: Number.isNaN(latitude) ? null : latitude,
       longitude: Number.isNaN(longitude) ? null : longitude,
       userId: (params.userId as string) || null,
       absenceType: (params.absenceType as AbsenceType) || "present",
+      status: normalizedStatus,
     };
 
     return data;
   }, [params]);
 
   const isLocationDataValid = useMemo(() => {
+    const statusValid =
+      locationData.absenceType === "present"
+        ? locationData.status === "Hadir" || locationData.status === "Terlambat"
+        : locationData.status === "Pulang";
+
     return (
       locationData.userId !== null &&
       locationData.latitude !== null &&
-      locationData.longitude !== null
+      locationData.longitude !== null &&
+      statusValid
     );
   }, [locationData]);
 
@@ -294,8 +317,25 @@ const CameraAttendance = () => {
 
   const saveAttendanceRecord = useCallback(
     async (photoUrl: string): Promise<void> => {
-      const status =
-        locationData.absenceType === "present" ? "Hadir" : "Pulang";
+      let status: AttendanceStatus;
+
+      if (locationData.absenceType === "home") {
+        status = "Pulang";
+      } else if (
+        locationData.status === "Hadir" ||
+        locationData.status === "Terlambat"
+      ) {
+        status = locationData.status;
+      } else if (locationData.status === "Alpha") {
+        throw new Error(
+          "Status Alpha tidak dapat diproses melalui absensi mandiri.",
+        );
+      } else {
+        console.warn(
+          "Status absensi tidak tersedia di parameter kamera. Menggunakan status default 'Hadir'.",
+        );
+        status = "Hadir";
+      }
 
       const attendanceData = {
         user_id: locationData.userId,
@@ -494,13 +534,14 @@ const CameraAttendance = () => {
   // --- EFFECTS ---
   useEffect(() => {
     if (!isLocationDataValid) {
-      Alert.alert(
-        "Error",
-        "Data absensi tidak lengkap. Silakan kembali dan coba lagi.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      const reason = !locationData.status
+        ? "Status absensi tidak valid. Silakan ulangi proses dari awal."
+        : "Data absensi tidak lengkap. Silakan kembali dan coba lagi.";
+      Alert.alert("Error", reason, [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     }
-  }, [isLocationDataValid, router]);
+  }, [isLocationDataValid, router, locationData.status]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
