@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "1.8.2-internaldev",
+    "version": "1.0.0-openbeta",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",
@@ -37,7 +37,7 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 26
+            "minSdkVersion": 24
           },
           "ios": {
             "deploymentTarget": "15.1"

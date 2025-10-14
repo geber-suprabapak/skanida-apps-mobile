@@ -469,44 +469,41 @@ export default function Dashboard() {
     }
   }, [isFocused, fetchAttendanceData]);
 
-  const fetchAttendanceSchedule = useCallback(
-    async (dayKey: DayKey) => {
-      try {
-        const { data, error } = await supabase
-          .from("jadwal_absensi")
-          .select(
-            "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
-          )
-          .eq("hari", dayKey)
-          .eq("is_active", true)
-          .maybeSingle();
+  const fetchAttendanceSchedule = useCallback(async (dayKey: DayKey) => {
+    try {
+      const { data, error } = await supabase
+        .from("jadwal_absensi")
+        .select(
+          "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
+        )
+        .eq("hari", dayKey)
+        .eq("is_active", true)
+        .maybeSingle();
 
-        if (error) {
-          if (error.code !== "PGRST116") {
-            console.error(
-              "Dashboard: Error fetching attendance schedule:",
-              error.message,
-            );
-          }
-          setAttendanceSchedule(null);
-          return;
+      if (error) {
+        if (error.code !== "PGRST116") {
+          console.error(
+            "Dashboard: Error fetching attendance schedule:",
+            error.message,
+          );
         }
+        setAttendanceSchedule(null);
+        return;
+      }
 
-        if (data) {
-          setAttendanceSchedule(data as AttendanceSchedule);
-        } else {
-          setAttendanceSchedule(null);
-        }
-      } catch (scheduleError: any) {
-        console.error(
-          "Dashboard: Exception during attendance schedule fetch:",
-          scheduleError.message,
-        );
+      if (data) {
+        setAttendanceSchedule(data as AttendanceSchedule);
+      } else {
         setAttendanceSchedule(null);
       }
-    },
-    [],
-  );
+    } catch (scheduleError: any) {
+      console.error(
+        "Dashboard: Exception during attendance schedule fetch:",
+        scheduleError.message,
+      );
+      setAttendanceSchedule(null);
+    }
+  }, []);
 
   const currentDayKey = useMemo<DayKey>(() => {
     const dayKey = DAY_KEY_MAP[currentTime.getDay()];
@@ -661,7 +658,9 @@ export default function Dashboard() {
       ? "home"
       : validationStatus.actionType;
 
-  const normalizeTimeString = (value: string | null | undefined): string | null => {
+  const normalizeTimeString = (
+    value: string | null | undefined,
+  ): string | null => {
     if (!value) return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -1112,7 +1111,7 @@ export default function Dashboard() {
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
           <Text variant="small" className="font-bold text-foreground">
-            v1.8.2-internaldev | Branch: develop
+            v1.0.0-openbeta
           </Text>
         </View>
       </SafeAreaView>

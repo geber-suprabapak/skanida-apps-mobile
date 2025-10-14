@@ -453,7 +453,7 @@ function Pengaturan() {
                 <Text variant="small" className="font-medium">
                   Versi Aplikasi
                 </Text>
-                <Text variant="default">Version 1.8.2-internaldev</Text>
+                <Text variant="default">Version 1.0.0-openbeta</Text>
               </View>
 
               <View className="pt-3 border-t border-border">
