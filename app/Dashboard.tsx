@@ -665,7 +665,13 @@ export default function Dashboard() {
     if (!value) return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
-    return trimmed.length >= 8 ? trimmed.slice(0, 8) : trimmed;
+    if (trimmed.length >= 5) {
+      const [hours, minutes] = trimmed.split(":");
+      if (typeof hours === "string" && typeof minutes === "string") {
+        return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+      }
+    }
+    return trimmed;
   };
 
   const getDateForToday = useCallback(
@@ -673,16 +679,16 @@ export default function Dashboard() {
       const normalized = normalizeTimeString(time);
       if (!normalized) return null;
 
-      const [hours, minutes, seconds] = normalized
+      const [hours, minutes] = normalized
         .split(":")
         .map((part) => parseInt(part || "0", 10));
 
-      if (Number.isNaN(hours) || Number.isNaN(minutes) || Number.isNaN(seconds)) {
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
         return null;
       }
 
       const base = new Date(currentTime);
-      base.setHours(hours, minutes, seconds || 0, 0);
+      base.setHours(hours, minutes, 0, 0);
       return base;
     },
     [currentTime],
@@ -772,15 +778,7 @@ export default function Dashboard() {
   const primaryActionMessage = useMemo(() => {
     if (derivedActionType === "home") {
       if (pulangScheduleText) {
-        const lines = [] as string[];
-
-        if (!validationStatus.canCheckIn || !isWithinPulangWindow) {
-          lines.push("Belum waktunya absen pulang.");
-        }
-
-        lines.push(pulangScheduleText);
-
-        return lines.join("\n");
+        return pulangScheduleText;
       }
 
       return validationStatus.message;
@@ -788,14 +786,7 @@ export default function Dashboard() {
 
     if (derivedActionType === "present") {
       if (presentScheduleText) {
-        const lines = [] as string[];
-
-        if (!validationStatus.canCheckIn || !isWithinPresentWindow) {
-          lines.push("Belum waktunya absen masuk.");
-        }
-
-        lines.push(presentScheduleText);
-        return lines.join("\n");
+        return presentScheduleText;
       }
 
       return validationStatus.message;
@@ -804,11 +795,8 @@ export default function Dashboard() {
     return validationStatus.message;
   }, [
     derivedActionType,
-    isWithinPresentWindow,
-    isWithinPulangWindow,
     presentScheduleText,
     pulangScheduleText,
-    validationStatus.canCheckIn,
     validationStatus.message,
   ]);
 
