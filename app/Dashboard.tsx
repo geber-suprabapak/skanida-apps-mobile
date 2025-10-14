@@ -2,7 +2,7 @@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -87,6 +87,26 @@ interface ValidationStatus {
   message: string;
 }
 
+interface AttendanceSchedule {
+  mulai_masuk: string | null;
+  selesai_masuk: string | null;
+  mulai_pulang: string | null;
+  selesai_pulang: string | null;
+  kompensasi_waktu?: number | null;
+}
+
+const DAY_KEY_MAP = [
+  "minggu",
+  "senin",
+  "selasa",
+  "rabu",
+  "kamis",
+  "jumat",
+  "sabtu",
+] as const;
+
+type DayKey = (typeof DAY_KEY_MAP)[number];
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const syncStatus = useTimeSyncStore((state) => state.status);
@@ -102,6 +122,8 @@ export default function Dashboard() {
     todayStatus: "pending",
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [attendanceSchedule, setAttendanceSchedule] =
+    useState<AttendanceSchedule | null>(null);
   const isFocused = useIsFocused(); // Add isFocused hook
 
   // Validation status for live schedule checking
@@ -447,6 +469,54 @@ export default function Dashboard() {
     }
   }, [isFocused, fetchAttendanceData]);
 
+  const fetchAttendanceSchedule = useCallback(
+    async (dayKey: DayKey) => {
+      try {
+        const { data, error } = await supabase
+          .from("jadwal_absensi")
+          .select(
+            "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
+          )
+          .eq("hari", dayKey)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (error) {
+          if (error.code !== "PGRST116") {
+            console.error(
+              "Dashboard: Error fetching attendance schedule:",
+              error.message,
+            );
+          }
+          setAttendanceSchedule(null);
+          return;
+        }
+
+        if (data) {
+          setAttendanceSchedule(data as AttendanceSchedule);
+        } else {
+          setAttendanceSchedule(null);
+        }
+      } catch (scheduleError: any) {
+        console.error(
+          "Dashboard: Exception during attendance schedule fetch:",
+          scheduleError.message,
+        );
+        setAttendanceSchedule(null);
+      }
+    },
+    [],
+  );
+
+  const currentDayKey = useMemo<DayKey>(() => {
+    const dayKey = DAY_KEY_MAP[currentTime.getDay()];
+    return dayKey ?? "senin";
+  }, [currentTime]);
+
+  useEffect(() => {
+    fetchAttendanceSchedule(currentDayKey);
+  }, [currentDayKey, fetchAttendanceSchedule]);
+
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
     try {
@@ -473,9 +543,16 @@ export default function Dashboard() {
           setCurrentTime(timeSync.getSyncedTime());
         }
       }),
+      fetchAttendanceSchedule(currentDayKey),
     ]);
     setRefreshing(false);
-  }, [fetchProfileData, fetchAttendanceData, checkLiveValidationStatus]);
+  }, [
+    fetchProfileData,
+    fetchAttendanceData,
+    checkLiveValidationStatus,
+    fetchAttendanceSchedule,
+    currentDayKey,
+  ]);
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
@@ -584,26 +661,159 @@ export default function Dashboard() {
       ? "home"
       : validationStatus.actionType;
 
-  const isPrimaryActionDisabled =
-    refreshing ||
-    (derivedActionType !== "home" && !validationStatus.canCheckIn);
+  const normalizeTimeString = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.length >= 5) {
+      const [hours, minutes] = trimmed.split(":");
+      if (typeof hours === "string" && typeof minutes === "string") {
+        return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+      }
+    }
+    return trimmed;
+  };
 
-  const primaryActionLabel =
-    derivedActionType === "present"
-      ? "Absen Masuk"
-      : derivedActionType === "home"
-        ? "Absen Pulang"
-        : "Cek Status";
+  const getDateForToday = useCallback(
+    (time: string | null | undefined): Date | null => {
+      const normalized = normalizeTimeString(time);
+      if (!normalized) return null;
 
-  const primaryActionSubtitle = (() => {
+      const [hours, minutes] = normalized
+        .split(":")
+        .map((part) => parseInt(part || "0", 10));
+
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return null;
+      }
+
+      const base = new Date(currentTime);
+      base.setHours(hours, minutes, 0, 0);
+      return base;
+    },
+    [currentTime],
+  );
+
+  const presentScheduleText = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = normalizeTimeString(attendanceSchedule.mulai_masuk);
+    if (!start) return null;
+
+    const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
+    const windowText = end ? `${start} - ${end}` : start;
+
+    let result = `Waktu absen masuk: ${windowText}`;
+    if (attendanceSchedule.kompensasi_waktu) {
+      result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
+    } else {
+      result += ".";
+    }
+
+    return result;
+  }, [attendanceSchedule]);
+
+  const pulangScheduleText = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = normalizeTimeString(attendanceSchedule.mulai_pulang);
+    if (!start) return null;
+
+    const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
+    const windowText = end ? `${start} - ${end}` : start;
+
+    return `Waktu absen pulang: ${windowText} WIB.`;
+  }, [attendanceSchedule]);
+
+  const presentScheduleWindow = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = getDateForToday(attendanceSchedule.mulai_masuk);
+    if (!start) return null;
+
+    const end = getDateForToday(attendanceSchedule.selesai_masuk);
+
+    return { start, end } as const;
+  }, [attendanceSchedule, getDateForToday]);
+
+  const pulangScheduleWindow = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = getDateForToday(attendanceSchedule.mulai_pulang);
+    if (!start) return null;
+
+    const end = getDateForToday(attendanceSchedule.selesai_pulang);
+
+    return { start, end } as const;
+  }, [attendanceSchedule, getDateForToday]);
+
+  const isWithinPresentWindow = useMemo(() => {
+    if (!presentScheduleWindow) return true;
+
+    if (currentTime < presentScheduleWindow.start) {
+      return false;
+    }
+
+    if (presentScheduleWindow.end && currentTime > presentScheduleWindow.end) {
+      return false;
+    }
+
+    return true;
+  }, [currentTime, presentScheduleWindow]);
+
+  const isWithinPulangWindow = useMemo(() => {
+    if (!pulangScheduleWindow) return true;
+
+    if (currentTime < pulangScheduleWindow.start) {
+      return false;
+    }
+
+    if (pulangScheduleWindow.end && currentTime > pulangScheduleWindow.end) {
+      return false;
+    }
+
+    return true;
+  }, [currentTime, pulangScheduleWindow]);
+
+  const primaryActionMessage = useMemo(() => {
     if (derivedActionType === "home") {
-      return "Silakan absen pulang";
+      if (pulangScheduleText) {
+        return pulangScheduleText;
+      }
+
+      return validationStatus.message;
     }
+
     if (derivedActionType === "present") {
-      return "Silakan absen masuk";
+      if (presentScheduleText) {
+        return presentScheduleText;
+      }
+
+      return validationStatus.message;
     }
-    return "Cek jadwal absensi";
-  })();
+
+    return validationStatus.message;
+  }, [
+    derivedActionType,
+    presentScheduleText,
+    pulangScheduleText,
+    validationStatus.message,
+  ]);
+
+  const scheduleAllowsAction = useMemo(() => {
+    if (derivedActionType === "home") {
+      return isWithinPulangWindow;
+    }
+
+    if (derivedActionType === "present") {
+      return isWithinPresentWindow;
+    }
+
+    return true;
+  }, [derivedActionType, isWithinPulangWindow, isWithinPresentWindow]);
+
+  const isPrimaryActionDisabled =
+    refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
 
   return (
     <>
@@ -829,30 +1039,14 @@ export default function Dashboard() {
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
                     <Text
-                      variant="large"
-                      className="text-white font-semibold mt-2 text-center"
-                    >
-                      {primaryActionLabel}
-                    </Text>
-                    <Text
                       variant="small"
-                      className={`text-center mt-1 px-2 ${
+                      className={`mt-3 px-3 text-center text-xs leading-snug ${
                         isPrimaryActionDisabled
                           ? "text-gray-200 dark:text-gray-300"
-                          : "text-blue-100"
+                          : "text-white/90"
                       }`}
                     >
-                      {primaryActionSubtitle} di SMK N 02 Kota Magelang
-                    </Text>
-                    <Text
-                      variant="small"
-                      className={`text-center mt-1 px-2 ${
-                        isPrimaryActionDisabled
-                          ? "text-gray-200 dark:text-gray-300"
-                          : "text-blue-100"
-                      }`}
-                    >
-                      {validationStatus.message}
+                      {primaryActionMessage}
                     </Text>
                   </View>
                 </Card>
