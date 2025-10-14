@@ -88,13 +88,11 @@ interface ValidationStatus {
 }
 
 interface AttendanceSchedule {
+  mulai_masuk: string | null;
+  selesai_masuk: string | null;
   mulai_pulang: string | null;
   selesai_pulang: string | null;
   kompensasi_waktu?: number | null;
-}
-
-interface PulangScheduleDisplay {
-  windowText: string;
 }
 
 const DAY_KEY_MAP = [
@@ -476,7 +474,9 @@ export default function Dashboard() {
       try {
         const { data, error } = await supabase
           .from("jadwal_absensi")
-          .select("mulai_pulang, selesai_pulang, kompensasi_waktu")
+          .select(
+            "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
+          )
           .eq("hari", dayKey)
           .eq("is_active", true)
           .maybeSingle();
@@ -661,60 +661,171 @@ export default function Dashboard() {
       ? "home"
       : validationStatus.actionType;
 
-  const isPrimaryActionDisabled = refreshing || !validationStatus.canCheckIn;
+  const normalizeTimeString = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    return trimmed.length >= 8 ? trimmed.slice(0, 8) : trimmed;
+  };
 
-  const pulangScheduleDisplay = useMemo<PulangScheduleDisplay | null>(() => {
+  const getDateForToday = useCallback(
+    (time: string | null | undefined): Date | null => {
+      const normalized = normalizeTimeString(time);
+      if (!normalized) return null;
+
+      const [hours, minutes, seconds] = normalized
+        .split(":")
+        .map((part) => parseInt(part || "0", 10));
+
+      if (Number.isNaN(hours) || Number.isNaN(minutes) || Number.isNaN(seconds)) {
+        return null;
+      }
+
+      const base = new Date(currentTime);
+      base.setHours(hours, minutes, seconds || 0, 0);
+      return base;
+    },
+    [currentTime],
+  );
+
+  const presentScheduleText = useMemo(() => {
     if (!attendanceSchedule) return null;
 
-    const formatSegment = (value: string | null) =>
-      value && value.length >= 5 ? value.slice(0, 5) : null;
-
-    const start = formatSegment(attendanceSchedule.mulai_pulang);
-    const end = formatSegment(attendanceSchedule.selesai_pulang);
-
+    const start = normalizeTimeString(attendanceSchedule.mulai_masuk);
     if (!start) return null;
 
-    const windowText = `${end ? `${start} - ${end}` : start} WIB`;
-    return {
-      windowText,
-    };
+    const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
+    const windowText = end ? `${start} - ${end}` : start;
+
+    let result = `Waktu absen masuk: ${windowText}`;
+    if (attendanceSchedule.kompensasi_waktu) {
+      result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
+    } else {
+      result += ".";
+    }
+
+    return result;
   }, [attendanceSchedule]);
+
+  const pulangScheduleText = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = normalizeTimeString(attendanceSchedule.mulai_pulang);
+    if (!start) return null;
+
+    const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
+    const windowText = end ? `${start} - ${end}` : start;
+
+    return `Waktu absen pulang: ${windowText} WIB.`;
+  }, [attendanceSchedule]);
+
+  const presentScheduleWindow = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = getDateForToday(attendanceSchedule.mulai_masuk);
+    if (!start) return null;
+
+    const end = getDateForToday(attendanceSchedule.selesai_masuk);
+
+    return { start, end } as const;
+  }, [attendanceSchedule, getDateForToday]);
+
+  const pulangScheduleWindow = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = getDateForToday(attendanceSchedule.mulai_pulang);
+    if (!start) return null;
+
+    const end = getDateForToday(attendanceSchedule.selesai_pulang);
+
+    return { start, end } as const;
+  }, [attendanceSchedule, getDateForToday]);
+
+  const isWithinPresentWindow = useMemo(() => {
+    if (!presentScheduleWindow) return true;
+
+    if (currentTime < presentScheduleWindow.start) {
+      return false;
+    }
+
+    if (presentScheduleWindow.end && currentTime > presentScheduleWindow.end) {
+      return false;
+    }
+
+    return true;
+  }, [currentTime, presentScheduleWindow]);
+
+  const isWithinPulangWindow = useMemo(() => {
+    if (!pulangScheduleWindow) return true;
+
+    if (currentTime < pulangScheduleWindow.start) {
+      return false;
+    }
+
+    if (pulangScheduleWindow.end && currentTime > pulangScheduleWindow.end) {
+      return false;
+    }
+
+    return true;
+  }, [currentTime, pulangScheduleWindow]);
 
   const primaryActionMessage = useMemo(() => {
     if (derivedActionType === "home") {
-      const message = validationStatus.message || "";
+      if (pulangScheduleText) {
+        const lines = [] as string[];
 
-      const baseMessage = (() => {
-        if (validationStatus.actionType === "home") {
-          return message;
+        if (!validationStatus.canCheckIn || !isWithinPulangWindow) {
+          lines.push("Belum waktunya absen pulang.");
         }
 
-        if (message.toLowerCase().includes("masuk")) {
-          return message.replace(/masuk/gi, "pulang");
-        }
-
-        return message.trim() ? message : "Silakan absen pulang.";
-      })();
-
-      if (pulangScheduleDisplay) {
-        const { windowText } = pulangScheduleDisplay;
-
-        const lines = validationStatus.canCheckIn
-          ? ["Silakan absen pulang."]
-          : ["Belum waktunya absen pulang."];
-
-        lines.push(`Jadwal: ${windowText}`);
+        lines.push(pulangScheduleText);
 
         return lines.join("\n");
       }
 
-      return validationStatus.canCheckIn
-        ? "Silakan absen pulang."
-        : baseMessage;
+      return validationStatus.message;
+    }
+
+    if (derivedActionType === "present") {
+      if (presentScheduleText) {
+        const lines = [] as string[];
+
+        if (!validationStatus.canCheckIn || !isWithinPresentWindow) {
+          lines.push("Belum waktunya absen masuk.");
+        }
+
+        lines.push(presentScheduleText);
+        return lines.join("\n");
+      }
+
+      return validationStatus.message;
     }
 
     return validationStatus.message;
-  }, [derivedActionType, pulangScheduleDisplay, validationStatus]);
+  }, [
+    derivedActionType,
+    isWithinPresentWindow,
+    isWithinPulangWindow,
+    presentScheduleText,
+    pulangScheduleText,
+    validationStatus.canCheckIn,
+    validationStatus.message,
+  ]);
+
+  const scheduleAllowsAction = useMemo(() => {
+    if (derivedActionType === "home") {
+      return isWithinPulangWindow;
+    }
+
+    if (derivedActionType === "present") {
+      return isWithinPresentWindow;
+    }
+
+    return true;
+  }, [derivedActionType, isWithinPulangWindow, isWithinPresentWindow]);
+
+  const isPrimaryActionDisabled =
+    refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
 
   return (
     <>
