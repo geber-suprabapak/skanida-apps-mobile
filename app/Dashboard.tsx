@@ -2,7 +2,7 @@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -87,6 +87,28 @@ interface ValidationStatus {
   message: string;
 }
 
+interface AttendanceSchedule {
+  mulai_pulang: string | null;
+  selesai_pulang: string | null;
+  kompensasi_waktu?: number | null;
+}
+
+interface PulangScheduleDisplay {
+  windowText: string;
+}
+
+const DAY_KEY_MAP = [
+  "minggu",
+  "senin",
+  "selasa",
+  "rabu",
+  "kamis",
+  "jumat",
+  "sabtu",
+] as const;
+
+type DayKey = (typeof DAY_KEY_MAP)[number];
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const syncStatus = useTimeSyncStore((state) => state.status);
@@ -102,6 +124,8 @@ export default function Dashboard() {
     todayStatus: "pending",
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [attendanceSchedule, setAttendanceSchedule] =
+    useState<AttendanceSchedule | null>(null);
   const isFocused = useIsFocused(); // Add isFocused hook
 
   // Validation status for live schedule checking
@@ -447,6 +471,52 @@ export default function Dashboard() {
     }
   }, [isFocused, fetchAttendanceData]);
 
+  const fetchAttendanceSchedule = useCallback(
+    async (dayKey: DayKey) => {
+      try {
+        const { data, error } = await supabase
+          .from("jadwal_absensi")
+          .select("mulai_pulang, selesai_pulang, kompensasi_waktu")
+          .eq("hari", dayKey)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (error) {
+          if (error.code !== "PGRST116") {
+            console.error(
+              "Dashboard: Error fetching attendance schedule:",
+              error.message,
+            );
+          }
+          setAttendanceSchedule(null);
+          return;
+        }
+
+        if (data) {
+          setAttendanceSchedule(data as AttendanceSchedule);
+        } else {
+          setAttendanceSchedule(null);
+        }
+      } catch (scheduleError: any) {
+        console.error(
+          "Dashboard: Exception during attendance schedule fetch:",
+          scheduleError.message,
+        );
+        setAttendanceSchedule(null);
+      }
+    },
+    [],
+  );
+
+  const currentDayKey = useMemo<DayKey>(() => {
+    const dayKey = DAY_KEY_MAP[currentTime.getDay()];
+    return dayKey ?? "senin";
+  }, [currentTime]);
+
+  useEffect(() => {
+    fetchAttendanceSchedule(currentDayKey);
+  }, [currentDayKey, fetchAttendanceSchedule]);
+
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
     try {
@@ -473,9 +543,16 @@ export default function Dashboard() {
           setCurrentTime(timeSync.getSyncedTime());
         }
       }),
+      fetchAttendanceSchedule(currentDayKey),
     ]);
     setRefreshing(false);
-  }, [fetchProfileData, fetchAttendanceData, checkLiveValidationStatus]);
+  }, [
+    fetchProfileData,
+    fetchAttendanceData,
+    checkLiveValidationStatus,
+    fetchAttendanceSchedule,
+    currentDayKey,
+  ]);
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
@@ -584,26 +661,60 @@ export default function Dashboard() {
       ? "home"
       : validationStatus.actionType;
 
-  const isPrimaryActionDisabled =
-    refreshing ||
-    (derivedActionType !== "home" && !validationStatus.canCheckIn);
+  const isPrimaryActionDisabled = refreshing || !validationStatus.canCheckIn;
 
-  const primaryActionLabel =
-    derivedActionType === "present"
-      ? "Absen Masuk"
-      : derivedActionType === "home"
-        ? "Absen Pulang"
-        : "Cek Status";
+  const pulangScheduleDisplay = useMemo<PulangScheduleDisplay | null>(() => {
+    if (!attendanceSchedule) return null;
 
-  const primaryActionSubtitle = (() => {
+    const formatSegment = (value: string | null) =>
+      value && value.length >= 5 ? value.slice(0, 5) : null;
+
+    const start = formatSegment(attendanceSchedule.mulai_pulang);
+    const end = formatSegment(attendanceSchedule.selesai_pulang);
+
+    if (!start) return null;
+
+    const windowText = `${end ? `${start} - ${end}` : start} WIB`;
+    return {
+      windowText,
+    };
+  }, [attendanceSchedule]);
+
+  const primaryActionMessage = useMemo(() => {
     if (derivedActionType === "home") {
-      return "Silakan absen pulang";
+      const message = validationStatus.message || "";
+
+      const baseMessage = (() => {
+        if (validationStatus.actionType === "home") {
+          return message;
+        }
+
+        if (message.toLowerCase().includes("masuk")) {
+          return message.replace(/masuk/gi, "pulang");
+        }
+
+        return message.trim() ? message : "Silakan absen pulang.";
+      })();
+
+      if (pulangScheduleDisplay) {
+        const { windowText } = pulangScheduleDisplay;
+
+        const lines = validationStatus.canCheckIn
+          ? ["Silakan absen pulang."]
+          : ["Belum waktunya absen pulang."];
+
+        lines.push(`Jadwal: ${windowText}`);
+
+        return lines.join("\n");
+      }
+
+      return validationStatus.canCheckIn
+        ? "Silakan absen pulang."
+        : baseMessage;
     }
-    if (derivedActionType === "present") {
-      return "Silakan absen masuk";
-    }
-    return "Cek jadwal absensi";
-  })();
+
+    return validationStatus.message;
+  }, [derivedActionType, pulangScheduleDisplay, validationStatus]);
 
   return (
     <>
@@ -829,30 +940,14 @@ export default function Dashboard() {
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
                     <Text
-                      variant="large"
-                      className="text-white font-semibold mt-2 text-center"
-                    >
-                      {primaryActionLabel}
-                    </Text>
-                    <Text
                       variant="small"
-                      className={`text-center mt-1 px-2 ${
+                      className={`mt-3 px-3 text-center text-xs leading-snug ${
                         isPrimaryActionDisabled
                           ? "text-gray-200 dark:text-gray-300"
-                          : "text-blue-100"
+                          : "text-white/90"
                       }`}
                     >
-                      {primaryActionSubtitle} di SMK N 02 Kota Magelang
-                    </Text>
-                    <Text
-                      variant="small"
-                      className={`text-center mt-1 px-2 ${
-                        isPrimaryActionDisabled
-                          ? "text-gray-200 dark:text-gray-300"
-                          : "text-blue-100"
-                      }`}
-                    >
-                      {validationStatus.message}
+                      {primaryActionMessage}
                     </Text>
                   </View>
                 </Card>
