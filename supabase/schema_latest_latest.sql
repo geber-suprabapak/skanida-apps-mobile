@@ -931,5 +931,125 @@ GRANT EXECUTE ON FUNCTION check_absensi_status(UUID, DOUBLE PRECISION, DOUBLE PR
 COMMENT ON FUNCTION check_absensi_status IS 'Validates attendance check-in/out based on schedule, location proximity, and previous attendance records. Uses Asia/Jakarta timezone.';
 
 -- ============================================================================
+-- RPC Function: get_and_validate_attendance_action 
+-- Deskripsi: Fungsi ini adalah satu-satunya sumber kebenaran untuk menentukan
+--            aksi absensi yang bisa dilakukan pengguna. Fungsi ini memeriksa
+--            waktu, jadwal, lokasi, dan riwayat absensi hari ini dalam satu
+--            panggilan yang efisien dan aman.
+-- Dibuat: 2025-10-17
+-- Perbaikan: Menggunakan kolom "status" dari tabel "absences" bukan "waktu_pulang".
+-- ============================================================================
+
+-- Hapus fungsi dan tipe lama jika ada untuk memastikan versi terbaru yang digunakan.
+DROP FUNCTION IF EXISTS public.get_and_validate_attendance_action(uuid, double precision, double precision);
+DROP TYPE IF EXISTS public.attendance_action_response;
+
+-- Buat tipe data custom untuk output JSON yang terstruktur.
+CREATE TYPE public.attendance_action_response AS (
+    actionable BOOLEAN,
+    action_type TEXT,
+    message TEXT,
+    details JSONB
+);
+
+-- Buat fungsi RPC utama yang sudah diperbaiki.
+CREATE OR REPLACE FUNCTION public.get_and_validate_attendance_action(
+    p_user_id UUID,
+    p_user_lat DOUBLE PRECISION,
+    p_user_lon DOUBLE PRECISION
+)
+RETURNS public.attendance_action_response
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    -- Variabel Konteks
+    v_today_wib DATE;
+    v_current_time_wib TIME;
+    v_current_day_indonesian TEXT;
+
+    -- Variabel Hasil Pengecekan
+    v_schedule RECORD;
+    v_nearest_location RECORD;
+    v_latest_today_attendance RECORD;
+
+    -- Variabel Respon
+    v_response public.attendance_action_response;
+BEGIN
+    -- LANGKAH 1: FONDASI - Menetapkan Konteks Waktu
+    v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
+    v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
+    
+    -- Terjemahkan hari ke Bahasa Indonesia
+    v_current_day_indonesian := CASE trim(lower(to_char(now() AT TIME ZONE 'Asia/Jakarta', 'Day')))
+        WHEN 'sunday' THEN 'minggu'
+        WHEN 'monday' THEN 'senin'
+        WHEN 'tuesday' THEN 'selasa'
+        WHEN 'wednesday' THEN 'rabu'
+        WHEN 'thursday' THEN 'kamis'
+        WHEN 'friday' THEN 'jumat'
+        WHEN 'saturday' THEN 'sabtu'
+    END;
+
+    -- LANGKAH 2: VALIDASI AWAL - Lokasi & Jadwal
+    SELECT
+        id, name, distance as max_distance,
+        (point(p_user_lon, p_user_lat) <@> point(longitude, latitude)) * 1609.34 as distance_m
+    INTO v_nearest_location
+    FROM public.location WHERE is_active = TRUE ORDER BY distance_m ASC LIMIT 1;
+
+    IF NOT FOUND THEN
+        SELECT FALSE, 'none', 'Tidak ada lokasi absensi yang aktif. Hubungi administrator.', null::jsonb INTO v_response;
+        RETURN v_response;
+    END IF;
+
+    IF v_nearest_location.distance_m > v_nearest_location.max_distance THEN
+        SELECT FALSE, 'none', 'Anda berada di luar jangkauan area absensi (' || round(v_nearest_location.distance_m)::text || 'm).', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+        RETURN v_response;
+    END IF;
+
+    SELECT * INTO v_schedule FROM public.jadwal_absensi WHERE hari = v_current_day_indonesian AND is_active = TRUE LIMIT 1;
+    IF NOT FOUND THEN
+        SELECT FALSE, 'none', 'Tidak ada jadwal absensi yang aktif untuk hari ini.', null::jsonb INTO v_response;
+        RETURN v_response;
+    END IF;
+
+    -- LANGKAH 3: LOGIKA INTI - Memeriksa Riwayat Absensi Hari Ini
+    -- **PERBAIKAN**: Tidak lagi memilih "waktu_pulang"
+    SELECT id, status INTO v_latest_today_attendance
+    FROM public.absences
+    WHERE user_id = p_user_id AND date = v_today_wib
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    -- LANGKAH 4: KEPUTUSAN FINAL - Menentukan Aksi Berikutnya
+    -- **PERBAIKAN**: Logika disesuaikan untuk memeriksa kolom "status"
+    IF v_latest_today_attendance IS NULL THEN
+        -- Belum absen sama sekali, cek jendela waktu absen masuk
+        IF v_current_time_wib BETWEEN v_schedule.mulai_masuk::time AND (v_schedule.selesai_masuk::time + (v_schedule.kompensasi_waktu || ' minutes')::interval) THEN
+            SELECT TRUE, 'check_in', 'Anda berada di area ' || v_nearest_location.name || '. Silakan absen masuk.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+        ELSE
+            SELECT FALSE, 'none', 'Waktu untuk absen masuk sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+        END IF;
+    ELSIF v_latest_today_attendance.status IN ('Hadir', 'Terlambat') THEN
+        -- Sudah absen masuk, cek jendela waktu absen pulang
+        IF v_current_time_wib BETWEEN v_schedule.mulai_pulang::time AND v_schedule.selesai_pulang::time THEN
+            SELECT TRUE, 'check_out', 'Silakan lakukan absen pulang.', jsonb_build_object('location_name', v_nearest_location.name, 'attendance_id_for_checkout', v_latest_today_attendance.id) INTO v_response;
+        ELSE
+            SELECT FALSE, 'none', 'Waktu untuk absen pulang sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+        END IF;
+    ELSE -- Ini berarti statusnya adalah 'Pulang' atau 'Alpha'
+        -- Sudah absen masuk dan pulang
+        SELECT FALSE, 'none', 'Anda sudah menyelesaikan absensi hari ini.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+    END IF;
+
+    RETURN v_response;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.get_and_validate_attendance_action(UUID, DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
+
+-- ============================================================================
 -- End of Schema
 -- ============================================================================
