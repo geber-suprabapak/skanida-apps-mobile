@@ -29,7 +29,6 @@ type AttendanceActionResponse = {
   message: string;
   details?: {
     location_name?: string;
-    attendance_id_for_checkout?: string;
   };
 };
 
@@ -40,6 +39,8 @@ export default function AbsenceReport() {
   // Hanya butuh beberapa state sederhana
   const [status, setStatus] = useState<AttendanceActionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userLocation, setUserLocation] =
+    useState<Location.LocationObjectCoords | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fungsi inti untuk memeriksa status absensi
@@ -53,6 +54,7 @@ export default function AbsenceReport() {
     setIsLoading(true);
     setErrorMessage(null);
     setStatus(null);
+    setUserLocation(null);
 
     try {
       // 1. Minta izin dan dapatkan lokasi
@@ -71,6 +73,8 @@ export default function AbsenceReport() {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
+
+      setUserLocation(location.coords);
 
       // 2. Keamanan: Deteksi Mock Location
       if (location.mocked) {
@@ -97,6 +101,7 @@ export default function AbsenceReport() {
 
       setStatus(data);
     } catch (e: any) {
+      setUserLocation(null);
       setErrorMessage(e.message || "Terjadi kesalahan tidak diketahui.");
     } finally {
       setIsLoading(false);
@@ -132,14 +137,22 @@ export default function AbsenceReport() {
       return;
 
     // Navigasi ke halaman kamera dengan membawa parameter yang diperlukan
+    const params: Record<string, string> = {
+      actionType: status.action_type,
+    };
+
+    if (status.details?.location_name) {
+      params.locationName = status.details.location_name;
+    }
+
+    if (userLocation) {
+      params.latitude = userLocation.latitude.toString();
+      params.longitude = userLocation.longitude.toString();
+    }
+
     router.push({
       pathname: "/attendance/CameraAttendance",
-      params: {
-        actionType: status.action_type,
-        attendanceId: status.details?.attendance_id_for_checkout,
-        // Anda bisa menambahkan parameter lain jika perlu, seperti location_name
-        locationName: status.details?.location_name,
-      },
+      params,
     });
   };
 

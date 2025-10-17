@@ -19,7 +19,7 @@ import {
 import { Text } from "~/components/ui/text";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import NetInfo from "@react-native-community/netinfo";
+import * as Location from "expo-location";
 
 import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
@@ -30,8 +30,8 @@ import {
   Loader2,
 } from "lucide-react-native";
 import { Buffer } from "buffer";
-import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
+import useAuthStore from "~/store/authStore";
 
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
@@ -45,21 +45,16 @@ const UPLOAD_CONFIG = {
   MAX_RETRIES: 3,
   RETRY_DELAY_BASE: 1000,
   STORAGE_BUCKET: "attendance-photos",
-  TIMEOUT_MS: 30000, // 30 seconds
+  TIMEOUT_MS: 30000,
 } as const;
 
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
-type AbsenceType = "present" | "home";
 type UploadStage = "processing" | "uploading" | "saving";
-type AttendanceStatus = "Hadir" | "Terlambat" | "Pulang" | "Alpha";
-
-const ALLOWED_ATTENDANCE_STATUSES: AttendanceStatus[] = [
-  "Hadir",
-  "Terlambat",
-  "Pulang",
-  "Alpha",
-];
+type Coordinates = {
+  latitude: number;
+  longitude: number;
+};
 
 // --- MEMOIZED COMPONENTS ---
 const ProgressBar = memo<{ percentage: number }>(({ percentage }) => (
@@ -127,14 +122,6 @@ const CameraReadyOverlay = memo(() => (
 ));
 CameraReadyOverlay.displayName = "CameraReadyOverlay";
 
-interface LocationData {
-  latitude: number | null;
-  longitude: number | null;
-  userId: string | null;
-  absenceType: AbsenceType;
-  status: AttendanceStatus | null;
-}
-
 interface UploadProgress {
   stage: UploadStage;
   percentage: number;
@@ -152,7 +139,11 @@ interface CompressionResult {
 const CameraAttendance = () => {
   // --- HOOKS ---
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{
+    actionType?: string | string[];
+    latitude?: string | string[];
+    longitude?: string | string[];
+  }>();
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
   const permissionAttemptedRef = useRef(false);
@@ -165,69 +156,43 @@ const CameraAttendance = () => {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
     stage: "processing",
     percentage: 0,
-    message: "Initializing...",
+    message: "Menunggu proses...",
   });
   const [isUploading, setIsUploading] = useState(false);
 
-  // --- MEMOIZED VALUES ---
-  const locationData: LocationData = useMemo(() => {
-    const latitude = parseFloat(params.latitude as string);
-    const longitude = parseFloat(params.longitude as string);
-    const rawStatus = params.attendanceStatus as string | undefined;
+  // --- STORE & PARAMS ---
+  const { user } = useAuthStore();
+  const userId = user?.id ?? null;
 
-    const normalizedStatus =
-      typeof rawStatus === "string" &&
-      ALLOWED_ATTENDANCE_STATUSES.includes(rawStatus as AttendanceStatus)
-        ? (rawStatus as AttendanceStatus)
-        : null;
+  const actionType = useMemo<"check_in" | "check_out" | null>(() => {
+    const value = params.actionType;
+    const candidate = Array.isArray(value) ? value[0] : value;
+    if (candidate === "check_in" || candidate === "check_out") {
+      return candidate;
+    }
+    return null;
+  }, [params.actionType]);
 
-    const data: LocationData = {
-      latitude: Number.isNaN(latitude) ? null : latitude,
-      longitude: Number.isNaN(longitude) ? null : longitude,
-      userId: (params.userId as string) || null,
-      absenceType: (params.absenceType as AbsenceType) || "present",
-      status: normalizedStatus,
-    };
+  const preFetchedLocation = useMemo<Coordinates | null>(() => {
+    const resolveValue = (val?: string | string[]) =>
+      Array.isArray(val) ? val[0] : val;
 
-    return data;
-  }, [params]);
+    const latString = resolveValue(params.latitude);
+    const lonString = resolveValue(params.longitude);
 
-  const isLocationDataValid = useMemo(() => {
-    const statusValid =
-      locationData.absenceType === "present"
-        ? locationData.status === "Hadir" || locationData.status === "Terlambat"
-        : locationData.status === "Pulang";
+    if (!latString || !lonString) {
+      return null;
+    }
 
-    return (
-      locationData.userId !== null &&
-      locationData.latitude !== null &&
-      locationData.longitude !== null &&
-      statusValid
-    );
-  }, [locationData]);
+    const latitude = Number(latString);
+    const longitude = Number(lonString);
 
-  const currentDateTime = useMemo(() => {
-    const now = timeSync.getSyncedTime(); // UTC from server, auto-displays in device timezone
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      return null;
+    }
 
-    // Extract date components (will be in device timezone = WIB)
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-
-    return {
-      date: formatDateWIB(now), // WIB date for database (YYYY-MM-DD)
-      formattedDate: `${day}${month}${year}`, // DDMMYYYY for filename
-      timestamp: now.getTime(), // epoch ms for uniqueness
-      displayTime: now.toLocaleString("id-ID", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-    };
-  }, []);
+    return { latitude, longitude };
+  }, [params.latitude, params.longitude]);
 
   // --- UTILITY FUNCTIONS (HOOKED) ---
   const base64ToUint8Array = useCallback((base64: string): Uint8Array => {
@@ -235,11 +200,18 @@ const CameraAttendance = () => {
     return Buffer.from(base64, "base64");
   }, []);
 
-  const generateFileName = useCallback(
-    () =>
-      `${currentDateTime.formattedDate}_${currentDateTime.timestamp}_${locationData.userId}.jpg`,
-    [currentDateTime, locationData.userId],
-  );
+  const generateFileName = useCallback(() => {
+    if (!userId) {
+      throw new Error("ID pengguna tidak valid.");
+    }
+
+    const now = timeSync.getSyncedTime();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${day}${month}${year}_${now.getTime()}_${userId}.jpg`;
+  }, [userId]);
 
   const compressImage = useCallback(
     async (imageUri: string): Promise<CompressionResult> => {
@@ -269,7 +241,6 @@ const CameraAttendance = () => {
 
       for (let attempt = 1; attempt <= UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
         try {
-          // Upload file
           const uploadPromise = supabase.storage
             .from(UPLOAD_CONFIG.STORAGE_BUCKET)
             .upload(fileName, fileBuffer, {
@@ -287,15 +258,7 @@ const CameraAttendance = () => {
           const { error } = await Promise.race([uploadPromise, timeoutPromise]);
           if (error) throw error;
 
-          // Get signed URL
-          const { data, error: urlError } = await supabase.storage
-            .from(UPLOAD_CONFIG.STORAGE_BUCKET)
-            .createSignedUrl(fileName, 60 * 60 * 24);
-
-          if (urlError || !data?.signedUrl)
-            throw urlError || new Error("Failed to get URL");
-
-          return data.signedUrl;
+          return fileName;
         } catch (error: any) {
           lastError = error;
 
@@ -310,105 +273,79 @@ const CameraAttendance = () => {
         }
       }
 
-      throw lastError || new Error("Upload gagal setelah 3 percobaan");
+      throw lastError || new Error("Upload gagal setelah beberapa percobaan");
     },
     [],
   );
 
-  const saveAttendanceRecord = useCallback(
-    async (photoUrl: string): Promise<void> => {
-      let status: AttendanceStatus;
-
-      if (locationData.absenceType === "home") {
-        status = "Pulang";
-      } else if (
-        locationData.status === "Hadir" ||
-        locationData.status === "Terlambat"
-      ) {
-        status = locationData.status;
-      } else if (locationData.status === "Alpha") {
-        throw new Error(
-          "Status Alpha tidak dapat diproses melalui absensi mandiri.",
-        );
-      } else {
-        console.warn(
-          "Status absensi tidak tersedia di parameter kamera. Menggunakan status default 'Hadir'.",
-        );
-        status = "Hadir";
-      }
-
-      const attendanceData = {
-        user_id: locationData.userId,
-        date: currentDateTime.date,
-        photo_url: photoUrl,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        status,
-      };
-
-      const { error } = await supabase
-        .from("absences")
-        .insert([attendanceData]);
-
-      if (error) {
-        throw new Error(`Gagal menyimpan data absensi: ${error.message}`);
-      }
-    },
-    [locationData, currentDateTime],
-  );
-
   const processAndUploadPhoto = useCallback(
     async (compressed: CompressionResult): Promise<void> => {
+      if (!user) {
+        Alert.alert("Error", "Sesi pengguna tidak valid.");
+        return;
+      }
+
+      if (!actionType) {
+        Alert.alert("Error", "Data absensi tidak valid.");
+        return;
+      }
+
       setIsUploading(true);
       const startTime = Date.now();
 
       try {
-        // Check connection
         setUploadProgress({
-          stage: "processing",
-          percentage: 10,
-          message: "Memeriksa koneksi...",
-        });
-        const netInfo = await NetInfo.fetch();
-        if (!netInfo.isConnected) {
-          throw new Error("Tidak ada koneksi internet");
-        }
-
-        // Prepare file
-        setUploadProgress({
-          stage: "processing",
+          stage: "uploading",
           percentage: 30,
-          message: "Memproses foto...",
+          message: "Mengunggah foto...",
         });
         const fileBuffer = base64ToUint8Array(compressed.base64);
         const fileName = generateFileName();
+        const photoPath = await uploadToStorage(fileName, fileBuffer);
 
-        // Upload
-        setUploadProgress({
-          stage: "uploading",
-          percentage: 50,
-          message: "Mengunggah foto...",
-        });
-        const photoUrl = await uploadToStorage(fileName, fileBuffer);
-
-        // Save to database
         setUploadProgress({
           stage: "saving",
           percentage: 80,
           message: "Menyimpan data...",
         });
-        await saveAttendanceRecord(photoUrl);
+        let resolvedLocation = preFetchedLocation;
 
-        // Success
+        if (!resolvedLocation) {
+          const latestLocation = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+
+          resolvedLocation = {
+            latitude: latestLocation.coords.latitude,
+            longitude: latestLocation.coords.longitude,
+          };
+        }
+
+        const { data: saveData, error: saveError } = await supabase.rpc(
+          "save_attendance_record",
+          {
+            p_user_id: user.id,
+            p_action_type: actionType,
+            p_photo_path: photoPath,
+            p_latitude: resolvedLocation.latitude,
+            p_longitude: resolvedLocation.longitude,
+          },
+        );
+
+        if (saveError || !saveData?.success) {
+          throw new Error(
+            `Gagal menyimpan data: ${
+              saveError?.message || saveData?.message || "Respons tidak valid"
+            }`,
+          );
+        }
+
         setUploadProgress({
           stage: "saving",
           percentage: 100,
           message: "Berhasil!",
         });
-
         const totalTime = Date.now() - startTime;
-
-        // Get current time (auto-displays in device timezone)
         const currentTime = timeSync
           .getSyncedTime()
           .toLocaleTimeString("id-ID", {
@@ -420,30 +357,25 @@ const CameraAttendance = () => {
           pathname: "/Dashboard",
           params: {
             showSuccessPopup: "true",
-            attendanceType: locationData.absenceType,
+            attendanceType: actionType,
             successTime: currentTime,
             processingTime: totalTime.toString(),
           },
         });
       } catch (error: any) {
-        const errorMessage = error?.message?.includes("timeout")
-          ? "Upload timeout. Cek koneksi internet Anda"
-          : error?.message?.includes("koneksi")
-            ? error.message
-            : "Gagal menyimpan absensi";
-
-        Alert.alert("Error", error?.message || errorMessage);
+        Alert.alert("Error", error?.message || "Gagal menyimpan absensi.");
       } finally {
         setIsUploading(false);
       }
     },
     [
-      locationData,
+      user,
+      actionType,
       base64ToUint8Array,
       generateFileName,
       uploadToStorage,
-      saveAttendanceRecord,
       router,
+      preFetchedLocation,
     ],
   );
 
@@ -533,15 +465,12 @@ const CameraAttendance = () => {
 
   // --- EFFECTS ---
   useEffect(() => {
-    if (!isLocationDataValid) {
-      const reason = !locationData.status
-        ? "Status absensi tidak valid. Silakan ulangi proses dari awal."
-        : "Data absensi tidak lengkap. Silakan kembali dan coba lagi.";
-      Alert.alert("Error", reason, [
+    if (!actionType) {
+      Alert.alert("Error", "Data absensi tidak valid. Silakan coba lagi.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     }
-  }, [isLocationDataValid, router, locationData.status]);
+  }, [actionType, router]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
