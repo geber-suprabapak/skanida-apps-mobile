@@ -931,124 +931,216 @@ GRANT EXECUTE ON FUNCTION check_absensi_status(UUID, DOUBLE PRECISION, DOUBLE PR
 COMMENT ON FUNCTION check_absensi_status IS 'Validates attendance check-in/out based on schedule, location proximity, and previous attendance records. Uses Asia/Jakarta timezone.';
 
 -- ============================================================================
--- RPC Function: get_and_validate_attendance_action 
--- Deskripsi: Fungsi ini adalah satu-satunya sumber kebenaran untuk menentukan
---            aksi absensi yang bisa dilakukan pengguna. Fungsi ini memeriksa
---            waktu, jadwal, lokasi, dan riwayat absensi hari ini dalam satu
---            panggilan yang efisien dan aman.
--- Dibuat: 2025-10-17
--- Perbaikan: Menggunakan kolom "status" dari tabel "absences" bukan "waktu_pulang".
+-- RPC Function: get_and_validate_attendance_action (VERSI INSERT-ONLY)
+-- Perbaikan: Disesuaikan untuk model data di mana 'check_in' dan 'check_out'
+--            adalah baris data yang terpisah.
 -- ============================================================================
 
--- Hapus fungsi dan tipe lama jika ada untuk memastikan versi terbaru yang digunakan.
+-- Hapus versi lama
 DROP FUNCTION IF EXISTS public.get_and_validate_attendance_action(uuid, double precision, double precision);
-DROP TYPE IF EXISTS public.attendance_action_response;
 
--- Buat tipe data custom untuk output JSON yang terstruktur.
+-- Pastikan tipe respons tersedia untuk fungsi ini
+DROP TYPE IF EXISTS public.attendance_action_response;
 CREATE TYPE public.attendance_action_response AS (
-    actionable BOOLEAN,
-    action_type TEXT,
-    message TEXT,
-    details JSONB
+  actionable BOOLEAN,
+  action_type TEXT,
+  message TEXT,
+  details JSONB
 );
 
--- Buat fungsi RPC utama yang sudah diperbaiki.
+-- Buat versi baru
 CREATE OR REPLACE FUNCTION public.get_and_validate_attendance_action(
-    p_user_id UUID,
-    p_user_lat DOUBLE PRECISION,
-    p_user_lon DOUBLE PRECISION
+  p_user_id UUID,
+  p_user_lat DOUBLE PRECISION,
+  p_user_lon DOUBLE PRECISION
 )
 RETURNS public.attendance_action_response
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    -- Variabel Konteks
-    v_today_wib DATE;
-    v_current_time_wib TIME;
-    v_current_day_indonesian TEXT;
-
-    -- Variabel Hasil Pengecekan
-    v_schedule RECORD;
-    v_nearest_location RECORD;
-    v_latest_today_attendance RECORD;
-
-    -- Variabel Respon
-    v_response public.attendance_action_response;
+  v_today_wib DATE;
+  v_current_time_wib TIME;
+  v_current_day_indonesian TEXT;
+  v_schedule RECORD;
+  v_nearest_location RECORD;
+  v_has_checked_in BOOLEAN := FALSE;
+  v_has_checked_out BOOLEAN := FALSE;
+  v_response public.attendance_action_response;
 BEGIN
-    -- LANGKAH 1: FONDASI - Menetapkan Konteks Waktu
-    v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
-    v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
+  -- LANGKAH 1 & 2: Tetap sama
+  v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
+  v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
+  v_current_day_indonesian := CASE trim(lower(to_char(now() AT TIME ZONE 'Asia/Jakarta', 'Day')))
+    WHEN 'sunday' THEN 'minggu'
+    WHEN 'monday' THEN 'senin'
+    WHEN 'tuesday' THEN 'selasa'
+    WHEN 'wednesday' THEN 'rabu'
+    WHEN 'thursday' THEN 'kamis'
+    WHEN 'friday' THEN 'jumat'
+    WHEN 'saturday' THEN 'sabtu'
+  END;
     
-    -- Terjemahkan hari ke Bahasa Indonesia
-    v_current_day_indonesian := CASE trim(lower(to_char(now() AT TIME ZONE 'Asia/Jakarta', 'Day')))
-        WHEN 'sunday' THEN 'minggu'
-        WHEN 'monday' THEN 'senin'
-        WHEN 'tuesday' THEN 'selasa'
-        WHEN 'wednesday' THEN 'rabu'
-        WHEN 'thursday' THEN 'kamis'
-        WHEN 'friday' THEN 'jumat'
-        WHEN 'saturday' THEN 'sabtu'
-    END;
+  SELECT
+    id,
+    name,
+    distance AS max_distance,
+    (point(p_user_lon, p_user_lat) <@> point(longitude, latitude)) * 1609.34 AS distance_m
+  INTO v_nearest_location
+  FROM public.location
+  WHERE is_active = TRUE
+  ORDER BY distance_m ASC
+  LIMIT 1;
 
-    -- LANGKAH 2: VALIDASI AWAL - Lokasi & Jadwal
-    SELECT
-        id, name, distance as max_distance,
-        (point(p_user_lon, p_user_lat) <@> point(longitude, latitude)) * 1609.34 as distance_m
-    INTO v_nearest_location
-    FROM public.location WHERE is_active = TRUE ORDER BY distance_m ASC LIMIT 1;
-
-    IF NOT FOUND THEN
-        SELECT FALSE, 'none', 'Tidak ada lokasi absensi yang aktif. Hubungi administrator.', null::jsonb INTO v_response;
-        RETURN v_response;
-    END IF;
-
-    IF v_nearest_location.distance_m > v_nearest_location.max_distance THEN
-        SELECT FALSE, 'none', 'Anda berada di luar jangkauan area absensi (' || round(v_nearest_location.distance_m)::text || 'm).', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-        RETURN v_response;
-    END IF;
-
-    SELECT * INTO v_schedule FROM public.jadwal_absensi WHERE hari = v_current_day_indonesian AND is_active = TRUE LIMIT 1;
-    IF NOT FOUND THEN
-        SELECT FALSE, 'none', 'Tidak ada jadwal absensi yang aktif untuk hari ini.', null::jsonb INTO v_response;
-        RETURN v_response;
-    END IF;
-
-    -- LANGKAH 3: LOGIKA INTI - Memeriksa Riwayat Absensi Hari Ini
-    -- **PERBAIKAN**: Tidak lagi memilih "waktu_pulang"
-    SELECT id, status INTO v_latest_today_attendance
-    FROM public.absences
-    WHERE user_id = p_user_id AND date = v_today_wib
-    ORDER BY created_at DESC
-    LIMIT 1;
-
-    -- LANGKAH 4: KEPUTUSAN FINAL - Menentukan Aksi Berikutnya
-    -- **PERBAIKAN**: Logika disesuaikan untuk memeriksa kolom "status"
-    IF v_latest_today_attendance IS NULL THEN
-        -- Belum absen sama sekali, cek jendela waktu absen masuk
-        IF v_current_time_wib BETWEEN v_schedule.mulai_masuk::time AND (v_schedule.selesai_masuk::time + (v_schedule.kompensasi_waktu || ' minutes')::interval) THEN
-            SELECT TRUE, 'check_in', 'Anda berada di area ' || v_nearest_location.name || '. Silakan absen masuk.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-        ELSE
-            SELECT FALSE, 'none', 'Waktu untuk absen masuk sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-        END IF;
-    ELSIF v_latest_today_attendance.status IN ('Hadir', 'Terlambat') THEN
-        -- Sudah absen masuk, cek jendela waktu absen pulang
-        IF v_current_time_wib BETWEEN v_schedule.mulai_pulang::time AND v_schedule.selesai_pulang::time THEN
-            SELECT TRUE, 'check_out', 'Silakan lakukan absen pulang.', jsonb_build_object('location_name', v_nearest_location.name, 'attendance_id_for_checkout', v_latest_today_attendance.id) INTO v_response;
-        ELSE
-            SELECT FALSE, 'none', 'Waktu untuk absen pulang sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-        END IF;
-    ELSE -- Ini berarti statusnya adalah 'Pulang' atau 'Alpha'
-        -- Sudah absen masuk dan pulang
-        SELECT FALSE, 'none', 'Anda sudah menyelesaikan absensi hari ini.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-    END IF;
-
+  IF NOT FOUND THEN
+    SELECT FALSE, 'none', 'Tidak ada lokasi absensi yang aktif.', null::jsonb INTO v_response;
     RETURN v_response;
+  END IF;
+
+  IF v_nearest_location.distance_m > v_nearest_location.max_distance THEN
+    SELECT FALSE, 'none', 'Anda berada di luar jangkauan area absensi.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+    RETURN v_response;
+  END IF;
+
+  SELECT *
+  INTO v_schedule
+  FROM public.jadwal_absensi
+  WHERE hari = v_current_day_indonesian
+    AND is_active = TRUE
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    SELECT FALSE, 'none', 'Tidak ada jadwal absensi yang aktif untuk hari ini.', null::jsonb INTO v_response;
+    RETURN v_response;
+  END IF;
+
+  -- ======================================================
+  -- PERUBAHAN DI SINI: LANGKAH 3 - Cek semua status hari ini
+  -- ======================================================
+  SELECT
+    EXISTS(
+      SELECT 1
+      FROM public.absences
+      WHERE user_id = p_user_id
+        AND date = v_today_wib
+        AND status IN ('Hadir', 'Terlambat')
+    ),
+    EXISTS(
+      SELECT 1
+      FROM public.absences
+      WHERE user_id = p_user_id
+        AND date = v_today_wib
+        AND status = 'Pulang'
+    )
+  INTO v_has_checked_in, v_has_checked_out;
+    
+  -- ======================================================
+  -- PERUBAHAN DI SINI: LANGKAH 4 - Logika keputusan baru
+  -- ======================================================
+  IF v_has_checked_out THEN
+    -- Sudah ada catatan 'Pulang', berarti sudah selesai.
+    SELECT FALSE, 'none', 'Anda sudah menyelesaikan absensi hari ini.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+  ELSIF v_has_checked_in THEN
+    -- Sudah ada 'Hadir'/'Terlambat', tapi belum 'Pulang'. Cek jam pulang.
+    IF v_current_time_wib BETWEEN v_schedule.mulai_pulang::time AND v_schedule.selesai_pulang::time THEN
+      SELECT TRUE, 'check_out', 'Silakan lakukan absen pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+    ELSE
+      SELECT FALSE, 'none', 'Belum memasuki waktu absen pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+    END IF;
+  ELSE
+    -- Belum ada catatan apa pun. Cek jam masuk.
+    IF v_current_time_wib BETWEEN v_schedule.mulai_masuk::time AND (v_schedule.selesai_masuk::time + (v_schedule.kompensasi_waktu || ' minutes')::interval) THEN
+      SELECT TRUE, 'check_in', 'Anda berada di area ' || v_nearest_location.name || '. Silakan absen masuk.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+    ELSE
+      SELECT FALSE, 'none', 'Waktu untuk absen masuk sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+    END IF;
+  END IF;
+
+  RETURN v_response;
 END;
 $$;
 
--- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION public.get_and_validate_attendance_action(UUID, DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
+
+-- ============================================================================
+-- RPC Function: save_attendance_record (VERSI INSERT-ONLY)
+-- Deskripsi: Mencatat data absensi ke dalam tabel "absences". Setiap aksi
+--            (check_in atau check_out) akan membuat baris data baru.
+-- Perbaikan: Logika check_out diubah dari UPDATE menjadi INSERT.
+-- ============================================================================
+
+-- Hapus versi lama terlebih dahulu
+DROP FUNCTION IF EXISTS public.save_attendance_record(UUID, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, UUID);
+
+-- Buat versi baru
+CREATE OR REPLACE FUNCTION public.save_attendance_record(
+  p_user_id UUID,
+  p_action_type TEXT, -- 'check_in' atau 'check_out'
+  p_photo_path TEXT,
+  p_latitude DOUBLE PRECISION,
+  p_longitude DOUBLE PRECISION,
+  p_attendance_id_to_update UUID DEFAULT NULL -- Parameter ini tidak lagi digunakan, tapi kita biarkan agar tidak error di klien
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_today_wib DATE;
+  v_current_time_wib TIME;
+  v_schedule RECORD;
+  v_status_text TEXT;
+  v_new_attendance_id UUID;
+  v_result JSONB;
+  v_current_day_indonesian TEXT;
+BEGIN
+  v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
+  v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
+
+  -- Tentukan hari untuk mencari jadwal
+  v_current_day_indonesian := CASE trim(lower(to_char(now() AT TIME ZONE 'Asia/Jakarta', 'Day')))
+    WHEN 'sunday' THEN 'minggu' WHEN 'monday' THEN 'senin'
+    WHEN 'tuesday' THEN 'selasa' WHEN 'wednesday' THEN 'rabu'
+    WHEN 'thursday' THEN 'kamis' WHEN 'friday' THEN 'jumat'
+    WHEN 'saturday' THEN 'sabtu'
+  END;
+    
+  SELECT * INTO v_schedule FROM public.jadwal_absensi WHERE hari = v_current_day_indonesian AND is_active = TRUE LIMIT 1;
+
+  IF p_action_type = 'check_in' THEN
+    -- Tentukan status 'Hadir' atau 'Terlambat'
+    IF v_schedule IS NOT NULL AND v_current_time_wib > v_schedule.selesai_masuk::time THEN
+      v_status_text := 'Terlambat';
+    ELSE
+      v_status_text := 'Hadir';
+    END IF;
+    
+    INSERT INTO public.absences (user_id, date, status, photo_url, latitude, longitude)
+    VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
+    RETURNING id INTO v_new_attendance_id;
+
+    v_result := jsonb_build_object('success', true, 'message', 'Absen masuk berhasil direkam.', 'attendance_id', v_new_attendance_id);
+        
+  ELSIF p_action_type = 'check_out' THEN
+    -- ======================================================
+    -- PERUBAHAN DI SINI: Logika diubah dari UPDATE menjadi INSERT
+    -- ======================================================
+    v_status_text := 'Pulang';
+        
+    INSERT INTO public.absences (user_id, date, status, photo_url, latitude, longitude)
+    VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
+    RETURNING id INTO v_new_attendance_id;
+
+    v_result := jsonb_build_object('success', true, 'message', 'Absen pulang berhasil direkam.', 'attendance_id', v_new_attendance_id);
+
+  ELSE
+    v_result := jsonb_build_object('success', false, 'message', 'Aksi tidak valid.');
+  END IF;
+
+  RETURN v_result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.save_attendance_record(UUID, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, UUID) TO authenticated;
 
 -- ============================================================================
 -- End of Schema
