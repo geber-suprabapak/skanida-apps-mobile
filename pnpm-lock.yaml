@@ -53,6 +53,9 @@ importers:
       expo:
         specifier: ^53.0.23
         version: 53.0.23(@babel/core@7.27.1)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
+      expo-blob:
+        specifier: ^0.1.6
+        version: 0.1.6(expo@53.0.23(@babel/core@7.27.1)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))
       expo-build-properties:
         specifier: ~0.14.8
         version: 0.14.8(expo@53.0.23(@babel/core@7.27.1)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))
@@ -2299,6 +2302,11 @@ packages:
       expo: '*'
       react: '*'
       react-native: '*'
+
+  expo-blob@0.1.6:
+    resolution: {integrity: sha512-YOJe6zaw8JJxdG9dASTk88yklGpRcWwTNeMmKuGaEhRc2KagUJgOSrPmuNPdiNHY8kmXATFu6C9k3H/4Kcd9VQ==}
+    peerDependencies:
+      expo: '*'
 
   expo-build-properties@0.14.8:
     resolution: {integrity: sha512-GTFNZc5HaCS9RmCi6HspCe2+isleuOWt2jh7UEKHTDQ9tdvzkIoWc7U6bQO9lH3Mefk4/BcCUZD/utl7b1wdqw==}
@@ -7254,6 +7262,10 @@ snapshots:
       react-native: 0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)
     transitivePeerDependencies:
       - supports-color
+
+  expo-blob@0.1.6(expo@53.0.23(@babel/core@7.27.1)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      expo: 53.0.23(@babel/core@7.27.1)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
 
   expo-build-properties@0.14.8(expo@53.0.23(@babel/core@7.27.1)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.27.1)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)):
     dependencies:

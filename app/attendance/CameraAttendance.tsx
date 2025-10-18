@@ -4,7 +4,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import * as ImageManipulator from "expo-image-manipulator";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
@@ -21,6 +21,7 @@ import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
+import { Blob as ExpoBlob } from "expo-blob";
 import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
 import {
@@ -36,7 +37,7 @@ import useAuthStore from "~/store/authStore";
 // --- CONSTANTS ---
 const IMAGE_CONFIG = {
   RESIZE_WIDTH: 800,
-  FORMAT: ImageManipulator.SaveFormat.JPEG,
+  FORMAT: SaveFormat.JPEG,
   MAX_FILE_SIZE: 2 * 1024 * 1024, // 2MB max
   QUALITY_STEPS: [0.85, 0.7, 0.55, 0.4],
 } as const;
@@ -46,6 +47,7 @@ const UPLOAD_CONFIG = {
   RETRY_DELAY_BASE: 1000,
   STORAGE_BUCKET: "attendance-photos",
   TIMEOUT_MS: 30000,
+  SIGNED_URL_EXPIRES_IN: 60 * 60 * 24 * 30, // 30 days
 } as const;
 
 // --- TYPES AND INTERFACES ---
@@ -55,6 +57,8 @@ type Coordinates = {
   latitude: number;
   longitude: number;
 };
+
+type ExpoBlobInstance = InstanceType<typeof ExpoBlob>;
 
 // --- MEMOIZED COMPONENTS ---
 const ProgressBar = memo<{ percentage: number }>(({ percentage }) => (
@@ -194,10 +198,42 @@ const CameraAttendance = () => {
     return { latitude, longitude };
   }, [params.latitude, params.longitude]);
 
+  const getReadableError = useCallback(
+    (error: unknown, fallback = "Terjadi kesalahan."): string => {
+      if (error instanceof Error) {
+        return error.message;
+      }
+
+      if (typeof error === "string") {
+        return error;
+      }
+
+      if (error && typeof error === "object" && "message" in error) {
+        const message = (error as { message?: unknown }).message;
+        if (typeof message === "string") {
+          return message;
+        }
+      }
+
+      try {
+        return JSON.stringify(error);
+      } catch {
+        return fallback;
+      }
+    },
+    [],
+  );
+
   // --- UTILITY FUNCTIONS (HOOKED) ---
-  const base64ToUint8Array = useCallback((base64: string): Uint8Array => {
+  const base64ToBlob = useCallback((base64: string): ExpoBlobInstance => {
     if (!base64) throw new Error("Invalid base64 string");
-    return Buffer.from(base64, "base64");
+    const buffer = Buffer.from(base64, "base64");
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength,
+    );
+
+    return new ExpoBlob([arrayBuffer], { type: "image/jpeg" });
   }, []);
 
   const generateFileName = useCallback(() => {
@@ -216,17 +252,35 @@ const CameraAttendance = () => {
   const compressImage = useCallback(
     async (imageUri: string): Promise<CompressionResult> => {
       for (const quality of IMAGE_CONFIG.QUALITY_STEPS) {
-        const result = await ImageManipulator.manipulateAsync(
-          imageUri,
-          [{ resize: { width: IMAGE_CONFIG.RESIZE_WIDTH } }],
-          { compress: quality, format: IMAGE_CONFIG.FORMAT, base64: true },
-        );
+        const manipulationContext = ImageManipulator.manipulate(imageUri);
+        manipulationContext.resize({ width: IMAGE_CONFIG.RESIZE_WIDTH });
 
-        if (!result.base64) continue;
+        const renderedImage = await manipulationContext.renderAsync();
+        const savedImage = await renderedImage.saveAsync({
+          base64: true,
+          compress: quality,
+          format: IMAGE_CONFIG.FORMAT,
+        });
 
-        const fileSize = (result.base64.length * 3) / 4;
+        const base64Input = savedImage.base64 ?? null;
+        if (!base64Input) {
+          continue;
+        }
+
+        let base64Payload: string | null = base64Input;
+
+        if (base64Payload && base64Payload.includes(",")) {
+          const [, payload] = base64Payload.split(",", 2);
+          base64Payload = payload ?? null;
+        }
+
+        if (!base64Payload) {
+          continue;
+        }
+
+        const fileSize = (base64Payload.length * 3) / 4;
         if (fileSize <= IMAGE_CONFIG.MAX_FILE_SIZE) {
-          return { base64: result.base64, size: fileSize, quality };
+          return { base64: base64Payload, size: fileSize, quality };
         }
       }
 
@@ -236,31 +290,56 @@ const CameraAttendance = () => {
   );
 
   const uploadToStorage = useCallback(
-    async (fileName: string, fileBuffer: Uint8Array): Promise<string> => {
+    async (fileName: string, fileBlob: ExpoBlobInstance): Promise<string> => {
       let lastError: Error | null = null;
 
       for (let attempt = 1; attempt <= UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
         try {
-          const uploadPromise = supabase.storage
-            .from(UPLOAD_CONFIG.STORAGE_BUCKET)
-            .upload(fileName, fileBuffer, {
-              contentType: "image/jpeg",
-              upsert: true,
-            });
+          const fileArrayBuffer = await fileBlob.arrayBuffer();
+          const fileBytes = new Uint8Array(fileArrayBuffer);
 
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Upload timeout")),
-              UPLOAD_CONFIG.TIMEOUT_MS,
-            ),
-          );
+          const { data: uploadData, error: uploadError } =
+            await supabase.storage
+              .from(UPLOAD_CONFIG.STORAGE_BUCKET)
+              .upload(fileName, fileBytes, {
+                contentType: "image/jpeg",
+                upsert: true,
+              });
 
-          const { error } = await Promise.race([uploadPromise, timeoutPromise]);
-          if (error) throw error;
+          if (uploadError) {
+            throw new Error(
+              getReadableError(uploadError, "Gagal mengunggah foto."),
+            );
+          }
 
-          return fileName;
+          const { data: signedDownload, error: signedDownloadError } =
+            await supabase.storage
+              .from(UPLOAD_CONFIG.STORAGE_BUCKET)
+              .createSignedUrl(
+                uploadData?.path ?? fileName,
+                UPLOAD_CONFIG.SIGNED_URL_EXPIRES_IN,
+              );
+
+          if (signedDownloadError) {
+            throw new Error(
+              getReadableError(
+                signedDownloadError,
+                "Gagal membuat signed URL unduhan.",
+              ),
+            );
+          }
+
+          const signedUrl = signedDownload?.signedUrl ?? null;
+
+          if (!signedUrl) {
+            throw new Error("Gagal mendapatkan signed URL unduhan.");
+          }
+
+          return signedUrl;
         } catch (error: any) {
-          lastError = error;
+          lastError = new Error(
+            getReadableError(error, "Gagal memproses unggahan."),
+          );
 
           if (attempt < UPLOAD_CONFIG.MAX_RETRIES) {
             await new Promise((resolve) =>
@@ -275,7 +354,7 @@ const CameraAttendance = () => {
 
       throw lastError || new Error("Upload gagal setelah beberapa percobaan");
     },
-    [],
+    [getReadableError],
   );
 
   const processAndUploadPhoto = useCallback(
@@ -299,9 +378,9 @@ const CameraAttendance = () => {
           percentage: 30,
           message: "Mengunggah foto...",
         });
-        const fileBuffer = base64ToUint8Array(compressed.base64);
+        const fileBlob = base64ToBlob(compressed.base64);
         const fileName = generateFileName();
-        const photoPath = await uploadToStorage(fileName, fileBuffer);
+        const photoUrl = await uploadToStorage(fileName, fileBlob);
 
         setUploadProgress({
           stage: "saving",
@@ -326,7 +405,7 @@ const CameraAttendance = () => {
           {
             p_user_id: user.id,
             p_action_type: actionType,
-            p_photo_path: photoPath,
+            p_photo_path: photoUrl,
             p_latitude: resolvedLocation.latitude,
             p_longitude: resolvedLocation.longitude,
           },
@@ -363,7 +442,10 @@ const CameraAttendance = () => {
           },
         });
       } catch (error: any) {
-        Alert.alert("Error", error?.message || "Gagal menyimpan absensi.");
+        Alert.alert(
+          "Error",
+          getReadableError(error, "Gagal menyimpan absensi."),
+        );
       } finally {
         setIsUploading(false);
       }
@@ -371,11 +453,12 @@ const CameraAttendance = () => {
     [
       user,
       actionType,
-      base64ToUint8Array,
+      base64ToBlob,
       generateFileName,
       uploadToStorage,
       router,
       preFetchedLocation,
+      getReadableError,
     ],
   );
 
