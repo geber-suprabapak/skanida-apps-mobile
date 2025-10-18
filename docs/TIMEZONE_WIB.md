@@ -82,4 +82,4 @@ Perubahan ini **backward compatible** karena:
 ---
 
 **Updated:** October 2, 2025  
-**Version:** 1.0.0-openbeta
+**Version:** 1.1.0-openbeta.1
