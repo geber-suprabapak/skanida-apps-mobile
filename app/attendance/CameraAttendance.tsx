@@ -138,6 +138,91 @@ interface CompressionResult {
   quality: number;
 }
 
+const FullScreenMessage = memo<{ message: string }>(({ message }) => (
+  <SafeAreaView className="flex-1 bg-black" edges={["top", "left", "right"]}>
+    <Stack.Screen options={{ headerShown: false }} />
+    <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <View className="flex-1 items-center justify-center px-8">
+      <ActivityIndicator size="large" color="#0066FF" />
+      <Text variant="large" className="text-white text-center mt-4">
+        {message}
+      </Text>
+    </View>
+  </SafeAreaView>
+));
+FullScreenMessage.displayName = "FullScreenMessage";
+
+const getReadableError = (error: unknown, fallback = "Terjadi kesalahan.") => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return fallback;
+  }
+};
+
+const base64ToBlob = (base64: string): ExpoBlobInstance => {
+  if (!base64) throw new Error("Invalid base64 string");
+  const buffer = Buffer.from(base64, "base64");
+  const arrayBuffer = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  );
+
+  return new ExpoBlob([arrayBuffer], { type: "image/jpeg" });
+};
+
+const compressImage = async (imageUri: string): Promise<CompressionResult> => {
+  for (const quality of IMAGE_CONFIG.QUALITY_STEPS) {
+    const manipulationContext = ImageManipulator.manipulate(imageUri);
+    manipulationContext.resize({ width: IMAGE_CONFIG.RESIZE_WIDTH });
+
+    const renderedImage = await manipulationContext.renderAsync();
+    const savedImage = await renderedImage.saveAsync({
+      base64: true,
+      compress: quality,
+      format: IMAGE_CONFIG.FORMAT,
+    });
+
+    const base64Input = savedImage.base64 ?? null;
+    if (!base64Input) {
+      continue;
+    }
+
+    let base64Payload: string | null = base64Input;
+
+    if (base64Payload && base64Payload.includes(",")) {
+      const [, payload] = base64Payload.split(",", 2);
+      base64Payload = payload ?? null;
+    }
+
+    if (!base64Payload) {
+      continue;
+    }
+
+    const fileSize = (base64Payload.length * 3) / 4;
+    if (fileSize <= IMAGE_CONFIG.MAX_FILE_SIZE) {
+      return { base64: base64Payload, size: fileSize, quality };
+    }
+  }
+
+  throw new Error("Gagal mengompresi gambar");
+};
+
 // --- UTILITY FUNCTIONS ---
 
 const CameraAttendance = () => {
@@ -198,44 +283,6 @@ const CameraAttendance = () => {
     return { latitude, longitude };
   }, [params.latitude, params.longitude]);
 
-  const getReadableError = useCallback(
-    (error: unknown, fallback = "Terjadi kesalahan."): string => {
-      if (error instanceof Error) {
-        return error.message;
-      }
-
-      if (typeof error === "string") {
-        return error;
-      }
-
-      if (error && typeof error === "object" && "message" in error) {
-        const message = (error as { message?: unknown }).message;
-        if (typeof message === "string") {
-          return message;
-        }
-      }
-
-      try {
-        return JSON.stringify(error);
-      } catch {
-        return fallback;
-      }
-    },
-    [],
-  );
-
-  // --- UTILITY FUNCTIONS (HOOKED) ---
-  const base64ToBlob = useCallback((base64: string): ExpoBlobInstance => {
-    if (!base64) throw new Error("Invalid base64 string");
-    const buffer = Buffer.from(base64, "base64");
-    const arrayBuffer = buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength,
-    );
-
-    return new ExpoBlob([arrayBuffer], { type: "image/jpeg" });
-  }, []);
-
   const generateFileName = useCallback(() => {
     if (!userId) {
       throw new Error("ID pengguna tidak valid.");
@@ -249,46 +296,6 @@ const CameraAttendance = () => {
     const filename = `${day}${month}${year}_${now.getTime()}.jpg`;
     return `${userId}/${filename}`;
   }, [userId]);
-
-  const compressImage = useCallback(
-    async (imageUri: string): Promise<CompressionResult> => {
-      for (const quality of IMAGE_CONFIG.QUALITY_STEPS) {
-        const manipulationContext = ImageManipulator.manipulate(imageUri);
-        manipulationContext.resize({ width: IMAGE_CONFIG.RESIZE_WIDTH });
-
-        const renderedImage = await manipulationContext.renderAsync();
-        const savedImage = await renderedImage.saveAsync({
-          base64: true,
-          compress: quality,
-          format: IMAGE_CONFIG.FORMAT,
-        });
-
-        const base64Input = savedImage.base64 ?? null;
-        if (!base64Input) {
-          continue;
-        }
-
-        let base64Payload: string | null = base64Input;
-
-        if (base64Payload && base64Payload.includes(",")) {
-          const [, payload] = base64Payload.split(",", 2);
-          base64Payload = payload ?? null;
-        }
-
-        if (!base64Payload) {
-          continue;
-        }
-
-        const fileSize = (base64Payload.length * 3) / 4;
-        if (fileSize <= IMAGE_CONFIG.MAX_FILE_SIZE) {
-          return { base64: base64Payload, size: fileSize, quality };
-        }
-      }
-
-      throw new Error("Gagal mengompresi gambar");
-    },
-    [],
-  );
 
   const uploadToStorage = useCallback(
     async (fileName: string, fileBlob: ExpoBlobInstance): Promise<string> => {
@@ -355,7 +362,7 @@ const CameraAttendance = () => {
 
       throw lastError || new Error("Upload gagal setelah beberapa percobaan");
     },
-    [getReadableError],
+    [],
   );
 
   const processAndUploadPhoto = useCallback(
@@ -454,12 +461,10 @@ const CameraAttendance = () => {
     [
       user,
       actionType,
-      base64ToBlob,
       generateFileName,
       uploadToStorage,
       router,
       preFetchedLocation,
-      getReadableError,
     ],
   );
 
@@ -492,7 +497,12 @@ const CameraAttendance = () => {
   }, []);
 
   const handleTakePicture = useCallback(async () => {
-    if (!isCameraReady || !cameraRef.current || isCapturingPhoto) {
+    if (
+      !isCameraReady ||
+      !cameraRef.current ||
+      isCapturingPhoto ||
+      isUploading
+    ) {
       return;
     }
 
@@ -521,7 +531,7 @@ const CameraAttendance = () => {
     } finally {
       setIsCapturingPhoto(false);
     }
-  }, [isCameraReady, isCapturingPhoto, compressImage, processAndUploadPhoto]);
+  }, [isCameraReady, isCapturingPhoto, processAndUploadPhoto, isUploading]);
 
   const handleToggleCameraFacing = useCallback(() => {
     setCameraFacing((current) => (current === "front" ? "back" : "front"));
