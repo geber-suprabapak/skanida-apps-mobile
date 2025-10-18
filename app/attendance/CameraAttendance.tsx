@@ -246,7 +246,8 @@ const CameraAttendance = () => {
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
 
-    return `${day}${month}${year}_${now.getTime()}_${userId}.jpg`;
+    const filename = `${day}${month}${year}_${now.getTime()}.jpg`;
+    return `${userId}/${filename}`;
   }, [userId]);
 
   const compressImage = useCallback(
