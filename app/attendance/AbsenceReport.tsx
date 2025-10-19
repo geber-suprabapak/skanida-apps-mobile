@@ -19,6 +19,7 @@ import {
   HelpCircle,
   RefreshCw,
   CheckCircle2,
+  Clock,
 } from "lucide-react-native";
 
 // Definisikan tipe data untuk respons dari RPC kita
@@ -28,6 +29,7 @@ type AttendanceActionResponse = {
   message: string;
   details?: {
     location_name?: string;
+    status?: "Hadir" | "Terlambat";
   };
 };
 
@@ -209,6 +211,15 @@ export default function AbsenceReport() {
     }
 
     if (status?.actionable) {
+      // Cek apakah statusnya terlambat
+      if (status.details?.status === "Terlambat") {
+        return {
+          icon: Clock, // Icon baru untuk terlambat
+          color: "text-orange-500 dark:text-orange-400", // Warna oranye untuk peringatan
+          message: status.message,
+        };
+      }
+      // Jika tidak, berarti hadir tepat waktu
       return {
         icon: CheckCircle2,
         color: "text-green-600 dark:text-green-500",
