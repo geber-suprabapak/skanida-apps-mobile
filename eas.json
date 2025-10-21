@@ -34,7 +34,6 @@
       "env": {
         "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts",
         "RELEASE_CHANNEL": "production"
-
       }
     }
   },

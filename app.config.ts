@@ -5,6 +5,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
   version: "1.1.0-rc1",
+  runtimeVersion: {
+    policy: "appVersion",
+  },
   scheme: "skanida-apps-mobile",
   web: {
     bundler: "metro",
