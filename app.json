@@ -37,8 +37,13 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 24
-          },
+            "minSdkVersion": 24,
+            "buildArchs": ["arm64-v8a"],
+            "enableBundleCompression": true,
+            "enableMinifyInReleaseBuilds": true,
+            "useLegacyPackaging": true,
+            "targetSdkVersion": 35
+            },
           "ios": {
             "deploymentTarget": "15.1"
           }
