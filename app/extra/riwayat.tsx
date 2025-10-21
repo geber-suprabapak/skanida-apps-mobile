@@ -103,7 +103,7 @@ export default function Riwayat() {
           { text: "Close", style: "cancel" },
         ],
       );
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to get cache statistics");
     }
   };
@@ -114,9 +114,11 @@ export default function Riwayat() {
         await attendanceCache.invalidateUser(user.id);
         Alert.alert("✅ Success", "Cache cleared successfully");
         // Force refresh the calendar after clearing cache
-        window.location?.reload?.(); // For web
+        if (calendarRef.current) {
+          await calendarRef.current.refetch(true);
+        }
       }
-    } catch (error) {
+    } catch {
       Alert.alert("❌ Error", "Failed to clear cache");
     }
   };
