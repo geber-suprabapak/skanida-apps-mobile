@@ -15,7 +15,18 @@
     "production": {
       "autoIncrement": false,
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a"
+      },
+      "env": {
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts"
+      }
+    },
+    "production-armv7a": {
+      "autoIncrement": false,
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a"
       },
       "env": {
         "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts"
