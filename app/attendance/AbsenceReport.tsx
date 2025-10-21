@@ -44,6 +44,7 @@ export default function AbsenceReport() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const autoNavigateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
   const COUNTDOWN_SECONDS = 2;
 
   const clearTimers = useCallback(() => {
@@ -63,6 +64,9 @@ export default function AbsenceReport() {
       statusData: AttendanceActionResponse,
       locationCoords: Location.LocationObjectCoords,
     ) => {
+      // Prevent navigation if component is unmounted
+      if (!isMountedRef.current) return;
+
       const params: Record<string, string> = {
         actionType: statusData.action_type,
       };
@@ -189,6 +193,7 @@ export default function AbsenceReport() {
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       clearTimers();
     };
   }, [clearTimers]);

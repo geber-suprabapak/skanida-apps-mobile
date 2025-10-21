@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skanida Apps",
     "slug": "skanida-apps-mobile",
-    "version": "1.1.0-openbeta.1",
+    "version": "1.1.0-rc1",
     "scheme": "skanida-apps-mobile",
     "web": {
       "bundler": "metro",
@@ -42,7 +42,7 @@
             "enableMinifyInReleaseBuilds": true,
             "useLegacyPackaging": true,
             "targetSdkVersion": 35
-            },
+          },
           "ios": {
             "deploymentTarget": "15.1"
           }

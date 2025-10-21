@@ -138,20 +138,6 @@ interface CompressionResult {
   quality: number;
 }
 
-const FullScreenMessage = memo<{ message: string }>(({ message }) => (
-  <SafeAreaView className="flex-1 bg-black" edges={["top", "left", "right"]}>
-    <Stack.Screen options={{ headerShown: false }} />
-    <StatusBar barStyle="light-content" backgroundColor="#000000" />
-    <View className="flex-1 items-center justify-center px-8">
-      <ActivityIndicator size="large" color="#0066FF" />
-      <Text variant="large" className="text-white text-center mt-4">
-        {message}
-      </Text>
-    </View>
-  </SafeAreaView>
-));
-FullScreenMessage.displayName = "FullScreenMessage";
-
 const getReadableError = (error: unknown, fallback = "Terjadi kesalahan.") => {
   if (error instanceof Error) {
     return error.message;

@@ -500,7 +500,9 @@ export default function PerizinanScreen() {
         // Silently fail if we can't resolve size via FileSystem
       }
 
-      return 0;
+      throw new Error(
+        "Tidak dapat menentukan ukuran file. Silakan coba lagi atau pilih gambar lain.",
+      );
     },
     [],
   );
@@ -575,8 +577,24 @@ export default function PerizinanScreen() {
       const extension = contentType.split("/").pop() || IMAGE_FORMAT;
       const fileName = generateFileName(userId, extension);
 
-      const response = await fetch(imageData.uri);
-      const arrayBuffer = await response.arrayBuffer();
+      let response: Response;
+      let arrayBuffer: ArrayBuffer;
+
+      try {
+        response = await fetch(imageData.uri);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        arrayBuffer = await response.arrayBuffer();
+      } catch (error: any) {
+        Alert.alert(
+          "Error Membaca File",
+          "File gambar tidak dapat diakses atau rusak. Silakan pilih gambar lain.",
+        );
+        throw new Error(
+          `Gagal membaca file gambar: ${error.message || "File tidak dapat diakses"}`,
+        );
+      }
 
       const { data, error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
