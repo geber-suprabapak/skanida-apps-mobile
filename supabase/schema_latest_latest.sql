@@ -1050,7 +1050,14 @@ BEGIN
   ELSE
     -- Belum ada catatan apa pun. Cek jam masuk.
     IF v_current_time_wib BETWEEN v_schedule.mulai_masuk::time AND (v_schedule.selesai_masuk::time + (v_schedule.kompensasi_waktu || ' minutes')::interval) THEN
-      SELECT TRUE, 'check_in', 'Anda berada di area ' || v_nearest_location.name || '. Silakan absen masuk.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+      -- Waktu absensi valid, sekarang tentukan pesan (Tepat Waktu atau Terlambat)
+      IF v_current_time_wib > v_schedule.selesai_masuk::time THEN
+        -- Terlambat tapi masih dalam masa kompensasi
+        SELECT TRUE, 'check_in', 'Anda terlambat. Silakan lanjutkan absensi.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Terlambat') INTO v_response;
+      ELSE
+        -- Tepat waktu
+        SELECT TRUE, 'check_in', 'Tepat waktu! Silakan absen masuk.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Hadir') INTO v_response;
+      END IF;
     ELSE
       SELECT FALSE, 'none', 'Waktu untuk absen masuk sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
     END IF;

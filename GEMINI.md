@@ -1,4 +1,79 @@
-## GitHub Copilot Context Guide for Skanida Apps Mobile
+# Gemini Project Context: skanida-apps-mobile
+
+## Project Overview
+
+This is a React Native mobile application for "Skanida Apps", built using Expo. It appears to be an application for a school, for student attendance and other school-related activities. The application uses a modern stack including TypeScript, Tailwind CSS for styling (via NativeWind), and Expo Router for navigation. It connects to a Supabase backend for database and authentication services. The application also includes features like time synchronization, offline connection checking, and error reporting with Sentry.
+
+### Key Technologies
+
+* **Framework:** React Native with Expo
+* **Language:** TypeScript
+* **UI:** Tailwind CSS (NativeWind), React Native Primitives
+* **Navigation:** Expo Router
+* **State Management:** Zustand
+* **Backend:** Supabase
+* **Error Monitoring:** Sentry
+* **Package Manager:** pnpm
+
+## Building and Running
+
+### Prerequisites
+
+* Node.js (LTS)
+* pnpm (Package Manager)
+* Android Studio (for Android development)
+* Xcode (for iOS development)
+* Properly configured `ANDROID_HOME` environment variable.
+
+### Installation
+
+```bash
+git clone https://github.com/geber-suprabapak/skanida-apps-mobile.git
+cd skanida-apps-mobile
+pnpm install
+```
+
+### Running the app
+
+* **Start the development server:**
+
+    ```bash
+    pnpm start
+    ```
+
+* **Run on Android:**
+
+    ```bash
+    pnpm android
+    ```
+
+* **Run on iOS:**
+
+    ```bash
+    pnpm ios
+    ```
+
+### Scripts
+
+* `lint`: Lints the codebase using ESLint and checks formatting with Prettier.
+* `format`: Fixes linting errors and formats the code with Prettier.
+
+## Development Conventions
+
+* **Styling:** The project uses Tailwind CSS with NativeWind for styling. Utility classes are preferred. Theme colors and settings are defined in `tailwind.config.js` and `lib/theme.ts`.
+* **State Management:** Global state is managed with Zustand. See the `store` directory for existing stores (`authStore`, `themeStore`, `timeSyncStore`).
+* **File Structure:**
+  * `app`: Contains the application screens and routes, following the Expo Router file-based routing convention.
+  * `components`: Reusable UI components.
+  * `utils`: Utility functions, including Supabase client setup and time synchronization logic.
+  * `store`: Zustand stores for global state management.
+  * `services`: Likely for API calls and other services (currently empty).
+* **Environment Variables:** The application uses environment variables for Supabase configuration (e.g., `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`). These should be defined in a `.env` file.
+* **Linting & Formatting:** The project is configured with ESLint and Prettier to enforce a consistent code style. It's recommended to run `pnpm format` before committing changes.
+
+---
+
+## Gemini Context Guide for Skanida Apps Mobile
 
 **Skanida Apps Mobile** is a React Native attendance & leave management system for Indonesian schools (WIB timezone). Key tech: Expo SDK 53, TypeScript, NativeWind (Tailwind), Zustand, Supabase v2.
 
@@ -7,27 +82,31 @@
 ### 1. Project Architecture & Data Flow
 
 **File Structure Essentials:**
-- `app/`: Expo Router file-based routes. Key screens: `auth/*` (login), `attendance/*` (check-in), `perizinan/*` (leave requests), `profile/*`.
-- `components/ui/`: **Never modify**—reusable primitives (`Button`, `Card`, `Text`, `Icon`, etc.) with CVA variants.
-- `store/`: Zustand stores per feature: `authStore.ts` (user + profile), `themeStore.ts`, `timeSyncStore.ts`.
-- `utils/`: `supabase.ts` (configured with AsyncStorage), `timeSync.ts` (WIB sync).
-- `lib/`: `utils.ts` has `cn()` (classname merge) and critical `toWIB()` / `formatDateWIB()` timezone helpers.
+
+* `app/`: Expo Router file-based routes. Key screens: `auth/*` (login), `attendance/*` (check-in), `perizinan/*` (leave requests), `profile/*`.
+* `components/ui/`: **Never modify**—reusable primitives (`Button`, `Card`, `Text`, `Icon`, etc.) with CVA variants.
+* `store/`: Zustand stores per feature: `authStore.ts` (user + profile), `themeStore.ts`, `timeSyncStore.ts`.
+* `utils/`: `supabase.ts` (configured with AsyncStorage), `timeSync.ts` (WIB sync).
+* `lib/`: `utils.ts` has `cn()` (classname merge) and critical `toWIB()` / `formatDateWIB()` timezone helpers.
 
 **Auth Flow:**
+
 1. Supabase auth session persists in AsyncStorage.
 2. On login, `useAuthStore.setUser()` triggers `fetchUserProfile()` (5-retry with 500ms backoff).
 3. Profile object contains `full_name`, `nis`, `class_name`, `avatar_url`, `role`.
 
 **Database Schema (Key Tables):**
-- `absences`: `{id, user_id, date, status("present"/"home"/"leave"/"sick"), check_in_time, check_out_time, photo_url, created_at, approval_status}`
-- `perizinan`: `{id, user_id, category("sakit"/"cuti"/"izin"), description, attachment_url, created_at, approval_status}`
-- `user_profiles`: Extended user data linked to auth via `user_id`.
+
+* `absences`: `{id, user_id, date, status("present"/"home"/"leave"/"sick"), check_in_time, check_out_time, photo_url, created_at, approval_status}`
+* `perizinan`: `{id, user_id, category("sakit"/"cuti"/"izin"), description, attachment_url, created_at, approval_status}`
+* `user_profiles`: Extended user data linked to auth via `user_id`.
 
 ---
 
 ### 2. Styling & UI Components (NativeWind + CVA)
 
 **Text Component (Do Not Use Raw `<Text>`):**
+
 ```tsx
 import { Text } from "~/components/ui/text";
 // Variants: default, h1, h2, h3, h4, p, blockquote, code, lead, large, small, muted
@@ -36,6 +115,7 @@ import { Text } from "~/components/ui/text";
 ```
 
 **Icon Pattern (Lucide → Icon Wrapper):**
+
 ```tsx
 import { Icon } from "~/components/ui/icon";
 import { Clock, CheckCircle, AlertCircle } from "lucide-react-native";
@@ -46,11 +126,13 @@ import { Clock, CheckCircle, AlertCircle } from "lucide-react-native";
 ```
 
 **Button Variants (from `components/ui/button.tsx`):**
-- `variant`: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-- `size`: "default" | "sm" | "lg" | "icon"
-- Always 48px+ height for touch accessibility
+
+* `variant`: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+* `size`: "default" | "sm" | "lg" | "icon"
+* Always 48px+ height for touch accessibility
 
 **CSS Utility Classname Merge:**
+
 ```tsx
 import { cn } from "~/lib/utils";
 className={cn("px-4 py-2", isActive && "bg-blue-500", customClass)}
@@ -63,6 +145,7 @@ className={cn("px-4 py-2", isActive && "bg-blue-500", customClass)}
 **Pattern: One store per feature (in `store/`)**
 
 Example (`useAuthStore`):
+
 ```tsx
 import useAuthStore from "~/store/authStore";
 const { user, userProfile, logout, setUser } = useAuthStore();
@@ -71,15 +154,17 @@ const { user, userProfile, logout, setUser } = useAuthStore();
 ```
 
 **Time Sync Store:**
-- `useTimeSyncStore()` tracks local↔server time offset.
-- Initialize via `timeSync.initialize()` in root layout (`app/_layout.tsx`).
-- Always use synced time for database queries: `timeSync.getSyncedTime()`.
+
+* `useTimeSyncStore()` tracks local↔server time offset.
+* Initialize via `timeSync.initialize()` in root layout (`app/_layout.tsx`).
+* Always use synced time for database queries: `timeSync.getSyncedTime()`.
 
 ---
 
 ### 4. Timezone Handling (Critical for Indonesia WIB)
 
 **Always use helpers from `lib/utils.ts`:**
+
 ```tsx
 import { toWIB, formatDateWIB } from "~/lib/utils";
 
@@ -101,6 +186,7 @@ const queryDate = formatDateWIB(new Date());  // "2025-10-19"
 **All data operations use RPC functions (not direct table access) for business logic enforcement:**
 
 **Attendance System:**
+
 ```tsx
 // Check what action user can take (check-in/check-out/none)
 const { data, error } = await supabase.rpc(
@@ -130,6 +216,7 @@ const { data, error } = await supabase.rpc(
 ```
 
 **User Management:**
+
 ```tsx
 // Get student biodata during activation
 const { data, error } = await supabase.rpc("get_biodata_siswa", {
@@ -138,6 +225,7 @@ const { data, error } = await supabase.rpc("get_biodata_siswa", {
 ```
 
 **Dashboard Status:**
+
 ```tsx
 // Live validation status for dashboard
 const { data, error } = await supabase.rpc("check_absensi_status", {
@@ -147,16 +235,18 @@ const { data, error } = await supabase.rpc("check_absensi_status", {
 ```
 
 **RPC Response Patterns:**
-- All RPC functions return structured data with success/error indicators
-- Location validation (500m radius) built into attendance RPCs
-- WIB timezone handling automatic in server functions
-- Business rules enforced server-side (schedule validation, duplicate prevention)
+
+* All RPC functions return structured data with success/error indicators
+* Location validation (500m radius) built into attendance RPCs
+* WIB timezone handling automatic in server functions
+* Business rules enforced server-side (schedule validation, duplicate prevention)
 
 ---
 
 ### 6. Location & Mock Detection
 
 **Mock Location Detection (Critical Security):**
+
 ```tsx
 import * as Location from "expo-location";
 
@@ -172,6 +262,7 @@ if (location.mocked) {
 ```
 
 **Location Permission Flow:**
+
 ```tsx
 let { status } = await Location.getForegroundPermissionsAsync();
 if (status !== "granted") {
@@ -183,10 +274,11 @@ if (status !== "granted") {
 ```
 
 **School Location Validation:**
-- School coordinates: `(-7.4503, 110.2241)`
-- Maximum distance: 500 meters
-- Distance calculation handled by RPC functions
-- User sees location-based error messages from server
+
+* School coordinates: `(-7.4503, 110.2241)`
+* Maximum distance: 500 meters
+* Distance calculation handled by RPC functions
+* User sees location-based error messages from server
 
 ---
 
@@ -201,8 +293,9 @@ if (status !== "granted") {
 5. **Upload:** Resize image (800px, 70% quality), name as `YYYY-MM-DD_${timestamp}_${userId}.png`, upload to `attendance-photos` bucket, insert `absences` record.
 
 **Key Handlers:**
-- `getCurrentLocation()`: Requests permission, validates within 500m, throws on mock location.
-- `navigateToCamera()`: Passes route params for camera screen.
+
+* `getCurrentLocation()`: Requests permission, validates within 500m, throws on mock location.
+* `navigateToCamera()`: Passes route params for camera screen.
 
 ---
 
@@ -211,16 +304,18 @@ if (status !== "granted") {
 **File: `app/perizinan/izin.tsx` (~1,240 lines, optimized Oct 2025)**
 
 **Internal Subcomponents (Stay in Same File):**
-- `StepIndicator`: Shows 1/3 → 2/3 → 3/3 progress.
-- `SectionHeader`: Icon + title + subtitle pattern.
-- `CategoryButton`: Selection UI with validation feedback.
-- `DescriptionCounter`: Real-time 10–500 char validation + progress bar.
-- `ImageUploadButton`: Camera/gallery picker.
-- `ImagePreviewCard`: Shows file size, delete/replace controls.
-- `AlertBanner`: Reusable (warning/error/success/info).
-- `FormSummary`: Pre-submit validation checklist.
+
+* `StepIndicator`: Shows 1/3 → 2/3 → 3/3 progress.
+* `SectionHeader`: Icon + title + subtitle pattern.
+* `CategoryButton`: Selection UI with validation feedback.
+* `DescriptionCounter`: Real-time 10–500 char validation + progress bar.
+* `ImageUploadButton`: Camera/gallery picker.
+* `ImagePreviewCard`: Shows file size, delete/replace controls.
+* `AlertBanner`: Reusable (warning/error/success/info).
+* `FormSummary`: Pre-submit validation checklist.
 
 **Form State Pattern:**
+
 ```tsx
 const [formData, setFormData] = useState<FormData>({
   category: "sakit",
@@ -235,16 +330,18 @@ const validation = useMemo(() => ({
 ```
 
 **Validation Rules:**
-- Category: required.
-- Description: 10–500 chars, live counter with progress bar.
-- Image: required, max 10MB, displays file size + validation badge.
-- Same-day check: Prevents duplicate submissions.
+
+* Category: required.
+* Description: 10–500 chars, live counter with progress bar.
+* Image: required, max 10MB, displays file size + validation badge.
+* Same-day check: Prevents duplicate submissions.
 
 ---
 
 ### 9. Developer Workflows & Commands
 
 **Setup:**
+
 ```bash
 pnpm install
 npx expo prebuild  # Sync native config (Android/iOS)
@@ -252,6 +349,7 @@ pnpm start         # Metro dev server + hot reload
 ```
 
 **Linting & Formatting (ESLint + Prettier):**
+
 ```bash
 pnpm lint      # Check all files (ESLint + Prettier check)
 pnpm format    # Auto-fix (ESLint + Prettier write)
@@ -259,6 +357,7 @@ pnpm format    # Auto-fix (ESLint + Prettier write)
 ```
 
 **Mobile Build & Run:**
+
 ```bash
 pnpm android   # Run on Android (hot reload)
 pnpm ios       # Run on iOS
@@ -272,15 +371,18 @@ eas build --local --profile preview --platform android  # via build.sh
 ### 10. Error Handling & Monitoring
 
 **Sentry Integration (in `app/_layout.tsx`):**
-- Initialized with session replay (10% sample) + error replay (100% on error).
-- PII enabled; feedback integration active.
-- Errors auto-reported; no manual capture needed.
+
+* Initialized with session replay (10% sample) + error replay (100% on error).
+* PII enabled; feedback integration active.
+* Errors auto-reported; no manual capture needed.
 
 **Network Resilience:**
-- `ConnectionChecker` component wraps root layout; disables submission when offline.
-- Supabase client configured with `autoRefreshToken: true` and AsyncStorage for auth persistence.
+
+* `ConnectionChecker` component wraps root layout; disables submission when offline.
+* Supabase client configured with `autoRefreshToken: true` and AsyncStorage for auth persistence.
 
 **Structured Logging (Seen in `izin.tsx`):**
+
 ```tsx
 const logger = (componentName: string) => ({
   info: (msg: string) => console.log(`[${componentName}] ℹ️ ${msg}`),
@@ -296,32 +398,34 @@ log.info("Starting form submission...");
 ### 11. Common Patterns & Anti-Patterns
 
 **✅ DO:**
-- Use `cn()` for conditional classnames: `cn("base", condition && "variant")`.
-- Import from `~/` paths; never use relative imports outside same folder.
-- Call `pnpm format` after editing; don't manually fix lint errors.
-- Use `useMemo` for computed state; `useCallback` for event handlers.
-- Always check `userProfile` before accessing (may be `null` during load).
+
+* Use `cn()` for conditional classnames: `cn("base", condition && "variant")`.
+* Import from `~/` paths; never use relative imports outside same folder.
+* Call `pnpm format` after editing; don't manually fix lint errors.
+* Use `useMemo` for computed state; `useCallback` for event handlers.
+* Always check `userProfile` before accessing (may be `null` during load).
 
 **❌ DON'T:**
-- Modify `components/ui/*`; they are canonical primitives.
-- Use raw `<Text>` or `<View>`; always use `<Text variant="...">` component.
-- Hardcode colors; use Tailwind classes (`text-blue-500`, `bg-red-600`).
-- Mix `useState` and Zustand in same component unless needed (state management at store level).
-- Forget timezone conversion; always use `formatDateWIB()` for DB queries.
-- Extract leave form subcomponents to separate files (single-file design for maintainability).
+
+* Modify `components/ui/*`; they are canonical primitives.
+* Use raw `<Text>` or `<View>`; always use `<Text variant="...">` component.
+* Hardcode colors; use Tailwind classes (`text-blue-500`, `bg-red-600`).
+* Mix `useState` and Zustand in same component unless needed (state management at store level).
+* Forget timezone conversion; always use `formatDateWIB()` for DB queries.
+* Extract leave form subcomponents to separate files (single-file design for maintainability).
 
 ---
 
 ### 12. Key Dependencies & Their Roles
 
-- **Expo Router v5:** File-based routing + typed routes (enabled in `app.json`).
-- **NativeWind v4 + Tailwind:** Utility-first CSS for React Native.
-- **Zustand v5:** Lightweight state management.
-- **Supabase-js v2:** Database, auth, storage (AsyncStorage-backed).
-- **expo-location:** Geolocation (for attendance verification).
-- **expo-image-picker:** Camera/gallery access.
-- **lucide-react-native:** Icons (always wrap with `<Icon>` component).
-- **@sentry/react-native:** Error tracking + session replay.
+* **Expo Router v5:** File-based routing + typed routes (enabled in `app.json`).
+* **NativeWind v4 + Tailwind:** Utility-first CSS for React Native.
+* **Zustand v5:** Lightweight state management.
+* **Supabase-js v2:** Database, auth, storage (AsyncStorage-backed).
+* **expo-location:** Geolocation (for attendance verification).
+* **expo-image-picker:** Camera/gallery access.
+* **lucide-react-native:** Icons (always wrap with `<Icon>` component).
+* **@sentry/react-native:** Error tracking + session replay.
 
 ---
 

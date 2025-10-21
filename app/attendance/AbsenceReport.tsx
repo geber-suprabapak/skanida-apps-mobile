@@ -1,6 +1,4 @@
-// app/attendance/AbsenceReport.tsx
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +18,8 @@ import {
   MapPinOff,
   HelpCircle,
   RefreshCw,
+  CheckCircle2,
+  Clock,
 } from "lucide-react-native";
 
 // Definisikan tipe data untuk respons dari RPC kita
@@ -29,6 +29,7 @@ type AttendanceActionResponse = {
   message: string;
   details?: {
     location_name?: string;
+    status?: "Hadir" | "Terlambat";
   };
 };
 
@@ -39,11 +40,73 @@ export default function AbsenceReport() {
   // Hanya butuh beberapa state sederhana
   const [status, setStatus] = useState<AttendanceActionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] =
-    useState<Location.LocationObjectCoords | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const autoNavigateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const COUNTDOWN_SECONDS = 2;
+
+  const clearTimers = useCallback(() => {
+    if (autoNavigateTimerRef.current) {
+      clearTimeout(autoNavigateTimerRef.current);
+      autoNavigateTimerRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  }, []);
+
+  // Navigasi ke halaman kamera
+  const navigateToCamera = useCallback(
+    (
+      statusData: AttendanceActionResponse,
+      locationCoords: Location.LocationObjectCoords,
+    ) => {
+      const params: Record<string, string> = {
+        actionType: statusData.action_type,
+      };
+
+      if (statusData.details?.location_name) {
+        params.locationName = statusData.details.location_name;
+      }
+
+      params.latitude = locationCoords.latitude.toString();
+      params.longitude = locationCoords.longitude.toString();
+
+      router.push({
+        pathname: "/attendance/CameraAttendance",
+        params,
+      });
+    },
+    [router],
+  );
 
   // Fungsi inti untuk memeriksa status absensi
+  const getCurrentLocation = useCallback(async () => {
+    let { status: permissionStatus } =
+      await Location.getForegroundPermissionsAsync();
+    if (permissionStatus !== "granted") {
+      permissionStatus = (await Location.requestForegroundPermissionsAsync())
+        .status;
+    }
+    if (permissionStatus !== "granted") {
+      throw new Error("Izin lokasi ditolak. Absensi tidak dapat dilanjutkan.");
+    }
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    if (location.mocked) {
+      throw new Error(
+        "Terdeteksi lokasi palsu. Matikan pengaturan lokasi palsu untuk melanjutkan.",
+      );
+    }
+
+    return location;
+  }, []);
+
   const fetchAttendanceStatus = useCallback(async () => {
     if (!user) {
       setErrorMessage("Sesi pengguna tidak valid, silakan login ulang.");
@@ -51,39 +114,15 @@ export default function AbsenceReport() {
       return;
     }
 
+    clearTimers();
     setIsLoading(true);
     setErrorMessage(null);
     setStatus(null);
-    setUserLocation(null);
+    setCountdown(null);
 
     try {
-      // 1. Minta izin dan dapatkan lokasi
-      let { status: permissionStatus } =
-        await Location.getForegroundPermissionsAsync();
-      if (permissionStatus !== "granted") {
-        permissionStatus = (await Location.requestForegroundPermissionsAsync())
-          .status;
-      }
-      if (permissionStatus !== "granted") {
-        throw new Error(
-          "Izin lokasi ditolak. Absensi tidak dapat dilanjutkan.",
-        );
-      }
+      const location = await getCurrentLocation();
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      setUserLocation(location.coords);
-
-      // 2. Keamanan: Deteksi Mock Location
-      if (location.mocked) {
-        throw new Error(
-          "Terdeteksi lokasi palsu. Matikan pengaturan lokasi palsu untuk melanjutkan.",
-        );
-      }
-
-      // 3. Panggilan Elegan ke Server (Single RPC)
       const { data, error } = await supabase.rpc(
         "get_and_validate_attendance_action",
         {
@@ -93,20 +132,39 @@ export default function AbsenceReport() {
         },
       );
 
-      console.log("RPC Response:", { data, error });
-
       if (error) {
         throw new Error(`Gagal memeriksa status: ${error.message}`);
       }
 
       setStatus(data);
+
+      const isActionable = Boolean(
+        data?.actionable && data.action_type !== "none",
+      );
+
+      if (isActionable) {
+        let countdownValue = COUNTDOWN_SECONDS;
+        setCountdown(countdownValue);
+
+        countdownIntervalRef.current = setInterval(() => {
+          countdownValue -= 1;
+          setCountdown(countdownValue > 0 ? countdownValue : 0);
+          if (countdownValue <= 0 && countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+        }, 1000);
+
+        autoNavigateTimerRef.current = setTimeout(() => {
+          navigateToCamera(data, location.coords);
+        }, COUNTDOWN_SECONDS * 1000);
+      }
     } catch (e: any) {
-      setUserLocation(null);
       setErrorMessage(e.message || "Terjadi kesalahan tidak diketahui.");
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, clearTimers, getCurrentLocation, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {
@@ -128,107 +186,139 @@ export default function AbsenceReport() {
     return () => backHandler.remove();
   }, [router]);
 
-  const handleProceedToCamera = () => {
-    if (
-      !status?.actionable ||
-      !status.action_type ||
-      status.action_type === "none"
-    )
-      return;
-
-    // Navigasi ke halaman kamera dengan membawa parameter yang diperlukan
-    const params: Record<string, string> = {
-      actionType: status.action_type,
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      clearTimers();
     };
+  }, [clearTimers]);
 
-    if (status.details?.location_name) {
-      params.locationName = status.details.location_name;
+  const statusMeta = useMemo(() => {
+    if (isLoading) {
+      return {
+        icon: Loader2,
+        color: "text-blue-600 dark:text-blue-500",
+        message: "Memeriksa Status...",
+      };
     }
 
-    if (userLocation) {
-      params.latitude = userLocation.latitude.toString();
-      params.longitude = userLocation.longitude.toString();
+    if (errorMessage) {
+      return {
+        icon: MapPinOff,
+        color: "text-red-600 dark:text-red-500",
+        message: errorMessage,
+      };
     }
 
-    router.push({
-      pathname: "/attendance/CameraAttendance",
-      params,
-    });
-  };
+    if (status?.actionable) {
+      // Cek apakah statusnya terlambat
+      if (status.details?.status === "Terlambat") {
+        return {
+          icon: Clock, // Icon baru untuk terlambat
+          color: "text-orange-500 dark:text-orange-400", // Warna oranye untuk peringatan
+          message: status.message,
+        };
+      }
+      // Jika tidak, berarti hadir tepat waktu
+      return {
+        icon: CheckCircle2,
+        color: "text-green-600 dark:text-green-500",
+        message: status.message,
+      };
+    }
 
-  const getStatusIcon = () => {
-    if (isLoading) return Loader2;
-    if (errorMessage) return MapPinOff;
-    if (status?.actionable) return MapPin;
-    return HelpCircle;
-  };
+    return {
+      icon: HelpCircle,
+      color: "text-blue-600 dark:text-blue-500",
+      message: status?.message || "Status Tidak Diketahui",
+    };
+  }, [errorMessage, isLoading, status]);
+
+  const showLocationDetails = Boolean(
+    !errorMessage && status?.actionable && status.details?.location_name,
+  );
+  const locationName = status?.details?.location_name;
+  const showCountdown = countdown !== null && countdown > 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-background dark:bg-gray-900">
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950">
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header Kustom */}
-      <View className="flex-row items-center p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
+      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="p-2 -ml-2 mr-1"
+        >
           <Icon
             as={ChevronLeft}
-            className="size-6 text-black dark:text-white"
+            className="size-6 text-gray-900 dark:text-gray-100"
           />
         </TouchableOpacity>
-        <Text variant="h2" className="text-black dark:text-white">
+        <Text variant="h3" className="text-gray-900 dark:text-gray-100">
           Lapor Absensi
         </Text>
       </View>
 
       {/* Konten Utama */}
-      <View className="flex-1 justify-center items-center p-6">
-        <Card className="w-full max-w-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
-          <CardHeader className="items-center">
-            <Icon
-              as={getStatusIcon()}
-              className={`size-10 ${errorMessage ? "text-red-600" : "text-blue-600"}`}
-            />
+      <View className="flex-1 justify-center items-center px-6 py-8">
+        <Card className="w-full max-w-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 shadow-lg">
+          <CardHeader className="items-center pb-4">
+            <View className="p-4 rounded-full bg-gray-100 dark:bg-gray-800">
+              <Icon
+                as={statusMeta.icon}
+                className={`size-12 ${statusMeta.color}`}
+              />
+            </View>
           </CardHeader>
-          <CardContent className="items-center space-y-4">
-            <CardTitle className="text-xl text-center text-gray-800 dark:text-white">
-              {isLoading
-                ? "Memeriksa Status..."
-                : errorMessage || status?.message || "Status Tidak Diketahui"}
-            </CardTitle>
 
-            {status && !errorMessage && (
-              <Button
-                size="lg"
-                className="w-full"
-                onPress={handleProceedToCamera}
-                disabled={!status.actionable || isLoading}
-              >
-                <Text className="text-white font-medium">
-                  {status.action_type === "check_in"
-                    ? "Lanjutkan Absen Masuk"
-                    : status.action_type === "check_out"
-                      ? "Lanjutkan Absen Pulang"
-                      : "Tidak ada aksi"}
+          <CardContent className="items-center space-y-6 pt-2">
+            {/* Status Message */}
+            <View className="space-y-2 w-full">
+              <CardTitle className="text-xl text-center text-gray-900 dark:text-gray-100">
+                {statusMeta.message}
+              </CardTitle>
+
+              {/* Location Info */}
+              {showLocationDetails && locationName && (
+                <View className="flex-row items-center justify-center gap-1 pt-1">
+                  <Icon
+                    as={MapPin}
+                    className="size-4 text-gray-600 dark:text-gray-400"
+                  />
+                  <Text className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                    {locationName}
+                  </Text>
+                </View>
+              )}
+
+              {/* Countdown */}
+              {showCountdown && (
+                <Text className="text-sm text-center text-gray-500 dark:text-gray-400 pt-2">
+                  Mengarahkan ke kamera dalam {countdown} detik...
                 </Text>
-              </Button>
-            )}
+              )}
+            </View>
+
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              className="w-full border-blue-500 dark:border-blue-600 bg-white dark:bg-gray-900"
+              onPress={fetchAttendanceStatus}
+              disabled={isLoading}
+            >
+              <Icon
+                as={RefreshCw}
+                className={`size-5 mr-2 ${isLoading ? "text-gray-400" : "text-blue-600 dark:text-blue-500"}`}
+              />
+              <Text
+                className={`font-medium ${isLoading ? "text-gray-400" : "text-blue-600 dark:text-blue-500"}`}
+              >
+                {isLoading ? "Memuat..." : "Segarkan Status"}
+              </Text>
+            </Button>
           </CardContent>
         </Card>
-
-        <Button
-          variant="outline"
-          className="mt-6 w-full max-w-sm border-sky-500 dark:border-sky-600 bg-white dark:bg-gray-800"
-          onPress={fetchAttendanceStatus}
-          disabled={isLoading}
-        >
-          <Icon
-            as={RefreshCw}
-            className="size-5 mr-2 text-sky-500 dark:text-sky-400"
-          />
-          <Text className="text-sky-600 dark:text-sky-400 font-medium">
-            {isLoading ? "Memuat..." : "Segarkan Status"}
-          </Text>
-        </Button>
       </View>
     </SafeAreaView>
   );
