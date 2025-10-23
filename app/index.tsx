@@ -6,7 +6,6 @@ import { View, Text, ActivityIndicator } from "react-native";
 import useAuthStore from "../store/authStore";
 import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
 import { getSupabaseConfig } from "~/utils/secureConfig";
-import ConsoleLogger from "~/components/ConsoleLogger";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -18,25 +17,11 @@ export default function Index() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("Starting auth check...");
         // Ensure Supabase is initialized with runtime config
         const cfg = await getSupabaseConfig();
-        console.log("Supabase runtime config:", {
-          hasUrl: !!cfg?.url,
-          hasAnon: !!cfg?.anonKey,
-          source: cfg?.source ?? null,
-        });
         await ensureSupabaseInitialized();
 
         const sessionResponse = await supabase.auth.getSession();
-        console.log("Supabase getSession response:", {
-          sessionExists: !!sessionResponse.data.session,
-          userId: sessionResponse.data.session?.user?.id ?? null,
-          expiresAt: sessionResponse.data.session?.expires_at ?? null,
-          hasError: !!sessionResponse.error,
-          errorName: sessionResponse.error?.name ?? null,
-          errorMessage: sessionResponse.error?.message ?? null,
-        });
 
         const {
           data: { session },
@@ -44,35 +29,22 @@ export default function Index() {
         } = sessionResponse;
 
         if (error) {
-          console.log("Auth error details:", {
-            name: error.name,
-            message: error.message,
-            status: (error as unknown as { status?: number })?.status ?? null,
-          });
           setLoadingMessage(`Error: ${error.message}`);
         }
 
         if (session?.user) {
-          console.log("Session found for user:", session.user.id);
           setLoadingMessage("Session found");
           setUser(session.user);
           router.replace("/Dashboard");
         } else {
-          console.log("No session found, redirecting to auth");
           router.replace("/auth/AuthSelector");
         }
       } catch (err) {
         if (err instanceof Error) {
-          console.log("Unexpected error in checkAuth (Error instance):", {
-            name: err.name,
-            message: err.message,
-            stack: err.stack,
-          });
           setLoadingMessage(
             `Error occurred while checking session: ${err.message}`,
           );
         } else {
-          console.log("Unexpected error in checkAuth (non-Error):", err);
           setLoadingMessage("Error occurred while checking session (unknown)");
         }
       } finally {
@@ -89,7 +61,6 @@ export default function Index() {
       <View className="flex-1 items-center justify-center p-4">
         <Text className="mb-4 text-xl font-bold">{loadingMessage}</Text>
         <ActivityIndicator size="large" color="#0000ff" />
-        <ConsoleLogger />
       </View>
     </>
   );
