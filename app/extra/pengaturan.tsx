@@ -156,7 +156,7 @@ function Pengaturan() {
       // Prefill current Supabase config when dev panel is open
       // Lazy import to avoid circular deps
       (async () => {
-        const { getSupabaseConfig } = await import("~/utils/secureConfig");
+        const { getSupabaseConfig } = await import("../../utils/secureConfig");
         const cfg = await getSupabaseConfig();
         if (cfg) {
           setSbUrl(cfg.url);
@@ -254,9 +254,9 @@ function Pengaturan() {
   const handleSaveSupabaseConfig = useCallback(async () => {
     try {
       setIsSavingConfig(true);
-      const { setSupabaseConfig } = await import("~/utils/secureConfig");
+      const { setSupabaseConfig } = await import("../../utils/secureConfig");
       const { resetSupabaseClient, ensureSupabaseInitialized } = await import(
-        "~/utils/supabase"
+        "../../utils/supabase"
       );
       await setSupabaseConfig(sbUrl.trim(), sbAnon.trim());
       resetSupabaseClient();
