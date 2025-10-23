@@ -1111,7 +1111,7 @@ export default function Dashboard() {
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
           <Text variant="small" className="font-bold text-foreground">
-            v1.1.0-rc1
+            v1.1.0-rc1 | test update
           </Text>
         </View>
       </SafeAreaView>

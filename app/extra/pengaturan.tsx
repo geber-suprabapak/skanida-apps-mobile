@@ -33,6 +33,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react-native";
+import * as Updates from "expo-updates";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -58,6 +59,7 @@ function Pengaturan() {
   );
   const [copiedId, setCopiedId] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
   // Optimized navigation handlers with useCallback
@@ -201,6 +203,36 @@ function Pengaturan() {
     setTheme(newTheme);
     colorScheme.set(newTheme);
   }, [isDarkMode, setTheme]);
+
+  // Check update handler
+  const handleCheckUpdate = useCallback(async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        Alert.alert(
+          "Update Tersedia",
+          "Update baru tersedia. Unduh dan restart aplikasi?",
+          [
+            { text: "Batal", style: "cancel" },
+            {
+              text: "Update",
+              onPress: async () => {
+                await Updates.fetchUpdateAsync();
+                await Updates.reloadAsync();
+              },
+            },
+          ],
+        );
+      } else {
+        Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
+      }
+    } catch (error) {
+      Alert.alert("Error", `Gagal cek update: ${error}`);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  }, []);
 
   // Effect to sync theme state with store
   useEffect(() => {
@@ -455,6 +487,25 @@ function Pengaturan() {
                 </Text>
                 <Text variant="default">Version 1.1.0-rc1</Text>
               </View>
+
+              <TouchableOpacity
+                className="flex-row items-center p-3 rounded-lg bg-primary/10"
+                onPress={handleCheckUpdate}
+                disabled={isCheckingUpdate}
+                activeOpacity={0.7}
+              >
+                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
+                  <Icon as={Bell} className="size-4 text-primary" />
+                </View>
+                <View className="flex-1">
+                  <Text variant="default" className="font-medium">
+                    {isCheckingUpdate
+                      ? "Mengecek Update..."
+                      : "Cek Update Manual"}
+                  </Text>
+                  <Text variant="small">Periksa dan unduh update terbaru</Text>
+                </View>
+              </TouchableOpacity>
 
               <View className="pt-3 border-t border-border">
                 <Text variant="small">© 2025 Skanida Apps</Text>
