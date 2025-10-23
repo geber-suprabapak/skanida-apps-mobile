@@ -18,15 +18,28 @@ export default function Index() {
     const checkAuth = async () => {
       try {
         console.log("Starting auth check...");
-        // Memanggil Supabase untuk cek session
+
+        const sessionResponse = await supabase.auth.getSession();
+        console.log("Supabase getSession response:", {
+          sessionExists: !!sessionResponse.data.session,
+          userId: sessionResponse.data.session?.user?.id ?? null,
+          expiresAt: sessionResponse.data.session?.expires_at ?? null,
+          hasError: !!sessionResponse.error,
+          errorName: sessionResponse.error?.name ?? null,
+          errorMessage: sessionResponse.error?.message ?? null,
+        });
+
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession();
+        } = sessionResponse;
 
         if (error) {
-          console.log("Auth error:", error.message);
-          // Error handling without console.log
+          console.log("Auth error details:", {
+            name: error.name,
+            message: error.message,
+            status: (error as unknown as { status?: number })?.status ?? null,
+          });
           setLoadingMessage(`Error: ${error.message}`);
         }
 
@@ -40,9 +53,19 @@ export default function Index() {
           router.replace("/auth/AuthSelector");
         }
       } catch (err) {
-        console.log("Unexpected error in checkAuth:", err);
-        // Tangani error tak terduga
-        setLoadingMessage("Error occurred while checking session");
+        if (err instanceof Error) {
+          console.log("Unexpected error in checkAuth (Error instance):", {
+            name: err.name,
+            message: err.message,
+            stack: err.stack,
+          });
+          setLoadingMessage(
+            `Error occurred while checking session: ${err.message}`,
+          );
+        } else {
+          console.log("Unexpected error in checkAuth (non-Error):", err);
+          setLoadingMessage("Error occurred while checking session (unknown)");
+        }
       } finally {
         setIsLoading(false);
       }

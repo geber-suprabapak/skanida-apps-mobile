@@ -7,12 +7,25 @@ const ConsoleLogger: React.FC = () => {
 
   useEffect(() => {
     const originalLog = console.log;
+    const formatArg = (arg: unknown) => {
+      if (arg instanceof Error) {
+        const stack = arg.stack ? `\n${arg.stack}` : "";
+        return `${arg.name}: ${arg.message}${stack}`;
+      }
+
+      if (typeof arg === "object" && arg !== null) {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (error) {
+          return `[unserializable object: ${String(error)}]`;
+        }
+      }
+
+      return String(arg);
+    };
+
     console.log = (...args) => {
-      const message = args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
-        )
-        .join(" ");
+      const message = args.map((arg) => formatArg(arg)).join(" ");
       setLogs((prev) => [...prev, message]);
       originalLog(...args); // Tetap log ke console asli
     };
