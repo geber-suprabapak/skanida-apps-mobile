@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 
 import useAuthStore from "../store/authStore";
-import { supabase } from "../utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
+import { getSupabaseConfig } from "~/utils/secureConfig";
 import ConsoleLogger from "~/components/ConsoleLogger";
 
 export default function Index() {
@@ -18,6 +19,14 @@ export default function Index() {
     const checkAuth = async () => {
       try {
         console.log("Starting auth check...");
+        // Ensure Supabase is initialized with runtime config
+        const cfg = await getSupabaseConfig();
+        console.log("Supabase runtime config:", {
+          hasUrl: !!cfg?.url,
+          hasAnon: !!cfg?.anonKey,
+          source: cfg?.source ?? null,
+        });
+        await ensureSupabaseInitialized();
 
         const sessionResponse = await supabase.auth.getSession();
         console.log("Supabase getSession response:", {
