@@ -5,6 +5,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase } from "../utils/supabase";
+import ConsoleLogger from "~/components/ConsoleLogger";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -16,6 +17,7 @@ export default function Index() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log("Starting auth check...");
         // Memanggil Supabase untuk cek session
         const {
           data: { session },
@@ -23,18 +25,22 @@ export default function Index() {
         } = await supabase.auth.getSession();
 
         if (error) {
+          console.log("Auth error:", error.message);
           // Error handling without console.log
           setLoadingMessage(`Error: ${error.message}`);
         }
 
         if (session?.user) {
+          console.log("Session found for user:", session.user.id);
           setLoadingMessage("Session found");
           setUser(session.user);
           router.replace("/Dashboard");
         } else {
+          console.log("No session found, redirecting to auth");
           router.replace("/auth/AuthSelector");
         }
-      } catch {
+      } catch (err) {
+        console.log("Unexpected error in checkAuth:", err);
         // Tangani error tak terduga
         setLoadingMessage("Error occurred while checking session");
       } finally {
@@ -51,6 +57,7 @@ export default function Index() {
       <View className="flex-1 items-center justify-center p-4">
         <Text className="mb-4 text-xl font-bold">{loadingMessage}</Text>
         <ActivityIndicator size="large" color="#0000ff" />
+        <ConsoleLogger />
       </View>
     </>
   );
