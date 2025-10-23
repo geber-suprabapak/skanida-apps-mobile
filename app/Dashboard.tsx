@@ -44,6 +44,7 @@ import {
   WifiOff,
   Wifi,
 } from "lucide-react-native";
+import Constants from "expo-constants";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -1111,7 +1112,7 @@ export default function Dashboard() {
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
           <Text variant="small" className="font-bold text-foreground">
-            v1.1.0-rc
+            {Constants.expoConfig?.version}
           </Text>
         </View>
       </SafeAreaView>
