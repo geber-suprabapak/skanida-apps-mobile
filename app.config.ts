@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.1.0-rc1",
+  version: "1.1.0-rc",
   runtimeVersion: {
     policy: "appVersion",
   },

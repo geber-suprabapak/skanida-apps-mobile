@@ -588,7 +588,7 @@ function Pengaturan() {
                 <Text variant="small" className="font-medium">
                   Versi Aplikasi
                 </Text>
-                <Text variant="default">Version 1.1.0-rc1</Text>
+                <Text variant="default">Version 1.1.0-rc</Text>
               </View>
 
               <TouchableOpacity
