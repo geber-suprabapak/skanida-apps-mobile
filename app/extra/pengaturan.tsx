@@ -59,7 +59,6 @@ function Pengaturan() {
     initialProfileData.avatar,
   );
   const [copiedId, setCopiedId] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
@@ -97,7 +96,6 @@ function Pengaturan() {
     if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
-      setIsDataLoaded(true);
       return;
     }
 
@@ -136,11 +134,8 @@ function Pengaturan() {
         setProfileFullName(updatedName);
         setProfileAvatarUrl(updatedAvatar);
       }
-
-      setIsDataLoaded(true);
     } catch (err) {
       console.error("Pengaturan: Unexpected error fetching profile:", err);
-      setIsDataLoaded(true);
     }
   }, [user]);
 
@@ -151,7 +146,6 @@ function Pengaturan() {
     } else if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
-      setIsDataLoaded(true);
     }
   }, [user, isFocused, fetchProfileDataAndUpdateState]);
 

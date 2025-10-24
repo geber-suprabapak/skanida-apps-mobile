@@ -18,7 +18,7 @@ export default function Index() {
     const checkAuth = async () => {
       try {
         // Ensure Supabase is initialized with runtime config
-        const cfg = await getSupabaseConfig();
+        await getSupabaseConfig();
         await ensureSupabaseInitialized();
 
         const sessionResponse = await supabase.auth.getSession();

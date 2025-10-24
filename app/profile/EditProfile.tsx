@@ -27,7 +27,6 @@ import {
   Camera,
   Image as ImageIcon,
   Trash2,
-  X,
   Eye,
 } from "lucide-react-native";
 import { Card } from "~/components/ui/card";

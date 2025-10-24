@@ -141,7 +141,7 @@ export default function ConnectionChecker({
           showAlphaReleaseAlert();
           setIsInitialCheckDone(true);
         }
-      } catch (error) {
+      } catch {
         // If we can't check connection, assume offline and show alert
         setTimeout(() => {
           if (isMounted.current) showOfflineAlert();
