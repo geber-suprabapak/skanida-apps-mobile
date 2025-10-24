@@ -17,7 +17,12 @@ import {
   StyleSheet,
 } from "react-native";
 import { Text } from "~/components/ui/text";
-import Animated from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
@@ -61,14 +66,26 @@ type Coordinates = {
 type ExpoBlobInstance = InstanceType<typeof ExpoBlob>;
 
 // --- MEMOIZED COMPONENTS ---
-const ProgressBar = memo<{ percentage: number }>(({ percentage }) => (
-  <View className="w-full h-2 bg-gray-700 rounded-full">
-    <View
-      className="h-full bg-[#0066FF] rounded-full"
-      style={{ width: `${percentage}%` }}
-    />
-  </View>
-));
+const ProgressBar = memo<{ percentage: number }>(({ percentage }) => {
+  const animatedWidth = useSharedValue(0);
+
+  useEffect(() => {
+    animatedWidth.value = withTiming(percentage, { duration: 500 });
+  }, [percentage, animatedWidth]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: `${animatedWidth.value}%`,
+  }));
+
+  return (
+    <View className="w-full h-2 bg-gray-700 rounded-full">
+      <Animated.View
+        className="h-full bg-[#0066FF] rounded-full"
+        style={animatedStyle}
+      />
+    </View>
+  );
+});
 ProgressBar.displayName = "ProgressBar";
 
 const CaptureButton = memo<{
@@ -97,10 +114,13 @@ CaptureButton.displayName = "CaptureButton";
 const UploadOverlay = memo<{
   message: string;
   percentage: number;
-}>(({ message, percentage }) => (
+  spinnerStyle: any;
+}>(({ message, percentage, spinnerStyle }) => (
   <View className="absolute inset-0 bg-black/80 justify-center items-center px-8">
     <Animated.View className="items-center justify-center w-full">
-      <Icon as={Loader2} className="size-8 text-[#0066FF]" />
+      <Animated.View style={spinnerStyle}>
+        <Icon as={Loader2} className="size-8 text-[#0066FF]" />
+      </Animated.View>
       <Text variant="h2" className="text-white mt-4 mb-2">
         Menyimpan absensi...
       </Text>
@@ -234,6 +254,24 @@ const CameraAttendance = () => {
     message: "Menunggu proses...",
   });
   const [isUploading, setIsUploading] = useState(false);
+
+  const spinnerRotation = useSharedValue(0);
+
+  useEffect(() => {
+    if (isUploading) {
+      spinnerRotation.value = withRepeat(
+        withTiming(360, { duration: 1000 }),
+        -1,
+        false,
+      );
+    } else {
+      spinnerRotation.value = 0;
+    }
+  }, [isUploading, spinnerRotation]);
+
+  const spinnerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${spinnerRotation.value}deg` }],
+  }));
 
   // --- STORE & PARAMS ---
   const { user } = useAuthStore();
@@ -691,6 +729,7 @@ const CameraAttendance = () => {
         <UploadOverlay
           message={uploadProgress.message}
           percentage={uploadProgress.percentage}
+          spinnerStyle={spinnerAnimatedStyle}
         />
       )}
     </View>

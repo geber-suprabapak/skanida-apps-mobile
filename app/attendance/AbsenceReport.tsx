@@ -3,6 +3,12 @@ import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -45,7 +51,25 @@ export default function AbsenceReport() {
   const autoNavigateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
-  const COUNTDOWN_SECONDS = 2;
+  const COUNTDOWN_SECONDS = 0;
+
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    if (isLoading) {
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 1000 }),
+        -1,
+        false,
+      );
+    } else {
+      rotation.value = 0;
+    }
+  }, [isLoading, rotation]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
 
   const clearTimers = useCallback(() => {
     if (autoNavigateTimerRef.current) {
@@ -270,10 +294,19 @@ export default function AbsenceReport() {
         <Card className="w-full max-w-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 shadow-lg">
           <CardHeader className="items-center pb-4">
             <View className="p-4 rounded-full bg-gray-100 dark:bg-gray-800">
-              <Icon
-                as={statusMeta.icon}
-                className={`size-12 ${statusMeta.color}`}
-              />
+              {statusMeta.icon === Loader2 ? (
+                <Animated.View style={animatedStyle}>
+                  <Icon
+                    as={statusMeta.icon}
+                    className={`size-12 ${statusMeta.color}`}
+                  />
+                </Animated.View>
+              ) : (
+                <Icon
+                  as={statusMeta.icon}
+                  className={`size-12 ${statusMeta.color}`}
+                />
+              )}
             </View>
           </CardHeader>
 
