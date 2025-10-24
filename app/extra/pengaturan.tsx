@@ -24,12 +24,11 @@ import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { Card, CardContent, CardFooter } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
 import {
   ChevronLeft,
   User,
   Key,
-  Bell,
+  CircleFadingArrowUp,
   LogOut,
   ChevronRight,
   Moon,
@@ -63,10 +62,6 @@ function Pengaturan() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
-  const [showSupabaseConfig, setShowSupabaseConfig] = useState(false);
-  const [sbUrl, setSbUrl] = useState("");
-  const [sbAnon, setSbAnon] = useState("");
-  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   // Optimized navigation handlers with useCallback
   const navigateToEditProfile = useCallback(() => {
@@ -153,16 +148,6 @@ function Pengaturan() {
   useEffect(() => {
     if (isFocused) {
       fetchProfileDataAndUpdateState();
-      // Prefill current Supabase config when dev panel is open
-      // Lazy import to avoid circular deps
-      (async () => {
-        const { getSupabaseConfig } = await import("../../utils/secureConfig");
-        const cfg = await getSupabaseConfig();
-        if (cfg) {
-          setSbUrl(cfg.url);
-          setSbAnon(cfg.anonKey);
-        }
-      })();
     } else if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
@@ -249,28 +234,6 @@ function Pengaturan() {
       setIsCheckingUpdate(false);
     }
   }, []);
-
-  // Save Supabase config (DEV)
-  const handleSaveSupabaseConfig = useCallback(async () => {
-    try {
-      setIsSavingConfig(true);
-      const { setSupabaseConfig } = await import("../../utils/secureConfig");
-      const { resetSupabaseClient, ensureSupabaseInitialized } = await import(
-        "../../utils/supabase"
-      );
-      await setSupabaseConfig(sbUrl.trim(), sbAnon.trim());
-      resetSupabaseClient();
-      await ensureSupabaseInitialized();
-      Alert.alert("Berhasil", "Konfigurasi Supabase disimpan.");
-    } catch (e) {
-      Alert.alert(
-        "Gagal",
-        e instanceof Error ? e.message : "Gagal menyimpan konfigurasi.",
-      );
-    } finally {
-      setIsSavingConfig(false);
-    }
-  }, [sbUrl, sbAnon]);
 
   // Effect to sync theme state with store
   useEffect(() => {
@@ -450,7 +413,10 @@ function Pengaturan() {
                 activeOpacity={0.7}
               >
                 <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon as={Bell} className="size-4 text-primary" />
+                  <Icon
+                    as={CircleFadingArrowUp}
+                    className="size-4 text-primary"
+                  />
                 </View>
                 <View className="flex-1">
                   <Text variant="default" className="font-medium">
@@ -461,72 +427,6 @@ function Pengaturan() {
                   <Text variant="small">Periksa dan unduh update terbaru</Text>
                 </View>
               </TouchableOpacity>
-
-              {__DEV__ && (
-                <View className="pt-3 border-t border-border">
-                  <TouchableOpacity
-                    className="flex-row items-center p-3 rounded-lg bg-primary/10"
-                    onPress={() => setShowSupabaseConfig((v) => !v)}
-                    activeOpacity={0.7}
-                  >
-                    <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                      <Icon as={Key} className="size-4 text-primary" />
-                    </View>
-                    <View className="flex-1">
-                      <Text variant="default" className="font-medium">
-                        Konfigurasi Supabase (Dev)
-                      </Text>
-                      <Text variant="small">
-                        Set URL dan Anon Key secara lokal
-                      </Text>
-                    </View>
-                    <Icon
-                      as={ChevronRight}
-                      className="size-5 text-muted-foreground"
-                    />
-                  </TouchableOpacity>
-
-                  {showSupabaseConfig && (
-                    <View className="mt-3 space-y-3">
-                      <View>
-                        <Text variant="small" className="mb-1">
-                          Supabase URL
-                        </Text>
-                        <Input
-                          value={sbUrl}
-                          onChangeText={setSbUrl}
-                          placeholder="https://xxxxx.supabase.co"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                        />
-                      </View>
-                      <View>
-                        <Text variant="small" className="mb-1">
-                          Supabase Anon Key
-                        </Text>
-                        <Input
-                          value={sbAnon}
-                          onChangeText={setSbAnon}
-                          placeholder="eyJhbGciOi..."
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          secureTextEntry
-                        />
-                      </View>
-                      <Button
-                        onPress={handleSaveSupabaseConfig}
-                        disabled={isSavingConfig}
-                      >
-                        <Text variant="default" className="font-medium">
-                          {isSavingConfig
-                            ? "Menyimpan..."
-                            : "Simpan Konfigurasi"}
-                        </Text>
-                      </Button>
-                    </View>
-                  )}
-                </View>
-              )}
             </CardContent>
 
             <CardFooter>
