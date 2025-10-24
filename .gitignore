@@ -32,3 +32,5 @@ nativewind-env.d.ts
 # Certs
 certs/private-key.pem
 certs/public-key.pem
+
+.serena
