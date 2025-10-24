@@ -33,7 +33,7 @@ import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import {
   Clock,
-  Bell,
+  Bug,
   CheckCircle,
   AlertCircle,
   UserCheck,
@@ -137,7 +137,7 @@ export default function Dashboard() {
   // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successData, setSuccessData] = useState<{
-    attendanceType: "present" | "home";
+    attendanceType: "check_in" | "check_out";
     time: string;
     processingTime?: number;
   } | null>(null);
@@ -150,7 +150,7 @@ export default function Dashboard() {
       params.successTime
     ) {
       setSuccessData({
-        attendanceType: params.attendanceType as "present" | "home",
+        attendanceType: params.attendanceType as "check_in" | "check_out",
         time: params.successTime as string,
         processingTime: params.processingTime
           ? parseInt(params.processingTime as string)
@@ -930,7 +930,7 @@ export default function Dashboard() {
                 }}
                 className="p-2 rounded-full"
               >
-                <Icon as={Bell} className="size-5 text-foreground" />
+                <Icon as={Bug} className="size-5 text-foreground" />
               </TouchableOpacity>
             </View>
           </View>

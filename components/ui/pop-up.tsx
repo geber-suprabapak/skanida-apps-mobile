@@ -34,7 +34,7 @@ interface ConfettiPiece {
 interface AttendanceSuccessPopupProps {
   visible: boolean;
   onClose: () => void;
-  attendanceType: "present" | "home";
+  attendanceType: "check_in" | "check_out";
   studentName?: string;
   time?: string;
   processingTime?: number;
@@ -261,7 +261,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   }, [visible, showAnimation]);
 
   const getSuccessMessage = () => {
-    if (attendanceType === "present") {
+    if (attendanceType === "check_in") {
       return {
         title: "Berhasil absen masuk",
         defaultSubtitle:
