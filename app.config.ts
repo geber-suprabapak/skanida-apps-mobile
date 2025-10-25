@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     codeSigningCertificate: "./certs/certificate.pem",
     enabled: true,
     requestHeaders: {
-      "expo-channel-name": process.env.RELEASE_CHANNEL,
+      "expo-channel-name": process.env.RELEASE_CHANNEL || "production",
     },
   },
   plugins: [

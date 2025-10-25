@@ -43,11 +43,6 @@ function getSupabaseClientSync(): SupabaseClient {
   return supabaseInstance;
 }
 
-export function resetSupabaseClient() {
-  supabaseInstance = null;
-  initPromise = null;
-}
-
 // Proxy to keep existing usage, but requires ensureSupabaseInitialized() before use.
 export const supabase = new Proxy({} as SupabaseClient, {
   get: (_, prop) => {

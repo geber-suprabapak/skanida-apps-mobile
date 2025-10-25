@@ -91,36 +91,3 @@ export async function getSupabaseConfig(): Promise<SupabaseConfig | null> {
 
   return null;
 }
-
-export async function setSupabaseConfig(url: string, anonKey: string) {
-  // basic validation
-  if (!/^https?:\/\//.test(url)) throw new Error("Invalid Supabase URL");
-  if (typeof anonKey !== "string" || anonKey.length < 20)
-    throw new Error("Invalid Supabase anon key");
-
-  await Promise.all([
-    setInSecureStore(KEY_URL, url),
-    setInSecureStore(KEY_ANON, anonKey),
-    setInAsyncStorage(KEY_URL, url), // optional dual write for resilience
-    setInAsyncStorage(KEY_ANON, anonKey),
-  ]);
-}
-
-export async function clearSupabaseConfig() {
-  try {
-    const available = await SecureStore.isAvailableAsync();
-    const secureOps = available
-      ? [
-          SecureStore.deleteItemAsync(KEY_URL),
-          SecureStore.deleteItemAsync(KEY_ANON),
-        ]
-      : [];
-    await Promise.all([
-      ...secureOps,
-      AsyncStorage.removeItem(KEY_URL),
-      AsyncStorage.removeItem(KEY_ANON),
-    ]);
-  } catch {
-    // ignore
-  }
-}

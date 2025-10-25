@@ -47,11 +47,7 @@ export default function AbsenceReport() {
   const [status, setStatus] = useState<AttendanceActionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const autoNavigateTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
-  const COUNTDOWN_SECONDS = 0;
 
   const rotation = useSharedValue(0);
 
@@ -70,17 +66,6 @@ export default function AbsenceReport() {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
-
-  const clearTimers = useCallback(() => {
-    if (autoNavigateTimerRef.current) {
-      clearTimeout(autoNavigateTimerRef.current);
-      autoNavigateTimerRef.current = null;
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-  }, []);
 
   // Navigasi ke halaman kamera
   const navigateToCamera = useCallback(
@@ -142,11 +127,9 @@ export default function AbsenceReport() {
       return;
     }
 
-    clearTimers();
     setIsLoading(true);
     setErrorMessage(null);
     setStatus(null);
-    setCountdown(null);
 
     try {
       const location = await getCurrentLocation();
@@ -171,28 +154,14 @@ export default function AbsenceReport() {
       );
 
       if (isActionable) {
-        let countdownValue = COUNTDOWN_SECONDS;
-        setCountdown(countdownValue);
-
-        countdownIntervalRef.current = setInterval(() => {
-          countdownValue -= 1;
-          setCountdown(countdownValue > 0 ? countdownValue : 0);
-          if (countdownValue <= 0 && countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
-        }, 1000);
-
-        autoNavigateTimerRef.current = setTimeout(() => {
-          navigateToCamera(data, location.coords);
-        }, COUNTDOWN_SECONDS * 1000);
+        navigateToCamera(data, location.coords);
       }
     } catch (e: any) {
       setErrorMessage(e.message || "Terjadi kesalahan tidak diketahui.");
     } finally {
       setIsLoading(false);
     }
-  }, [user, clearTimers, getCurrentLocation, navigateToCamera]);
+  }, [user, getCurrentLocation, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {
@@ -214,13 +183,12 @@ export default function AbsenceReport() {
     return () => backHandler.remove();
   }, [router]);
 
-  // Cleanup timer on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      clearTimers();
     };
-  }, [clearTimers]);
+  }, []);
 
   const statusMeta = useMemo(() => {
     if (isLoading) {
@@ -267,7 +235,6 @@ export default function AbsenceReport() {
     !errorMessage && status?.actionable && status.details?.location_name,
   );
   const locationName = status?.details?.location_name;
-  const showCountdown = countdown !== null && countdown > 0;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950">
@@ -328,13 +295,6 @@ export default function AbsenceReport() {
                     {locationName}
                   </Text>
                 </View>
-              )}
-
-              {/* Countdown */}
-              {showCountdown && (
-                <Text className="text-sm text-center text-gray-500 dark:text-gray-400 pt-2">
-                  Mengarahkan ke kamera dalam {countdown} detik...
-                </Text>
               )}
             </View>
 

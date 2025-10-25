@@ -496,8 +496,11 @@ export default function PerizinanScreen() {
         if (info.exists && typeof info.size === "number") {
           return info.size;
         }
-      } catch {
-        // Silently fail if we can't resolve size via FileSystem
+      } catch (error: any) {
+        console.error("Error getting file info:", error);
+        throw new Error(
+          `Tidak dapat mengakses file gambar: ${error.message || "File tidak dapat dibaca"}. Silakan pilih gambar lain.`,
+        );
       }
 
       throw new Error(
@@ -714,6 +717,11 @@ export default function PerizinanScreen() {
       router.back();
     } catch (error: any) {
       const errorMessage = error.message || "Unknown error";
+
+      if (errorMessage.includes("Gagal membaca file gambar")) {
+        // Alert already shown in uploadImageToStorage
+        return;
+      }
 
       if (
         errorMessage.includes("network") ||
