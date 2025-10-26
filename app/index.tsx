@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 
 import useAuthStore from "../store/authStore";
-import { supabase } from "../utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
+import { getSupabaseConfig } from "~/utils/secureConfig";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -16,14 +17,18 @@ export default function Index() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Memanggil Supabase untuk cek session
+        // Ensure Supabase is initialized with runtime config
+        await getSupabaseConfig();
+        await ensureSupabaseInitialized();
+
+        const sessionResponse = await supabase.auth.getSession();
+
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession();
+        } = sessionResponse;
 
         if (error) {
-          // Error handling without console.log
           setLoadingMessage(`Error: ${error.message}`);
         }
 
@@ -34,9 +39,14 @@ export default function Index() {
         } else {
           router.replace("/auth/AuthSelector");
         }
-      } catch {
-        // Tangani error tak terduga
-        setLoadingMessage("Error occurred while checking session");
+      } catch (err) {
+        if (err instanceof Error) {
+          setLoadingMessage(
+            `Error occurred while checking session: ${err.message}`,
+          );
+        } else {
+          setLoadingMessage("Error occurred while checking session (unknown)");
+        }
       } finally {
         setIsLoading(false);
       }

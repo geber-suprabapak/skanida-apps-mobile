@@ -2,12 +2,11 @@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
   BackHandler,
   Alert,
   RefreshControl,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -25,22 +25,26 @@ import { Card } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
+import useTimeSyncStore from "~/store/timeSyncStore";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
 import { Icon } from "~/components/ui/icon";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 import {
   Clock,
-  Bell,
+  Bug,
   CheckCircle,
   AlertCircle,
   UserCheck,
   History,
   ClipboardPenLine,
   Settings,
+  UserRound,
+  WifiOff,
+  Wifi,
 } from "lucide-react-native";
-
-// Fallback profile image in case avatar_url is not available
-const fallbackProfileImage = require("../assets/muflih.jpg");
+import Constants from "expo-constants";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -57,15 +61,61 @@ interface AttendanceStatus {
   hasCheckedOut: boolean;
   checkInTime?: string;
   checkOutTime?: string;
+  checkInStatus?: "Hadir" | "Terlambat";
   totalWorkHours?: string;
   todayStatus: "present" | "absent" | "leave" | "pending";
 }
 
+// Define interface for RPC check_absensi_status result
+interface AbsensiCheckResult {
+  status_code:
+    | "VALID"
+    | "OUT_OF_RANGE"
+    | "NOT_SCHEDULED"
+    | "ALREADY_COMPLETED"
+    | "TIME_OUT"
+    | "FAILED_LOCATION";
+  required_action: "present" | "home" | "none";
+  location_name: string;
+  distance_m: number;
+  message: string;
+}
+
+// Define interface for validation status state
+interface ValidationStatus {
+  canCheckIn: boolean;
+  actionType: "present" | "home" | "none";
+  message: string;
+}
+
+interface AttendanceSchedule {
+  mulai_masuk: string | null;
+  selesai_masuk: string | null;
+  mulai_pulang: string | null;
+  selesai_pulang: string | null;
+  kompensasi_waktu?: number | null;
+}
+
+const DAY_KEY_MAP = [
+  "minggu",
+  "senin",
+  "selasa",
+  "rabu",
+  "kamis",
+  "jumat",
+  "sabtu",
+] as const;
+
+type DayKey = (typeof DAY_KEY_MAP)[number];
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
+  const syncStatus = useTimeSyncStore((state) => state.status);
+  const syncSource = useTimeSyncStore((state) => state.syncSource);
+  const driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
@@ -73,12 +123,21 @@ export default function Dashboard() {
     todayStatus: "pending",
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [attendanceSchedule, setAttendanceSchedule] =
+    useState<AttendanceSchedule | null>(null);
   const isFocused = useIsFocused(); // Add isFocused hook
+
+  // Validation status for live schedule checking
+  const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
+    canCheckIn: false,
+    actionType: "none",
+    message: "Memeriksa status jadwal...",
+  });
 
   // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successData, setSuccessData] = useState<{
-    attendanceType: "present" | "home";
+    attendanceType: "check_in" | "check_out";
     time: string;
     processingTime?: number;
   } | null>(null);
@@ -91,7 +150,7 @@ export default function Dashboard() {
       params.successTime
     ) {
       setSuccessData({
-        attendanceType: params.attendanceType as "present" | "home",
+        attendanceType: params.attendanceType as "check_in" | "check_out",
         time: params.successTime as string,
         processingTime: params.processingTime
           ? parseInt(params.processingTime as string)
@@ -144,10 +203,28 @@ export default function Dashboard() {
     showAlphaReleaseAlert();
   }, []);
 
+  // Sync time with server on mount and set up interval for updating time
   useEffect(() => {
-    const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
+    // Initial sync handled by _layout.tsx
+    // Update current time every second
+    // Date object automatically displays in device timezone (WIB)
+    const timerId = setInterval(() => {
+      setCurrentTime(timeSync.getSyncedTime());
+    }, 1000);
+
     return () => clearInterval(timerId);
   }, []);
+
+  // Re-sync when screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      timeSync.syncWithServer().then((success) => {
+        if (success) {
+          setCurrentTime(timeSync.getSyncedTime());
+        }
+      });
+    }
+  }, [isFocused]);
 
   // Fetch profile data from Supabase
   const fetchProfileData = useCallback(async () => {
@@ -192,7 +269,7 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = formatDateWIB(timeSync.getSyncedTime());
 
       // Fetch today's attendance
       const { data: todayAttendance } = await supabase
@@ -214,6 +291,7 @@ export default function Dashboard() {
       let hasCheckedOut = false;
       let checkInTime = "";
       let checkOutTime = "";
+      let checkInStatus: "Hadir" | "Terlambat" | undefined;
       let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
 
       // Check for leave requests first (they take priority)
@@ -231,18 +309,35 @@ export default function Dashboard() {
         todayAttendance &&
         todayAttendance.length > 0
       ) {
-        todayAttendance.forEach((record) => {
-          if (record.status === "Hadir" || record.status === "Datang") {
-            hasCheckedIn = true;
-            checkInTime = record.created_at;
-          } else if (record.status === "Pulang") {
-            hasCheckedOut = true;
-            checkOutTime = record.created_at;
-          }
-        });
+        const hasAlphaRecord = todayAttendance.some(
+          (record) => record.status === "Alpha",
+        );
 
-        if (hasCheckedIn) {
-          todayStatus = "present";
+        if (hasAlphaRecord) {
+          todayStatus = "absent";
+        } else {
+          const checkInRecord = todayAttendance.find(
+            (record) =>
+              record.status === "Hadir" || record.status === "Terlambat",
+          );
+          const checkOutRecord = todayAttendance.find(
+            (record) => record.status === "Pulang",
+          );
+
+          if (checkInRecord) {
+            hasCheckedIn = true;
+            checkInTime = checkInRecord.created_at;
+            checkInStatus = checkInRecord.status as "Hadir" | "Terlambat";
+          }
+
+          if (checkOutRecord) {
+            hasCheckedOut = true;
+            checkOutTime = checkOutRecord.created_at;
+          }
+
+          if (hasCheckedIn) {
+            todayStatus = "present";
+          }
         }
       }
 
@@ -265,6 +360,7 @@ export default function Dashboard() {
         hasCheckedOut,
         checkInTime,
         checkOutTime,
+        checkInStatus,
         totalWorkHours,
         todayStatus,
       });
@@ -272,6 +368,72 @@ export default function Dashboard() {
       console.error("Error fetching attendance data:", error);
     }
   }, [user]);
+
+  // Check live validation status using RPC
+  const checkLiveValidationStatus = useCallback(async () => {
+    if (!user?.id || attendanceStatus.hasCheckedOut) {
+      setValidationStatus({
+        canCheckIn: false,
+        actionType: "none",
+        message: attendanceStatus.hasCheckedOut
+          ? "Absensi hari ini sudah lengkap."
+          : "User tidak ditemukan",
+      });
+      return;
+    }
+
+    try {
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") {
+        status = (await Location.requestForegroundPermissionsAsync()).status;
+        if (status !== "granted") {
+          setValidationStatus({
+            canCheckIn: false,
+            actionType: "none",
+            message: "Izin lokasi ditolak.",
+          });
+          return;
+        }
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      if (!location) {
+        setValidationStatus({
+          canCheckIn: false,
+          actionType: "none",
+          message: "Gagal mendapatkan lokasi GPS.",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.rpc("check_absensi_status", {
+        p_user_id: user.id,
+        p_user_lat: location.coords.latitude,
+        p_user_lon: location.coords.longitude,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const result = data as AbsensiCheckResult;
+
+      setValidationStatus({
+        canCheckIn: result.status_code === "VALID",
+        actionType: result.required_action,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error during live validation:", error);
+      setValidationStatus({
+        canCheckIn: false,
+        actionType: "none",
+        message: "Gagal memeriksa status absensi.",
+      });
+    }
+  }, [user, attendanceStatus.hasCheckedOut]);
 
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
@@ -282,6 +444,22 @@ export default function Dashboard() {
     }
   }, [user, fetchProfileData, fetchAttendanceData]);
 
+  // Polling for live validation status every 15 seconds when screen is focused
+  useEffect(() => {
+    if (!isFocused || !user?.id) return;
+
+    // Initial check when screen becomes focused
+    checkLiveValidationStatus();
+
+    // Set up interval for polling every 15 seconds
+    const validationInterval = setInterval(() => {
+      checkLiveValidationStatus();
+    }, 15000); // 15 seconds
+
+    // Cleanup interval on unmount or when focus changes
+    return () => clearInterval(validationInterval);
+  }, [isFocused, user?.id, checkLiveValidationStatus]);
+
   // Handle success popup close
   const handleSuccessPopupClose = useCallback(() => {
     setShowSuccessPopup(false);
@@ -291,6 +469,51 @@ export default function Dashboard() {
       fetchAttendanceData();
     }
   }, [isFocused, fetchAttendanceData]);
+
+  const fetchAttendanceSchedule = useCallback(async (dayKey: DayKey) => {
+    try {
+      const { data, error } = await supabase
+        .from("jadwal_absensi")
+        .select(
+          "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
+        )
+        .eq("hari", dayKey)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code !== "PGRST116") {
+          console.error(
+            "Dashboard: Error fetching attendance schedule:",
+            error.message,
+          );
+        }
+        setAttendanceSchedule(null);
+        return;
+      }
+
+      if (data) {
+        setAttendanceSchedule(data as AttendanceSchedule);
+      } else {
+        setAttendanceSchedule(null);
+      }
+    } catch (scheduleError: any) {
+      console.error(
+        "Dashboard: Exception during attendance schedule fetch:",
+        scheduleError.message,
+      );
+      setAttendanceSchedule(null);
+    }
+  }, []);
+
+  const currentDayKey = useMemo<DayKey>(() => {
+    const dayKey = DAY_KEY_MAP[currentTime.getDay()];
+    return dayKey ?? "senin";
+  }, [currentTime]);
+
+  useEffect(() => {
+    fetchAttendanceSchedule(currentDayKey);
+  }, [currentDayKey, fetchAttendanceSchedule]);
 
   // Helper function to calculate work hours
   const calculateWorkHours = (checkIn: string, checkOut: string): string => {
@@ -309,17 +532,42 @@ export default function Dashboard() {
   // Refresh function
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfileData(), fetchAttendanceData()]);
+    await Promise.all([
+      fetchProfileData(),
+      fetchAttendanceData(),
+      checkLiveValidationStatus(), // Refresh validation status, location, and time
+      timeSync.forceSyncWithServer().then((success) => {
+        if (success) {
+          setCurrentTime(timeSync.getSyncedTime());
+        }
+      }),
+      fetchAttendanceSchedule(currentDayKey),
+    ]);
     setRefreshing(false);
-  }, [fetchProfileData, fetchAttendanceData]);
+  }, [
+    fetchProfileData,
+    fetchAttendanceData,
+    checkLiveValidationStatus,
+    fetchAttendanceSchedule,
+    currentDayKey,
+  ]);
 
   // Get user's display name prioritizing profile data, then falling back to metadata
   // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const displayName =
-    profileData?.full_name?.split(" ").slice(0, 2).join(" ") || "";
+  const rawName =
+    profileData?.full_name ??
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    "";
 
-  // Get user's avatar URL from profile data or from metadata
-  const avatarUrl = user?.user_metadata?.avatar_url;
+  const displayName = rawName
+    ? rawName.split(" ").slice(0, 2).join(" ")
+    : "Pengguna";
+
+  // Get user's avatar URL prioritizing profile data and falling back to metadata
+  const avatarUrl =
+    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
+  const hasCustomAvatar = Boolean(avatarUrl);
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -371,6 +619,13 @@ export default function Dashboard() {
   const getStatusBadge = () => {
     switch (attendanceStatus.todayStatus) {
       case "present":
+        if (attendanceStatus.checkInStatus === "Terlambat") {
+          return {
+            color: "bg-orange-500",
+            text: "Terlambat",
+            textColor: "text-white",
+          };
+        }
         return {
           color: "bg-green-500",
           text: "Hadir",
@@ -398,6 +653,167 @@ export default function Dashboard() {
   };
 
   const statusBadge = getStatusBadge();
+
+  const derivedActionType =
+    attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+      ? "home"
+      : validationStatus.actionType;
+
+  const normalizeTimeString = (
+    value: string | null | undefined,
+  ): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.length >= 5) {
+      const [hours, minutes] = trimmed.split(":");
+      if (typeof hours === "string" && typeof minutes === "string") {
+        return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+      }
+    }
+    return trimmed;
+  };
+
+  const getDateForToday = useCallback(
+    (time: string | null | undefined): Date | null => {
+      const normalized = normalizeTimeString(time);
+      if (!normalized) return null;
+
+      const [hours, minutes] = normalized
+        .split(":")
+        .map((part) => parseInt(part || "0", 10));
+
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return null;
+      }
+
+      const base = new Date(currentTime);
+      base.setHours(hours, minutes, 0, 0);
+      return base;
+    },
+    [currentTime],
+  );
+
+  const presentScheduleText = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = normalizeTimeString(attendanceSchedule.mulai_masuk);
+    if (!start) return null;
+
+    const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
+    const windowText = end ? `${start} - ${end}` : start;
+
+    let result = `Waktu presensi masuk: ${windowText}`;
+    if (attendanceSchedule.kompensasi_waktu) {
+      result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
+    } else {
+      result += ".";
+    }
+
+    return result;
+  }, [attendanceSchedule]);
+
+  const pulangScheduleText = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = normalizeTimeString(attendanceSchedule.mulai_pulang);
+    if (!start) return null;
+
+    const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
+    const windowText = end ? `${start} - ${end}` : start;
+
+    return `Waktu presensi pulang: ${windowText} WIB.`;
+  }, [attendanceSchedule]);
+
+  const presentScheduleWindow = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = getDateForToday(attendanceSchedule.mulai_masuk);
+    if (!start) return null;
+
+    const end = getDateForToday(attendanceSchedule.selesai_masuk);
+
+    return { start, end } as const;
+  }, [attendanceSchedule, getDateForToday]);
+
+  const pulangScheduleWindow = useMemo(() => {
+    if (!attendanceSchedule) return null;
+
+    const start = getDateForToday(attendanceSchedule.mulai_pulang);
+    if (!start) return null;
+
+    const end = getDateForToday(attendanceSchedule.selesai_pulang);
+
+    return { start, end } as const;
+  }, [attendanceSchedule, getDateForToday]);
+
+  const isWithinPresentWindow = useMemo(() => {
+    if (!presentScheduleWindow) return true;
+
+    if (currentTime < presentScheduleWindow.start) {
+      return false;
+    }
+
+    if (presentScheduleWindow.end && currentTime > presentScheduleWindow.end) {
+      return false;
+    }
+
+    return true;
+  }, [currentTime, presentScheduleWindow]);
+
+  const isWithinPulangWindow = useMemo(() => {
+    if (!pulangScheduleWindow) return true;
+
+    if (currentTime < pulangScheduleWindow.start) {
+      return false;
+    }
+
+    if (pulangScheduleWindow.end && currentTime > pulangScheduleWindow.end) {
+      return false;
+    }
+
+    return true;
+  }, [currentTime, pulangScheduleWindow]);
+
+  const primaryActionMessage = useMemo(() => {
+    if (derivedActionType === "home") {
+      if (pulangScheduleText) {
+        return pulangScheduleText;
+      }
+
+      return validationStatus.message;
+    }
+
+    if (derivedActionType === "present") {
+      if (presentScheduleText) {
+        return presentScheduleText;
+      }
+
+      return validationStatus.message;
+    }
+
+    return validationStatus.message;
+  }, [
+    derivedActionType,
+    presentScheduleText,
+    pulangScheduleText,
+    validationStatus.message,
+  ]);
+
+  const scheduleAllowsAction = useMemo(() => {
+    if (derivedActionType === "home") {
+      return isWithinPulangWindow;
+    }
+
+    if (derivedActionType === "present") {
+      return isWithinPresentWindow;
+    }
+
+    return true;
+  }, [derivedActionType, isWithinPulangWindow, isWithinPresentWindow]);
+
+  const isPrimaryActionDisabled =
+    refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
 
   return (
     <>
@@ -427,15 +843,23 @@ export default function Dashboard() {
                 activeOpacity={0.85}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Avatar
-                  size="md"
-                  fallback={displayName.charAt(0).toUpperCase() || "?"}
-                  className="mr-3"
-                  source={
-                    avatarUrl ||
-                    Image.resolveAssetSource(fallbackProfileImage).uri
-                  }
-                />
+                {hasCustomAvatar ? (
+                  <Avatar
+                    size="md"
+                    fallback={displayName.charAt(0).toUpperCase() || "?"}
+                    className="mr-3"
+                    source={avatarUrl ?? undefined}
+                  />
+                ) : (
+                  <View className="mr-3">
+                    <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
+                      <Icon
+                        as={UserRound}
+                        className="size-6 text-blue-500 dark:text-blue-400"
+                      />
+                    </View>
+                  </View>
+                )}
                 <View className="flex-1">
                   <Text variant="large" className="text-foreground">
                     {displayName}
@@ -449,15 +873,38 @@ export default function Dashboard() {
               {/* Waktu Sekarang - In header row */}
               <View className="flex-row items-center mr-3">
                 <View
-                  className={`px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800`}
+                  className={`px-3 py-2 rounded-lg ${
+                    syncStatus === "synced"
+                      ? "bg-gray-200 dark:bg-gray-800"
+                      : syncStatus === "syncing"
+                        ? "bg-blue-100 dark:bg-blue-900/30"
+                        : "bg-yellow-100 dark:bg-yellow-900/30"
+                  }`}
                 >
                   <View className="flex-row items-center">
-                    <Icon as={Clock} className="size-4 text-foreground" />
+                    {syncStatus === "synced" ? (
+                      <Icon as={Wifi} className="size-4 text-green-600" />
+                    ) : syncStatus === "syncing" ? (
+                      <Icon as={Clock} className="size-4 text-blue-600" />
+                    ) : (
+                      <Icon as={WifiOff} className="size-4 text-yellow-700" />
+                    )}
                     <Text
                       variant="small"
-                      className="ml-1 font-medium text-foreground"
+                      className={`ml-1 font-medium ${
+                        syncStatus === "synced"
+                          ? "text-foreground"
+                          : syncStatus === "syncing"
+                            ? "text-blue-700 dark:text-blue-500"
+                            : "text-yellow-700 dark:text-yellow-500"
+                      }`}
                     >
-                      Waktu Sekarang
+                      Waktu{" "}
+                      {driftDetected && (
+                        <Text variant="small" className="text-red-600">
+                          (drift)
+                        </Text>
+                      )}
                     </Text>
                   </View>
                   <Text
@@ -466,6 +913,14 @@ export default function Dashboard() {
                   >
                     {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
+                  {syncSource !== "local" && (
+                    <Text
+                      variant="small"
+                      className="text-xs text-center text-muted-foreground"
+                    >
+                      {syncSource === "server" ? "Server" : "NTP"}
+                    </Text>
+                  )}
                 </View>
               </View>
 
@@ -475,7 +930,7 @@ export default function Dashboard() {
                 }}
                 className="p-2 rounded-full"
               >
-                <Icon as={Bell} className="size-5 text-foreground" />
+                <Icon as={Bug} className="size-5 text-foreground" />
               </TouchableOpacity>
             </View>
           </View>
@@ -507,13 +962,13 @@ export default function Dashboard() {
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
                     <Text variant="default" className="ml-2 text-foreground">
-                      Absen Masuk
+                      Presensi Masuk
                     </Text>
                   </View>
                   <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum absen"}
+                      : "Belum presensi"}
                   </Text>
                 </View>
 
@@ -529,13 +984,13 @@ export default function Dashboard() {
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
                     <Text variant="default" className="ml-2 text-foreground">
-                      Absen Pulang
+                      Presensi Pulang
                     </Text>
                   </View>
                   <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum absen"}
+                      : "Belum presensi"}
                   </Text>
                 </View>
 
@@ -563,7 +1018,7 @@ export default function Dashboard() {
           {/* --- Quick Actions (Moved up from Statistics location) --- */}
           <View className="px-6 mb-6">
             <Text variant="h3" className="mb-4 text-foreground">
-              Aksi Cepat
+              Halo, {displayName || "User"}
             </Text>
 
             {/* Large Square Primary Action - Attendance (Centered) */}
@@ -572,29 +1027,26 @@ export default function Dashboard() {
                 onPress={navigateToCheckIn}
                 className="w-48"
                 activeOpacity={0.8}
+                disabled={isPrimaryActionDisabled}
               >
-                <Card className="aspect-square bg-blue-600 dark:bg-blue-700">
+                <Card
+                  className={`aspect-square ${
+                    isPrimaryActionDisabled
+                      ? "bg-gray-400 dark:bg-gray-600"
+                      : "bg-blue-600 dark:bg-blue-700"
+                  }`}
+                >
                   <View className="flex-1 items-center justify-center p-4">
                     <Icon as={UserCheck} className="size-8 text-white" />
                     <Text
-                      variant="large"
-                      className="text-white font-semibold mt-2 text-center"
-                    >
-                      {!attendanceStatus.hasCheckedIn
-                        ? "Absen Masuk"
-                        : !attendanceStatus.hasCheckedOut
-                          ? "Absen Pulang"
-                          : "Lihat Absensi"}
-                    </Text>
-                    <Text
                       variant="small"
-                      className="text-blue-100 text-center mt-1"
+                      className={`mt-3 px-3 text-center text-xs leading-snug ${
+                        isPrimaryActionDisabled
+                          ? "text-gray-200 dark:text-gray-300"
+                          : "text-white/90"
+                      }`}
                     >
-                      {!attendanceStatus.hasCheckedIn
-                        ? "Mulai hari sekolah"
-                        : !attendanceStatus.hasCheckedOut
-                          ? "Selesaikan hari"
-                          : "Absensi selesai"}
+                      {primaryActionMessage}
                     </Text>
                   </View>
                 </Card>
@@ -660,7 +1112,7 @@ export default function Dashboard() {
         {/* --- Footer Section --- */}
         <View className="items-center px-6 py-3 border-t border-border bg-background">
           <Text variant="small" className="font-bold text-foreground">
-            v1.8.1-internaldev | Branch: develop
+            {Constants.expoConfig?.version}
           </Text>
         </View>
       </SafeAreaView>

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { timeSync } from "./timeSync";
 
 interface CacheItem<T> {
   data: T;
@@ -197,7 +198,7 @@ export class AttendanceCache {
   // Add method to force refresh current month
   async forceRefreshCurrentMonth(userId: string): Promise<void> {
     try {
-      const now = new Date();
+      const now = timeSync.getSyncedTime();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
 

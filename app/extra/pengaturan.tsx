@@ -15,24 +15,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { colorScheme } from "nativewind";
+import Constants from "expo-constants";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { Card } from "~/components/ui/card";
+import { Card, CardContent, CardFooter } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
   User,
   Key,
-  Bell,
+  CircleFadingArrowUp,
   LogOut,
   ChevronRight,
   Moon,
   Sun,
 } from "lucide-react-native";
+import * as Updates from "expo-updates";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -57,7 +59,7 @@ function Pengaturan() {
     initialProfileData.avatar,
   );
   const [copiedId, setCopiedId] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
   // Optimized navigation handlers with useCallback
@@ -94,7 +96,6 @@ function Pengaturan() {
     if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
-      setIsDataLoaded(true);
       return;
     }
 
@@ -133,11 +134,8 @@ function Pengaturan() {
         setProfileFullName(updatedName);
         setProfileAvatarUrl(updatedAvatar);
       }
-
-      setIsDataLoaded(true);
     } catch (err) {
       console.error("Pengaturan: Unexpected error fetching profile:", err);
-      setIsDataLoaded(true);
     }
   }, [user]);
 
@@ -148,7 +146,6 @@ function Pengaturan() {
     } else if (!user) {
       setProfileFullName("Pengguna Skanida");
       setProfileAvatarUrl(null);
-      setIsDataLoaded(true);
     }
   }, [user, isFocused, fetchProfileDataAndUpdateState]);
 
@@ -190,7 +187,7 @@ function Pengaturan() {
     if (user?.id) {
       Clipboard.setString(user.id);
       setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000); // Reset after 2 seconds
+      setTimeout(() => setCopiedId(false), 2000);
     }
   }, [user?.id]);
 
@@ -201,6 +198,36 @@ function Pengaturan() {
     setTheme(newTheme);
     colorScheme.set(newTheme);
   }, [isDarkMode, setTheme]);
+
+  // Check update handler
+  const handleCheckUpdate = useCallback(async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        Alert.alert(
+          "Update Tersedia",
+          "Update baru tersedia. Unduh dan restart aplikasi?",
+          [
+            { text: "Batal", style: "cancel" },
+            {
+              text: "Update",
+              onPress: async () => {
+                await Updates.fetchUpdateAsync();
+                await Updates.reloadAsync();
+              },
+            },
+          ],
+        );
+      } else {
+        Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
+      }
+    } catch (error) {
+      Alert.alert("Error", `Gagal cek update: ${error}`);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  }, []);
 
   // Effect to sync theme state with store
   useEffect(() => {
@@ -233,10 +260,6 @@ function Pengaturan() {
         {/* Profile Section */}
         <View className="px-6 pt-4 pb-3">
           <Card className="p-4 bg-card border-border">
-            <Text variant="large" className="mb-3">
-              Profil Pengguna
-            </Text>
-
             {/* Profile Header */}
             <View className="flex-row items-center mb-4">
               {profileAvatarUrl ? (
@@ -302,14 +325,13 @@ function Pengaturan() {
           </Card>
         </View>
 
-        {/* Account Settings Section */}
+        {/* Settings Section */}
         <View className="px-6 mb-3">
-          <Card className="p-4 bg-card border-border">
-            <Text variant="h4" className="mb-3 text-foreground">
-              Pengaturan Akun
-            </Text>
-
-            <View className="space-y-0">
+          <Card>
+            <CardContent className="pt-4">
+              <Text variant="h4" className="mb-3 text-foreground">
+                Pengaturan Akun
+              </Text>
               <TouchableOpacity
                 className="flex-row items-center p-3 rounded-t-lg border-b border-border"
                 onPress={navigateToEditProfile}
@@ -331,7 +353,7 @@ function Pengaturan() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="flex-row items-center p-3 rounded-b-lg"
+                className="flex-row items-center p-3 border-b border-border"
                 onPress={navigateToChangePassword}
                 activeOpacity={0.7}
               >
@@ -349,21 +371,10 @@ function Pengaturan() {
                   className="size-5 text-muted-foreground"
                 />
               </TouchableOpacity>
-            </View>
-          </Card>
-        </View>
 
-        {/* Preferences Section */}
-        <View className="px-6 mb-3">
-          <Card className="p-4 bg-card border-border">
-            <Text variant="h4" className="mb-3 text-foreground">
-              Lain-Lain
-            </Text>
-
-            <View className="space-y-0">
               {/* Dark Mode Toggle */}
               <TouchableOpacity
-                className="flex-row items-center p-3 rounded-lg border-b border-border"
+                className="flex-row items-center p-3 border-b border-border"
                 activeOpacity={0.7}
               >
                 <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
@@ -388,79 +399,81 @@ function Pengaturan() {
                 />
               </TouchableOpacity>
 
-              {/* Error Testing Button */}
+              {/* Check Update Manual Button */}
               <TouchableOpacity
-                className="flex-row items-center p-3 rounded-lg"
-                onPress={() => {
-                  Alert.alert(
-                    "Test Error",
-                    "Mengirim error ke Sentry untuk testing",
-                  );
-                  throw new Error("Hello, again, Sentry!");
-                }}
+                className="flex-row items-center p-3 rounded-b-lg"
+                onPress={handleCheckUpdate}
+                disabled={isCheckingUpdate}
                 activeOpacity={0.7}
               >
                 <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon as={Bell} className="size-4 text-primary" />
+                  <Icon
+                    as={CircleFadingArrowUp}
+                    className="size-4 text-primary"
+                  />
                 </View>
                 <View className="flex-1">
                   <Text variant="default" className="font-medium">
-                    Test Error Reporting
+                    {isCheckingUpdate
+                      ? "Mengecek Update..."
+                      : "Cek Update Manual"}
                   </Text>
-                  <Text variant="small">
-                    Kirim error ke Sentry untuk testing
+                  <Text variant="small">Periksa dan unduh update terbaru</Text>
+                </View>
+              </TouchableOpacity>
+            </CardContent>
+
+            <CardFooter>
+              <Button
+                size="default"
+                variant="destructive"
+                onPress={handleLogout}
+                className="w-full"
+              >
+                <View className="flex-row items-center">
+                  <Icon
+                    as={LogOut}
+                    className="size-5 mr-2 text-destructive-foreground"
+                  />
+                  <Text variant="default" className="font-medium">
+                    Keluar dari Akun
                   </Text>
                 </View>
-                <Icon
-                  as={ChevronRight}
-                  className="size-5 text-muted-foreground"
-                />
-              </TouchableOpacity>
-            </View>
-          </Card>
-        </View>
-
-        {/* Logout Section */}
-        <View className="px-6 mb-3">
-          <Card className="p-4 bg-card border-border">
-            <Text variant="h4" className="mb-3 text-foreground">
-              Akun
-            </Text>
-
-            <Button size="default" variant="destructive" onPress={handleLogout}>
-              <View className="flex-row items-center">
-                <Icon
-                  as={LogOut}
-                  className="size-5 mr-2 text-destructive-foreground"
-                />
-                <Text variant="default" className="font-medium">
-                  Keluar dari Akun
-                </Text>
-              </View>
-            </Button>
+              </Button>
+            </CardFooter>
           </Card>
         </View>
 
         {/* App Info Section */}
         <View className="px-6">
           <Card className="p-4 bg-card border-border">
-            <Text variant="large" className="mb-3">
-              Informasi Aplikasi
-            </Text>
+            <CardContent className="space-y-4">
+              <View className="flex-row items-center p-3">
+                <View className="flex-1">
+                  <Text variant="small" className="font-medium">
+                    Versi Aplikasi
+                  </Text>
+                  <Text variant="default" className="font-semibold">
+                    {Constants.expoConfig?.version}
+                  </Text>
+                </View>
+              </View>
 
-            <View className="space-y-3">
-              <View>
-                <Text variant="small" className="font-medium">
-                  Versi Aplikasi
+              <View className="pt-2 border-t border-border">
+                <Text
+                  variant="small"
+                  className="text-center text-muted-foreground"
+                >
+                  © 2025 Skanida Apps
                 </Text>
-                <Text variant="default">Version 1.8.1-internaldev</Text>
+                <Text
+                  variant="small"
+                  className="text-center text-muted-foreground mt-1"
+                >
+                  Semua hak dilindungi undang-undang
+                </Text>
               </View>
-
-              <View className="pt-3 border-t border-border">
-                <Text variant="small">© 2025 Skanida Apps</Text>
-                <Text variant="small">Semua hak dilindungi undang-undang</Text>
-              </View>
-            </View>
+            </CardContent>
           </Card>
         </View>
       </ScrollView>

@@ -2,6 +2,8 @@ import * as React from "react";
 import { Image, View, Text } from "react-native";
 
 import { cn } from "~/lib/utils";
+import { Icon } from "~/components/ui/icon";
+import { UserRound } from "lucide-react-native";
 
 interface AvatarProps {
   className?: string;
@@ -17,6 +19,23 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
       md: "h-10 w-10",
       lg: "h-48 w-48",
       xl: "h-64 w-64",
+    };
+
+    const iconSizeClasses = {
+      sm: "size-4",
+      md: "size-5",
+      lg: "size-12",
+      xl: "size-16",
+    } as const;
+
+    const fallbackTextClasses: Record<
+      NonNullable<AvatarProps["size"]>,
+      string
+    > = {
+      sm: "text-xs",
+      md: "text-sm",
+      lg: "text-3xl",
+      xl: "text-5xl",
     };
 
     return (
@@ -36,11 +55,24 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
           />
         ) : (
           <View className="flex h-full w-full items-center justify-center bg-muted">
-            <Text
-              className={`font-medium text-muted-foreground ${size === "lg" || size === "xl" ? "text-3xl" : "text-sm"}`}
-            >
-              {fallback || "?"}
-            </Text>
+            {fallback ? (
+              <Text
+                className={cn(
+                  "font-medium text-muted-foreground",
+                  fallbackTextClasses[size],
+                )}
+              >
+                {fallback}
+              </Text>
+            ) : (
+              <Icon
+                as={UserRound}
+                className={cn(
+                  "text-muted-foreground/80",
+                  iconSizeClasses[size],
+                )}
+              />
+            )}
           </View>
         )}
       </View>

@@ -45,23 +45,18 @@ export default function ConnectionChecker({
 
   const toggleForceOffline = () => {
     if (__DEV__) {
-      console.log("Toggling force offline");
       setForceOffline((prev) => !prev);
     }
   };
 
   useEffect(() => {
-    console.log("🔍 ConnectionChecker mounted");
-    console.log("🔍 ConnectionChecker starting...");
     isMounted.current = true;
 
     const showOfflineAlert = () => {
       if (!isMounted.current || isShowingAlert.current) {
-        console.log("⚠️ Alert skipped - unmounted or already showing");
         return;
       }
 
-      console.log("🚨 Showing offline alert - No internet connection");
       isShowingAlert.current = true;
 
       Alert.alert(
@@ -71,15 +66,9 @@ export default function ConnectionChecker({
           {
             text: "Coba Lagi",
             onPress: () => {
-              console.log("🔄 User clicked 'Coba Lagi'");
               isShowingAlert.current = false;
               // Check connection again after user taps "Coba Lagi"
               NetInfo.fetch().then((state) => {
-                console.log("🔍 Rechecking connection:", {
-                  isConnected: state.isConnected,
-                  isInternetReachable: state.isInternetReachable,
-                  type: state.type,
-                });
                 const isConnected =
                   state.isConnected === true &&
                   (state.isInternetReachable === true ||
@@ -87,12 +76,10 @@ export default function ConnectionChecker({
                   !forceOffline;
                 if (!isConnected) {
                   // Still offline, show alert again immediately
-                  console.log("❌ Still offline, showing alert again");
                   setTimeout(() => {
                     if (isMounted.current) showOfflineAlert();
                   }, 300);
                 } else {
-                  console.log("✅ Connection restored!");
                   // If connection is restored, show the alpha alert
                   showAlphaReleaseAlert();
                   setIsInitialCheckDone(true);
@@ -126,14 +113,7 @@ export default function ConnectionChecker({
     // Initial connection check with multiple attempts
     const checkInitialConnection = async () => {
       try {
-        console.log("🔍 Performing initial connection check...");
         const state = await NetInfo.fetch();
-        console.log("🔍 Initial connection result:", {
-          isConnected: state.isConnected,
-          isInternetReachable: state.isInternetReachable,
-          type: state.type,
-          details: state.details,
-        });
 
         const isConnected =
           state.isConnected === true &&
@@ -151,21 +131,17 @@ export default function ConnectionChecker({
 
         // Show alert if offline on initial load
         if (!isConnected) {
-          console.log("🚨 No connection detected on initial load");
           // Show alert immediately on app start if no internet
           setTimeout(() => {
             if (isMounted.current) {
-              console.log("🚨 About to show initial offline alert");
               showOfflineAlert();
             }
           }, 1000); // Reduced delay for faster response
         } else {
-          console.log("✅ Connection available on initial load");
           showAlphaReleaseAlert();
           setIsInitialCheckDone(true);
         }
-      } catch (error) {
-        console.error("❌ Error checking initial connection:", error);
+      } catch {
         // If we can't check connection, assume offline and show alert
         setTimeout(() => {
           if (isMounted.current) showOfflineAlert();
@@ -177,53 +153,28 @@ export default function ConnectionChecker({
 
     // Subscribe to network state updates
     const unsubscribe = NetInfo.addEventListener((state) => {
-      console.log("🔍 Network state changed:", {
-        isConnected: state.isConnected,
-        isInternetReachable: state.isInternetReachable,
-        type: state.type,
-        details: state.details,
-      });
-
-      const isConnected =
+      // Compute connection status
+      const isConnectedComputed =
         state.isConnected === true &&
         (state.isInternetReachable === true ||
           state.isInternetReachable === null) &&
         !forceOffline;
       const connectionType = state.type || "unknown";
 
-      console.log("🔍 Computed connection status:", {
-        isConnected,
-        connectionType,
-        rawIsConnected: state.isConnected,
-        rawIsInternetReachable: state.isInternetReachable,
-        networkType: state.type,
-        isWifi: state.type === "wifi",
-        isCellular: state.type === "cellular",
-        isEthernet: state.type === "ethernet",
-        isUnknown: state.type === "unknown",
-      });
-
       // Update connection state
       setConnectionState({
-        isConnected: !!state.isConnected && !forceOffline,
+        isConnected: isConnectedComputed,
         isInternetReachable: !!state.isInternetReachable,
         connectionType,
       });
 
-      // Check connection and show alert if offline
-      if (!isConnected) {
-        console.log("🚨 Connection lost, showing alert");
-        console.log("🚨 Alert conditions check:", {
-          isMounted: isMounted.current,
-          isShowingAlert: isShowingAlert.current,
-          willShowAlert: isMounted.current && !isShowingAlert.current,
-        });
+      // Handle offline/online transitions
+      if (!isConnectedComputed) {
         if (isMounted.current && !isShowingAlert.current) {
           showOfflineAlert();
         }
       } else {
-        console.log("✅ Connection restored");
-        // Connection restored, reset alert flag
+        // Reset alert flag and show alpha release if needed
         isShowingAlert.current = false;
         if (isMounted.current && !hasShownAlphaAlert.current) {
           showAlphaReleaseAlert();
@@ -236,7 +187,6 @@ export default function ConnectionChecker({
 
     // Cleanup subscription on unmount
     return () => {
-      console.log("🔍 ConnectionChecker unmounting");
       isMounted.current = false;
       isShowingAlert.current = false;
       unsubscribe();
