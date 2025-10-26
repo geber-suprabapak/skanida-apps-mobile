@@ -703,7 +703,7 @@ export default function Dashboard() {
     const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
     const windowText = end ? `${start} - ${end}` : start;
 
-    let result = `Waktu absen masuk: ${windowText}`;
+    let result = `Waktu presensi masuk: ${windowText}`;
     if (attendanceSchedule.kompensasi_waktu) {
       result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
     } else {
@@ -722,7 +722,7 @@ export default function Dashboard() {
     const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
     const windowText = end ? `${start} - ${end}` : start;
 
-    return `Waktu absen pulang: ${windowText} WIB.`;
+    return `Waktu presensi pulang: ${windowText} WIB.`;
   }, [attendanceSchedule]);
 
   const presentScheduleWindow = useMemo(() => {
@@ -962,13 +962,13 @@ export default function Dashboard() {
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
                     <Text variant="default" className="ml-2 text-foreground">
-                      Absen Masuk
+                      Presensi Masuk
                     </Text>
                   </View>
                   <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum absen"}
+                      : "Belum presensi"}
                   </Text>
                 </View>
 
@@ -984,13 +984,13 @@ export default function Dashboard() {
                       <Icon as={AlertCircle} className="size-5 text-red-600" />
                     )}
                     <Text variant="default" className="ml-2 text-foreground">
-                      Absen Pulang
+                      Presensi Pulang
                     </Text>
                   </View>
                   <Text variant="muted" className="text-muted-foreground">
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum absen"}
+                      : "Belum presensi"}
                   </Text>
                 </View>
 

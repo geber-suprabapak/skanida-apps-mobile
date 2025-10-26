@@ -891,7 +891,7 @@ BEGIN
             v_result.required_action := 'present';
             v_result.location_name := v_nearest_location.name;
             v_result.distance_m := v_distance_m;
-            v_result.message := 'Waktu absen masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk_with_kompensasi::TEXT || '.';
+            v_result.message := 'Waktu presensi masuk: ' || v_mulai_masuk::TEXT || ' - ' || v_selesai_masuk_with_kompensasi::TEXT || '.';
         END IF;
         
     ELSIF v_last_absence.status IN ('Hadir', 'Terlambat') THEN
@@ -908,7 +908,7 @@ BEGIN
             v_result.required_action := 'home';
             v_result.location_name := v_nearest_location.name;
             v_result.distance_m := v_distance_m;
-            v_result.message := 'Waktu absen pulang: ' || v_mulai_pulang::TEXT || ' - ' || v_selesai_pulang::TEXT;
+            v_result.message := 'Waktu presensi pulang: ' || v_mulai_pulang::TEXT || ' - ' || v_selesai_pulang::TEXT;
         END IF;
         
     ELSIF v_last_absence.status = 'Pulang' THEN
@@ -1043,9 +1043,9 @@ BEGIN
   ELSIF v_has_checked_in THEN
     -- Sudah ada 'Hadir'/'Terlambat', tapi belum 'Pulang'. Cek jam pulang.
     IF v_current_time_wib BETWEEN v_schedule.mulai_pulang::time AND v_schedule.selesai_pulang::time THEN
-      SELECT TRUE, 'check_out', 'Silakan lakukan absen pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+      SELECT TRUE, 'check_out', 'Silakan lakukan presensi pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
     ELSE
-      SELECT FALSE, 'none', 'Belum memasuki waktu absen pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
+      SELECT FALSE, 'none', 'Belum memasuki waktu presensi pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
     END IF;
   ELSE
     -- Belum ada catatan apa pun. Cek jam masuk.
@@ -1056,7 +1056,7 @@ BEGIN
         SELECT TRUE, 'check_in', 'Anda terlambat. Silakan lanjutkan absensi.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Terlambat') INTO v_response;
       ELSE
         -- Tepat waktu
-        SELECT TRUE, 'check_in', 'Tepat waktu! Silakan absen masuk.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Hadir') INTO v_response;
+        SELECT TRUE, 'check_in', 'Tepat waktu! Silakan presensi masuk.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Hadir') INTO v_response;
       END IF;
     ELSE
       SELECT FALSE, 'none', 'Waktu untuk absen masuk sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
@@ -1126,7 +1126,7 @@ BEGIN
     VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
     RETURNING id INTO v_new_attendance_id;
 
-    v_result := jsonb_build_object('success', true, 'message', 'Absen masuk berhasil direkam.', 'attendance_id', v_new_attendance_id);
+    v_result := jsonb_build_object('success', true, 'message', 'Presensi masuk berhasil direkam.', 'attendance_id', v_new_attendance_id);
         
   ELSIF p_action_type = 'check_out' THEN
     -- ======================================================
@@ -1138,7 +1138,7 @@ BEGIN
     VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
     RETURNING id INTO v_new_attendance_id;
 
-    v_result := jsonb_build_object('success', true, 'message', 'Absen pulang berhasil direkam.', 'attendance_id', v_new_attendance_id);
+    v_result := jsonb_build_object('success', true, 'message', 'Presensi pulang berhasil direkam.', 'attendance_id', v_new_attendance_id);
 
   ELSE
     v_result := jsonb_build_object('success', false, 'message', 'Aksi tidak valid.');
