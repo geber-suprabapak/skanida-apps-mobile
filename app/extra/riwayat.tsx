@@ -19,6 +19,44 @@ import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Settings, RefreshCw } from "lucide-react-native";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  cancelAnimation,
+  Easing,
+} from "react-native-reanimated";
+
+const SpinningIcon = ({ spinning }: { spinning: boolean }) => {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    if (spinning) {
+      // start infinite linear rotation
+      progress.value = 0;
+      progress.value = withRepeat(
+        withTiming(1, { duration: 900, easing: Easing.linear }),
+        -1,
+        false,
+      );
+    } else {
+      // stop and gently reset to 0
+      cancelAnimation(progress);
+      progress.value = withTiming(0, { duration: 150 });
+    }
+  }, [spinning, progress]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${progress.value * 360}deg` }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Icon as={RefreshCw} className="size-5 text-foreground" />
+    </Animated.View>
+  );
+};
 
 export default function Riwayat() {
   const router = useRouter();
@@ -103,7 +141,7 @@ export default function Riwayat() {
           { text: "Close", style: "cancel" },
         ],
       );
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to get cache statistics");
     }
   };
@@ -114,9 +152,11 @@ export default function Riwayat() {
         await attendanceCache.invalidateUser(user.id);
         Alert.alert("✅ Success", "Cache cleared successfully");
         // Force refresh the calendar after clearing cache
-        window.location?.reload?.(); // For web
+        if (calendarRef.current) {
+          await calendarRef.current.refetch(true);
+        }
       }
-    } catch (error) {
+    } catch {
       Alert.alert("❌ Error", "Failed to clear cache");
     }
   };
@@ -209,10 +249,7 @@ export default function Riwayat() {
           className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
           disabled={isRefreshing}
         >
-          <Icon
-            as={RefreshCw}
-            className={`size-5 text-foreground ${isRefreshing ? "animate-spin" : ""}`}
-          />
+          <SpinningIcon spinning={isRefreshing} />
         </TouchableOpacity>
       </View>
 

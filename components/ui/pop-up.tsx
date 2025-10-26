@@ -17,6 +17,7 @@ import {
   type MotivationalQuote,
 } from "~/lib/motivationalQuotes";
 import { timeSync } from "~/utils/timeSync";
+import { cn } from "~/lib/utils";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -33,7 +34,7 @@ interface ConfettiPiece {
 interface AttendanceSuccessPopupProps {
   visible: boolean;
   onClose: () => void;
-  attendanceType: "present" | "home";
+  attendanceType: "check_in" | "check_out";
   studentName?: string;
   time?: string;
   processingTime?: number;
@@ -61,6 +62,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
+  const backdropColor =
+    colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)";
   const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(
     {
       quote: "",
@@ -258,7 +261,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   }, [visible, showAnimation]);
 
   const getSuccessMessage = () => {
-    if (attendanceType === "present") {
+    if (attendanceType === "check_in") {
       return {
         title: "Berhasil absen masuk",
         defaultSubtitle:
@@ -311,7 +314,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
       <Animated.View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          backgroundColor: backdropColor,
           opacity: modalOpacity,
         }}
       >
@@ -351,7 +354,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               opacity: modalOpacity,
             }}
             className={`w-full max-w-sm rounded-3xl p-8 items-center ${
-              colorScheme ? "bg-gray-800" : "bg-white"
+              colorScheme === "dark" ? "bg-gray-800" : "bg-white"
             }`}
           >
             {/* Success Icon */}
@@ -441,7 +444,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
             >
               <TouchableOpacity
                 onPress={hideAnimation}
-                className="bg-blue-600 py-4 px-8 rounded-2xl items-center active:bg-blue-700"
+                className={cn(
+                  "py-4 px-8 rounded-2xl items-center",
+                  colorScheme === "dark"
+                    ? "bg-blue-700 active:bg-blue-800"
+                    : "bg-blue-600 active:bg-blue-700",
+                )}
                 activeOpacity={0.8}
               >
                 <Text className="text-white font-semibold text-lg">

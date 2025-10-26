@@ -14,11 +14,26 @@
     },
     "production": {
       "autoIncrement": false,
+      "channel": "production",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a --daemon --parallel --configure-on-demand --build-cache"
       },
       "env": {
-        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts"
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts",
+        "RELEASE_CHANNEL": "production"
+      }
+    },
+    "production-armv7a": {
+      "autoIncrement": false,
+      "channel": "production",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a --daemon --parallel --configure-on-demand --build-cache"
+      },
+      "env": {
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts",
+        "RELEASE_CHANNEL": "production"
       }
     }
   },

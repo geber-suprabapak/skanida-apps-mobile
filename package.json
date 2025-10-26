@@ -1,6 +1,6 @@
 {
   "name": "skanida-apps-mobile",
-  "version": "1.0.0-openbeta",
+  "version": "1.1.1-cyrene",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
@@ -22,12 +22,13 @@
     "@rn-primitives/table": "^1.2.0",
     "@rn-primitives/types": "^1.1.0",
     "@sentry/react-native": "^6.14.0",
-    "@supabase/supabase-js": "2.49.5-next.5",
+    "@supabase/supabase-js": "2.75.1",
     "add": "^2.0.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "expo": "^53.0.23",
+    "expo-blob": "^0.1.6",
     "expo-build-properties": "~0.14.8",
     "expo-camera": "~16.1.11",
     "expo-constants": "~17.1.7",
@@ -39,8 +40,10 @@
     "expo-linking": "~7.1.7",
     "expo-location": "~18.1.6",
     "expo-router": "~5.1.7",
+    "expo-secure-store": "~14.2.4",
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "~5.0.11",
+    "expo-updates": "~0.28.17",
     "expo-web-browser": "~14.2.0",
     "lucide-react-native": "^0.514.0",
     "nativewind": "4.1.21",
@@ -73,5 +76,5 @@
     "typescript": "~5.8.3"
   },
   "private": true,
-  "packageManager": "pnpm@10.17.1+sha512.17c560fca4867ae9473a3899ad84a88334914f379be46d455cbf92e5cf4b39d34985d452d2583baf19967fa76cb5c17bc9e245529d0b98745721aa7200ecaf7a"
+  "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8"
 }

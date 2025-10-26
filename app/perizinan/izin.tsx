@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
   View,
@@ -28,188 +29,427 @@ import {
   Image as ImageIcon,
 } from "lucide-react-native";
 
-// Types
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
 type PermitCategory = "sakit" | "pergi";
 
 interface ImageData {
   uri: string;
-  base64: string;
+  fileSize: number;
 }
 
-// Constants
-const IMAGE_QUALITY = 0.8; // Optimal quality for JPEG compression
+interface FormData {
+  category: PermitCategory;
+  description: string;
+  image: ImageData | null;
+}
+
+interface UIState {
+  uploading: boolean;
+  checking: boolean;
+}
+
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
+
+const IMAGE_QUALITY = 0.8;
 const IMAGE_FORMAT = "jpeg";
 const STORAGE_BUCKET = "perizinan";
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MIN_DESCRIPTION_LENGTH = 10;
+const MAX_DESCRIPTION_LENGTH = 500;
 
-// --- UTILITY FUNCTIONS ---
-const createLogger = (component: string) => ({
-  debug: (message: string, data?: any) => {
-    console.log(
-      `🔍 [${component}] ${message}`,
-      data ? JSON.stringify(data, null, 2) : "",
-    );
-  },
-  info: (message: string, data?: any) => {
-    console.info(
-      `ℹ️ [${component}] ${message}`,
-      data ? JSON.stringify(data, null, 2) : "",
-    );
-  },
-  warn: (message: string, data?: any) => {
-    console.warn(
-      `⚠️ [${component}] ${message}`,
-      data ? JSON.stringify(data, null, 2) : "",
-    );
-  },
-  error: (message: string, error?: any) => {
-    console.error(`❌ [${component}] ${message}`, error);
-  },
-});
-
-const logger = createLogger("PerizinanScreen");
-
-// Utility functions
-const base64ToUint8Array = (base64: string): Uint8Array => {
-  if (!base64) {
-    logger.error("Invalid base64 string: cannot be null or empty");
-    throw new Error("Invalid base64 string: cannot be null or empty");
-  }
-  logger.debug("Starting base64 conversion", {
-    originalLength: base64.length,
-  });
-
-  try {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    logger.debug("Base64 conversion successful", {
-      originalLength: base64.length,
-      arrayLength: bytes.length,
-    });
-
-    return bytes;
-  } catch (error: any) {
-    logger.error("Error converting base64 to Uint8Array", error);
-    throw new Error("Failed to process image data: " + error.message);
-  }
+const CATEGORY_LABELS: Record<PermitCategory, string> = {
+  sakit: "Sakit",
+  pergi: "Pergi",
 };
+
+const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
+  sakit: "Kondisi kesehatan",
+  pergi: "Keperluan pribadi",
+};
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
 const generateFileName = (
   userId: string,
   extension: string = IMAGE_FORMAT,
 ): string => {
   const fileName = `${userId}/${Date.now()}.${extension}`;
-  logger.debug("Generated filename", { fileName, userId, extension });
   return fileName;
 };
 
 const getImageContentType = (uri: string): string => {
   const extension = uri.split(".").pop()?.toLowerCase();
 
-  logger.debug("Determining image content type", { uri, extension });
-
   switch (extension) {
     case "jpg":
     case "jpeg":
-      logger.debug("Content type: image/jpeg");
       return "image/jpeg";
     case "png":
-      logger.debug("Content type: image/png");
       return "image/png";
     default:
-      logger.debug("Content type: default to image/jpeg");
-      return "image/jpeg"; // Default to JPEG
+      return "image/jpeg";
   }
 };
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+// ============================================================================
+// INTERNAL UI SUBCOMPONENTS
+// ============================================================================
+
+/**
+ * SectionHeader - Icon + title + subtitle
+ */
+const SectionHeader: React.FC<{
+  icon: any;
+  title: string;
+  subtitle: string;
+}> = ({ icon, title, subtitle }) => (
+  <CardHeader className="pb-3">
+    <View className="flex-row items-center">
+      <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+        <Icon as={icon} className="size-5 text-blue-600 dark:text-blue-400" />
+      </View>
+      <View>
+        <CardTitle>
+          <Text variant="h4" className="font-bold text-foreground">
+            {title}
+          </Text>
+        </CardTitle>
+        <Text variant="small" className="text-muted-foreground mt-1">
+          {subtitle}
+        </Text>
+      </View>
+    </View>
+  </CardHeader>
+);
+
+/**
+ * CategoryButton - Individual category option
+ */
+const CategoryButton: React.FC<{
+  value: PermitCategory;
+  isSelected: boolean;
+  onPress: () => void;
+  disabled: boolean;
+}> = ({ value, isSelected, onPress, disabled }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    disabled={disabled}
+    className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+      isSelected
+        ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950"
+        : "border-border bg-card"
+    } ${disabled ? "opacity-50" : ""}`}
+    activeOpacity={0.7}
+  >
+    <View className="items-center">
+      <View className="mb-3 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
+        <Icon
+          as={value === "sakit" ? AlertCircle : ClipboardPenLine}
+          className="size-5 text-blue-600 dark:text-blue-400"
+        />
+      </View>
+      <Text
+        variant="small"
+        className="font-semibold text-center text-foreground"
+      >
+        {CATEGORY_LABELS[value]}
+      </Text>
+      <Text
+        variant="small"
+        className="text-xs text-center mt-1 text-muted-foreground"
+      >
+        {CATEGORY_DESCRIPTIONS[value]}
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
+
+/**
+ * ImageUploadButton - Camera or Gallery button
+ */
+const ImageUploadButton: React.FC<{
+  type: "camera" | "gallery";
+  onPress: () => void;
+  disabled: boolean;
+}> = ({ type, onPress, disabled }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    disabled={disabled}
+    className={`flex-1 p-4 rounded-xl border-2 border-dashed border-border ${
+      disabled ? "opacity-50" : ""
+    }`}
+    activeOpacity={0.7}
+  >
+    <View className="items-center">
+      <View className="mb-3 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
+        <Icon
+          as={type === "camera" ? Camera : ImageIcon}
+          className="size-5 text-blue-600 dark:text-blue-400"
+        />
+      </View>
+      <Text variant="small" className="font-medium text-center text-foreground">
+        {type === "camera" ? "Ambil Foto" : "Pilih File"}
+      </Text>
+      <Text
+        variant="small"
+        className="text-xs text-center mt-1 text-muted-foreground"
+      >
+        {type === "camera" ? "Kamera" : "Galeri"}
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
+
+/**
+ * ImagePreviewCard - Preview with file info and controls
+ */
+const ImagePreviewCard: React.FC<{
+  imageData: ImageData;
+  onRemove: () => void;
+  onReplace: () => void;
+}> = ({ imageData, onRemove, onReplace }) => (
+  <View className="space-y-4">
+    <View className="relative rounded-xl overflow-hidden">
+      <Image
+        source={{ uri: imageData.uri }}
+        className="w-full h-48"
+        resizeMode="cover"
+      />
+      <View className="absolute inset-0 bg-black/10" />
+      <TouchableOpacity
+        onPress={onRemove}
+        className="absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm bg-black/20 dark:bg-white/20 active:bg-black/40"
+        activeOpacity={0.7}
+      >
+        <Icon as={Trash2} className="size-5 text-white" />
+      </TouchableOpacity>
+    </View>
+
+    <View className="bg-muted/50 p-3 rounded-lg">
+      <View className="flex-row items-center justify-between mb-2">
+        <Text variant="small" className="font-medium text-foreground">
+          ✓ Foto berhasil dipilih
+        </Text>
+        <View className="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900">
+          <Text className="text-xs font-medium text-green-700 dark:text-green-300">
+            Valid
+          </Text>
+        </View>
+      </View>
+      <Text variant="small" className="text-xs text-muted-foreground">
+        Ukuran: {formatFileSize(imageData.fileSize)}
+      </Text>
+    </View>
+
+    <TouchableOpacity
+      onPress={onReplace}
+      className="w-full py-2 px-4 rounded-lg bg-blue-100 dark:bg-blue-900 active:bg-blue-200"
+      activeOpacity={0.7}
+    >
+      <Text className="text-sm font-medium text-center text-blue-700 dark:text-blue-300">
+        Ganti Foto
+      </Text>
+    </TouchableOpacity>
+  </View>
+);
+
+/**
+ * AlertBanner - Reusable alert component
+ */
+const AlertBanner: React.FC<{
+  type: "warning" | "error" | "success" | "info";
+  title: string;
+  message: string;
+}> = ({ type, title, message }) => {
+  const colors = {
+    warning: {
+      bg: "bg-yellow-50 dark:bg-yellow-950",
+      border: "border-yellow-500",
+    },
+    error: { bg: "bg-red-50 dark:bg-red-950", border: "border-red-500" },
+    success: {
+      bg: "bg-green-50 dark:bg-green-950",
+      border: "border-green-500",
+    },
+    info: { bg: "bg-blue-50 dark:bg-blue-950", border: "border-blue-500" },
+  };
+
+  const iconBgColors = {
+    warning: "bg-yellow-100 dark:bg-yellow-900",
+    error: "bg-red-100 dark:bg-red-900",
+    success: "bg-green-100 dark:bg-green-900",
+    info: "bg-blue-100 dark:bg-blue-900",
+  };
+
+  const iconColors = {
+    warning: "text-yellow-600 dark:text-yellow-400",
+    error: "text-red-600 dark:text-red-400",
+    success: "text-green-600 dark:text-green-400",
+    info: "text-blue-600 dark:text-blue-400",
+  };
+
+  return (
+    <Card
+      className={`mb-4 shadow-sm border-2 ${colors[type].bg} ${colors[type].border}`}
+    >
+      <CardContent className="p-4">
+        <View className="flex-row items-start">
+          <View className={`mr-3 p-2 rounded-lg ${iconBgColors[type]}`}>
+            <Icon as={AlertCircle} className={`size-5 ${iconColors[type]}`} />
+          </View>
+          <View className="flex-1">
+            <Text variant="p" className="font-bold text-foreground">
+              {title}
+            </Text>
+            <Text variant="small" className="mt-1 text-foreground">
+              {message}
+            </Text>
+          </View>
+        </View>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
 
-  // State management
-  const [category, setCategory] = useState<PermitCategory>("sakit");
-  const [description, setDescription] = useState("");
-  const [imageData, setImageData] = useState<ImageData | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [hasSubmittedToday, setHasSubmittedToday] = useState<boolean>(false);
-  const [checkingSubmission, setCheckingSubmission] = useState<boolean>(true);
+  // ---- State Management ----
+  const [formData, setFormData] = useState<FormData>({
+    category: "sakit",
+    description: "",
+    image: null,
+  });
+
+  const [uiState, setUIState] = useState<UIState>({
+    uploading: false,
+    checking: true,
+  });
+
+  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
 
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
 
-  // Check initial submission status when component loads
+  // ---- Computed State ----
+  const validation = useMemo(
+    () => ({
+      category: !!formData.category,
+      description: formData.description.trim().length >= MIN_DESCRIPTION_LENGTH,
+      image: !!formData.image,
+    }),
+    [formData],
+  );
+
+  const isFormValid =
+    validation.category && validation.description && validation.image;
+  const canSubmit =
+    isFormValid &&
+    !uiState.uploading &&
+    !hasSubmittedToday &&
+    !uiState.checking;
+
+  // ---- Handler Functions (defined before effects) ----
+
+  const checkTodayIzin = useCallback(
+    async (userId: string): Promise<boolean> => {
+      try {
+        const now = new Date();
+        const localDate = format(now, "yyyy-MM-dd");
+        const startOfDay = new Date(`${localDate}T00:00:00`);
+        const endOfDay = new Date(`${localDate}T23:59:59.999`);
+        const startOfDayUTC = startOfDay.toISOString();
+        const endOfDayUTC = endOfDay.toISOString();
+
+        const { data, error } = await supabase
+          .from("perizinan")
+          .select("id, tanggal, kategori_izin")
+          .eq("user_id", userId)
+          .gte("tanggal", startOfDayUTC)
+          .lte("tanggal", endOfDayUTC);
+
+        if (error) {
+          return false;
+        }
+
+        const hasSubmittedToday = data && data.length > 0;
+        return hasSubmittedToday;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  // ---- Effect Hooks ----
+
+  // Check initial submission status
   useEffect(() => {
     const checkInitialSubmissionStatus = async () => {
       if (!user?.id) {
-        logger.warn("No user found, skipping submission check");
-        setCheckingSubmission(false);
+        setUIState((prev) => ({ ...prev, checking: false }));
         return;
       }
 
       try {
-        logger.debug("Checking initial submission status for user", {
-          userId: user.id,
-        });
         const hasSubmitted = await checkTodayIzin(user.id);
         setHasSubmittedToday(hasSubmitted);
-
-        logger.info("Initial submission status check complete", {
-          userId: user.id,
-          hasSubmittedToday: hasSubmitted,
-        });
-      } catch (error) {
-        logger.error("Error checking initial submission status", error);
-        // On error, assume they haven't submitted to not block them
+      } catch {
         setHasSubmittedToday(false);
       } finally {
-        setCheckingSubmission(false);
+        setUIState((prev) => ({ ...prev, checking: false }));
       }
     };
 
     checkInitialSubmissionStatus();
-  }, [user?.id]);
+  }, [user?.id, checkTodayIzin]);
 
-  // Refresh submission status when screen comes into focus
+  // Refresh submission status on focus
   useFocusEffect(
     useCallback(() => {
       const refreshSubmissionStatus = async () => {
         if (!user?.id) return;
 
         try {
-          setCheckingSubmission(true);
-          logger.debug("Refreshing submission status on focus", {
-            userId: user.id,
-          });
+          setUIState((prev) => ({ ...prev, checking: true }));
           const hasSubmitted = await checkTodayIzin(user.id);
           setHasSubmittedToday(hasSubmitted);
-
-          logger.info("Focus refresh submission status complete", {
-            userId: user.id,
-            hasSubmittedToday: hasSubmitted,
-          });
-        } catch (error) {
-          logger.error("Error refreshing submission status on focus", error);
-          // On error, assume they haven't submitted to not block them
+        } catch {
           setHasSubmittedToday(false);
         } finally {
-          setCheckingSubmission(false);
+          setUIState((prev) => ({ ...prev, checking: false }));
         }
       };
 
       refreshSubmissionStatus();
-    }, [user?.id]),
+    }, [user?.id, checkTodayIzin]),
   );
 
   // Handle hardware back button
   useEffect(() => {
     const backAction = () => {
       router.back();
-      return true; // Prevent default behavior
+      return true;
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -219,23 +459,13 @@ export default function PerizinanScreen() {
 
     return () => backHandler.remove();
   }, [router]);
-  // Image handling functions
-  const clearImage = (): void => {
-    logger.debug("Clearing image data");
-    setImageData(null);
-  };
 
-  const requestCameraPermission = async (): Promise<boolean> => {
-    logger.debug("Requesting camera permission");
+  // ---- Handler Functions ----
+
+  const requestCameraPermission = useCallback(async (): Promise<boolean> => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-    logger.info("Camera permission result", {
-      status,
-      granted: status === "granted",
-    });
-
     if (status !== "granted") {
-      logger.warn("Camera permission denied by user");
       Alert.alert(
         "Izin Ditolak",
         "Izin kamera diperlukan untuk mengambil foto.",
@@ -243,339 +473,213 @@ export default function PerizinanScreen() {
       return false;
     }
     return true;
-  };
+  }, []);
 
-  const requestLibraryPermission = async (): Promise<boolean> => {
-    logger.debug("Requesting library permission");
+  const requestLibraryPermission = useCallback(async (): Promise<boolean> => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    logger.info("Library permission result", {
-      status,
-      granted: status === "granted",
-    });
-
     if (status !== "granted") {
-      logger.warn("Library permission denied by user");
       Alert.alert("Izin Ditolak", "Izin galeri diperlukan untuk memilih foto.");
       return false;
     }
     return true;
-  };
+  }, []);
 
-  const handleImageResult = (result: ImagePicker.ImagePickerResult): void => {
-    logger.debug("Processing image picker result", {
-      canceled: result.canceled,
-      assetsCount: result.assets?.length || 0,
-    });
-
-    if (!result.canceled && result.assets?.[0]) {
-      const asset = result.assets[0];
-
-      logger.info("Image selected successfully", {
-        uri: asset.uri,
-        width: asset.width,
-        height: asset.height,
-        fileSize: asset.fileSize,
-        hasBase64: !!asset.base64,
-      });
-
-      if (asset.base64) {
-        const newImageData = {
-          uri: asset.uri,
-          base64: asset.base64,
-        };
-
-        logger.debug("Setting image data", {
-          uriLength: newImageData.uri.length,
-          base64Length: newImageData.base64.length,
-        });
-
-        setImageData(newImageData);
-      } else {
-        logger.error("No base64 data received from image picker");
+  const resolveAssetFileSize = useCallback(
+    async (asset: ImagePicker.ImagePickerAsset): Promise<number> => {
+      if (typeof asset.fileSize === "number") {
+        return asset.fileSize;
       }
-    } else {
-      logger.debug("Image selection canceled or failed");
-    }
-  };
 
-  const pickFromCamera = async (): Promise<void> => {
-    logger.debug("Starting camera photo capture");
+      try {
+        const info = await FileSystem.getInfoAsync(asset.uri);
+        if (info.exists && typeof info.size === "number") {
+          return info.size;
+        }
+      } catch (error: any) {
+        console.error("Error getting file info:", error);
+        throw new Error(
+          `Tidak dapat mengakses file gambar: ${error.message || "File tidak dapat dibaca"}. Silakan pilih gambar lain.`,
+        );
+      }
+
+      throw new Error(
+        "Tidak dapat menentukan ukuran file. Silakan coba lagi atau pilih gambar lain.",
+      );
+    },
+    [],
+  );
+
+  const handleImageResult = useCallback(
+    async (result: ImagePicker.ImagePickerResult): Promise<void> => {
+      if (result.canceled || !result.assets?.[0]) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const resolvedSize = await resolveAssetFileSize(asset);
+
+      if (resolvedSize > MAX_IMAGE_SIZE_BYTES) {
+        Alert.alert(
+          "Error",
+          "Ukuran file melebihi 10 MB. Silakan pilih file yang lebih kecil.",
+        );
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        image: {
+          uri: asset.uri,
+          fileSize: resolvedSize,
+        },
+      }));
+    },
+    [resolveAssetFileSize],
+  );
+
+  const pickFromCamera = useCallback(async (): Promise<void> => {
     const hasPermission = await requestCameraPermission();
     if (!hasPermission) return;
 
     try {
-      logger.debug("Launching camera with config", {
-        quality: IMAGE_QUALITY,
-        allowsEditing: false,
-        base64: true,
-      });
-
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: IMAGE_QUALITY,
         allowsEditing: false,
-        base64: true,
+        base64: false,
       });
 
-      handleImageResult(result);
-    } catch (error) {
-      logger.error("Camera photo capture failed", error);
+      await handleImageResult(result);
+    } catch {
       Alert.alert("Error", "Gagal mengambil foto dari kamera");
     }
-  };
+  }, [requestCameraPermission, handleImageResult]);
 
-  const pickFromLibrary = async (): Promise<void> => {
-    logger.debug("Starting library photo selection");
+  const pickFromLibrary = useCallback(async (): Promise<void> => {
     const hasPermission = await requestLibraryPermission();
     if (!hasPermission) return;
 
     try {
-      logger.debug("Launching image library with config", {
-        quality: IMAGE_QUALITY,
-        allowsEditing: false,
-        base64: true,
-      });
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: IMAGE_QUALITY,
         allowsEditing: false,
-        base64: true,
+        base64: false,
       });
 
-      handleImageResult(result);
-    } catch (error) {
-      logger.error("Library photo selection failed", error);
+      await handleImageResult(result);
+    } catch {
       Alert.alert("Error", "Gagal memilih foto dari galeri");
     }
-  };
-  // Upload functions
-  const uploadImageToStorage = async (
-    imageData: ImageData,
-    userId: string,
-  ): Promise<string> => {
-    const startTime = Date.now();
-    logger.info("Starting image upload to storage", {
-      userId,
-      imageUriLength: imageData.uri.length,
-      base64Length: imageData.base64.length,
-    });
+  }, [requestLibraryPermission, handleImageResult]);
 
-    const fileBuffer = base64ToUint8Array(imageData.base64);
-    const contentType = getImageContentType(imageData.uri);
-    const fileName = generateFileName(userId, IMAGE_FORMAT);
+  const uploadImageToStorage = useCallback(
+    async (imageData: ImageData, userId: string): Promise<string> => {
+      const contentType = getImageContentType(imageData.uri);
+      const extension = contentType.split("/").pop() || IMAGE_FORMAT;
+      const fileName = generateFileName(userId, extension);
 
-    logger.debug("Upload preparation completed", {
-      fileName,
-      contentType,
-      fileBufferSize: fileBuffer.length,
-      fileSizeMB: (fileBuffer.length / (1024 * 1024)).toFixed(2),
-    });
+      let response: Response;
+      let arrayBuffer: ArrayBuffer;
 
-    const { data, error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(fileName, fileBuffer, {
-        contentType,
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      logger.error("Storage upload failed", {
-        error: uploadError,
-        fileName,
-        fileSize: fileBuffer.length,
-      });
-
-      if (
-        uploadError.message?.includes("network") ||
-        uploadError.message?.includes("connection") ||
-        uploadError.message?.toLowerCase().includes("timeout")
-      ) {
+      try {
+        response = await fetch(imageData.uri);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        arrayBuffer = await response.arrayBuffer();
+      } catch (error: any) {
+        Alert.alert(
+          "Error Membaca File",
+          "File gambar tidak dapat diakses atau rusak. Silakan pilih gambar lain.",
+        );
         throw new Error(
-          "Koneksi internet bermasalah. Mohon periksa koneksi internet Anda dan coba lagi.",
+          `Gagal membaca file gambar: ${error.message || "File tidak dapat diakses"}`,
         );
       }
-      throw new Error(`Upload gagal: ${uploadError.message}`);
-    }
 
-    const { data: urlData, error: signedErr } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 days
+      const { data, error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(fileName, arrayBuffer, {
+          contentType,
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-    if (signedErr) {
-      logger.error("Failed to create signed URL", signedErr);
-      throw new Error(`Gagal membuat URL gambar: ${signedErr.message}`);
-    }
-
-    const uploadTime = Date.now() - startTime;
-    const throughput = (fileBuffer.length / 1024 / (uploadTime / 1000)).toFixed(
-      2,
-    );
-
-    logger.info("Image upload completed successfully", {
-      fileName,
-      publicUrl: urlData.signedUrl,
-      uploadTime,
-      throughput: `${throughput} KB/s`,
-      fileSize: fileBuffer.length,
-    });
-
-    return urlData.signedUrl;
-  };
-  const insertPermitToDatabase = async (permitData: {
-    userId: string;
-    category: PermitCategory;
-    description: string;
-    imageUrl?: string;
-  }): Promise<void> => {
-    const startTime = Date.now();
-    logger.info("Starting database insert", {
-      userId: permitData.userId,
-      category: permitData.category,
-      descriptionLength: permitData.description.length,
-      hasImage: !!permitData.imageUrl,
-    });
-
-    // Check if user has already submitted izin today (double-check before insert)
-    logger.debug("Final check before database insert");
-    const finalCheck = await checkTodayIzin(user.id);
-
-    if (finalCheck) {
-      logger.error("Final check failed - user has already submitted today", {
-        userId: user.id,
-        attemptedCategory: category,
-        currentTime: new Date().toISOString(),
-      });
-      throw new Error(
-        "Izin sudah diajukan hari ini. Hanya satu pengajuan per hari yang diperbolehkan.",
-      );
-    }
-
-    const insertData = {
-      user_id: permitData.userId,
-      kategori_izin: permitData.category,
-      deskripsi: permitData.description,
-      status: false,
-      link_foto: permitData.imageUrl || null,
-      tanggal: new Date().toISOString(),
-    };
-
-    logger.debug("Database insert payload", insertData);
-
-    const { error: insertError } = await supabase
-      .from("perizinan")
-      .insert(insertData);
-
-    if (insertError) {
-      logger.error("Database insert failed", {
-        error: insertError,
-        permitData,
-      });
-      throw new Error(`Gagal menyimpan data: ${insertError.message}`);
-    }
-
-    const insertTime = Date.now() - startTime;
-    logger.info("Database insert completed successfully", {
-      insertTime,
-      category: permitData.category,
-    });
-  };
-  const resetForm = (): void => {
-    logger.debug("Resetting form state");
-    setCategory("sakit");
-    setDescription("");
-    clearImage();
-    logger.debug("Form reset completed");
-  };
-
-  // Check if user has already submitted izin today
-  const checkTodayIzin = async (userId: string): Promise<boolean> => {
-    try {
-      // Get current date in local timezone
-      const now = new Date();
-      const localDate = format(now, "yyyy-MM-dd");
-
-      // Create start and end of day in local timezone, then convert to UTC
-      const startOfDay = new Date(`${localDate}T00:00:00`);
-      const endOfDay = new Date(`${localDate}T23:59:59.999`);
-
-      // Convert to ISO string for database comparison
-      const startOfDayUTC = startOfDay.toISOString();
-      const endOfDayUTC = endOfDay.toISOString();
-
-      logger.debug("Checking today's izin submissions", {
-        userId,
-        localDate,
-        startOfDayUTC,
-        endOfDayUTC,
-        now: now.toISOString(),
-      });
-
-      const { data, error } = await supabase
-        .from("perizinan")
-        .select("id, tanggal, kategori_izin, created_at")
-        .eq("user_id", userId)
-        .gte("tanggal", startOfDayUTC)
-        .lte("tanggal", endOfDayUTC);
-
-      if (error) {
-        logger.error("Error checking today's izin", error);
-        // If there's an error checking, allow submission to not block users
-        return false;
+      if (uploadError) {
+        if (
+          uploadError.message?.includes("network") ||
+          uploadError.message?.includes("connection") ||
+          uploadError.message?.toLowerCase().includes("timeout")
+        ) {
+          throw new Error(
+            "Koneksi internet bermasalah. Mohon periksa koneksi internet Anda.",
+          );
+        }
+        throw new Error(`Upload gagal: ${uploadError.message}`);
       }
 
-      const hasSubmittedToday = data && data.length > 0;
-      logger.info("Today's izin check result", {
-        hasSubmittedToday,
-        submissionCount: data?.length || 0,
-        submissions:
-          data?.map((item) => ({
-            id: item.id,
-            kategori_izin: item.kategori_izin,
-            tanggal: item.tanggal,
-            created_at: item.created_at,
-          })) || [],
-        localDate,
-        searchRange: {
-          from: startOfDayUTC,
-          to: endOfDayUTC,
-        },
-      });
+      const { data: urlData, error: signedErr } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(data.path, 60 * 60 * 24 * 7);
 
-      return hasSubmittedToday;
-    } catch (error) {
-      logger.error("Unexpected error checking today's izin", error);
-      // If there's an unexpected error, allow submission to not block users
-      return false;
-    }
-  };
+      if (signedErr) {
+        throw new Error(`Gagal membuat URL gambar: ${signedErr.message}`);
+      }
 
-  const uploadPermit = async (): Promise<void> => {
-    const startTime = Date.now();
-    logger.info("Starting permit upload process", {
-      userId: user?.id,
-      category,
-      descriptionLength: description.length,
-      hasImage: !!imageData,
-      hasUser: !!user,
-    });
+      return urlData.signedUrl;
+    },
+    [],
+  );
 
+  const insertPermitToDatabase = useCallback(
+    async (permitData: {
+      userId: string;
+      category: PermitCategory;
+      description: string;
+      imageUrl?: string;
+    }): Promise<void> => {
+      // Final check before insert
+      const finalCheck = await checkTodayIzin(permitData.userId);
+      if (finalCheck) {
+        throw new Error(
+          "Izin sudah diajukan hari ini. Hanya satu pengajuan per hari yang diperbolehkan.",
+        );
+      }
+
+      const insertData = {
+        user_id: permitData.userId,
+        kategori_izin: permitData.category,
+        deskripsi: permitData.description,
+        status: false,
+        link_foto: permitData.imageUrl || null,
+        tanggal: new Date().toISOString(),
+      };
+
+      const { error: insertError } = await supabase
+        .from("perizinan")
+        .insert(insertData);
+
+      if (insertError) {
+        throw new Error(`Gagal menyimpan data: ${insertError.message}`);
+      }
+    },
+    [checkTodayIzin],
+  );
+
+  const uploadPermit = useCallback(async (): Promise<void> => {
     if (!user) {
-      logger.error("Upload attempted without authenticated user");
       Alert.alert("Error", "User not authenticated");
       return;
     }
 
-    if (!description.trim()) {
-      logger.warn("Upload attempted with empty description");
-      Alert.alert("Error", "Deskripsi tidak boleh kosong.");
+    if (!validation.description) {
+      Alert.alert("Error", "Deskripsi minimal 10 karakter");
       return;
     }
 
-    if (!imageData) {
-      logger.warn("Upload attempted without required photo");
+    if (!formData.image) {
       Alert.alert(
         "Error",
         "Foto bukti wajib dilampirkan untuk pengajuan izin.",
@@ -584,146 +688,71 @@ export default function PerizinanScreen() {
     }
 
     // Check if user has already submitted izin today
-    logger.debug("Checking if user has already submitted izin today");
     const hasSubmittedToday = await checkTodayIzin(user.id);
-
     if (hasSubmittedToday) {
-      logger.warn(
-        "Upload attempted but user has already submitted izin today",
-        {
-          userId: user.id,
-          attemptedCategory: category,
-          today: format(new Date(), "yyyy-MM-dd"),
-        },
-      );
       Alert.alert(
         "Izin Sudah Diajukan Hari Ini",
         "Anda sudah mengajukan izin untuk hari ini. Sistem hanya memperbolehkan satu pengajuan izin per hari.\n\nJika perlu mengubah atau menambah informasi, silakan hubungi admin sekolah.",
-        [
-          {
-            text: "Mengerti",
-            style: "default",
-          },
-        ],
       );
       return;
     }
 
     try {
-      setUploading(true);
-      logger.debug("Upload state set to true");
-      let imageUrl: string | undefined;
+      setUIState((prev) => ({ ...prev, uploading: true }));
 
-      // Upload image if exists
-      if (imageData) {
-        logger.debug("Starting image upload process");
-        imageUrl = await uploadImageToStorage(imageData, user.id);
-        logger.info("Image upload completed", { imageUrl });
-      } else {
-        logger.debug("No image to upload, proceeding without photo");
+      let imageUrl: string | undefined;
+      if (formData.image) {
+        imageUrl = await uploadImageToStorage(formData.image, user.id);
       }
 
-      // Insert permit data to database
-      logger.debug("Starting database insert process");
       await insertPermitToDatabase({
         userId: user.id,
-        category,
-        description,
+        category: formData.category,
+        description: formData.description,
         imageUrl,
       });
 
-      const totalTime = Date.now() - startTime;
-      logger.info("Permit upload process completed successfully", {
-        totalTime,
-        category,
-        hasImage: !!imageUrl,
-        throughput: imageData
-          ? `${(imageData.base64.length / 1024 / (totalTime / 1000)).toFixed(2)} KB/s`
-          : "N/A",
-      });
-
-      // Update state to reflect that user has submitted today
       setHasSubmittedToday(true);
-      logger.debug(
-        "Updated hasSubmittedToday state to true after successful submission",
-      );
-
       Alert.alert("Success", "Izin berhasil dikirim");
-      resetForm();
       router.back();
     } catch (error: any) {
       const errorMessage = error.message || "Unknown error";
-      const totalTime = Date.now() - startTime;
 
-      logger.error("Permit upload process failed", {
-        error: errorMessage,
-        totalTime,
-        category,
-        hasImage: !!imageData,
-        userId: user?.id,
-      });
+      if (errorMessage.includes("Gagal membaca file gambar")) {
+        // Alert already shown in uploadImageToStorage
+        return;
+      }
 
-      // Handle network errors with user-friendly messages
       if (
         errorMessage.includes("network") ||
         errorMessage.includes("connection") ||
         errorMessage.toLowerCase().includes("timeout") ||
         errorMessage.includes("internet")
       ) {
-        logger.warn("Network-related error detected", { errorMessage });
         Alert.alert(
           "Koneksi Bermasalah",
           "Gagal mengirim izin karena masalah koneksi internet. Mohon periksa koneksi Anda dan coba lagi.",
-          [{ text: "OK" }],
         );
       } else {
-        logger.warn("Non-network error detected", { errorMessage });
         Alert.alert("Error", `Gagal mengirim izin: ${errorMessage}`);
       }
     } finally {
-      setUploading(false);
-      logger.debug("Upload state set to false");
+      setUIState((prev) => ({ ...prev, uploading: false }));
     }
-  };
+  }, [
+    user,
+    formData,
+    validation.description,
+    checkTodayIzin,
+    uploadImageToStorage,
+    insertPermitToDatabase,
+    router,
+  ]);
 
-  // Component lifecycle logging
-  useEffect(() => {
-    logger.info("PerizinanScreen component mounted and ready");
+  // ---- Render ----
 
-    return () => {
-      logger.info("PerizinanScreen component unmounting");
-    };
-  }, []);
+  const isDisabled = hasSubmittedToday || uiState.checking || uiState.uploading;
 
-  // Log state changes for debugging
-  useEffect(() => {
-    logger.debug("Category changed", { category });
-  }, [category]);
-  useEffect(() => {
-    logger.debug("Description changed", {
-      length: description.length,
-      isEmpty: !description.trim(),
-    });
-  }, [description]);
-
-  useEffect(() => {
-    logger.debug("Image data changed", {
-      hasImage: !!imageData,
-      imageUriLength: imageData?.uri.length || 0,
-      base64Length: imageData?.base64.length || 0,
-    });
-  }, [imageData]);
-
-  useEffect(() => {
-    logger.debug("Upload state changed", { uploading });
-  }, [uploading]);
-
-  useEffect(() => {
-    logger.debug("Submission status changed", {
-      hasSubmittedToday,
-      checkingSubmission,
-    });
-  }, [hasSubmittedToday, checkingSubmission]);
   return (
     <>
       <Stack.Screen
@@ -734,7 +763,11 @@ export default function PerizinanScreen() {
       <SafeAreaView className="flex-1 bg-background">
         {/* Header */}
         <View className="flex-row items-center p-4 border-b border-border bg-background">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="mr-3"
+            activeOpacity={0.7}
+          >
             <Icon as={ChevronLeft} className="size-6" />
           </TouchableOpacity>
           <View className="flex-1">
@@ -748,152 +781,79 @@ export default function PerizinanScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Already Submitted Today Warning */}
-          {hasSubmittedToday && !checkingSubmission && (
-            <Card className="mb-4 shadow-sm border-2 border-yellow-500 bg-card">
-              <CardContent className="p-4">
-                <View className="flex-row items-center">
-                  <View className="mr-3 p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900">
-                    <Icon as={AlertCircle} className="size-5" />
-                  </View>
-                  <View className="flex-1">
-                    <Text variant="p" className="font-bold text-foreground">
-                      Izin Sudah Diajukan Hari Ini
-                    </Text>
-                    <Text variant="small" className="mt-1 text-foreground">
-                      Anda sudah mengajukan izin untuk hari ini. Hanya satu
-                      pengajuan izin yang diperbolehkan per hari.
-                    </Text>
-                    <Text
-                      variant="small"
-                      className="text-xs mt-2 text-muted-foreground"
-                    >
-                      💡 Jika perlu mengubah informasi, hubungi admin sekolah.
-                    </Text>
-                  </View>
-                </View>
-              </CardContent>
-            </Card>
+          {hasSubmittedToday && !uiState.checking && (
+            <AlertBanner
+              type="warning"
+              title="Izin Sudah Diajukan Hari Ini"
+              message="Anda sudah mengajukan izin untuk hari ini. Hanya satu pengajuan izin yang diperbolehkan per hari."
+            />
           )}
 
           {/* Loading Check */}
-          {checkingSubmission && (
-            <Card className="mb-4 shadow-sm bg-card">
-              <CardContent className="p-4">
-                <View className="flex-row items-center justify-center">
-                  <View className="mr-3">
-                    <View className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  </View>
-                  <Text variant="small">
-                    Memeriksa status pengajuan hari ini...
-                  </Text>
-                </View>
-              </CardContent>
-            </Card>
+          {uiState.checking && (
+            <AlertBanner
+              type="info"
+              title="Memeriksa Status"
+              message="Memeriksa status pengajuan hari ini..."
+            />
           )}
+
           {/* Category Selection Card */}
-          <Card className="mb-4 shadow-sm bg-card">
-            <CardHeader className="pb-3">
-              <View className="flex-row items-center">
-                <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                  <Icon
-                    as={ClipboardPenLine}
-                    className="size-5 text-blue-600 dark:text-blue-400"
-                  />
-                </View>
-                <View>
-                  <CardTitle>
-                    <Text variant="h4" className="font-bold text-foreground">
-                      Kategori Izin
-                    </Text>
-                  </CardTitle>
-                  <Text variant="small" className="text-muted-foreground">
-                    Pilih jenis izin yang sesuai
-                  </Text>
-                </View>
-              </View>
-            </CardHeader>
+          <Card
+            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
+          >
+            <SectionHeader
+              icon={ClipboardPenLine}
+              title="Kategori Izin"
+              subtitle="Pilih jenis izin yang sesuai"
+            />
             <CardContent>
-              <View className="flex-row space-x-6">
+              <View className="flex-row gap-3">
                 {(["sakit", "pergi"] as const).map((catValue) => (
-                  <TouchableOpacity
+                  <CategoryButton
                     key={catValue}
+                    value={catValue}
+                    isSelected={formData.category === catValue}
                     onPress={() =>
-                      !hasSubmittedToday &&
-                      !checkingSubmission &&
-                      setCategory(catValue)
+                      setFormData((prev) => ({
+                        ...prev,
+                        category: catValue,
+                      }))
                     }
-                    disabled={hasSubmittedToday || checkingSubmission}
-                    className={`flex-1 p-3 rounded-xl border-2 border-border bg-card ${category === catValue ? "border-blue-500 dark:border-blue-400" : ""} ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
-                  >
-                    <View className="items-center">
-                      <View className="mb-2 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-                        {catValue === "sakit" ? (
-                          <Icon
-                            as={AlertCircle}
-                            className="size-5 text-blue-600 dark:text-blue-400"
-                          />
-                        ) : (
-                          <Icon
-                            as={ClipboardPenLine}
-                            className="size-5 text-blue-600 dark:text-blue-400"
-                          />
-                        )}
-                      </View>
-                      <Text
-                        variant="small"
-                        className="font-semibold text-center text-foreground"
-                      >
-                        {catValue.charAt(0).toUpperCase() + catValue.slice(1)}
-                      </Text>
-                      <Text
-                        variant="small"
-                        className="text-xs text-center mt-1 text-muted-foreground"
-                      >
-                        {catValue === "sakit"
-                          ? "Kondisi kesehatan"
-                          : "Keperluan pribadi"}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                    disabled={isDisabled}
+                  />
                 ))}
               </View>
             </CardContent>
           </Card>
+
           {/* Description Card */}
-          <Card className="mb-4 shadow-sm bg-card">
-            <CardHeader className="pb-3">
-              <View className="flex-row items-center">
-                <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                  <Icon
-                    as={FileText}
-                    className="size-5 text-blue-600 dark:text-blue-400"
-                  />
-                </View>
-                <View>
-                  <CardTitle>
-                    <Text variant="h4" className="font-bold text-foreground">
-                      Deskripsi
-                    </Text>
-                  </CardTitle>
-                  <Text variant="small" className="text-muted-foreground">
-                    Jelaskan alasan pengajuan izin Anda
-                  </Text>
-                </View>
-              </View>
-            </CardHeader>
+          <Card
+            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
+          >
+            <SectionHeader
+              icon={FileText}
+              title="Deskripsi"
+              subtitle="Jelaskan alasan pengajuan izin Anda"
+            />
             <CardContent>
               <View className="rounded-xl border-2 border-border overflow-hidden bg-card">
                 <TextInput
                   ref={descriptionInputRef}
-                  editable={!hasSubmittedToday && !checkingSubmission}
-                  className={`min-h-[100px] max-h-[160px] text-base border-0 p-3 text-foreground bg-transparent ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
+                  editable={!isDisabled}
+                  className="min-h-[100px] max-h-[160px] text-base border-0 p-3 text-foreground bg-transparent"
                   placeholder="Contoh: Sakit demam dan perlu istirahat di rumah..."
                   multiline
-                  value={description}
-                  onChangeText={setDescription}
+                  value={formData.description}
+                  onChangeText={(text) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: text.slice(0, MAX_DESCRIPTION_LENGTH),
+                    }))
+                  }
                   textAlignVertical="top"
                   numberOfLines={5}
-                  maxLength={500}
+                  maxLength={MAX_DESCRIPTION_LENGTH}
                   scrollEnabled={true}
                   autoCorrect={false}
                   blurOnSubmit={false}
@@ -904,47 +864,15 @@ export default function PerizinanScreen() {
                     minHeight: 100,
                     maxHeight: 160,
                   }}
-                  onContentSizeChange={(event) => {
-                    // Auto-scroll to bottom when content grows
-                    const { height } = event.nativeEvent.contentSize;
-                    if (height > 100) {
-                      // Use setNativeProps to scroll to end for multiline TextInput
-                      descriptionInputRef.current?.setNativeProps({
-                        text: description,
-                        selection: {
-                          start: description.length,
-                          end: description.length,
-                        },
-                      });
-                    }
-                  }}
-                  onSelectionChange={(event) => {
-                    // Ensure cursor visibility when selection changes
-                    const { selection } = event.nativeEvent;
-                    if (selection.end === description.length) {
-                      // If cursor is at the end, ensure it stays visible
-                      descriptionInputRef.current?.setNativeProps({
-                        selection: {
-                          start: description.length,
-                          end: description.length,
-                        },
-                      });
-                    }
-                  }}
                 />
-              </View>
-              <View className="flex-row justify-between items-center mt-2">
-                <Text variant="small" className="text-xs text-muted-foreground">
-                  Minimal 10 karakter
-                </Text>
-                <Text variant="small" className="text-xs text-muted-foreground">
-                  {description.length}/500
-                </Text>
               </View>
             </CardContent>
           </Card>
+
           {/* Photo Upload Card */}
-          <Card className="mb-4 shadow-sm bg-card">
+          <Card
+            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
+          >
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
                 <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
@@ -953,22 +881,19 @@ export default function PerizinanScreen() {
                     className="size-5 text-blue-600 dark:text-blue-400"
                   />
                 </View>
-                <View>
+                <View className="flex-1">
                   <CardTitle>
                     <Text variant="h4" className="font-bold text-foreground">
                       Lampiran Foto *
                     </Text>
                   </CardTitle>
-                  <Text variant="small" className="text-muted-foreground">
+                  <Text variant="small" className="text-muted-foreground mt-1">
                     Wajib - Tambahkan bukti pendukung
                   </Text>
                 </View>
-                {imageData && (
+                {formData.image && (
                   <View className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900">
-                    <Text
-                      variant="small"
-                      className="text-xs font-medium text-green-700 dark:text-green-300"
-                    >
+                    <Text className="text-xs font-medium text-green-700 dark:text-green-300">
                       ✓ Foto dipilih
                     </Text>
                   </View>
@@ -976,237 +901,92 @@ export default function PerizinanScreen() {
               </View>
             </CardHeader>
             <CardContent>
-              {!imageData ? (
+              {!formData.image ? (
                 <View className="space-y-3">
-                  <View className="flex-row space-x-6">
-                    <TouchableOpacity
+                  <View className="flex-row gap-3">
+                    <ImageUploadButton
+                      type="camera"
                       onPress={pickFromCamera}
-                      disabled={hasSubmittedToday || checkingSubmission}
-                      className={`flex-1 p-3 rounded-xl border-2 border-dashed  ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
-                    >
-                      <View className="items-center">
-                        <View className="mb-2 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-                          <Icon
-                            as={Camera}
-                            className="size-5 text-blue-600 dark:text-blue-400"
-                          />
-                        </View>
-                        <Text
-                          variant="small"
-                          className="font-medium text-center text-foreground"
-                        >
-                          Ambil Foto
-                        </Text>
-                        <Text
-                          variant="small"
-                          className="text-xs text-center mt-1 text-muted-foreground"
-                        >
-                          Kamera
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
+                      disabled={isDisabled}
+                    />
+                    <ImageUploadButton
+                      type="gallery"
                       onPress={pickFromLibrary}
-                      disabled={hasSubmittedToday || checkingSubmission}
-                      className={`flex-1 p-3 rounded-xl border-2 border-dashed  ${hasSubmittedToday || checkingSubmission ? "opacity-50" : ""}`}
-                    >
-                      <View className="items-center">
-                        <View className="mb-2 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-                          <Icon
-                            as={ImageIcon}
-                            className="size-5 text-blue-600 dark:text-blue-400"
-                          />
-                        </View>
-                        <Text
-                          variant="small"
-                          className="font-medium text-center text-foreground"
-                        >
-                          Pilih File
-                        </Text>
-                        <Text
-                          variant="small"
-                          className="text-xs text-center mt-1 text-muted-foreground"
-                        >
-                          Galeri
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                      disabled={isDisabled}
+                    />
                   </View>
-                  <Text
-                    variant="small"
-                    className="text-xs text-center text-muted-foreground"
-                  >
-                    Format: JPG, PNG • Maksimal 5MB • Wajib dilampirkan
+                  <Text className="text-xs text-center text-muted-foreground">
+                    Format: JPG, PNG • Maksimal 10MB • Wajib dilampirkan
                   </Text>
                 </View>
               ) : (
-                <View className="space-y-3">
-                  <View className="relative">
-                    <Image
-                      source={{ uri: imageData.uri }}
-                      className="w-full h-48 rounded-xl"
-                      resizeMode="cover"
-                    />
-                    <View className="absolute inset-0 bg-black/10 rounded-xl" />
-                    <TouchableOpacity
-                      onPress={clearImage}
-                      className="absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm bg-black/20 dark:bg-white/20"
-                    >
-                      <Icon
-                        as={Trash2}
-                        className="size-5 text-white dark:text-gray-200"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  <View className="flex-row justify-between items-center">
-                    <Text
-                      variant="small"
-                      className="font-medium text-foreground"
-                    >
-                      ✓ Foto berhasil dipilih
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        clearImage();
-                        // Automatically open picker again
-                        setTimeout(() => {
-                          pickFromCamera();
-                        }, 100);
-                      }}
-                      className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900"
-                    >
-                      <Text
-                        variant="small"
-                        className="text-xs font-medium text-blue-700 dark:text-blue-300"
-                      >
-                        Ganti Foto
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <ImagePreviewCard
+                  imageData={formData.image}
+                  onRemove={() =>
+                    setFormData((prev) => ({ ...prev, image: null }))
+                  }
+                  onReplace={() => {
+                    setFormData((prev) => ({ ...prev, image: null }));
+                    setTimeout(() => pickFromCamera(), 100);
+                  }}
+                />
               )}
             </CardContent>
           </Card>
 
-          {/* Submit Button Card */}
-          <Card className="shadow-sm bg-card">
-            <CardContent className="p-4">
-              <TouchableOpacity
-                disabled={
-                  uploading ||
-                  !description.trim() ||
-                  description.length < 10 ||
-                  !imageData ||
-                  hasSubmittedToday ||
-                  checkingSubmission
-                }
-                onPress={uploadPermit}
-                className={`w-full p-3 rounded-xl flex-row items-center justify-center bg-blue-600 dark:bg-blue-700 ${uploading ? "opacity-80" : ""}`}
-              >
-                {uploading ? (
-                  <>
-                    <View className="mr-3">
-                      <View
-                        className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin `}
-                      />
-                    </View>
-                    <Text variant="p" className="font-semibold text-white">
-                      Mengirim Pengajuan...
-                    </Text>
-                  </>
-                ) : hasSubmittedToday ? (
-                  <>
-                    <Icon
-                      as={AlertCircle}
-                      className="size-5 text-white"
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text variant="p" className="font-bold text-white">
-                      Sudah Mengajukan Hari Ini
-                    </Text>
-                  </>
-                ) : checkingSubmission ? (
-                  <>
-                    <View className="mr-3">
-                      <View
-                        className={`w-5 h-5 border-2 border-t-transparent rounded-full animate-spin `}
-                      />
-                    </View>
-                    <Text variant="p" className="font-semibold text-white">
-                      Memeriksa Status...
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Icon
-                      as={ClipboardPenLine}
-                      className="size-5 text-white"
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text variant="p" className="font-bold text-white">
-                      Kirim Pengajuan Izin
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {/* Validation Messages */}
-              {hasSubmittedToday && (
-                <Text
-                  variant="small"
-                  className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
-                >
-                  ⚠️ Sudah mengajukan izin hari ini
+          {/* Submit Button */}
+          <View className="mt-6">
+            <TouchableOpacity
+              disabled={!canSubmit}
+              onPress={uploadPermit}
+              className={`w-full py-3 rounded-xl items-center justify-center ${
+                canSubmit
+                  ? "bg-blue-600 dark:bg-blue-700 active:bg-blue-700"
+                  : "bg-gray-400 dark:bg-gray-600"
+              }`}
+              activeOpacity={0.7}
+            >
+              {uiState.uploading ? (
+                <>
+                  <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mb-2" />
+                  <Text variant="p" className="font-semibold text-white">
+                    Mengirim...
+                  </Text>
+                </>
+              ) : hasSubmittedToday ? (
+                <Text variant="p" className="font-semibold text-white">
+                  Sudah Diajukan Hari Ini
+                </Text>
+              ) : uiState.checking ? (
+                <>
+                  <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mb-2" />
+                  <Text variant="p" className="font-semibold text-white">
+                    Memeriksa...
+                  </Text>
+                </>
+              ) : (
+                <Text variant="p" className="font-semibold text-white">
+                  Kirim Pengajuan Izin
                 </Text>
               )}
-              {!hasSubmittedToday &&
-                !checkingSubmission &&
-                !description.trim() && (
-                  <Text
-                    variant="small"
-                    className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
-                  >
-                    ⚠️ Deskripsi tidak boleh kosong
-                  </Text>
-                )}
-              {!hasSubmittedToday &&
-                !checkingSubmission &&
-                description.trim() &&
-                description.length < 10 && (
-                  <Text
-                    variant="small"
-                    className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
-                  >
-                    ⚠️ Deskripsi minimal 10 karakter
-                  </Text>
-                )}
-              {!hasSubmittedToday &&
-                !checkingSubmission &&
-                !imageData &&
-                description.trim() &&
-                description.length >= 10 && (
-                  <Text
-                    variant="small"
-                    className="text-xs text-center mt-2 text-red-600 dark:text-red-400"
-                  >
-                    ⚠️ Foto bukti wajib dilampirkan
-                  </Text>
-                )}
-              {!hasSubmittedToday &&
-                !checkingSubmission &&
-                description.trim() &&
-                description.length >= 10 &&
-                imageData && (
-                  <Text
-                    variant="small"
-                    className="text-xs text-center mt-2 text-green-600 dark:text-green-400"
-                  >
-                    ✓ Siap untuk dikirim
-                  </Text>
-                )}
-            </CardContent>
-          </Card>
+            </TouchableOpacity>
+
+            {/* Validation Messages */}
+            {!isFormValid && !hasSubmittedToday && (
+              <View className="mt-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
+                <Text className="text-xs text-yellow-700 dark:text-yellow-300">
+                  {!validation.category && "• Pilih kategori izin"}
+                  {validation.category &&
+                    !validation.description &&
+                    "• Deskripsi belum memenuhi syarat"}
+                  {validation.category &&
+                    validation.description &&
+                    !validation.image &&
+                    "• Foto bukti belum dilampirkan"}
+                </Text>
+              </View>
+            )}
+          </View>
         </ScrollView>
       </SafeAreaView>
     </>
