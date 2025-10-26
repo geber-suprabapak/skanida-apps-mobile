@@ -1,6 +1,6 @@
 {
   "name": "skanida-apps-mobile",
-  "version": "1.1.0-cyrene",
+  "version": "1.1.1-cyrene",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",

@@ -666,7 +666,7 @@
 [simple-plist@1.3.1](https://github.com/wollardj/simple-plist) - MIT
 [simple-swizzle@0.2.4](https://github.com/qix-/node-simple-swizzle) - MIT
 [sisteransi@1.0.5](https://github.com/terkelg/sisteransi) - MIT
-[skanida-apps-mobile@1.1.0-cyrene](undefined) - UNLICENSED
+[skanida-apps-mobile@1.1.1-cyrene](undefined) - UNLICENSED
 [slash@3.0.0](https://github.com/sindresorhus/slash) - MIT
 [slugify@1.6.6](https://github.com/simov/slugify) - MIT
 [source-map-js@1.2.1](https://github.com/7rulnik/source-map-js) - BSD-3-Clause
