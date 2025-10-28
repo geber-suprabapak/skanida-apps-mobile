@@ -239,6 +239,23 @@ export default function Login() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Reset Password Link */}
+              <View className="flex-row justify-center items-center mt-4">
+                <Text variant="default" className="text-foreground">
+                  Lupa password?
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/auth/ResetPassword" as any)}
+                >
+                  <Text
+                    variant="default"
+                    className="font-semibold text-primary ml-1"
+                  >
+                    Reset di sini
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>
