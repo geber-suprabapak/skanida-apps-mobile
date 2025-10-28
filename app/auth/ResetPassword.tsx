@@ -150,7 +150,7 @@ export default function ResetPassword() {
             },
           },
           {
-            text: "Kembali ke Auth",
+            text: "Kembali",
             onPress: () => {
               // Clear form and navigate back to Auth Selector
               setEmail("");
