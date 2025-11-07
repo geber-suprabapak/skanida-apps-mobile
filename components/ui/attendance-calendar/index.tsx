@@ -31,6 +31,7 @@ import {
 } from "~/components/ui/attendance-calendar/types";
 import { RefreshCw } from "lucide-react-native";
 import { Icon } from "~/components/ui/icon";
+import { preloadAttendanceImages } from "~/utils/imageCache";
 const AttendanceCalendar = forwardRef<
   AttendanceCalendarRef,
   AttendanceCalendarProps
@@ -148,6 +149,26 @@ const AttendanceCalendar = forwardRef<
         console.error("Error refetching attendance data:", error);
       }
     }, [displayYear, displayMonth, user?.id, monthlyAttendance]);
+
+    // Preload images for the current month's attendance with photos
+    useEffect(() => {
+      if (monthlyAttendance.data && !monthlyAttendance.loading) {
+        const photoUrls = Object.values(monthlyAttendance.data)
+          .filter((attendance) => attendance?.photo_url)
+          .map((attendance) => attendance.photo_url);
+
+        if (photoUrls.length > 0) {
+          // Preload in background after a delay to avoid blocking UI
+          const preloadTimer = setTimeout(() => {
+            preloadAttendanceImages(photoUrls).catch((error) =>
+              console.warn("Failed to preload images:", error),
+            );
+          }, 2000);
+
+          return () => clearTimeout(preloadTimer);
+        }
+      }
+    }, [monthlyAttendance.data, monthlyAttendance.loading]);
 
     // Clear selected day when month changes
     useEffect(() => {

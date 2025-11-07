@@ -1,5 +1,6 @@
-import React from "react";
-import { View, TouchableOpacity, Image } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { AlertCircle, CheckCircle, FileText } from "lucide-react-native";
@@ -11,6 +12,27 @@ export const DetailCard = ({
   isDarkColorScheme,
   onClose,
 }: DetailCardProps) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [shouldLoadImage, setShouldLoadImage] = useState(false);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Lazy load image after a short delay to prevent immediate memory spike
+  useEffect(() => {
+    if (day?.attendance?.photo_url) {
+      // Small delay to allow card render first
+      loadTimeoutRef.current = setTimeout(() => {
+        setShouldLoadImage(true);
+      }, 100);
+    }
+
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [day?.attendance?.photo_url]);
+
   if (!day) return null;
 
   const getStatusText = () => {
@@ -211,19 +233,54 @@ export const DetailCard = ({
         )}
       </View>
 
-      {/* Photo */}
-      {day.attendance?.photo_url && (
+      {/* Photo - Lazy loaded */}
+      {day.attendance?.photo_url && !imageError && (
         <View className="mt-4">
           <Text
             className={`font-medium mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
           >
             Foto:
           </Text>
-          <Image
-            source={{ uri: day.attendance.photo_url }}
-            className="w-full h-48 rounded-lg"
-            resizeMode="cover"
-          />
+          <View className="w-full h-48 rounded-lg overflow-hidden bg-gray-200">
+            {(!shouldLoadImage || imageLoading) && (
+              <View className="absolute inset-0 items-center justify-center">
+                <ActivityIndicator size="small" color="#0066FF" />
+              </View>
+            )}
+            {shouldLoadImage && (
+              <Image
+                source={{ uri: day.attendance.photo_url }}
+                style={{ width: "100%", height: 192 }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+                priority="normal"
+                recyclingKey={day.attendance.photo_url}
+                onLoadStart={() => setImageLoading(true)}
+                onLoadEnd={() => setImageLoading(false)}
+                onError={(error) => {
+                  console.error("Image load error:", error);
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+              />
+            )}
+          </View>
+        </View>
+      )}
+      {imageError && day.attendance?.photo_url && (
+        <View className="mt-4">
+          <Text
+            className={`font-medium mb-2 ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+          >
+            Foto:
+          </Text>
+          <View className="w-full h-48 rounded-lg bg-gray-200 items-center justify-center">
+            <Icon as={AlertCircle} className="size-8 text-gray-400 mb-2" />
+            <Text className="text-gray-500 text-sm">
+              Gagal memuat foto
+            </Text>
+          </View>
         </View>
       )}
     </View>

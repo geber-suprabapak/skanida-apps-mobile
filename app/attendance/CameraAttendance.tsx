@@ -193,40 +193,56 @@ const base64ToBlob = (base64: string): ExpoBlobInstance => {
 };
 
 const compressImage = async (imageUri: string): Promise<CompressionResult> => {
+  let lastError: Error | null = null;
+
   for (const quality of IMAGE_CONFIG.QUALITY_STEPS) {
-    const manipulationContext = ImageManipulator.manipulate(imageUri);
-    manipulationContext.resize({ width: IMAGE_CONFIG.RESIZE_WIDTH });
+    let manipulationContext = null;
+    let renderedImage = null;
+    let savedImage = null;
 
-    const renderedImage = await manipulationContext.renderAsync();
-    const savedImage = await renderedImage.saveAsync({
-      base64: true,
-      compress: quality,
-      format: IMAGE_CONFIG.FORMAT,
-    });
+    try {
+      manipulationContext = ImageManipulator.manipulate(imageUri);
+      manipulationContext.resize({ width: IMAGE_CONFIG.RESIZE_WIDTH });
 
-    const base64Input = savedImage.base64 ?? null;
-    if (!base64Input) {
-      continue;
-    }
+      renderedImage = await manipulationContext.renderAsync();
+      savedImage = await renderedImage.saveAsync({
+        base64: true,
+        compress: quality,
+        format: IMAGE_CONFIG.FORMAT,
+      });
 
-    let base64Payload: string | null = base64Input;
+      const base64Input = savedImage.base64 ?? null;
+      if (!base64Input) {
+        continue;
+      }
 
-    if (base64Payload && base64Payload.includes(",")) {
-      const [, payload] = base64Payload.split(",", 2);
-      base64Payload = payload ?? null;
-    }
+      let base64Payload: string | null = base64Input;
 
-    if (!base64Payload) {
-      continue;
-    }
+      if (base64Payload && base64Payload.includes(",")) {
+        const [, payload] = base64Payload.split(",", 2);
+        base64Payload = payload ?? null;
+      }
 
-    const fileSize = (base64Payload.length * 3) / 4;
-    if (fileSize <= IMAGE_CONFIG.MAX_FILE_SIZE) {
-      return { base64: base64Payload, size: fileSize, quality };
+      if (!base64Payload) {
+        continue;
+      }
+
+      const fileSize = (base64Payload.length * 3) / 4;
+      if (fileSize <= IMAGE_CONFIG.MAX_FILE_SIZE) {
+        return { base64: base64Payload, size: fileSize, quality };
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Compression error");
+      console.error(`Compression failed at quality ${quality}:`, error);
+    } finally {
+      // Clean up contexts to prevent memory leaks
+      manipulationContext = null;
+      renderedImage = null;
+      savedImage = null;
     }
   }
 
-  throw new Error("Gagal mengompresi gambar");
+  throw lastError || new Error("Gagal mengompresi gambar");
 };
 
 // --- UTILITY FUNCTIONS ---
