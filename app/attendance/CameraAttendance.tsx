@@ -43,6 +43,9 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Smile,
+  Eye,
+  MoveHorizontal,
 } from "lucide-react-native";
 import { Buffer } from "buffer";
 import { timeSync } from "~/utils/timeSync";
@@ -71,6 +74,16 @@ type Coordinates = {
   latitude: number;
   longitude: number;
 };
+
+type ChallengeType = "BLINK" | "SMILE" | "SHAKE";
+type LivenessStatus = "IDLE" | "CHECKING" | "PASSED" | "FAILED";
+
+interface LivenessState {
+  status: LivenessStatus;
+  currentChallenge: ChallengeType | null;
+  message: string;
+  progress: number;
+}
 
 type ExpoBlobInstance = InstanceType<typeof ExpoBlob>;
 
@@ -127,25 +140,43 @@ const CaptureButton = memo<{
 ));
 CaptureButton.displayName = "CaptureButton";
 
-const FaceStatusOverlay = memo<{ message: string; isValid: boolean }>(
-  ({ message, isValid }) => (
+const FaceStatusOverlay = memo<{
+  message: string;
+  isValid: boolean;
+  challenge?: ChallengeType | null;
+}>(({ message, isValid, challenge }) => {
+  const getIcon = () => {
+    if (isValid) return CheckCircle;
+    switch (challenge) {
+      case "BLINK":
+        return Eye;
+      case "SMILE":
+        return Smile;
+      case "SHAKE":
+        return MoveHorizontal;
+      default:
+        return AlertCircle;
+    }
+  };
+
+  return (
     <View className="absolute top-32 left-0 right-0 items-center justify-center z-10 pointer-events-none">
       <View
         className={`px-6 py-3 rounded-full flex-row items-center shadow-sm ${
-          isValid ? "bg-green-500/90" : "bg-red-500/90"
+          isValid ? "bg-green-500/90" : "bg-black/60 backdrop-blur-md"
         }`}
       >
         <Icon
-          as={isValid ? CheckCircle : AlertCircle}
-          className="size-5 text-white mr-2"
+          as={getIcon()}
+          className={`size-5 mr-2 ${isValid ? "text-white" : "text-[#0066FF]"}`}
         />
         <Text variant="small" className="text-white font-bold">
           {message}
         </Text>
       </View>
     </View>
-  ),
-);
+  );
+});
 FaceStatusOverlay.displayName = "FaceStatusOverlay";
 
 const UploadOverlay = memo<{
@@ -291,10 +322,26 @@ const CameraAttendance = () => {
     message: "Menunggu proses...",
   });
   const [isUploading, setIsUploading] = useState(false);
-  const [faceStatus, setFaceStatus] = useState<{
-    isValid: boolean;
-    message: string;
-  }>({ isValid: false, message: "Mencari wajah..." });
+
+  // Liveness State
+  const [livenessState, setLivenessState] = useState<LivenessState>({
+    status: "IDLE",
+    currentChallenge: null,
+    message: "Posisikan wajah di dalam frame",
+    progress: 0,
+  });
+
+  // Refs for logic to avoid re-renders in worklets
+  const lastChallengeTime = useSharedValue(0);
+  const challengeProgress = useSharedValue(0);
+  const currentChallengeRef = useSharedValue<string>(""); // "BLINK" | "SMILE" | "SHAKE" | ""
+
+  // Constants for validation
+  const MIN_FACE_SIZE = 0.25; // Face must be at least 25% of screen width
+  const MAX_YAW_ANGLE = 15; // Head turn limit for "front" face
+  const BLINK_THRESHOLD = 0.3; // Eye open prob < 0.3 = blink
+  const SMILE_THRESHOLD = 0.6; // Smile prob > 0.6 = smile
+  const SHAKE_THRESHOLD = 10; // Head yaw > 10 or < -10
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     performanceMode: "fast",
@@ -304,39 +351,146 @@ const CameraAttendance = () => {
 
   const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
-  const handleDetectedFaces = Worklets.createRunOnJS((faces: Face[]) => {
-    if (faces.length === 0) {
-      setFaceStatus({ isValid: false, message: "Wajah tidak ditemukan" });
+  const handleDetectedFaces = Worklets.createRunOnJS(
+    (faces: Face[], frameWidth: number, frameHeight: number) => {
+      const now = Date.now();
+
+      // 1. Basic Validation
+      if (faces.length === 0) {
+        setLivenessState((prev) => ({
+          ...prev,
+          status: "IDLE",
+          message: "Wajah tidak ditemukan",
+          progress: 0,
+        }));
+        currentChallengeRef.value = "";
+        return;
+      }
+
+    if (faces.length > 1) {
+      setLivenessState((prev) => ({
+        ...prev,
+        status: "FAILED",
+        message: "Hanya satu wajah diperbolehkan",
+        progress: 0,
+      }));
       return;
     }
-    if (faces.length > 1) {
-      setFaceStatus({
-        isValid: false,
-        message: "Hanya satu wajah diperbolehkan",
+
+      const face = faces[0];
+
+      // 2. Anti-Spoofing: Face Size & Position
+      // Check if face is too small (too far)
+      const faceWidthRatio = face.bounds.width / frameWidth;
+      if (faceWidthRatio < MIN_FACE_SIZE) {
+        setLivenessState((prev) => ({
+          ...prev,
+          status: "IDLE",
+          message: "Dekatkan wajah ke kamera",
+          progress: 0,
+        }));
+        return;
+      }
+
+      // Check if face is looking straight (unless shaking)
+      const isShaking = currentChallengeRef.value === "SHAKE";
+      if (!isShaking && Math.abs(face.yawAngle ?? 0) > MAX_YAW_ANGLE) {
+        setLivenessState((prev) => ({
+          ...prev,
+          status: "IDLE",
+          message: "Hadap lurus ke kamera",
+          progress: 0,
+        }));
+        return;
+      }
+
+      if (livenessState.status === "PASSED") return;
+
+      // 3. Liveness Logic
+    if (livenessState.status === "IDLE" || livenessState.status === "FAILED") {
+      // Start new challenge sequence
+      const challenges: ChallengeType[] = ["BLINK", "SMILE", "SHAKE"];
+      const nextChallenge =
+        challenges[Math.floor(Math.random() * challenges.length)];
+
+      currentChallengeRef.value = nextChallenge;
+      challengeProgress.value = 0;
+      lastChallengeTime.value = now;
+
+      let msg = "";
+      switch (nextChallenge) {
+        case "BLINK":
+          msg = "Silakan berkedip...";
+          break;
+        case "SMILE":
+          msg = "Silakan senyum...";
+          break;
+        case "SHAKE":
+          msg = "Gelengkan kepala...";
+          break;
+      }
+
+      setLivenessState({
+        status: "CHECKING",
+        currentChallenge: nextChallenge,
+        message: msg,
+        progress: 0,
       });
       return;
     }
 
-    const face = faces[0];
-    // Basic liveness check: Eyes open probability
-    // We use a lenient threshold because lighting can affect this
-    const leftEyeOpen = face.leftEyeOpenProbability ?? 0;
-    const rightEyeOpen = face.rightEyeOpenProbability ?? 0;
-    const isEyesOpen = leftEyeOpen > 0.2 && rightEyeOpen > 0.2;
+    if (livenessState.status === "CHECKING") {
+      const challenge = currentChallengeRef.value;
+      let passed = false;
 
-    if (!isEyesOpen) {
-      setFaceStatus({ isValid: false, message: "Buka mata Anda" });
-      return;
+      if (challenge === "BLINK") {
+        const leftEye = face.leftEyeOpenProbability ?? 1;
+        const rightEye = face.rightEyeOpenProbability ?? 1;
+        // Detect blink: both eyes closed then open
+        // Simplified: just check for closed eyes for now, in real app we'd track state change Open->Closed->Open
+        if (leftEye < BLINK_THRESHOLD && rightEye < BLINK_THRESHOLD) {
+          passed = true;
+        }
+      } else if (challenge === "SMILE") {
+        const smileProb = face.smilingProbability ?? 0;
+        if (smileProb > SMILE_THRESHOLD) {
+          passed = true;
+        }
+      } else if (challenge === "SHAKE") {
+        const yaw = face.yawAngle ?? 0;
+        if (Math.abs(yaw) > SHAKE_THRESHOLD) {
+          passed = true;
+        }
+      }
+
+      if (passed) {
+        setLivenessState({
+          status: "PASSED",
+          currentChallenge: null,
+          message: "Verifikasi Berhasil!",
+          progress: 100,
+        });
+        currentChallengeRef.value = "";
+      } else {
+        // Timeout check (e.g., 5 seconds)
+        if (now - lastChallengeTime.value > 5000) {
+          setLivenessState({
+            status: "FAILED",
+            currentChallenge: null,
+            message: "Waktu habis. Coba lagi.",
+            progress: 0,
+          });
+          currentChallengeRef.value = "";
+        }
+      }
     }
-
-    setFaceStatus({ isValid: true, message: "Wajah terdeteksi" });
   });
 
   const frameProcessor = useFrameProcessor(
     (frame) => {
       "worklet";
       const faces = detectFaces(frame);
-      handleDetectedFaces(faces);
+      handleDetectedFaces(faces, frame.width, frame.height);
     },
     [handleDetectedFaces],
   );
@@ -801,24 +955,21 @@ const CameraAttendance = () => {
                 isCapturing={isCapturingPhoto}
                 isReady={isCameraReady}
                 isUploading={isUploading}
-                isFaceValid={faceStatus.isValid}
+                isFaceValid={livenessState.status === "PASSED"}
                 onPress={handleTakePicture}
               />
-
-              <View className="w-16 h-16" />
             </View>
+
+            <FaceStatusOverlay
+              message={livenessState.message}
+              isValid={livenessState.status === "PASSED"}
+              challenge={livenessState.currentChallenge}
+            />
           </View>
         </SafeAreaView>
       </View>
 
       {!isCameraReady && <CameraReadyOverlay />}
-
-      {isCameraReady && !isUploading && (
-        <FaceStatusOverlay
-          message={faceStatus.message}
-          isValid={faceStatus.isValid}
-        />
-      )}
 
       {isUploading && (
         <UploadOverlay
