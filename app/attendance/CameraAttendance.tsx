@@ -367,15 +367,15 @@ const CameraAttendance = () => {
         return;
       }
 
-    if (faces.length > 1) {
-      setLivenessState((prev) => ({
-        ...prev,
-        status: "FAILED",
-        message: "Hanya satu wajah diperbolehkan",
-        progress: 0,
-      }));
-      return;
-    }
+      if (faces.length > 1) {
+        setLivenessState((prev) => ({
+          ...prev,
+          status: "FAILED",
+          message: "Hanya satu wajah diperbolehkan",
+          progress: 0,
+        }));
+        return;
+      }
 
       const face = faces[0];
 
@@ -407,84 +407,88 @@ const CameraAttendance = () => {
       if (livenessState.status === "PASSED") return;
 
       // 3. Liveness Logic
-    if (livenessState.status === "IDLE" || livenessState.status === "FAILED") {
-      // Start new challenge sequence
-      const challenges: ChallengeType[] = ["BLINK", "SMILE", "SHAKE"];
-      const nextChallenge =
-        challenges[Math.floor(Math.random() * challenges.length)];
+      if (
+        livenessState.status === "IDLE" ||
+        livenessState.status === "FAILED"
+      ) {
+        // Start new challenge sequence
+        const challenges: ChallengeType[] = ["BLINK", "SMILE", "SHAKE"];
+        const nextChallenge =
+          challenges[Math.floor(Math.random() * challenges.length)];
 
-      currentChallengeRef.value = nextChallenge;
-      challengeProgress.value = 0;
-      lastChallengeTime.value = now;
+        currentChallengeRef.value = nextChallenge;
+        challengeProgress.value = 0;
+        lastChallengeTime.value = now;
 
-      let msg = "";
-      switch (nextChallenge) {
-        case "BLINK":
-          msg = "Silakan berkedip...";
-          break;
-        case "SMILE":
-          msg = "Silakan senyum...";
-          break;
-        case "SHAKE":
-          msg = "Gelengkan kepala...";
-          break;
-      }
-
-      setLivenessState({
-        status: "CHECKING",
-        currentChallenge: nextChallenge,
-        message: msg,
-        progress: 0,
-      });
-      return;
-    }
-
-    if (livenessState.status === "CHECKING") {
-      const challenge = currentChallengeRef.value;
-      let passed = false;
-
-      if (challenge === "BLINK") {
-        const leftEye = face.leftEyeOpenProbability ?? 1;
-        const rightEye = face.rightEyeOpenProbability ?? 1;
-        // Detect blink: both eyes closed then open
-        // Simplified: just check for closed eyes for now, in real app we'd track state change Open->Closed->Open
-        if (leftEye < BLINK_THRESHOLD && rightEye < BLINK_THRESHOLD) {
-          passed = true;
+        let msg = "";
+        switch (nextChallenge) {
+          case "BLINK":
+            msg = "Silakan berkedip...";
+            break;
+          case "SMILE":
+            msg = "Silakan senyum...";
+            break;
+          case "SHAKE":
+            msg = "Gelengkan kepala...";
+            break;
         }
-      } else if (challenge === "SMILE") {
-        const smileProb = face.smilingProbability ?? 0;
-        if (smileProb > SMILE_THRESHOLD) {
-          passed = true;
-        }
-      } else if (challenge === "SHAKE") {
-        const yaw = face.yawAngle ?? 0;
-        if (Math.abs(yaw) > SHAKE_THRESHOLD) {
-          passed = true;
-        }
-      }
 
-      if (passed) {
         setLivenessState({
-          status: "PASSED",
-          currentChallenge: null,
-          message: "Verifikasi Berhasil!",
-          progress: 100,
+          status: "CHECKING",
+          currentChallenge: nextChallenge,
+          message: msg,
+          progress: 0,
         });
-        currentChallengeRef.value = "";
-      } else {
-        // Timeout check (e.g., 5 seconds)
-        if (now - lastChallengeTime.value > 5000) {
+        return;
+      }
+
+      if (livenessState.status === "CHECKING") {
+        const challenge = currentChallengeRef.value;
+        let passed = false;
+
+        if (challenge === "BLINK") {
+          const leftEye = face.leftEyeOpenProbability ?? 1;
+          const rightEye = face.rightEyeOpenProbability ?? 1;
+          // Detect blink: both eyes closed then open
+          // Simplified: just check for closed eyes for now, in real app we'd track state change Open->Closed->Open
+          if (leftEye < BLINK_THRESHOLD && rightEye < BLINK_THRESHOLD) {
+            passed = true;
+          }
+        } else if (challenge === "SMILE") {
+          const smileProb = face.smilingProbability ?? 0;
+          if (smileProb > SMILE_THRESHOLD) {
+            passed = true;
+          }
+        } else if (challenge === "SHAKE") {
+          const yaw = face.yawAngle ?? 0;
+          if (Math.abs(yaw) > SHAKE_THRESHOLD) {
+            passed = true;
+          }
+        }
+
+        if (passed) {
           setLivenessState({
-            status: "FAILED",
+            status: "PASSED",
             currentChallenge: null,
-            message: "Waktu habis. Coba lagi.",
-            progress: 0,
+            message: "Verifikasi Berhasil!",
+            progress: 100,
           });
           currentChallengeRef.value = "";
+        } else {
+          // Timeout check (e.g., 5 seconds)
+          if (now - lastChallengeTime.value > 5000) {
+            setLivenessState({
+              status: "FAILED",
+              currentChallenge: null,
+              message: "Waktu habis. Coba lagi.",
+              progress: 0,
+            });
+            currentChallengeRef.value = "";
+          }
         }
       }
-    }
-  });
+    },
+  );
 
   const frameProcessor = useFrameProcessor(
     (frame) => {
