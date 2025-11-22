@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.1.1-cyrene",
+  version: "1.2.0-internal.1",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -55,7 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-build-properties",
       {
         android: {
-          minSdkVersion: 24,
+          minSdkVersion: 26,
           enableBundleCompression: true,
           enableMinifyInReleaseBuilds: true,
           useLegacyPackaging: true,

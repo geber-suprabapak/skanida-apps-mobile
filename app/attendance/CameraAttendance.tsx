@@ -3,7 +3,14 @@ import {
   PhotoFile,
   useCameraDevice,
   useCameraPermission,
+  useFrameProcessor,
 } from "react-native-vision-camera";
+import {
+  Face,
+  useFaceDetector,
+  FaceDetectionOptions,
+} from "react-native-vision-camera-face-detector";
+import { Worklets } from "react-native-worklets-core";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
@@ -34,6 +41,8 @@ import {
   SwitchCamera,
   ArrowLeft,
   Loader2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react-native";
 import { Buffer } from "buffer";
 import { timeSync } from "~/utils/timeSync";
@@ -92,24 +101,52 @@ const CaptureButton = memo<{
   isCapturing: boolean;
   isReady: boolean;
   isUploading: boolean;
+  isFaceValid: boolean;
   onPress: () => void;
-}>(({ isCapturing, isReady, isUploading, onPress }) => (
+}>(({ isCapturing, isReady, isUploading, isFaceValid, onPress }) => (
   <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
     <TouchableOpacity
-      className="w-20 h-20 rounded-full bg-white justify-center items-center"
+      className={`w-20 h-20 rounded-full justify-center items-center ${
+        isFaceValid ? "bg-[#0066FF]" : "bg-gray-400"
+      }`}
       onPress={onPress}
-      disabled={isCapturing || !isReady || isUploading}
+      disabled={isCapturing || !isReady || isUploading || !isFaceValid}
       activeOpacity={0.8}
     >
       {isCapturing ? (
-        <ActivityIndicator size="large" color="#0066FF" />
+        <ActivityIndicator size="large" color="#FFFFFF" />
       ) : (
-        <View className="w-16 h-16 rounded-full bg-[#0066FF]" />
+        <View
+          className={`w-16 h-16 rounded-full ${
+            isFaceValid ? "bg-[#0066FF] border-2 border-white" : "bg-gray-500"
+          }`}
+        />
       )}
     </TouchableOpacity>
   </Animated.View>
 ));
 CaptureButton.displayName = "CaptureButton";
+
+const FaceStatusOverlay = memo<{ message: string; isValid: boolean }>(
+  ({ message, isValid }) => (
+    <View className="absolute top-32 left-0 right-0 items-center justify-center z-10 pointer-events-none">
+      <View
+        className={`px-6 py-3 rounded-full flex-row items-center shadow-sm ${
+          isValid ? "bg-green-500/90" : "bg-red-500/90"
+        }`}
+      >
+        <Icon
+          as={isValid ? CheckCircle : AlertCircle}
+          className="size-5 text-white mr-2"
+        />
+        <Text variant="small" className="text-white font-bold">
+          {message}
+        </Text>
+      </View>
+    </View>
+  ),
+);
+FaceStatusOverlay.displayName = "FaceStatusOverlay";
 
 const UploadOverlay = memo<{
   message: string;
@@ -254,6 +291,55 @@ const CameraAttendance = () => {
     message: "Menunggu proses...",
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [faceStatus, setFaceStatus] = useState<{
+    isValid: boolean;
+    message: string;
+  }>({ isValid: false, message: "Mencari wajah..." });
+
+  const faceDetectionOptions = useRef<FaceDetectionOptions>({
+    performanceMode: "fast",
+    classificationMode: "all",
+    minFaceSize: 0.15,
+  }).current;
+
+  const { detectFaces } = useFaceDetector(faceDetectionOptions);
+
+  const handleDetectedFaces = Worklets.createRunOnJS((faces: Face[]) => {
+    if (faces.length === 0) {
+      setFaceStatus({ isValid: false, message: "Wajah tidak ditemukan" });
+      return;
+    }
+    if (faces.length > 1) {
+      setFaceStatus({
+        isValid: false,
+        message: "Hanya satu wajah diperbolehkan",
+      });
+      return;
+    }
+
+    const face = faces[0];
+    // Basic liveness check: Eyes open probability
+    // We use a lenient threshold because lighting can affect this
+    const leftEyeOpen = face.leftEyeOpenProbability ?? 0;
+    const rightEyeOpen = face.rightEyeOpenProbability ?? 0;
+    const isEyesOpen = leftEyeOpen > 0.2 && rightEyeOpen > 0.2;
+
+    if (!isEyesOpen) {
+      setFaceStatus({ isValid: false, message: "Buka mata Anda" });
+      return;
+    }
+
+    setFaceStatus({ isValid: true, message: "Wajah terdeteksi" });
+  });
+
+  const frameProcessor = useFrameProcessor(
+    (frame) => {
+      "worklet";
+      const faces = detectFaces(frame);
+      handleDetectedFaces(faces);
+    },
+    [handleDetectedFaces],
+  );
 
   const spinnerRotation = useSharedValue(0);
 
@@ -678,6 +764,7 @@ const CameraAttendance = () => {
         photo
         enableZoomGesture
         onInitialized={handleCameraReady}
+        frameProcessor={frameProcessor}
       />
 
       <View className="absolute inset-0" pointerEvents="box-none">
@@ -714,6 +801,7 @@ const CameraAttendance = () => {
                 isCapturing={isCapturingPhoto}
                 isReady={isCameraReady}
                 isUploading={isUploading}
+                isFaceValid={faceStatus.isValid}
                 onPress={handleTakePicture}
               />
 
@@ -724,6 +812,13 @@ const CameraAttendance = () => {
       </View>
 
       {!isCameraReady && <CameraReadyOverlay />}
+
+      {isCameraReady && !isUploading && (
+        <FaceStatusOverlay
+          message={faceStatus.message}
+          isValid={faceStatus.isValid}
+        />
+      )}
 
       {isUploading && (
         <UploadOverlay

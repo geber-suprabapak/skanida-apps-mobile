@@ -56,6 +56,7 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "react-native-vision-camera": "^4.7.2",
+    "react-native-vision-camera-face-detector": "^1.9.1",
     "react-native-web": "~0.20.0",
     "react-native-worklets-core": "^1.6.2",
     "tailwind-merge": "^3.3.0",
