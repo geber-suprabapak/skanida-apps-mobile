@@ -276,49 +276,57 @@ BEGIN
   END IF;
 END $$;
 
--- absences policies: users can only access their own absences
-DO $$ 
+-- absences policies: users can only read their own records; writes must go through security definer RPCs
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='absences' AND policyname='absences_select_own'
   ) THEN
     CREATE POLICY absences_select_own ON absences FOR SELECT USING (auth.uid() = user_id);
   END IF;
-  
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='absences' AND policyname='absences_insert_own'
-  ) THEN
-    CREATE POLICY absences_insert_own ON absences FOR INSERT WITH CHECK (auth.uid() = user_id);
-  END IF;
-  
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='absences' AND policyname='absences_update_own'
-  ) THEN
-    CREATE POLICY absences_update_own ON absences FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-  END IF;
 END $$;
 
--- perizinan policies: users can only access their own perizinan
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='perizinan' AND policyname='perizinan_select_own'
-  ) THEN
-    CREATE POLICY perizinan_select_own ON perizinan FOR SELECT USING (auth.uid() = user_id);
-  END IF;
-  
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='perizinan' AND policyname='perizinan_insert_own'
-  ) THEN
-    CREATE POLICY perizinan_insert_own ON perizinan FOR INSERT WITH CHECK (auth.uid() = user_id);
-  END IF;
-  
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='perizinan' AND policyname='perizinan_update_own'
-  ) THEN
-    CREATE POLICY perizinan_update_own ON perizinan FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-  END IF;
-END $$;
+-- Remove legacy write policies to block client-side tampering
+DROP POLICY IF EXISTS absences_insert_own ON absences;
+DROP POLICY IF EXISTS absences_update_own ON absences;
+
+-- perizinan policies: enforce strict self-service rules and prevent self-approval
+DROP POLICY IF EXISTS perizinan_select_own ON perizinan;
+CREATE POLICY perizinan_select_own ON perizinan
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS perizinan_insert_own ON perizinan;
+CREATE POLICY perizinan_insert_own ON perizinan
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = user_id
+    AND approval_status = 'pending'::TEXT
+    AND status = false
+    AND approved_by IS NULL
+    AND approved_at IS NULL
+    AND rejected_by IS NULL
+    AND rejected_at IS NULL
+    AND rejection_reason IS NULL
+  );
+
+DROP POLICY IF EXISTS perizinan_update_own ON perizinan;
+CREATE POLICY perizinan_update_own ON perizinan
+  FOR UPDATE
+  USING (
+    auth.uid() = user_id
+    AND approval_status = 'pending'::TEXT
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    AND approval_status = 'pending'::TEXT
+    AND status = false
+    AND approved_by IS NULL
+    AND approved_at IS NULL
+    AND rejected_by IS NULL
+    AND rejected_at IS NULL
+    AND rejection_reason IS NULL
+  );
 
 -- location policies: Teachers/Admins can view all, everyone can view active, admins can manage
 DO $$ 
