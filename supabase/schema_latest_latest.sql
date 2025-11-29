@@ -788,7 +788,19 @@ DECLARE
     v_selesai_masuk_with_kompensasi TIME;
     v_mulai_pulang TIME;
     v_selesai_pulang TIME;
+    v_effective_user_id UUID;
+    v_caller_uid UUID := auth.uid();
 BEGIN
+    IF v_caller_uid IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Missing authenticated user. Provide a valid Supabase session.';
+    END IF;
+
+    IF p_user_id IS NULL OR p_user_id = v_caller_uid THEN
+        v_effective_user_id := v_caller_uid;
+    ELSE
+        RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Cannot evaluate attendance for another user.';
+    END IF;
+
     -- Get current time and date in Asia/Jakarta timezone (WIB)
     v_current_time := (NOW() AT TIME ZONE 'Asia/Jakarta')::TIME;
     v_current_date := (NOW() AT TIME ZONE 'Asia/Jakarta')::DATE;
@@ -873,7 +885,7 @@ BEGIN
     -- Step 4: Check last absence record for today
     SELECT * INTO v_last_absence
     FROM absences
-    WHERE user_id = p_user_id
+    WHERE user_id = v_effective_user_id
       AND date = v_current_date
     ORDER BY created_at DESC
     LIMIT 1;
@@ -975,7 +987,19 @@ DECLARE
   v_has_checked_in BOOLEAN := FALSE;
   v_has_checked_out BOOLEAN := FALSE;
   v_response public.attendance_action_response;
+  v_effective_user_id UUID;
+  v_caller_uid UUID := auth.uid();
 BEGIN
+  IF v_caller_uid IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Missing authenticated user. Provide a valid Supabase session.';
+  END IF;
+
+  IF p_user_id IS NULL OR p_user_id = v_caller_uid THEN
+    v_effective_user_id := v_caller_uid;
+  ELSE
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Cannot evaluate attendance for another user.';
+  END IF;
+
   -- LANGKAH 1 & 2: Tetap sama
   v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
   v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
@@ -1029,14 +1053,14 @@ BEGIN
     EXISTS(
       SELECT 1
       FROM public.absences
-      WHERE user_id = p_user_id
+      WHERE user_id = v_effective_user_id
         AND date = v_today_wib
         AND status IN ('Hadir', 'Terlambat')
     ),
     EXISTS(
       SELECT 1
       FROM public.absences
-      WHERE user_id = p_user_id
+      WHERE user_id = v_effective_user_id
         AND date = v_today_wib
         AND status = 'Pulang'
     )
@@ -1108,7 +1132,19 @@ DECLARE
   v_new_attendance_id UUID;
   v_result JSONB;
   v_current_day_indonesian TEXT;
+  v_effective_user_id UUID;
+  v_caller_uid UUID := auth.uid();
 BEGIN
+  IF v_caller_uid IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Missing authenticated user. Provide a valid Supabase session.';
+  END IF;
+
+  IF p_user_id IS NULL OR p_user_id = v_caller_uid THEN
+    v_effective_user_id := v_caller_uid;
+  ELSE
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Cannot record attendance for another user.';
+  END IF;
+
   v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
   v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
 
@@ -1131,7 +1167,7 @@ BEGIN
     END IF;
     
     INSERT INTO public.absences (user_id, date, status, photo_url, latitude, longitude)
-    VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
+    VALUES (v_effective_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
     RETURNING id INTO v_new_attendance_id;
 
     v_result := jsonb_build_object('success', true, 'message', 'Presensi masuk berhasil direkam.', 'attendance_id', v_new_attendance_id);
@@ -1143,7 +1179,7 @@ BEGIN
     v_status_text := 'Pulang';
         
     INSERT INTO public.absences (user_id, date, status, photo_url, latitude, longitude)
-    VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
+    VALUES (v_effective_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
     RETURNING id INTO v_new_attendance_id;
 
     v_result := jsonb_build_object('success', true, 'message', 'Presensi pulang berhasil direkam.', 'attendance_id', v_new_attendance_id);

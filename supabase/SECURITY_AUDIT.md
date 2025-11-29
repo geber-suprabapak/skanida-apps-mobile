@@ -10,6 +10,7 @@ This document captures the security review that was carried out on `supabase/sch
 |---|------|----------|-------------|------------|
 | 1 | `perizinan` RLS | High | Students could self-approve their leave requests by crafting `INSERT/UPDATE` statements that set `approval_status`, `approved_by`, or other moderator-managed fields. | Replaced the permissive policies with explicit `DROP/CREATE` statements that require `approval_status = 'pending'` and all moderator fields to remain `NULL` for self-service writes. |
 | 2 | `absences` RLS | High | Users could forge or edit attendance rows directly because client roles were allowed to `INSERT` and `UPDATE` the table without any server-side validation. | Removed the legacy write policies so that only security-definer RPCs (`save_attendance_record`, etc.) can mutate the table while users retain read-only access to their own rows. |
+| 3 | Attendance RPC auth | High | Security-definer attendance RPCs (`check_absensi_status`, `get_and_validate_attendance_action`, `save_attendance_record`) trusted a caller-supplied `user_id`, allowing authenticated users to impersonate others. | Each RPC now derives the effective user from `auth.uid()` and aborts if the provided `user_id` mismatches or is missing. |
 
 ## Details
 
@@ -26,6 +27,12 @@ This document captures the security review that was carried out on `supabase/sch
 * **Issue:** RLS policies previously allowed authenticated users to `INSERT` and `UPDATE` their own `absences` rows. Because the mobile app already performs client-side inserts, an attacker could bypass the GPS, schedule, and duplicate checks enforced by RPC functions by directly mutating the table through Supabase.
 * **Impact:** Users could create arbitrary "Hadir" / "Pulang" entries, erase late marks, or overwrite coordinates, resulting in untrustworthy attendance records.
 * **Fix:** The write policies have been dropped entirely. End-users now only have `SELECT` access to their own rows, and the existing security-definer RPCs remain responsible for validated writes.
+
+### 3. RPC Impersonation via `user_id` parameters
+
+* **Issue:** Although client writes were routed through security-definer RPCs, those functions (`check_absensi_status`, `get_and_validate_attendance_action`, `save_attendance_record`) accepted an arbitrary `user_id` argument and ran with table-owner privileges, bypassing RLS.
+* **Impact:** Any authenticated user could spoof someone else's UUID when calling the RPCs, leaking attendance state and creating fraudulent check-in/check-out rows under another account.
+* **Fix:** Every attendance RPC now derives the effective user from `auth.uid()` and immediately aborts if the provided `user_id` is missing or does not match the caller. All subsequent reads and inserts use this verified identifier.
 
 ## Recommendations / Follow-Ups
 
