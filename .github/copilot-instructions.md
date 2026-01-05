@@ -246,22 +246,22 @@ const validation = useMemo(() => ({
 
 **Setup:**
 ```bash
-pnpm install
+pnpm install       # or bun install
 npx expo prebuild  # Sync native config (Android/iOS)
-pnpm start         # Metro dev server + hot reload
+pnpm start         # or bun start (Metro dev server + hot reload)
 ```
 
 **Linting & Formatting (ESLint + Prettier):**
 ```bash
-pnpm lint      # Check all files (ESLint + Prettier check)
-pnpm format    # Auto-fix (ESLint + Prettier write)
-# Pattern: never manually fix lint errors; always run pnpm format
+pnpm lint      # or bun lint (Check all files)
+pnpm format    # or bun format (Auto-fix)
+# Pattern: never manually fix lint errors; always run pnpm format / bun format
 ```
 
 **Mobile Build & Run:**
 ```bash
-pnpm android   # Run on Android (hot reload)
-pnpm ios       # Run on iOS
+pnpm android   # or bun android (Run on Android)
+pnpm ios       # or bun ios (Run on iOS)
 eas build --local --profile preview --platform android  # via build.sh
 ```
 
@@ -298,7 +298,7 @@ log.info("Starting form submission...");
 **✅ DO:**
 - Use `cn()` for conditional classnames: `cn("base", condition && "variant")`.
 - Import from `~/` paths; never use relative imports outside same folder.
-- Call `pnpm format` after editing; don't manually fix lint errors.
+- Call `pnpm format` or `bun format` after editing; don't manually fix lint errors.
 - Use `useMemo` for computed state; `useCallback` for event handlers.
 - Always check `userProfile` before accessing (may be `null` during load).
 
@@ -331,8 +331,8 @@ log.info("Starting form submission...");
 2. **Add store** in `store/newStore.ts` using Zustand pattern.
 3. **Use UI components** from `components/ui/` only.
 4. **Import from `~/`** and use path aliases.
-5. **Call `pnpm format`** before committing.
-6. **Test with `pnpm start`** (Android/iOS) or `pnpm android` / `pnpm ios`.
+5. **Call `pnpm format`** or **`bun format`** before committing.
+6. **Test with `pnpm start`** (Android/iOS) or `pnpm android` / `pnpm ios`. (or use `bun` equivalents)
 
 ---
 

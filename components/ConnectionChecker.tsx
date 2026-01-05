@@ -32,7 +32,6 @@ export default function ConnectionChecker({
 }: ConnectionCheckerProps) {
   const isShowingAlert = useRef(false);
   const isMounted = useRef(false);
-  const hasShownAlphaAlert = useRef(false);
   const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
   const [forceOffline, setForceOffline] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionContextType>(
@@ -80,8 +79,6 @@ export default function ConnectionChecker({
                     if (isMounted.current) showOfflineAlert();
                   }, 300);
                 } else {
-                  // If connection is restored, show the alpha alert
-                  showAlphaReleaseAlert();
                   setIsInitialCheckDone(true);
                 }
               });
@@ -96,17 +93,6 @@ export default function ConnectionChecker({
         {
           cancelable: false, // Prevent dismissing without action
         },
-      );
-    };
-
-    const showAlphaReleaseAlert = () => {
-      if (hasShownAlphaAlert.current) return;
-      hasShownAlphaAlert.current = true;
-      Alert.alert(
-        "🚧 Alpha Release",
-        "Aplikasi ini masih dalam tahap pengembangan (alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
-        [{ text: "Saya Mengerti", style: "default" }],
-        { cancelable: true },
       );
     };
 
@@ -138,7 +124,6 @@ export default function ConnectionChecker({
             }
           }, 1000); // Reduced delay for faster response
         } else {
-          showAlphaReleaseAlert();
           setIsInitialCheckDone(true);
         }
       } catch {
@@ -174,11 +159,8 @@ export default function ConnectionChecker({
           showOfflineAlert();
         }
       } else {
-        // Reset alert flag and show alpha release if needed
+        // Reset alert flag
         isShowingAlert.current = false;
-        if (isMounted.current && !hasShownAlphaAlert.current) {
-          showAlphaReleaseAlert();
-        }
         if (!isInitialCheckDone) {
           setIsInitialCheckDone(true);
         }
