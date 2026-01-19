@@ -13,6 +13,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
@@ -27,6 +28,9 @@ import {
   AlertCircle,
   Trash2,
   Image as ImageIcon,
+  Send,
+  HeartPulse,
+  Briefcase,
 } from "lucide-react-native";
 
 // ============================================================================
@@ -120,25 +124,21 @@ const SectionHeader: React.FC<{
 }> = ({ icon, title, subtitle }) => (
   <CardHeader className="pb-3">
     <View className="flex-row items-center">
-      <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-        <Icon as={icon} className="size-5 text-blue-600 dark:text-blue-400" />
+      <View className="mr-3 w-11 h-11 rounded-xl bg-amber-500/10 items-center justify-center">
+        <Icon as={icon} className="size-5 text-amber-600 dark:text-amber-400" />
       </View>
-      <View>
+      <View className="flex-1">
         <CardTitle>
-          <Text variant="h4" className="font-bold text-foreground">
-            {title}
-          </Text>
+          <Text className="font-bold text-foreground text-base">{title}</Text>
         </CardTitle>
-        <Text variant="small" className="text-muted-foreground mt-1">
-          {subtitle}
-        </Text>
+        <Text className="text-muted-foreground text-sm mt-0.5">{subtitle}</Text>
       </View>
     </View>
   </CardHeader>
 );
 
 /**
- * CategoryButton - Individual category option
+ * CategoryButton - Individual category option with gradient
  */
 const CategoryButton: React.FC<{
   value: PermitCategory;
@@ -149,38 +149,66 @@ const CategoryButton: React.FC<{
   <TouchableOpacity
     onPress={onPress}
     disabled={disabled}
-    className={`flex-1 p-4 rounded-xl border-2 transition-all ${
-      isSelected
-        ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950"
-        : "border-border bg-card"
-    } ${disabled ? "opacity-50" : ""}`}
-    activeOpacity={0.7}
+    className="flex-1"
+    activeOpacity={0.9}
   >
-    <View className="items-center">
-      <View className="mb-3 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-        <Icon
-          as={value === "sakit" ? AlertCircle : ClipboardPenLine}
-          className="size-5 text-blue-600 dark:text-blue-400"
-        />
+    {isSelected ? (
+      <LinearGradient
+        colors={
+          value === "sakit"
+            ? ["#ef4444", "#dc2626", "#b91c1c"]
+            : ["#3b82f6", "#2563eb", "#1d4ed8"]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className={`p-4 rounded-2xl ${disabled ? "opacity-50" : ""}`}
+      >
+        <View className="items-center">
+          <View className="mb-3 w-12 h-12 rounded-xl bg-white/20 items-center justify-center">
+            <Icon
+              as={value === "sakit" ? HeartPulse : Briefcase}
+              className="size-6 text-white"
+            />
+          </View>
+          <Text className="font-bold text-center text-white">
+            {CATEGORY_LABELS[value]}
+          </Text>
+          <Text className="text-xs text-center mt-1 text-white/70">
+            {CATEGORY_DESCRIPTIONS[value]}
+          </Text>
+        </View>
+      </LinearGradient>
+    ) : (
+      <View
+        className={`p-4 rounded-2xl border-2 border-border bg-card ${disabled ? "opacity-50" : ""}`}
+      >
+        <View className="items-center">
+          <View
+            className={`mb-3 w-12 h-12 rounded-xl items-center justify-center ${
+              value === "sakit" ? "bg-red-500/10" : "bg-blue-500/10"
+            }`}
+          >
+            <Icon
+              as={value === "sakit" ? HeartPulse : Briefcase}
+              className={`size-6 ${
+                value === "sakit" ? "text-red-500" : "text-blue-500"
+              }`}
+            />
+          </View>
+          <Text className="font-semibold text-center text-foreground">
+            {CATEGORY_LABELS[value]}
+          </Text>
+          <Text className="text-xs text-center mt-1 text-muted-foreground">
+            {CATEGORY_DESCRIPTIONS[value]}
+          </Text>
+        </View>
       </View>
-      <Text
-        variant="small"
-        className="font-semibold text-center text-foreground"
-      >
-        {CATEGORY_LABELS[value]}
-      </Text>
-      <Text
-        variant="small"
-        className="text-xs text-center mt-1 text-muted-foreground"
-      >
-        {CATEGORY_DESCRIPTIONS[value]}
-      </Text>
-    </View>
+    )}
   </TouchableOpacity>
 );
 
 /**
- * ImageUploadButton - Camera or Gallery button
+ * ImageUploadButton - Premium camera/gallery buttons
  */
 const ImageUploadButton: React.FC<{
   type: "camera" | "gallery";
@@ -190,80 +218,97 @@ const ImageUploadButton: React.FC<{
   <TouchableOpacity
     onPress={onPress}
     disabled={disabled}
-    className={`flex-1 p-4 rounded-xl border-2 border-dashed border-border ${
-      disabled ? "opacity-50" : ""
-    }`}
-    activeOpacity={0.7}
+    className={`flex-1 ${disabled ? "opacity-50" : ""}`}
+    activeOpacity={0.9}
   >
-    <View className="items-center">
-      <View className="mb-3 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-        <Icon
-          as={type === "camera" ? Camera : ImageIcon}
-          className="size-5 text-blue-600 dark:text-blue-400"
-        />
+    <LinearGradient
+      colors={
+        type === "camera"
+          ? ["#3b82f6", "#2563eb", "#1d4ed8"]
+          : ["#8b5cf6", "#7c3aed", "#6d28d9"]
+      }
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      className="p-4 rounded-2xl"
+    >
+      <View className="items-center">
+        <View className="mb-3 w-12 h-12 rounded-xl bg-white/20 items-center justify-center">
+          <Icon
+            as={type === "camera" ? Camera : ImageIcon}
+            className="size-6 text-white"
+          />
+        </View>
+        <Text className="font-bold text-center text-white">
+          {type === "camera" ? "Ambil Foto" : "Pilih File"}
+        </Text>
+        <Text className="text-xs text-center mt-1 text-white/70">
+          {type === "camera" ? "Kamera" : "Galeri"}
+        </Text>
       </View>
-      <Text variant="small" className="font-medium text-center text-foreground">
-        {type === "camera" ? "Ambil Foto" : "Pilih File"}
-      </Text>
-      <Text
-        variant="small"
-        className="text-xs text-center mt-1 text-muted-foreground"
-      >
-        {type === "camera" ? "Kamera" : "Galeri"}
-      </Text>
-    </View>
+    </LinearGradient>
   </TouchableOpacity>
 );
 
 /**
- * ImagePreviewCard - Preview with file info and controls
+ * ImagePreviewCard - Premium preview with file info and controls
  */
 const ImagePreviewCard: React.FC<{
   imageData: ImageData;
   onRemove: () => void;
   onReplace: () => void;
 }> = ({ imageData, onRemove, onReplace }) => (
-  <View className="space-y-4">
-    <View className="relative rounded-xl overflow-hidden">
+  <View className="gap-4">
+    <View className="relative rounded-2xl overflow-hidden shadow-lg">
       <Image
         source={{ uri: imageData.uri }}
-        className="w-full h-48"
+        className="w-full h-52"
         resizeMode="cover"
       />
-      <View className="absolute inset-0 bg-black/10" />
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.5)"]}
+        className="absolute bottom-0 left-0 right-0 h-20"
+      />
       <TouchableOpacity
         onPress={onRemove}
-        className="absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm bg-black/20 dark:bg-white/20 active:bg-black/40"
-        activeOpacity={0.7}
+        className="absolute top-3 right-3 w-10 h-10 rounded-xl items-center justify-center bg-red-500/80"
+        activeOpacity={0.8}
       >
         <Icon as={Trash2} className="size-5 text-white" />
       </TouchableOpacity>
-    </View>
 
-    <View className="bg-muted/50 p-3 rounded-lg">
-      <View className="flex-row items-center justify-between mb-2">
-        <Text variant="small" className="font-medium text-foreground">
-          ✓ Foto berhasil dipilih
-        </Text>
-        <View className="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900">
-          <Text className="text-xs font-medium text-green-700 dark:text-green-300">
-            Valid
-          </Text>
+      {/* File info overlay */}
+      <View className="absolute bottom-3 left-3 right-3 flex-row items-center justify-between">
+        <View className="flex-row items-center">
+          <View className="w-8 h-8 rounded-lg bg-white/20 items-center justify-center mr-2">
+            <Icon as={CheckCircle} className="size-4 text-white" />
+          </View>
+          <View>
+            <Text className="text-white font-bold text-sm">Foto Valid</Text>
+            <Text className="text-white/70 text-xs">
+              {formatFileSize(imageData.fileSize)}
+            </Text>
+          </View>
+        </View>
+        <View className="px-3 py-1.5 rounded-xl bg-green-500/90">
+          <Text className="text-xs font-bold text-white">✓ Ready</Text>
         </View>
       </View>
-      <Text variant="small" className="text-xs text-muted-foreground">
-        Ukuran: {formatFileSize(imageData.fileSize)}
-      </Text>
     </View>
 
     <TouchableOpacity
       onPress={onReplace}
-      className="w-full py-2 px-4 rounded-lg bg-blue-100 dark:bg-blue-900 active:bg-blue-200"
-      activeOpacity={0.7}
+      activeOpacity={0.9}
+      className="overflow-hidden rounded-xl"
     >
-      <Text className="text-sm font-medium text-center text-blue-700 dark:text-blue-300">
-        Ganti Foto
-      </Text>
+      <LinearGradient
+        colors={["#6b7280", "#4b5563", "#374151"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        className="w-full py-3 rounded-xl flex-row items-center justify-center"
+      >
+        <Icon as={Camera} className="size-4 text-white mr-2" />
+        <Text className="font-bold text-white">Ganti Foto</Text>
+      </LinearGradient>
     </TouchableOpacity>
   </View>
 );
@@ -761,19 +806,39 @@ export default function PerizinanScreen() {
         }}
       />
       <SafeAreaView className="flex-1 bg-background">
-        {/* Header */}
-        <View className="flex-row items-center p-4 border-b border-border bg-background">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="mr-3"
-            activeOpacity={0.7}
-          >
-            <Icon as={ChevronLeft} className="size-6" />
-          </TouchableOpacity>
-          <View className="flex-1">
-            <Text variant="large">Pengajuan Izin</Text>
+        {/* Premium Gradient Header */}
+        <LinearGradient
+          colors={["#f59e0b", "#d97706", "#b45309"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="pb-6 pt-4 px-4"
+        >
+          <View className="flex-row items-center mb-4">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              className="mr-3 w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <Icon as={ChevronLeft} className="size-6 text-white" />
+            </TouchableOpacity>
+            <View className="flex-1" />
           </View>
-        </View>
+
+          <View className="flex-row items-center">
+            <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center mr-4">
+              <Icon as={ClipboardPenLine} className="size-7 text-white" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-white/70 text-sm">Ajukan Izin</Text>
+              <Text className="text-white text-xl font-bold">
+                Pengajuan Izin
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Curved bottom effect */}
+        <View className="h-4 -mt-4 bg-background rounded-t-3xl" />
 
         <ScrollView
           className="flex-1 bg-background"
@@ -800,7 +865,7 @@ export default function PerizinanScreen() {
 
           {/* Category Selection Card */}
           <Card
-            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
+            className={`mb-4 rounded-2xl border-0 shadow-lg bg-card ${isDisabled ? "opacity-60" : ""}`}
           >
             <SectionHeader
               icon={ClipboardPenLine}
@@ -829,7 +894,7 @@ export default function PerizinanScreen() {
 
           {/* Description Card */}
           <Card
-            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
+            className={`mb-4 rounded-2xl border-0 shadow-lg bg-card ${isDisabled ? "opacity-60" : ""}`}
           >
             <SectionHeader
               icon={FileText}
@@ -837,12 +902,13 @@ export default function PerizinanScreen() {
               subtitle="Jelaskan alasan pengajuan izin Anda"
             />
             <CardContent>
-              <View className="rounded-xl border-2 border-border overflow-hidden bg-card">
+              <View className="rounded-xl border-2 border-border overflow-hidden bg-muted/30">
                 <TextInput
                   ref={descriptionInputRef}
                   editable={!isDisabled}
-                  className="min-h-[100px] max-h-[160px] text-base border-0 p-3 text-foreground bg-transparent"
+                  className="min-h-[100px] max-h-[160px] text-base border-0 p-4 text-foreground bg-transparent"
                   placeholder="Contoh: Sakit demam dan perlu istirahat di rumah..."
+                  placeholderTextColor="#9ca3af"
                   multiline
                   value={formData.description}
                   onChangeText={(text) =>
@@ -866,35 +932,59 @@ export default function PerizinanScreen() {
                   }}
                 />
               </View>
+
+              {/* Character Counter */}
+              <View className="flex-row items-center justify-between mt-3">
+                <Text className="text-xs text-muted-foreground">
+                  Min. 10 karakter
+                </Text>
+                <View className="flex-row items-center">
+                  {formData.description.length >= 10 && (
+                    <Icon
+                      as={CheckCircle}
+                      className="size-4 text-green-500 mr-1"
+                    />
+                  )}
+                  <Text
+                    className={`text-xs font-medium ${
+                      formData.description.length >= 10
+                        ? "text-green-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {formData.description.length}/{MAX_DESCRIPTION_LENGTH}
+                  </Text>
+                </View>
+              </View>
             </CardContent>
           </Card>
 
           {/* Photo Upload Card */}
           <Card
-            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
+            className={`mb-4 rounded-2xl border-0 shadow-lg bg-card ${isDisabled ? "opacity-60" : ""}`}
           >
             <CardHeader className="pb-3">
               <View className="flex-row items-center">
-                <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                <View className="mr-3 w-11 h-11 rounded-xl bg-amber-500/10 items-center justify-center">
                   <Icon
                     as={Camera}
-                    className="size-5 text-blue-600 dark:text-blue-400"
+                    className="size-5 text-amber-600 dark:text-amber-400"
                   />
                 </View>
                 <View className="flex-1">
                   <CardTitle>
-                    <Text variant="h4" className="font-bold text-foreground">
-                      Lampiran Foto *
+                    <Text className="font-bold text-foreground text-base">
+                      Lampiran Foto
                     </Text>
                   </CardTitle>
-                  <Text variant="small" className="text-muted-foreground mt-1">
+                  <Text className="text-muted-foreground text-sm mt-0.5">
                     Wajib - Tambahkan bukti pendukung
                   </Text>
                 </View>
                 {formData.image && (
-                  <View className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900">
-                    <Text className="text-xs font-medium text-green-700 dark:text-green-300">
-                      ✓ Foto dipilih
+                  <View className="px-3 py-1.5 rounded-xl bg-green-500/10">
+                    <Text className="text-xs font-bold text-green-600 dark:text-green-400">
+                      ✓ Ready
                     </Text>
                   </View>
                 )}
@@ -902,7 +992,7 @@ export default function PerizinanScreen() {
             </CardHeader>
             <CardContent>
               {!formData.image ? (
-                <View className="space-y-3">
+                <View className="gap-3">
                   <View className="flex-row gap-3">
                     <ImageUploadButton
                       type="camera"
@@ -915,9 +1005,11 @@ export default function PerizinanScreen() {
                       disabled={isDisabled}
                     />
                   </View>
-                  <Text className="text-xs text-center text-muted-foreground">
-                    Format: JPG, PNG • Maksimal 10MB • Wajib dilampirkan
-                  </Text>
+                  <View className="bg-muted/50 p-3 rounded-xl">
+                    <Text className="text-xs text-center text-muted-foreground">
+                      📸 Format: JPG, PNG • Maksimal 10MB
+                    </Text>
+                  </View>
                 </View>
               ) : (
                 <ImagePreviewCard
@@ -939,51 +1031,92 @@ export default function PerizinanScreen() {
             <TouchableOpacity
               disabled={!canSubmit}
               onPress={uploadPermit}
-              className={`w-full py-3 rounded-xl items-center justify-center ${
-                canSubmit
-                  ? "bg-blue-600 dark:bg-blue-700 active:bg-blue-700"
-                  : "bg-gray-400 dark:bg-gray-600"
-              }`}
-              activeOpacity={0.7}
+              activeOpacity={0.9}
+              className="overflow-hidden rounded-2xl"
             >
-              {uiState.uploading ? (
-                <>
-                  <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mb-2" />
-                  <Text variant="p" className="font-semibold text-white">
-                    Mengirim...
-                  </Text>
-                </>
-              ) : hasSubmittedToday ? (
-                <Text variant="p" className="font-semibold text-white">
-                  Sudah Diajukan Hari Ini
-                </Text>
-              ) : uiState.checking ? (
-                <>
-                  <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mb-2" />
-                  <Text variant="p" className="font-semibold text-white">
-                    Memeriksa...
-                  </Text>
-                </>
+              {canSubmit ? (
+                <LinearGradient
+                  colors={["#f59e0b", "#d97706", "#b45309"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  className="w-full py-4 rounded-2xl flex-row items-center justify-center"
+                >
+                  {uiState.uploading ? (
+                    <>
+                      <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full mr-3" />
+                      <Text className="font-bold text-white text-base">
+                        Mengirim...
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Icon as={Send} className="size-5 text-white mr-3" />
+                      <Text className="font-bold text-white text-base">
+                        Kirim Pengajuan Izin
+                      </Text>
+                    </>
+                  )}
+                </LinearGradient>
               ) : (
-                <Text variant="p" className="font-semibold text-white">
-                  Kirim Pengajuan Izin
-                </Text>
+                <View className="w-full py-4 rounded-2xl flex-row items-center justify-center bg-muted">
+                  {hasSubmittedToday ? (
+                    <>
+                      <Icon
+                        as={CheckCircle}
+                        className="size-5 text-muted-foreground mr-3"
+                      />
+                      <Text className="font-semibold text-muted-foreground text-base">
+                        Sudah Diajukan Hari Ini
+                      </Text>
+                    </>
+                  ) : uiState.checking ? (
+                    <>
+                      <View className="w-5 h-5 border-2 border-t-transparent border-muted-foreground rounded-full mr-3" />
+                      <Text className="font-semibold text-muted-foreground text-base">
+                        Memeriksa...
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Icon
+                        as={Send}
+                        className="size-5 text-muted-foreground mr-3"
+                      />
+                      <Text className="font-semibold text-muted-foreground text-base">
+                        Lengkapi Form Terlebih Dahulu
+                      </Text>
+                    </>
+                  )}
+                </View>
               )}
             </TouchableOpacity>
 
             {/* Validation Messages */}
-            {!isFormValid && !hasSubmittedToday && (
-              <View className="mt-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
-                <Text className="text-xs text-yellow-700 dark:text-yellow-300">
-                  {!validation.category && "• Pilih kategori izin"}
-                  {validation.category &&
-                    !validation.description &&
-                    "• Deskripsi belum memenuhi syarat"}
-                  {validation.category &&
-                    validation.description &&
-                    !validation.image &&
-                    "• Foto bukti belum dilampirkan"}
-                </Text>
+            {!isFormValid && !hasSubmittedToday && !uiState.checking && (
+              <View className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-xl bg-amber-500/20 items-center justify-center mr-3">
+                    <Icon
+                      as={AlertCircle}
+                      className="size-4 text-amber-600 dark:text-amber-400"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                      Lengkapi data berikut:
+                    </Text>
+                    <Text className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      {!validation.category && "• Pilih kategori izin\n"}
+                      {validation.category &&
+                        !validation.description &&
+                        "• Deskripsi minimal 10 karakter\n"}
+                      {validation.category &&
+                        validation.description &&
+                        !validation.image &&
+                        "• Lampirkan foto bukti"}
+                    </Text>
+                  </View>
+                </View>
               </View>
             )}
           </View>

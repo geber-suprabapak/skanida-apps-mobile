@@ -226,7 +226,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose();
+      // Use setTimeout to defer state update outside of animation callback
+      // This prevents "useInsertionEffect must not schedule updates" error
+      setTimeout(() => {
+        onClose();
+      }, 0);
     });
   };
 

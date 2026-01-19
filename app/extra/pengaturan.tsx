@@ -22,7 +22,7 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { Card, CardContent, CardFooter } from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
@@ -33,8 +33,12 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  Settings,
+  Shield,
+  Smartphone,
 } from "lucide-react-native";
 import * as Updates from "expo-updates";
+import { LinearGradient } from "expo-linear-gradient";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -236,245 +240,296 @@ function Pengaturan() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      <StatusBar style="light" />
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
 
-      {/* Header */}
-      <View className="flex-row items-center p-4 border-b border-border bg-card">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Icon as={ChevronLeft} className="size-6 text-foreground" />
-        </TouchableOpacity>
+      {/* Premium Gradient Header */}
+      <LinearGradient
+        colors={["#6366f1", "#4f46e5", "#4338ca"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="pb-8 pt-4 px-5"
+      >
+        {/* Top Bar */}
+        <View className="flex-row items-center mb-6">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+          >
+            <Icon as={ChevronLeft} className="size-6 text-white" />
+          </TouchableOpacity>
+          <View className="flex-1" />
+        </View>
 
-        <Text variant="large">Pengaturan</Text>
-      </View>
+        {/* Header Content */}
+        <View className="flex-row items-center">
+          <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center mr-4">
+            <Icon as={Settings} className="size-7 text-white" />
+          </View>
+          <View>
+            <Text className="text-white/70 text-sm">Kelola akun</Text>
+            <Text className="text-white text-xl font-bold">Pengaturan</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Curved bottom effect */}
+      <View className="h-4 -mt-4 bg-background rounded-t-3xl" />
 
       <ScrollView
         className="flex-1 bg-background"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Profile Section */}
-        <View className="px-6 pt-4 pb-3">
-          <Card className="p-4 bg-card border-border">
-            {/* Profile Header */}
-            <View className="flex-row items-center mb-4">
-              {profileAvatarUrl ? (
-                <View
-                  style={{
-                    // removed shadowColor hardcode
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                    elevation: 4,
-                    borderRadius: 32,
-                  }}
-                >
-                  <Image
-                    source={{
-                      uri: profileAvatarUrl,
-                    }}
-                    className="w-16 h-16 rounded-full"
-                  />
-                </View>
-              ) : (
-                <View
-                  className="w-16 h-16 rounded-full bg-primary justify-center items-center"
-                  style={{
-                    // removed shadowColor hardcode
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 6,
-                  }}
-                >
-                  <Text variant="large">
-                    {(profileFullName || user?.email)
-                      ?.charAt(0)
-                      .toUpperCase() || "U"}
-                  </Text>
-                </View>
-              )}
+        {/* Profile Card - Premium Design */}
+        <View className="px-5 -mt-2">
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            <View className="p-5">
+              <View className="flex-row items-center">
+                {/* Avatar */}
+                {profileAvatarUrl ? (
+                  <View className="relative">
+                    <Image
+                      source={{ uri: profileAvatarUrl }}
+                      className="w-18 h-18 rounded-2xl"
+                      style={{ width: 72, height: 72 }}
+                    />
+                    <View className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card items-center justify-center">
+                      <View className="w-2 h-2 rounded-full bg-white" />
+                    </View>
+                  </View>
+                ) : (
+                  <View className="relative">
+                    <LinearGradient
+                      colors={["#6366f1", "#4f46e5"]}
+                      className="w-18 h-18 rounded-2xl items-center justify-center"
+                      style={{ width: 72, height: 72 }}
+                    >
+                      <Text className="text-white text-2xl font-bold">
+                        {(profileFullName || user?.email)
+                          ?.charAt(0)
+                          .toUpperCase() || "U"}
+                      </Text>
+                    </LinearGradient>
+                    <View className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card items-center justify-center">
+                      <View className="w-2 h-2 rounded-full bg-white" />
+                    </View>
+                  </View>
+                )}
 
-              <View className="flex-1 ml-4">
-                <Text variant="large">
-                  {profileFullName || user?.email?.split("@")[0] || "Pengguna"}
-                </Text>
-                <Text variant="small" className="mt-1">
-                  {user?.email || "Tidak ada email"}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={handleCopyId}
-                  className={`self-start mt-2 px-3 py-1.5 rounded-full ${
-                    copiedId ? "bg-accent" : "bg-muted"
-                  }`}
-                  activeOpacity={0.7}
-                >
-                  <Text variant="small" className="font-medium">
-                    {copiedId
-                      ? "✓ ID Tersalin!"
-                      : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
+                {/* User Info */}
+                <View className="flex-1 ml-4">
+                  <Text className="text-foreground font-bold text-lg">
+                    {profileFullName ||
+                      user?.email?.split("@")[0] ||
+                      "Pengguna"}
                   </Text>
-                </TouchableOpacity>
+                  <Text className="text-muted-foreground text-sm mt-0.5">
+                    {user?.email || "Tidak ada email"}
+                  </Text>
+
+                  {/* Copy ID Button */}
+                  <TouchableOpacity
+                    onPress={handleCopyId}
+                    className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${
+                      copiedId ? "bg-green-500/10" : "bg-muted"
+                    }`}
+                    activeOpacity={0.7}
+                  >
+                    <Icon
+                      as={copiedId ? Shield : Shield}
+                      className={`size-3 mr-1.5 ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
+                    />
+                    <Text
+                      className={`text-xs font-medium ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
+                    >
+                      {copiedId
+                        ? "ID Tersalin!"
+                        : `${user?.id?.substring(0, 8) || "Unknown"}...`}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </Card>
         </View>
 
-        {/* Settings Section */}
-        <View className="px-6 mb-3">
-          <Card>
-            <CardContent className="pt-4">
-              <Text variant="h4" className="mb-3 text-foreground">
-                Pengaturan Akun
-              </Text>
-              <TouchableOpacity
-                className="flex-row items-center p-3 rounded-t-lg border-b border-border"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.7}
+        {/* Account Settings Section */}
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Akun
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            {/* Edit Profile */}
+            <TouchableOpacity
+              className="flex-row items-center p-4 border-b border-border/50"
+              onPress={navigateToEditProfile}
+              activeOpacity={0.7}
+            >
+              <View className="w-11 h-11 rounded-xl bg-blue-500/10 items-center justify-center mr-4">
+                <Icon as={User} className="size-5 text-blue-500" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold">
+                  Edit Profil
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Ubah nama dan foto profil
+                </Text>
+              </View>
+              <Icon
+                as={ChevronRight}
+                className="size-5 text-muted-foreground"
+              />
+            </TouchableOpacity>
+
+            {/* Change Password */}
+            <TouchableOpacity
+              className="flex-row items-center p-4"
+              onPress={navigateToChangePassword}
+              activeOpacity={0.7}
+            >
+              <View className="w-11 h-11 rounded-xl bg-amber-500/10 items-center justify-center mr-4">
+                <Icon as={Key} className="size-5 text-amber-500" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold">
+                  Ubah Password
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Perbarui kata sandi akun
+                </Text>
+              </View>
+              <Icon
+                as={ChevronRight}
+                className="size-5 text-muted-foreground"
+              />
+            </TouchableOpacity>
+          </Card>
+        </View>
+
+        {/* Preferences Section */}
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Preferensi
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            {/* Dark Mode Toggle */}
+            <View className="flex-row items-center p-4 border-b border-border/50">
+              <View
+                className={`w-11 h-11 rounded-xl items-center justify-center ${
+                  isDarkMode ? "bg-purple-500/10" : "bg-yellow-500/10"
+                }`}
               >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon as={User} className="size-4 text-primary" />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    Edit Profil
-                  </Text>
-                  <Text variant="small">Ubah nama dan foto profil</Text>
-                </View>
                 <Icon
-                  as={ChevronRight}
-                  className="size-5 text-muted-foreground"
+                  as={isDarkMode ? Moon : Sun}
+                  className={`size-5 ${isDarkMode ? "text-purple-500" : "text-yellow-500"}`}
                 />
-              </TouchableOpacity>
+              </View>
+              <View className="flex-1 ml-4">
+                <Text className="text-foreground font-semibold">
+                  Mode Gelap
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  {isDarkMode ? "Tema gelap aktif" : "Tema terang aktif"}
+                </Text>
+              </View>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
+                trackColor={{ false: "#e5e7eb", true: "#6366f1" }}
+                thumbColor="#ffffff"
+              />
+            </View>
 
-              <TouchableOpacity
-                className="flex-row items-center p-3 border-b border-border"
-                onPress={navigateToChangePassword}
-                activeOpacity={0.7}
-              >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon as={Key} className="size-4 text-primary" />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    Ubah Password
-                  </Text>
-                  <Text variant="small">Perbarui kata sandi akun</Text>
-                </View>
+            {/* Check Update */}
+            <TouchableOpacity
+              className="flex-row items-center p-4"
+              onPress={handleCheckUpdate}
+              disabled={isCheckingUpdate}
+              activeOpacity={0.7}
+            >
+              <View className="w-11 h-11 rounded-xl bg-green-500/10 items-center justify-center mr-4">
                 <Icon
-                  as={ChevronRight}
-                  className="size-5 text-muted-foreground"
+                  as={CircleFadingArrowUp}
+                  className="size-5 text-green-500"
                 />
-              </TouchableOpacity>
-
-              {/* Dark Mode Toggle */}
-              <TouchableOpacity
-                className="flex-row items-center p-3 border-b border-border"
-                activeOpacity={0.7}
-              >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon
-                    as={isDarkMode ? Sun : Moon}
-                    className="size-4 text-primary"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    Mode Gelap
-                  </Text>
-                  <Text variant="small">
-                    {isDarkMode ? "Aktif" : "Tidak Aktif"}
-                  </Text>
-                </View>
-                <Switch
-                  value={isDarkMode}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: "#767577", true: "#4A5568" }}
-                  thumbColor={isDarkMode ? "#38B2AC" : "#f4f3f4"}
-                />
-              </TouchableOpacity>
-
-              {/* Check Update Manual Button */}
-              <TouchableOpacity
-                className="flex-row items-center p-3 rounded-b-lg"
-                onPress={handleCheckUpdate}
-                disabled={isCheckingUpdate}
-                activeOpacity={0.7}
-              >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon
-                    as={CircleFadingArrowUp}
-                    className="size-4 text-primary"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    {isCheckingUpdate
-                      ? "Mengecek Update..."
-                      : "Cek Update Manual"}
-                  </Text>
-                  <Text variant="small">Periksa dan unduh update terbaru</Text>
-                </View>
-              </TouchableOpacity>
-            </CardContent>
-
-            <CardFooter>
-              <Button
-                size="default"
-                variant="destructive"
-                onPress={handleLogout}
-                className="w-full"
-              >
-                <View className="flex-row items-center">
-                  <Icon
-                    as={LogOut}
-                    className="size-5 mr-2 text-destructive-foreground"
-                  />
-                  <Text variant="default" className="font-medium">
-                    Keluar dari Akun
-                  </Text>
-                </View>
-              </Button>
-            </CardFooter>
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold">
+                  {isCheckingUpdate ? "Mengecek..." : "Cek Update"}
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Periksa update terbaru
+                </Text>
+              </View>
+              {isCheckingUpdate && (
+                <View className="w-5 h-5 border-2 border-t-transparent border-primary rounded-full" />
+              )}
+            </TouchableOpacity>
           </Card>
         </View>
 
         {/* App Info Section */}
-        <View className="px-6">
-          <Card className="p-4 bg-card border-border">
-            <CardContent className="space-y-4">
-              <View className="flex-row items-center p-3">
-                <View className="flex-1">
-                  <Text variant="small" className="font-medium">
-                    Versi Aplikasi
-                  </Text>
-                  <Text variant="default" className="font-semibold">
-                    {Constants.expoConfig?.version}
-                  </Text>
-                </View>
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Tentang
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            <View className="flex-row items-center p-4">
+              <View className="w-11 h-11 rounded-xl bg-indigo-500/10 items-center justify-center mr-4">
+                <Icon as={Smartphone} className="size-5 text-indigo-500" />
               </View>
-
-              <View className="pt-2 border-t border-border">
-                <Text
-                  variant="small"
-                  className="text-center text-muted-foreground"
-                >
-                  © 2025 Skanida Apps
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold">
+                  Versi Aplikasi
                 </Text>
-                <Text
-                  variant="small"
-                  className="text-center text-muted-foreground mt-1"
-                >
-                  Semua hak dilindungi undang-undang
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Skanida v{Constants.expoConfig?.version}
                 </Text>
               </View>
-            </CardContent>
+              <View className="px-3 py-1.5 rounded-xl bg-indigo-500/10">
+                <Text className="text-xs font-bold text-indigo-500">
+                  Terbaru
+                </Text>
+              </View>
+            </View>
           </Card>
+        </View>
+
+        {/* Logout Button */}
+        <View className="px-5 mt-6">
+          <TouchableOpacity
+            onPress={handleLogout}
+            activeOpacity={0.9}
+            className="overflow-hidden rounded-2xl"
+          >
+            <LinearGradient
+              colors={["#ef4444", "#dc2626", "#b91c1c"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              className="py-4 flex-row items-center justify-center rounded-2xl"
+            >
+              <Icon as={LogOut} className="size-5 text-white mr-3" />
+              <Text className="font-bold text-white text-base">
+                Keluar dari Akun
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <View className="items-center mt-8 px-5">
+          <Text className="text-muted-foreground text-xs">
+            © 2025 Skanida Apps
+          </Text>
+          <Text className="text-muted-foreground/50 text-xs mt-1">
+            Semua hak dilindungi undang-undang
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>

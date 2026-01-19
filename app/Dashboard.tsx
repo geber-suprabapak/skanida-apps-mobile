@@ -10,10 +10,12 @@ import {
   BackHandler,
   Alert,
   RefreshControl,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -21,7 +23,6 @@ import * as Sentry from "@sentry/react-native";
 import { Avatar } from "~/components/ui/avatar";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import useTimeSyncStore from "~/store/timeSyncStore";
@@ -33,15 +34,13 @@ import { timeSync } from "~/utils/timeSync";
 import {
   Clock,
   Bug,
-  CheckCircle,
-  AlertCircle,
-  UserCheck,
   History,
   ClipboardPenLine,
   Settings,
   UserRound,
   WifiOff,
   Wifi,
+  Calendar,
 } from "lucide-react-native";
 import Constants from "expo-constants";
 
@@ -658,37 +657,6 @@ export default function Dashboard() {
     [currentTime],
   );
 
-  const presentScheduleText = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = normalizeTimeString(attendanceSchedule.mulai_masuk);
-    if (!start) return null;
-
-    const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
-    const windowText = end ? `${start} - ${end}` : start;
-
-    let result = `Waktu presensi masuk: ${windowText}`;
-    if (attendanceSchedule.kompensasi_waktu) {
-      result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
-    } else {
-      result += ".";
-    }
-
-    return result;
-  }, [attendanceSchedule]);
-
-  const pulangScheduleText = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = normalizeTimeString(attendanceSchedule.mulai_pulang);
-    if (!start) return null;
-
-    const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
-    const windowText = end ? `${start} - ${end}` : start;
-
-    return `Waktu presensi pulang: ${windowText} WIB.`;
-  }, [attendanceSchedule]);
-
   const presentScheduleWindow = useMemo(() => {
     if (!attendanceSchedule) return null;
 
@@ -739,31 +707,6 @@ export default function Dashboard() {
     return true;
   }, [currentTime, pulangScheduleWindow]);
 
-  const primaryActionMessage = useMemo(() => {
-    if (derivedActionType === "home") {
-      if (pulangScheduleText) {
-        return pulangScheduleText;
-      }
-
-      return validationStatus.message;
-    }
-
-    if (derivedActionType === "present") {
-      if (presentScheduleText) {
-        return presentScheduleText;
-      }
-
-      return validationStatus.message;
-    }
-
-    return validationStatus.message;
-  }, [
-    derivedActionType,
-    presentScheduleText,
-    pulangScheduleText,
-    validationStatus.message,
-  ]);
-
   const scheduleAllowsAction = useMemo(() => {
     if (derivedActionType === "home") {
       return isWithinPulangWindow;
@@ -779,199 +722,322 @@ export default function Dashboard() {
   const isPrimaryActionDisabled =
     refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
 
+  // Animated pulse for the main action button
+  const pulseAnim = useMemo(() => new Animated.Value(1), []);
+
+  useEffect(() => {
+    if (!isPrimaryActionDisabled) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.02,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [isPrimaryActionDisabled, pulseAnim]);
+
+  // Get greeting based on time
+  const greeting = useMemo(() => {
+    const hour = currentTime.getHours();
+    if (hour < 10) return "Selamat Pagi";
+    if (hour < 15) return "Selamat Siang";
+    if (hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  }, [currentTime]);
+
+  // Emoji for greeting
+  const greetingEmoji = useMemo(() => {
+    const hour = currentTime.getHours();
+    if (hour < 10) return "🌅";
+    if (hour < 15) return "☀️";
+    if (hour < 18) return "🌤️";
+    return "🌙";
+  }, [currentTime]);
+
   return (
     <>
       <Stack.Screen
         options={{
           headerShown: false,
-          gestureEnabled: false, // Disable swipe back on iOS
+          gestureEnabled: false,
         }}
       />
-      {/* Apply dynamic background based on theme */}
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        {/* Main container with theme-based background */}
         <ScrollView
           className="flex-1 bg-background"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 32 }}
         >
-          {/* --- Header Section --- */}
-          <View className="px-6 pt-4 pb-6 bg-background">
-            <View className="flex-row items-center justify-between mb-4">
-              <TouchableOpacity
-                className="flex-row items-center flex-1"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.85}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                {hasCustomAvatar ? (
-                  <Avatar
-                    size="md"
-                    fallback={displayName.charAt(0).toUpperCase() || "?"}
-                    className="mr-3"
-                    source={avatarUrl ?? undefined}
-                  />
-                ) : (
-                  <View className="mr-3">
-                    <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
-                      <Icon
-                        as={UserRound}
-                        className="size-6 text-blue-500 dark:text-blue-400"
+          {/* === HEADER SECTION - Modern Gradient Style === */}
+          <View className="relative overflow-hidden">
+            {/* Gradient Background Header */}
+            <LinearGradient
+              colors={["#3b82f6", "#1d4ed8", "#1e40af"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="px-6 pt-4 pb-8"
+            >
+              {/* Top Bar - Avatar, Date & Bug Report */}
+              <View className="flex-row items-center justify-between mb-6">
+                <TouchableOpacity
+                  className="flex-row items-center flex-1"
+                  onPress={navigateToEditProfile}
+                  activeOpacity={0.85}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {hasCustomAvatar ? (
+                    <View className="relative">
+                      <Avatar
+                        size="md"
+                        fallback={displayName.charAt(0).toUpperCase() || "?"}
+                        className="border-2 border-white/30"
+                        source={avatarUrl ?? undefined}
                       />
+                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+                    </View>
+                  ) : (
+                    <View className="relative">
+                      <View className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 items-center justify-center">
+                        <Icon as={UserRound} className="size-7 text-white" />
+                      </View>
+                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+                    </View>
+                  )}
+                  <View className="ml-4 flex-1">
+                    <Text className="text-white/70 text-sm">
+                      {greeting} {greetingEmoji}
+                    </Text>
+                    <Text className="text-white text-xl font-bold">
+                      {displayName}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={navigateToSettings}
+                    className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                  >
+                    <Icon as={Settings} className="size-5 text-white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Sentry.showFeedbackWidget()}
+                    className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                  >
+                    <Icon as={Bug} className="size-5 text-white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Live Time Display - Glassmorphism Card */}
+              <View className="bg-white/15 rounded-2xl p-4 border border-white/20">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <View className="w-12 h-12 rounded-xl bg-white/20 items-center justify-center">
+                      <Icon as={Clock} className="size-6 text-white" />
+                    </View>
+                    <View className="ml-3">
+                      <View className="flex-row items-center">
+                        {syncStatus === "synced" ? (
+                          <Icon as={Wifi} className="size-3 text-green-300" />
+                        ) : syncStatus === "syncing" ? (
+                          <Icon as={Clock} className="size-3 text-yellow-300" />
+                        ) : (
+                          <Icon as={WifiOff} className="size-3 text-red-300" />
+                        )}
+                        <Text className="text-white/70 text-xs ml-1">
+                          {syncStatus === "synced"
+                            ? syncSource === "server"
+                              ? "Server"
+                              : syncSource === "ntp"
+                                ? "NTP"
+                                : "Lokal"
+                            : syncStatus === "syncing"
+                              ? "Menyinkronkan..."
+                              : "Offline"}
+                          {driftDetected && " • Drift"}
+                        </Text>
+                      </View>
+                      <Text className="text-white text-3xl font-bold tracking-wider">
+                        {format(currentTime, "HH:mm:ss", { locale: id })}
+                      </Text>
                     </View>
                   </View>
-                )}
-                <View className="flex-1">
-                  <Text variant="large" className="text-foreground">
-                    {displayName}
-                  </Text>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Waktu Sekarang - In header row */}
-              <View className="flex-row items-center mr-3">
-                <View
-                  className={`px-3 py-2 rounded-lg ${
-                    syncStatus === "synced"
-                      ? "bg-gray-200 dark:bg-gray-800"
-                      : syncStatus === "syncing"
-                        ? "bg-blue-100 dark:bg-blue-900/30"
-                        : "bg-yellow-100 dark:bg-yellow-900/30"
-                  }`}
-                >
-                  <View className="flex-row items-center">
-                    {syncStatus === "synced" ? (
-                      <Icon as={Wifi} className="size-4 text-green-600" />
-                    ) : syncStatus === "syncing" ? (
-                      <Icon as={Clock} className="size-4 text-blue-600" />
-                    ) : (
-                      <Icon as={WifiOff} className="size-4 text-yellow-700" />
-                    )}
-                    <Text
-                      variant="small"
-                      className={`ml-1 font-medium ${
-                        syncStatus === "synced"
-                          ? "text-foreground"
-                          : syncStatus === "syncing"
-                            ? "text-blue-700 dark:text-blue-500"
-                            : "text-yellow-700 dark:text-yellow-500"
-                      }`}
-                    >
-                      Waktu{" "}
-                      {driftDetected && (
-                        <Text variant="small" className="text-red-600">
-                          (drift)
-                        </Text>
-                      )}
+                  <View className="items-end">
+                    <View className="flex-row items-center bg-white/20 rounded-full px-3 py-1">
+                      <Icon as={Calendar} className="size-3 text-white/80" />
+                      <Text className="text-white/90 text-xs ml-1.5 font-medium">
+                        {format(currentTime, "EEEE", { locale: id })}
+                      </Text>
+                    </View>
+                    <Text className="text-white/80 text-sm mt-1">
+                      {format(currentTime, "dd MMMM yyyy", { locale: id })}
                     </Text>
                   </View>
-                  <Text
-                    variant="default"
-                    className="font-bold text-center mt-1 text-foreground"
-                  >
-                    {format(currentTime, "HH:mm:ss", { locale: id })}
+                </View>
+              </View>
+            </LinearGradient>
+
+            {/* Curved Bottom Effect */}
+            <View className="absolute -bottom-4 left-0 right-0 h-8 bg-background rounded-t-[32px]" />
+          </View>
+
+          {/* === TODAY'S STATUS SECTION - MINIMALIST DESIGN === */}
+          <View className="px-6 -mt-2">
+            <Card className="p-0 overflow-hidden bg-card border-border shadow-lg rounded-2xl">
+              {/* Two Column Time Display */}
+              <View className="flex-row">
+                {/* MASUK Column */}
+                <View className="flex-1 items-center py-6 px-4">
+                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-2">
+                    MASUK
                   </Text>
-                  {syncSource !== "local" && (
-                    <Text
-                      variant="small"
-                      className="text-xs text-center text-muted-foreground"
-                    >
-                      {syncSource === "server" ? "Server" : "NTP"}
-                    </Text>
+                  <Text className="text-foreground font-bold text-3xl">
+                    {attendanceStatus.checkInTime
+                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
+                      : "00:00"}
+                  </Text>
+                  {attendanceStatus.hasCheckedIn && (
+                    <View className="mt-2 flex-row items-center">
+                      <View
+                        className={`w-2 h-2 rounded-full mr-1.5 ${
+                          attendanceStatus.checkInStatus === "Terlambat"
+                            ? "bg-orange-500"
+                            : "bg-emerald-500"
+                        }`}
+                      />
+                      <Text
+                        className={`text-xs font-medium ${
+                          attendanceStatus.checkInStatus === "Terlambat"
+                            ? "text-orange-500"
+                            : "text-emerald-500"
+                        }`}
+                      >
+                        {attendanceStatus.checkInStatus}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Vertical Divider */}
+                <View className="w-px bg-border self-stretch my-4" />
+
+                {/* PULANG Column */}
+                <View className="flex-1 items-center py-6 px-4">
+                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-2">
+                    PULANG
+                  </Text>
+                  <Text className="text-foreground font-bold text-3xl">
+                    {attendanceStatus.checkOutTime
+                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
+                      : "00:00"}
+                  </Text>
+                  {attendanceStatus.hasCheckedOut && (
+                    <View className="mt-2 flex-row items-center">
+                      <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
+                      <Text className="text-xs font-medium text-blue-500">
+                        Selesai
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>
 
-              <TouchableOpacity
-                onPress={() => {
-                  Sentry.showFeedbackWidget();
-                }}
-                className="p-2 rounded-full"
-              >
-                <Icon as={Bug} className="size-5 text-foreground" />
-              </TouchableOpacity>
-            </View>
-          </View>
+              {/* Horizontal Divider */}
+              <View className="h-px bg-border mx-4" />
 
-          {/* --- Today's Status Card --- */}
-          <View className="px-6 mb-4">
-            <Card className="p-4 bg-card border-border">
-              <View className="flex-row items-center justify-between">
-                <Text variant="h4" className="text-foreground">
-                  Status Hari Ini
-                </Text>
-                <Badge
-                  className={`${statusBadge.color} ${statusBadge.textColor}`}
+              {/* PRESENSI Button */}
+              <View className="p-5">
+                <TouchableOpacity
+                  onPress={navigateToCheckIn}
+                  disabled={isPrimaryActionDisabled}
+                  activeOpacity={0.9}
+                  className="overflow-hidden rounded-2xl"
                 >
-                  <Text variant="default">{statusBadge.text}</Text>
-                </Badge>
-              </View>
-
-              <View className="space-y-3">
-                {/* Check In Status */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    {attendanceStatus.hasCheckedIn ? (
-                      <Icon
-                        as={CheckCircle}
-                        className="size-5 text-green-600"
-                      />
-                    ) : (
-                      <Icon as={AlertCircle} className="size-5 text-red-600" />
-                    )}
-                    <Text variant="default" className="ml-2 text-foreground">
-                      Presensi Masuk
-                    </Text>
-                  </View>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {attendanceStatus.checkInTime
-                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum presensi"}
-                  </Text>
-                </View>
-
-                {/* Check Out Status */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    {attendanceStatus.hasCheckedOut ? (
-                      <Icon
-                        as={CheckCircle}
-                        className="size-5 text-green-600"
-                      />
-                    ) : (
-                      <Icon as={AlertCircle} className="size-5 text-red-600" />
-                    )}
-                    <Text variant="default" className="ml-2 text-foreground">
-                      Presensi Pulang
-                    </Text>
-                  </View>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {attendanceStatus.checkOutTime
-                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum presensi"}
-                  </Text>
-                </View>
-
-                {/* Work Hours */}
-                {attendanceStatus.totalWorkHours && (
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                      <Icon as={Clock} className="size-5 text-blue-500" />
-                      <Text variant="default" className="ml-2 text-foreground">
-                        Total Jam Di Sekolah
+                  {isPrimaryActionDisabled ? (
+                    <View className="py-6 items-center justify-center bg-muted rounded-2xl border border-border">
+                      <Text className="font-bold text-muted-foreground text-lg uppercase tracking-wider">
+                        {attendanceStatus.hasCheckedOut
+                          ? "SELESAI"
+                          : refreshing
+                            ? "MEMUAT..."
+                            : "PRESENSI"}
                       </Text>
                     </View>
-                    <Text
-                      variant="small"
-                      className="font-medium text-foreground"
+                  ) : (
+                    <LinearGradient
+                      colors={
+                        derivedActionType === "home"
+                          ? ["#f97316", "#ea580c", "#c2410c"]
+                          : ["#22c55e", "#16a34a", "#15803d"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      className="py-6 items-center justify-center rounded-2xl"
                     >
-                      {attendanceStatus.totalWorkHours}
+                      <Text className="font-bold text-white text-lg uppercase tracking-wider">
+                        {derivedActionType === "home"
+                          ? "PRESENSI PULANG"
+                          : "PRESENSI MASUK"}
+                      </Text>
+                    </LinearGradient>
+                  )}
+                </TouchableOpacity>
+
+                {/* Status Badge Below Button */}
+                <View className="mt-3 items-center">
+                  <View
+                    className={`px-4 py-1.5 rounded-full ${
+                      attendanceStatus.todayStatus === "present"
+                        ? attendanceStatus.checkInStatus === "Terlambat"
+                          ? "bg-orange-500/10"
+                          : "bg-emerald-500/10"
+                        : attendanceStatus.todayStatus === "leave"
+                          ? "bg-amber-500/10"
+                          : attendanceStatus.todayStatus === "absent"
+                            ? "bg-red-500/10"
+                            : "bg-gray-500/10"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-medium ${
+                        attendanceStatus.todayStatus === "present"
+                          ? attendanceStatus.checkInStatus === "Terlambat"
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                          : attendanceStatus.todayStatus === "leave"
+                            ? "text-amber-600 dark:text-amber-400"
+                            : attendanceStatus.todayStatus === "absent"
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-gray-600 dark:text-gray-400"
+                      }`}
+                    >
+                      Status: {statusBadge.text}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Total Hours (if both checked) */}
+                {attendanceStatus.totalWorkHours && (
+                  <View className="mt-3 items-center">
+                    <Text className="text-muted-foreground text-xs">
+                      Total waktu kerja:{" "}
+                      <Text className="font-bold text-foreground">
+                        {attendanceStatus.totalWorkHours}
+                      </Text>
                     </Text>
                   </View>
                 )}
@@ -979,106 +1045,94 @@ export default function Dashboard() {
             </Card>
           </View>
 
-          {/* --- Quick Actions (Moved up from Statistics location) --- */}
-          <View className="px-6 mb-6">
-            <Text variant="h3" className="mb-4 text-foreground">
-              Halo, {displayName || "User"}
-            </Text>
-
-            {/* Large Square Primary Action - Attendance (Centered) */}
-            <View className="items-center mb-4">
-              <TouchableOpacity
-                onPress={navigateToCheckIn}
-                className="w-48"
-                activeOpacity={0.8}
-                disabled={isPrimaryActionDisabled}
-              >
-                <Card
-                  className={`aspect-square ${
-                    isPrimaryActionDisabled
-                      ? "bg-gray-400 dark:bg-gray-600"
-                      : "bg-blue-600 dark:bg-blue-700"
-                  }`}
-                >
-                  <View className="flex-1 items-center justify-center p-4">
-                    <Icon as={UserCheck} className="size-8 text-white" />
-                    <Text
-                      variant="small"
-                      className={`mt-3 px-3 text-center text-xs leading-snug ${
-                        isPrimaryActionDisabled
-                          ? "text-gray-200 dark:text-gray-300"
-                          : "text-white/90"
-                      }`}
-                    >
-                      {primaryActionMessage}
-                    </Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
+          {/* === QUICK ACTIONS GRID - SUPER PREMIUM DESIGN === */}
+          <View className="px-6 mt-6">
+            <View className="flex-row items-center mb-5">
+              <View className="flex-1">
+                <Text variant="h3" className="text-foreground font-bold">
+                  Menu Cepat
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Akses fitur dengan cepat
+                </Text>
+              </View>
             </View>
 
-            {/* Secondary Actions Grid */}
-            <View className="flex-row gap-4">
-              <TouchableOpacity
-                onPress={navigateToHistory}
-                className="flex-1"
-                activeOpacity={0.8}
-              >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon as={History} className="size-6 text-blue-600" />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
+            {/* Premium Bento Grid Layout */}
+            <View className="gap-3">
+              {/* Top Row - 2 Cards */}
+              <View className="flex-row gap-3">
+                {/* History Button - Large */}
+                <TouchableOpacity
+                  onPress={navigateToHistory}
+                  className="flex-1"
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={["#8b5cf6", "#7c3aed", "#6d28d9"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="rounded-3xl p-5 h-36"
                   >
-                    Riwayat
-                  </Text>
-                </Card>
-              </TouchableOpacity>
+                    <View className="flex-1 justify-between">
+                      <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center">
+                        <Icon as={History} className="size-7 text-white" />
+                      </View>
+                      <View>
+                        <Text className="text-white font-bold text-lg">
+                          Riwayat
+                        </Text>
+                        <Text className="text-white/70 text-xs">
+                          Lihat semua absensi
+                        </Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={navigateToPerizinan}
-                className="flex-1"
-                activeOpacity={0.8}
-              >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon
-                    as={ClipboardPenLine}
-                    className="size-6 text-blue-600"
-                  />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
+                {/* Perizinan Button - Large */}
+                <TouchableOpacity
+                  onPress={navigateToPerizinan}
+                  className="flex-1"
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={["#f59e0b", "#d97706", "#b45309"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="rounded-3xl p-5 h-36"
                   >
-                    Perizinan
-                  </Text>
-                </Card>
-              </TouchableOpacity>
+                    <View className="flex-1 justify-between">
+                      <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center">
+                        <Icon
+                          as={ClipboardPenLine}
+                          className="size-7 text-white"
+                        />
+                      </View>
+                      <View>
+                        <Text className="text-white font-bold text-lg">
+                          Perizinan
+                        </Text>
+                        <Text className="text-white/70 text-xs">
+                          Ajukan izin & cuti
+                        </Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
 
-              <TouchableOpacity
-                onPress={navigateToSettings}
-                className="flex-1"
-                activeOpacity={0.8}
-              >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon as={Settings} className="size-6 text-blue-600" />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Setelan
-                  </Text>
-                </Card>
-              </TouchableOpacity>
+          {/* === VERSION INFO === */}
+          <View className="items-center mt-8 px-6 mb-6">
+            <View className="flex-row items-center bg-muted/50 px-4 py-2 rounded-full">
+              <Text variant="small" className="text-muted-foreground">
+                Skanida v{Constants.expoConfig?.version}
+              </Text>
             </View>
           </View>
         </ScrollView>
-
-        {/* --- Footer Section --- */}
-        <View className="items-center px-6 py-3 border-t border-border bg-background">
-          <Text variant="small" className="font-bold text-foreground">
-            {Constants.expoConfig?.version}
-          </Text>
-        </View>
       </SafeAreaView>
 
       {/* Success Popup */}

@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { Text } from "~/components/ui/text";
 import AttendanceCalendar, {
@@ -16,7 +17,12 @@ import AttendanceCalendar, {
 } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { Icon } from "~/components/ui/icon";
-import { ChevronLeft, Settings, RefreshCw } from "lucide-react-native";
+import {
+  ChevronLeft,
+  Settings,
+  RefreshCw,
+  Calendar,
+} from "lucide-react-native";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 import Animated, {
@@ -53,7 +59,7 @@ const SpinningIcon = ({ spinning }: { spinning: boolean }) => {
 
   return (
     <Animated.View style={animatedStyle}>
-      <Icon as={RefreshCw} className="size-5 text-foreground" />
+      <Icon as={RefreshCw} className="size-5 text-white" />
     </Animated.View>
   );
 };
@@ -207,71 +213,136 @@ export default function Riwayat() {
     }
   };
 
+  // Get month name for display
+  const monthNames = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+
   return (
-    <SafeAreaView className={`flex-1 bg-background`}>
+    <SafeAreaView className="flex-1 bg-background">
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
 
-      {/* Header */}
-      <View className={`flex-row items-center p-4 border-b border-border`}>
-        <TouchableOpacity
-          onPress={() => {
-            try {
-              if (router.canGoBack()) {
-                router.back();
-              }
-            } catch (error) {
-              console.error("Error navigating back:", error);
-            }
-          }}
-          className="mr-3"
+      {/* === PREMIUM HEADER WITH GRADIENT === */}
+      <View className="relative overflow-hidden">
+        <LinearGradient
+          colors={["#8b5cf6", "#7c3aed", "#6d28d9"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-6 pt-4 pb-8"
         >
-          <Icon as={ChevronLeft} className={`size-6 text-foreground`} />
-        </TouchableOpacity>
+          {/* Top Bar */}
+          <View className="flex-row items-center justify-between mb-6">
+            <TouchableOpacity
+              onPress={() => {
+                try {
+                  if (router.canGoBack()) {
+                    router.back();
+                  }
+                } catch (error) {
+                  console.error("Error navigating back:", error);
+                }
+              }}
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+            >
+              <Icon as={ChevronLeft} className="size-5 text-white" />
+            </TouchableOpacity>
 
-        <Text variant="large" className="flex-1 text-foreground">
-          Riwayat Kehadiran
-        </Text>
+            <View className="flex-row items-center gap-2">
+              {/* Cache management button (only in development) */}
+              {__DEV__ && (
+                <TouchableOpacity
+                  onPress={showCacheInfo}
+                  className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                >
+                  <Icon as={Settings} className="size-5 text-white" />
+                </TouchableOpacity>
+              )}
 
-        {/* Cache management button (only in development) */}
-        {__DEV__ && (
-          <TouchableOpacity onPress={showCacheInfo} className="ml-3">
-            <Icon as={Settings} className={`size-5 text-foreground`} />
-          </TouchableOpacity>
-        )}
+              {/* Force refresh button */}
+              <TouchableOpacity
+                onPress={forceRefresh}
+                className={`w-10 h-10 rounded-full bg-white/10 items-center justify-center ${isRefreshing ? "opacity-50" : ""}`}
+                disabled={isRefreshing}
+              >
+                <Animated.View
+                  style={
+                    isRefreshing
+                      ? {
+                          transform: [{ rotate: "0deg" }],
+                        }
+                      : undefined
+                  }
+                >
+                  <SpinningIcon spinning={isRefreshing} />
+                </Animated.View>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        {/* Force refresh button with loading state */}
-        <TouchableOpacity
-          onPress={forceRefresh}
-          className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
-          disabled={isRefreshing}
-        >
-          <SpinningIcon spinning={isRefreshing} />
-        </TouchableOpacity>
+          {/* Title Section */}
+          <View className="flex-row items-center">
+            <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center">
+              <Icon as={Calendar} className="size-7 text-white" />
+            </View>
+            <View className="ml-4 flex-1">
+              <Text className="text-white/70 text-sm">Lihat & Pantau</Text>
+              <Text className="text-white text-2xl font-bold">
+                Riwayat Kehadiran
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Curved Bottom Effect */}
+        <View className="absolute -bottom-4 left-0 right-0 h-8 bg-background rounded-t-[32px]" />
       </View>
 
-      {/* Month/Year Picker */}
-      <View className={`p-4 border-b border-border`}>
-        <MonthYearPicker
-          selectedDate={selectedDate}
-          onDateChange={handleDateChange}
-          minimumDate={new Date(2020, 0, 1)}
-          maximumDate={new Date()}
+      {/* === MONTH/YEAR PICKER - MODERN CARD === */}
+      <View className="px-6 -mt-2 mb-4">
+        <View className="bg-card rounded-2xl p-4 border border-border shadow-sm">
+          <View className="flex-row items-center mb-3">
+            <View className="w-8 h-8 rounded-lg bg-violet-500/10 items-center justify-center">
+              <Icon as={Calendar} className="size-4 text-violet-500" />
+            </View>
+            <Text className="text-foreground font-semibold ml-3">
+              Pilih Bulan
+            </Text>
+          </View>
+          <MonthYearPicker
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={new Date()}
+            isDarkColorScheme={isDarkColorScheme}
+          />
+        </View>
+      </View>
+
+      {/* === CALENDAR COMPONENT === */}
+      <View className="flex-1 px-2">
+        <AttendanceCalendar
+          ref={calendarRef}
+          currentYear={selectedDate.getFullYear()}
+          currentMonth={selectedDate.getMonth()}
           isDarkColorScheme={isDarkColorScheme}
+          key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
         />
       </View>
-
-      {/* Calendar Component */}
-      <AttendanceCalendar
-        ref={calendarRef}
-        currentYear={selectedDate.getFullYear()}
-        currentMonth={selectedDate.getMonth()}
-        isDarkColorScheme={isDarkColorScheme}
-        key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
-      />
     </SafeAreaView>
   );
 }

@@ -28,9 +28,15 @@ import {
   Image as ImageIcon,
   Trash2,
   Eye,
+  User,
+  Mail,
+  GraduationCap,
+  Hash,
+  Save,
 } from "lucide-react-native";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -631,433 +637,422 @@ export default function EditProfile() {
   }, [fetchProfileError, user]);
 
   return (
-    <SafeAreaView className={`flex-1 bg-background`}>
+    <SafeAreaView className="flex-1 bg-background">
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
 
-      {/* Header */}
-      <View
-        className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-card dark:bg-gray-800`}
+      {/* Premium Gradient Header */}
+      <LinearGradient
+        colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="pb-8 pt-4 px-5"
       >
-        <TouchableOpacity
-          onPress={() => {
-            // Allow navigation if user has any name data (profile, form, or auth metadata)
-            const hasAnyName =
-              (profileData?.full_name &&
-                profileData.full_name.trim().length > 0) ||
-              (name && name.trim().length > 0) ||
-              (user?.user_metadata?.name &&
-                user.user_metadata.name.trim().length > 0) ||
-              (user?.user_metadata?.full_name &&
-                user.user_metadata.full_name.trim().length > 0);
+        {/* Top Bar */}
+        <View className="flex-row items-center mb-6">
+          <TouchableOpacity
+            onPress={() => {
+              const hasAnyName =
+                (profileData?.full_name &&
+                  profileData.full_name.trim().length > 0) ||
+                (name && name.trim().length > 0) ||
+                (user?.user_metadata?.name &&
+                  user.user_metadata.name.trim().length > 0) ||
+                (user?.user_metadata?.full_name &&
+                  user.user_metadata.full_name.trim().length > 0);
 
-            console.log("Header back button check:", {
-              hasAnyName,
-              profileDataFullName: profileData?.full_name,
-              formName: name,
-              userMetadataName: user?.user_metadata?.name,
-              userMetadataFullName: user?.user_metadata?.full_name,
-            });
+              if (!hasAnyName) {
+                Alert.alert(
+                  "Profil Wajib Diisi",
+                  "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
+                  [{ text: "OK" }],
+                );
+                return;
+              }
 
-            // Only prevent navigation if user truly has no name data anywhere
-            if (!hasAnyName) {
-              Alert.alert(
-                "Profil Wajib Diisi",
-                "Anda harus melengkapi profil terlebih dahulu sebelum dapat menggunakan aplikasi.",
-                [{ text: "OK" }],
-              );
-              return;
-            }
+              const hasUnsavedChanges =
+                absenceNumber !== initialAbsenceNumber ||
+                avatarUrl !== initialAvatarUrl;
 
-            // Check for unsaved changes
-            const hasUnsavedChanges =
-              absenceNumber !== initialAbsenceNumber ||
-              avatarUrl !== initialAvatarUrl;
+              if (hasUnsavedChanges) {
+                Alert.alert(
+                  "Perubahan Belum Disimpan",
+                  "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
+                  [
+                    { text: "Tetap di Sini", style: "cancel" },
+                    {
+                      text: "Tinggalkan",
+                      style: "destructive",
+                      onPress: () => router.back(),
+                    },
+                  ],
+                );
+              } else {
+                router.back();
+              }
+            }}
+            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+          >
+            <Icon as={ChevronLeft} className="size-6 text-white" />
+          </TouchableOpacity>
+          <View className="flex-1" />
+        </View>
 
-            if (hasUnsavedChanges) {
-              Alert.alert(
-                "Perubahan Belum Disimpan",
-                "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?",
-                [
-                  { text: "Tetap di Sini", style: "cancel" },
-                  {
-                    text: "Tinggalkan",
-                    style: "destructive",
-                    onPress: () => router.back(),
-                  },
-                ],
-              );
-            } else {
-              router.back();
-            }
-          }}
-          className="mr-3"
-        >
-          <Icon as={ChevronLeft} className="size-6 text-foreground" />
-        </TouchableOpacity>
+        {/* Header Content */}
+        <View className="flex-row items-center">
+          <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center mr-4">
+            <Icon as={User} className="size-7 text-white" />
+          </View>
+          <View>
+            <Text className="text-white/70 text-sm">Kelola data</Text>
+            <Text className="text-white text-xl font-bold">Edit Profil</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-        <Text variant="h3" className="flex-1 text-foreground">
-          Edit Profil
-        </Text>
-      </View>
+      {/* Curved bottom effect */}
+      <View className="h-4 -mt-4 bg-background rounded-t-3xl" />
 
       <ScrollView
-        className={`flex-1`}
+        className="flex-1 bg-background"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Profile Section with Photo and Basic Info */}
-        <View className="px-6 pt-6 pb-4">
-          <Card
-            className={`p-6 bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
-          >
-            <View className="items-center">
-              <Text variant="h3" className={`mb-6 text-foreground`}>
-                Foto Profil
-              </Text>
-
-              <View className="relative mb-6">
+        {/* Profile Photo Card */}
+        <View className="px-5 -mt-2">
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            <View className="p-6 items-center">
+              <View className="relative mb-4">
                 {uploadingAvatar ? (
-                  <View
-                    className={`w-32 h-32 rounded-full items-center justify-center bg-gray-100 dark:bg-gray-700`}
-                    style={{
-                      shadowColor: "#000000",
-                      shadowOffset: { width: 0, height: 6 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 12,
-                      elevation: 8,
-                    }}
-                  >
-                    <ActivityIndicator size="large" color={"#3b82f6"} />
+                  <View className="w-28 h-28 rounded-2xl items-center justify-center bg-muted">
+                    <ActivityIndicator size="large" color="#3b82f6" />
                   </View>
                 ) : (
                   <>
-                    <View
-                      style={{
-                        shadowColor: "#000000",
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.15,
-                        shadowRadius: 12,
-                        elevation: 8,
-                        borderRadius: 64,
-                      }}
-                    >
-                      <Avatar
-                        source={avatarUrl || undefined}
-                        fallback={
-                          user?.user_metadata?.name?.charAt(0) ||
-                          user?.email?.charAt(0) ||
-                          "U"
-                        }
-                        size="lg"
-                        className="w-32 h-32"
+                    {avatarUrl ? (
+                      <RNImage
+                        source={{ uri: avatarUrl }}
+                        style={{ width: 112, height: 112, borderRadius: 24 }}
                       />
-                    </View>
+                    ) : (
+                      <LinearGradient
+                        colors={["#3b82f6", "#2563eb"]}
+                        className="rounded-2xl items-center justify-center"
+                        style={{ width: 112, height: 112 }}
+                      >
+                        <Text className="text-white text-4xl font-bold">
+                          {(name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                        </Text>
+                      </LinearGradient>
+                    )}
 
                     <TouchableOpacity
-                      className="absolute bottom-0 right-0 bg-blue-500 dark:bg-blue-600 rounded-full p-3"
+                      className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center"
                       onPress={() => setIsAvatarOptionsVisible(true)}
                       disabled={uploadingAvatar}
-                      style={{
-                        shadowColor: "#3B82F6",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 8,
-                        elevation: 6,
-                        opacity: uploadingAvatar ? 0.6 : 1,
-                      }}
+                      activeOpacity={0.9}
                     >
-                      <Icon as={Camera} className="size-5 text-white" />
+                      <LinearGradient
+                        colors={["#3b82f6", "#2563eb"]}
+                        className="w-10 h-10 rounded-xl items-center justify-center"
+                      >
+                        <Icon as={Camera} className="size-5 text-white" />
+                      </LinearGradient>
                     </TouchableOpacity>
                   </>
                 )}
               </View>
-
-              <Modal
-                visible={isAvatarOptionsVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setIsAvatarOptionsVisible(false)}
-              >
-                <View className="flex-1 justify-end">
-                  <TouchableWithoutFeedback
-                    onPress={() => setIsAvatarOptionsVisible(false)}
-                  >
-                    <View className="flex-1 bg-black/40" />
-                  </TouchableWithoutFeedback>
-
-                  <SafeAreaView
-                    edges={["bottom"]}
-                    className="bg-card dark:bg-gray-900 rounded-t-3xl px-6 pt-4 pb-6"
-                  >
-                    <View className="items-center">
-                      <View className="w-12 h-1 rounded-full bg-muted mb-4" />
-                      <Text variant="h3" className="text-foreground mb-6">
-                        Foto Profil
-                      </Text>
-
-                      <View className="flex-row justify-between w-full">
-                        <TouchableOpacity
-                          className="items-center flex-1"
-                          onPress={handleViewAvatar}
-                          activeOpacity={0.85}
-                          disabled={!avatarUrl}
-                        >
-                          <View
-                            className={`w-14 h-14 rounded-full items-center justify-center mb-2 ${avatarUrl ? "bg-blue-500/10 dark:bg-blue-500/20" : "bg-muted"}`}
-                          >
-                            <Icon
-                              as={Eye}
-                              className={`size-7 ${avatarUrl ? "text-blue-500" : "text-muted-foreground"}`}
-                            />
-                          </View>
-                          <Text
-                            variant="small"
-                            className={`font-medium ${avatarUrl ? "text-foreground" : "text-muted-foreground"}`}
-                          >
-                            Lihat Foto
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          className="items-center flex-1"
-                          onPress={captureImageWithCamera}
-                          activeOpacity={0.85}
-                        >
-                          <View className="w-14 h-14 rounded-full items-center justify-center mb-2 bg-blue-500/10 dark:bg-blue-500/20">
-                            <Icon
-                              as={Camera}
-                              className="size-7 text-blue-500"
-                            />
-                          </View>
-                          <Text
-                            variant="small"
-                            className="font-medium text-foreground"
-                          >
-                            Kamera
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          className="items-center flex-1"
-                          onPress={handleChooseFromGallery}
-                          activeOpacity={0.85}
-                        >
-                          <View className="w-14 h-14 rounded-full items-center justify-center mb-2 bg-blue-500/10 dark:bg-blue-500/20">
-                            <Icon
-                              as={ImageIcon}
-                              className="size-7 text-blue-500"
-                            />
-                          </View>
-                          <Text
-                            variant="small"
-                            className="font-medium text-foreground"
-                          >
-                            Galeri
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          className="items-center flex-1"
-                          onPress={handleRemoveAvatar}
-                          activeOpacity={0.85}
-                          disabled={!avatarUrl}
-                        >
-                          <View
-                            className={`w-14 h-14 rounded-full items-center justify-center mb-2 ${avatarUrl ? "bg-red-500/10" : "bg-muted"}`}
-                          >
-                            <Icon
-                              as={Trash2}
-                              className={`size-7 ${avatarUrl ? "text-red-500" : "text-muted-foreground"}`}
-                            />
-                          </View>
-                          <Text
-                            variant="small"
-                            className={`font-medium ${avatarUrl ? "text-red-500" : "text-muted-foreground"}`}
-                          >
-                            Hapus
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() => setIsAvatarOptionsVisible(false)}
-                        className="mt-6 w-full py-3 rounded-full bg-muted items-center"
-                        activeOpacity={0.75}
-                      >
-                        <Text variant="default" className="text-foreground">
-                          Batal
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </SafeAreaView>
-                </View>
-              </Modal>
-              <Modal
-                visible={isViewAvatarVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setIsViewAvatarVisible(false)}
-              >
-                <TouchableWithoutFeedback
-                  onPress={() => setIsViewAvatarVisible(false)}
-                >
-                  <View className="flex-1 bg-black/90 items-center justify-center">
-                    {avatarUrl ? (
-                      <View className="w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
-                        <RNImage
-                          source={{ uri: avatarUrl }}
-                          style={{ width: "100%", height: "100%" }}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    ) : (
-                      <Text className="text-white">
-                        Foto profil tidak tersedia.
-                      </Text>
-                    )}
-                  </View>
-                </TouchableWithoutFeedback>
-              </Modal>
-              <Text
-                variant={"small"}
-                className={`text-center text-muted-foreground`}
-              >
-                Ketuk ikon kamera untuk mengubah foto profil
+              
+              <Text className="text-foreground font-bold text-lg">
+                {name || "Nama Pengguna"}
+              </Text>
+              <Text className="text-muted-foreground text-sm mt-0.5">
+                Ketuk kamera untuk mengubah foto
               </Text>
             </View>
           </Card>
         </View>
 
-        {/* Combined Information Section */}
-        <View className="px-6 mb-3">
-          <Card
-            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
-          >
-            <Text variant="h3" className={`mb-3 text-foreground`}>
-              Informasi Pribadi
-            </Text>
+        {/* Avatar Options Modal */}
+        <Modal
+          visible={isAvatarOptionsVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setIsAvatarOptionsVisible(false)}
+        >
+          <View className="flex-1 justify-end">
+            <TouchableWithoutFeedback
+              onPress={() => setIsAvatarOptionsVisible(false)}
+            >
+              <View className="flex-1 bg-black/50" />
+            </TouchableWithoutFeedback>
 
-            <View className="space-y-3">
-              <View>
-                <Text
-                  variant="small"
-                  className={`font-medium mb-1 text-foreground`}
+            <SafeAreaView
+              edges={["bottom"]}
+              className="bg-card rounded-t-3xl px-6 pt-4 pb-6"
+            >
+              <View className="items-center">
+                <View className="w-12 h-1 rounded-full bg-muted mb-4" />
+                <Text className="text-foreground font-bold text-lg mb-6">
+                  Foto Profil
+                </Text>
+
+                <View className="flex-row justify-between w-full">
+                  <TouchableOpacity
+                    className="items-center flex-1"
+                    onPress={handleViewAvatar}
+                    activeOpacity={0.85}
+                    disabled={!avatarUrl}
+                  >
+                    <View
+                      className={`w-14 h-14 rounded-xl items-center justify-center mb-2 ${
+                        avatarUrl ? "bg-blue-500/10" : "bg-muted"
+                      }`}
+                    >
+                      <Icon
+                        as={Eye}
+                        className={`size-6 ${
+                          avatarUrl ? "text-blue-500" : "text-muted-foreground"
+                        }`}
+                      />
+                    </View>
+                    <Text
+                      className={`text-xs font-medium ${
+                        avatarUrl ? "text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      Lihat
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="items-center flex-1"
+                    onPress={captureImageWithCamera}
+                    activeOpacity={0.85}
+                  >
+                    <View className="w-14 h-14 rounded-xl items-center justify-center mb-2 bg-green-500/10">
+                      <Icon as={Camera} className="size-6 text-green-500" />
+                    </View>
+                    <Text className="text-xs font-medium text-foreground">
+                      Kamera
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="items-center flex-1"
+                    onPress={handleChooseFromGallery}
+                    activeOpacity={0.85}
+                  >
+                    <View className="w-14 h-14 rounded-xl items-center justify-center mb-2 bg-purple-500/10">
+                      <Icon as={ImageIcon} className="size-6 text-purple-500" />
+                    </View>
+                    <Text className="text-xs font-medium text-foreground">
+                      Galeri
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="items-center flex-1"
+                    onPress={handleRemoveAvatar}
+                    activeOpacity={0.85}
+                    disabled={!avatarUrl}
+                  >
+                    <View
+                      className={`w-14 h-14 rounded-xl items-center justify-center mb-2 ${
+                        avatarUrl ? "bg-red-500/10" : "bg-muted"
+                      }`}
+                    >
+                      <Icon
+                        as={Trash2}
+                        className={`size-6 ${
+                          avatarUrl ? "text-red-500" : "text-muted-foreground"
+                        }`}
+                      />
+                    </View>
+                    <Text
+                      className={`text-xs font-medium ${
+                        avatarUrl ? "text-red-500" : "text-muted-foreground"
+                      }`}
+                    >
+                      Hapus
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setIsAvatarOptionsVisible(false)}
+                  className="mt-6 w-full py-3.5 rounded-xl bg-muted items-center"
+                  activeOpacity={0.75}
                 >
+                  <Text className="text-foreground font-semibold">Batal</Text>
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
+
+        {/* View Avatar Modal */}
+        <Modal
+          visible={isViewAvatarVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsViewAvatarVisible(false)}
+        >
+          <TouchableWithoutFeedback
+            onPress={() => setIsViewAvatarVisible(false)}
+          >
+            <View className="flex-1 bg-black/90 items-center justify-center">
+              {avatarUrl ? (
+                <View
+                  className="overflow-hidden border-4 border-white/10"
+                  style={{ width: 280, height: 280, borderRadius: 32 }}
+                >
+                  <RNImage
+                    source={{ uri: avatarUrl }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                </View>
+              ) : (
+                <Text className="text-white">Foto profil tidak tersedia.</Text>
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* Personal Information Section */}
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Informasi Pribadi
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            {/* Name Field */}
+            <View className="p-4 border-b border-border/50">
+              <View className="flex-row items-center mb-2">
+                <View className="w-8 h-8 rounded-lg bg-blue-500/10 items-center justify-center mr-3">
+                  <Icon as={User} className="size-4 text-blue-500" />
+                </View>
+                <Text className="text-muted-foreground text-xs uppercase tracking-wide">
                   Nama Lengkap
                 </Text>
-                <Input
-                  placeholder="Masukkan nama lengkap"
-                  value={name}
-                  editable={false} // added: make read-only
-                  className={"border-gray-300 bg-white"}
-                />
               </View>
+              <Input
+                placeholder="Masukkan nama lengkap"
+                value={name}
+                editable={false}
+                className="bg-muted/50 border-0 rounded-xl"
+              />
+            </View>
 
-              <View>
-                <Text
-                  variant="small"
-                  className={`font-medium mb-1 text-foreground`}
-                >
+            {/* Email Field */}
+            <View className="p-4">
+              <View className="flex-row items-center mb-2">
+                <View className="w-8 h-8 rounded-lg bg-purple-500/10 items-center justify-center mr-3">
+                  <Icon as={Mail} className="size-4 text-purple-500" />
+                </View>
+                <Text className="text-muted-foreground text-xs uppercase tracking-wide">
                   Email
                 </Text>
-                <Input
-                  placeholder="Masukkan alamat email"
-                  value={email}
-                  editable={false}
-                  className={"border-gray-300 bg-white"}
-                  accessibilityHint="Email address, read-only"
-                />
               </View>
+              <Input
+                placeholder="Masukkan alamat email"
+                value={email}
+                editable={false}
+                className="bg-muted/50 border-0 rounded-xl"
+              />
             </View>
           </Card>
         </View>
 
         {/* Academic Information Section */}
-        <View className="px-6 mb-3">
-          <Card
-            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
-          >
-            <Text variant="h3" className={`mb-3 text-foreground`}>
-              Informasi Akademik
-            </Text>
-
-            <View className="space-y-3">
-              <View>
-                <Text
-                  variant={"small"}
-                  className={`font-medium mb-1 text-foreground`}
-                >
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Informasi Akademik
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            {/* Absence Number Field */}
+            <View className="p-4 border-b border-border/50">
+              <View className="flex-row items-center mb-2">
+                <View className="w-8 h-8 rounded-lg bg-amber-500/10 items-center justify-center mr-3">
+                  <Icon as={Hash} className="size-4 text-amber-500" />
+                </View>
+                <Text className="text-muted-foreground text-xs uppercase tracking-wide">
                   Nomor Absen
                 </Text>
-                <Input
-                  placeholder="Masukkan nomor absen"
-                  value={absenceNumber}
-                  editable={false} // added: make read-only
-                  keyboardType="numeric"
-                  className={"border-gray-300 bg-white"}
-                />
               </View>
+              <Input
+                placeholder="Masukkan nomor absen"
+                value={absenceNumber}
+                editable={false}
+                keyboardType="numeric"
+                className="bg-muted/50 border-0 rounded-xl"
+              />
+            </View>
 
-              <View>
-                <Text
-                  variant={"small"}
-                  className={`font-medium mb-1 text-foreground`}
-                >
+            {/* Class Field */}
+            <View className="p-4">
+              <View className="flex-row items-center mb-2">
+                <View className="w-8 h-8 rounded-lg bg-green-500/10 items-center justify-center mr-3">
+                  <Icon as={GraduationCap} className="size-4 text-green-500" />
+                </View>
+                <Text className="text-muted-foreground text-xs uppercase tracking-wide">
                   Kelas
                 </Text>
-                <Input
-                  placeholder="Masukkan kelas"
-                  value={className}
-                  editable={false} // added: make read-only
-                  className={"border-gray-300 bg-white"}
-                />
               </View>
+              <Input
+                placeholder="Masukkan kelas"
+                value={className}
+                editable={false}
+                className="bg-muted/50 border-0 rounded-xl"
+              />
             </View>
           </Card>
         </View>
 
-        {/* Action Buttons Section */}
-        <View className="px-6">
-          <Card
-            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
+        {/* Save Button */}
+        <View className="px-5 mt-6">
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={loading}
+            activeOpacity={0.9}
+            className="overflow-hidden rounded-2xl"
           >
-            <Button
-              variant="default"
-              size="default"
-              disabled={loading}
-              onPress={handleSave}
-              className="mb-3 w-full bg-blue-500"
+            <LinearGradient
+              colors={loading ? ["#9ca3af", "#6b7280"] : ["#3b82f6", "#2563eb", "#1d4ed8"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              className="py-4 flex-row items-center justify-center rounded-2xl"
             >
               {loading ? (
-                <View className="flex-row items-center justify-center">
-                  <ActivityIndicator
-                    size="small"
-                    color="#ffffff"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text className="text-white font-medium">
-                    Sedang menyimpan...
+                <>
+                  <ActivityIndicator size="small" color="#ffffff" />
+                  <Text className="font-bold text-white text-base ml-3">
+                    Menyimpan...
                   </Text>
-                </View>
+                </>
               ) : (
-                <Text className="text-white font-medium">Simpan Perubahan</Text>
+                <>
+                  <Icon as={Save} className="size-5 text-white mr-3" />
+                  <Text className="font-bold text-white text-base">
+                    Simpan Perubahan
+                  </Text>
+                </>
               )}
-            </Button>
+            </LinearGradient>
+          </TouchableOpacity>
 
-            <Button
-              variant="outline"
-              size="default"
-              onPress={() => router.back()}
-              disabled={loading}
-              className={`w-full border-gray-300 dark:border-gray-600 bg-transparent`}
-            >
-              <Text className={"text-foreground font-medium"}>Batal</Text>
-            </Button>
-          </Card>
+          {/* Cancel Button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            disabled={loading}
+            activeOpacity={0.7}
+            className="mt-3 py-4 rounded-2xl bg-muted items-center"
+          >
+            <Text className="font-semibold text-muted-foreground">Batal</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
