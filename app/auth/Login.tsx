@@ -246,7 +246,7 @@ export default function Login() {
                   Lupa password?
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push("/auth/ResetPassword" as any)}
+                  onPress={() => router.push("/auth/ResetPassword")}
                 >
                   <Text
                     variant="default"
