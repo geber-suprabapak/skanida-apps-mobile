@@ -121,7 +121,7 @@ export default function ResetPassword() {
       setLoading(true);
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://example.com",
+        redirectTo: "https://lupa.hysilens.my.id",
       });
 
       if (error) {
