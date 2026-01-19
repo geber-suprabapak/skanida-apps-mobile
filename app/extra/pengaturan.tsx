@@ -249,7 +249,7 @@ function Pengaturan() {
 
       {/* Premium Gradient Header */}
       <LinearGradient
-        colors={["#6366f1", "#4f46e5", "#4338ca"]}
+        colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className="pb-8 pt-4 px-5"

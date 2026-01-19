@@ -808,7 +808,7 @@ export default function PerizinanScreen() {
       <SafeAreaView className="flex-1 bg-background">
         {/* Premium Gradient Header */}
         <LinearGradient
-          colors={["#f59e0b", "#d97706", "#b45309"]}
+          colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="pb-6 pt-4 px-4"
@@ -1036,7 +1036,7 @@ export default function PerizinanScreen() {
             >
               {canSubmit ? (
                 <LinearGradient
-                  colors={["#f59e0b", "#d97706", "#b45309"]}
+                  colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   className="w-full py-4 rounded-2xl flex-row items-center justify-center"

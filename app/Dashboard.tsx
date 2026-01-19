@@ -781,14 +781,14 @@ export default function Dashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 32 }}
         >
-          {/* === HEADER SECTION - Modern Gradient Style === */}
+          {/* === HEADER SECTION - Modern Minimal Style === */}
           <View className="relative overflow-hidden">
-            {/* Gradient Background Header */}
+            {/* Gradient Background Header - Matching tweakcn primary */}
             <LinearGradient
-              colors={["#3b82f6", "#1d4ed8", "#1e40af"]}
+              colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              className="px-6 pt-4 pb-8"
+              className="px-6 pt-4 pb-10"
             >
               {/* Top Bar - Avatar, Date & Bug Report */}
               <View className="flex-row items-center justify-between mb-6">
@@ -803,62 +803,62 @@ export default function Dashboard() {
                       <Avatar
                         size="md"
                         fallback={displayName.charAt(0).toUpperCase() || "?"}
-                        className="border-2 border-white/30"
+                        className="border-2 border-white/40 shadow-sm"
                         source={avatarUrl ?? undefined}
                       />
-                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white" />
                     </View>
                   ) : (
                     <View className="relative">
-                      <View className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 items-center justify-center">
+                      <View className="w-14 h-14 rounded-full bg-white/15 border border-white/30 items-center justify-center">
                         <Icon as={UserRound} className="size-7 text-white" />
                       </View>
-                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 rounded-full border-2 border-white" />
+                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white" />
                     </View>
                   )}
                   <View className="ml-4 flex-1">
-                    <Text className="text-white/70 text-sm">
+                    <Text className="text-white/80 text-sm font-medium">
                       {greeting} {greetingEmoji}
                     </Text>
-                    <Text className="text-white text-xl font-bold">
+                    <Text className="text-white text-xl font-bold tracking-tight">
                       {displayName}
                     </Text>
                   </View>
                 </TouchableOpacity>
 
-                <View className="flex-row items-center gap-2">
+                <View className="flex-row items-center gap-3">
                   <TouchableOpacity
                     onPress={navigateToSettings}
-                    className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-white/15 items-center justify-center border border-white/20"
                   >
                     <Icon as={Settings} className="size-5 text-white" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => Sentry.showFeedbackWidget()}
-                    className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-white/15 items-center justify-center border border-white/20"
                   >
                     <Icon as={Bug} className="size-5 text-white" />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Live Time Display - Glassmorphism Card */}
-              <View className="bg-white/15 rounded-2xl p-4 border border-white/20">
+              {/* Live Time Display - Clean Modern Card */}
+              <View className="bg-white/10 rounded-3xl p-5 border border-white/15 backdrop-blur-sm">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
-                    <View className="w-12 h-12 rounded-xl bg-white/20 items-center justify-center">
-                      <Icon as={Clock} className="size-6 text-white" />
+                    <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center">
+                      <Icon as={Clock} className="size-7 text-white" />
                     </View>
-                    <View className="ml-3">
-                      <View className="flex-row items-center">
+                    <View className="ml-4">
+                      <View className="flex-row items-center mb-1">
                         {syncStatus === "synced" ? (
-                          <Icon as={Wifi} className="size-3 text-green-300" />
+                          <Icon as={Wifi} className="size-3 text-emerald-300" />
                         ) : syncStatus === "syncing" ? (
-                          <Icon as={Clock} className="size-3 text-yellow-300" />
+                          <Icon as={Clock} className="size-3 text-amber-300" />
                         ) : (
                           <Icon as={WifiOff} className="size-3 text-red-300" />
                         )}
-                        <Text className="text-white/70 text-xs ml-1">
+                        <Text className="text-white/70 text-xs ml-1.5 font-medium">
                           {syncStatus === "synced"
                             ? syncSource === "server"
                               ? "Server"
@@ -871,19 +871,19 @@ export default function Dashboard() {
                           {driftDetected && " • Drift"}
                         </Text>
                       </View>
-                      <Text className="text-white text-3xl font-bold tracking-wider">
+                      <Text className="text-white text-4xl font-bold tracking-tight">
                         {format(currentTime, "HH:mm:ss", { locale: id })}
                       </Text>
                     </View>
                   </View>
                   <View className="items-end">
-                    <View className="flex-row items-center bg-white/20 rounded-full px-3 py-1">
-                      <Icon as={Calendar} className="size-3 text-white/80" />
-                      <Text className="text-white/90 text-xs ml-1.5 font-medium">
+                    <View className="flex-row items-center bg-white/15 rounded-full px-3 py-1.5">
+                      <Icon as={Calendar} className="size-3.5 text-white/90" />
+                      <Text className="text-white text-xs ml-1.5 font-semibold">
                         {format(currentTime, "EEEE", { locale: id })}
                       </Text>
                     </View>
-                    <Text className="text-white/80 text-sm mt-1">
+                    <Text className="text-white/80 text-sm mt-2 font-medium">
                       {format(currentTime, "dd MMMM yyyy", { locale: id })}
                     </Text>
                   </View>
@@ -895,35 +895,35 @@ export default function Dashboard() {
             <View className="absolute -bottom-4 left-0 right-0 h-8 bg-background rounded-t-[32px]" />
           </View>
 
-          {/* === TODAY'S STATUS SECTION - MINIMALIST DESIGN === */}
-          <View className="px-6 -mt-2">
-            <Card className="p-0 overflow-hidden bg-card border-border shadow-lg rounded-2xl">
+          {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
+          <View className="px-6 -mt-4">
+            <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
               {/* Two Column Time Display */}
               <View className="flex-row">
                 {/* MASUK Column */}
-                <View className="flex-1 items-center py-6 px-4">
-                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-2">
+                <View className="flex-1 items-center py-7 px-4">
+                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
                     MASUK
                   </Text>
-                  <Text className="text-foreground font-bold text-3xl">
+                  <Text className="text-foreground font-bold text-4xl tracking-tight">
                     {attendanceStatus.checkInTime
                       ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "00:00"}
+                      : "--:--"}
                   </Text>
                   {attendanceStatus.hasCheckedIn && (
-                    <View className="mt-2 flex-row items-center">
+                    <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
                       <View
                         className={`w-2 h-2 rounded-full mr-1.5 ${
                           attendanceStatus.checkInStatus === "Terlambat"
-                            ? "bg-orange-500"
+                            ? "bg-amber-500"
                             : "bg-emerald-500"
                         }`}
                       />
                       <Text
-                        className={`text-xs font-medium ${
+                        className={`text-xs font-semibold ${
                           attendanceStatus.checkInStatus === "Terlambat"
-                            ? "text-orange-500"
-                            : "text-emerald-500"
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-emerald-600 dark:text-emerald-400"
                         }`}
                       >
                         {attendanceStatus.checkInStatus}
@@ -933,22 +933,22 @@ export default function Dashboard() {
                 </View>
 
                 {/* Vertical Divider */}
-                <View className="w-px bg-border self-stretch my-4" />
+                <View className="w-px bg-border/50 self-stretch my-5" />
 
                 {/* PULANG Column */}
-                <View className="flex-1 items-center py-6 px-4">
-                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-2">
+                <View className="flex-1 items-center py-7 px-4">
+                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
                     PULANG
                   </Text>
-                  <Text className="text-foreground font-bold text-3xl">
+                  <Text className="text-foreground font-bold text-4xl tracking-tight">
                     {attendanceStatus.checkOutTime
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "00:00"}
+                      : "--:--"}
                   </Text>
                   {attendanceStatus.hasCheckedOut && (
-                    <View className="mt-2 flex-row items-center">
+                    <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
                       <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
-                      <Text className="text-xs font-medium text-blue-500">
+                      <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                         Selesai
                       </Text>
                     </View>
@@ -957,7 +957,7 @@ export default function Dashboard() {
               </View>
 
               {/* Horizontal Divider */}
-              <View className="h-px bg-border mx-4" />
+              <View className="h-px bg-border/50 mx-5" />
 
               {/* PRESENSI Button */}
               <View className="p-5">
@@ -968,8 +968,8 @@ export default function Dashboard() {
                   className="overflow-hidden rounded-2xl"
                 >
                   {isPrimaryActionDisabled ? (
-                    <View className="py-6 items-center justify-center bg-muted rounded-2xl border border-border">
-                      <Text className="font-bold text-muted-foreground text-lg uppercase tracking-wider">
+                    <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
+                      <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
                         {attendanceStatus.hasCheckedOut
                           ? "SELESAI"
                           : refreshing
@@ -981,14 +981,14 @@ export default function Dashboard() {
                     <LinearGradient
                       colors={
                         derivedActionType === "home"
-                          ? ["#f97316", "#ea580c", "#c2410c"]
-                          : ["#22c55e", "#16a34a", "#15803d"]
+                          ? ["#f59e0b", "#d97706", "#b45309"]
+                          : ["#3b82f6", "#2563eb", "#1d4ed8"]
                       }
                       start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      className="py-6 items-center justify-center rounded-2xl"
+                      end={{ x: 1, y: 1 }}
+                      className="py-5 items-center justify-center rounded-2xl shadow-sm"
                     >
-                      <Text className="font-bold text-white text-lg uppercase tracking-wider">
+                      <Text className="font-bold text-white text-base uppercase tracking-wider">
                         {derivedActionType === "home"
                           ? "PRESENSI PULANG"
                           : "PRESENSI MASUK"}
@@ -1045,94 +1045,65 @@ export default function Dashboard() {
             </Card>
           </View>
 
-          {/* === QUICK ACTIONS GRID - SUPER PREMIUM DESIGN === */}
-          <View className="px-6 mt-6">
-            <View className="flex-row items-center mb-5">
-              <View className="flex-1">
-                <Text variant="h3" className="text-foreground font-bold">
-                  Menu Cepat
-                </Text>
-                <Text className="text-muted-foreground text-xs mt-0.5">
-                  Akses fitur dengan cepat
-                </Text>
-              </View>
-            </View>
-
-            {/* Premium Bento Grid Layout */}
-            <View className="gap-3">
-              {/* Top Row - 2 Cards */}
-              <View className="flex-row gap-3">
-                {/* History Button - Large */}
-                <TouchableOpacity
-                  onPress={navigateToHistory}
-                  className="flex-1"
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={["#8b5cf6", "#7c3aed", "#6d28d9"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="rounded-3xl p-5 h-36"
-                  >
-                    <View className="flex-1 justify-between">
-                      <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center">
-                        <Icon as={History} className="size-7 text-white" />
-                      </View>
-                      <View>
-                        <Text className="text-white font-bold text-lg">
-                          Riwayat
-                        </Text>
-                        <Text className="text-white/70 text-xs">
-                          Lihat semua absensi
-                        </Text>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                {/* Perizinan Button - Large */}
-                <TouchableOpacity
-                  onPress={navigateToPerizinan}
-                  className="flex-1"
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={["#f59e0b", "#d97706", "#b45309"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="rounded-3xl p-5 h-36"
-                  >
-                    <View className="flex-1 justify-between">
-                      <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center">
-                        <Icon
-                          as={ClipboardPenLine}
-                          className="size-7 text-white"
-                        />
-                      </View>
-                      <View>
-                        <Text className="text-white font-bold text-lg">
-                          Perizinan
-                        </Text>
-                        <Text className="text-white/70 text-xs">
-                          Ajukan izin & cuti
-                        </Text>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
           {/* === VERSION INFO === */}
-          <View className="items-center mt-8 px-6 mb-6">
-            <View className="flex-row items-center bg-muted/50 px-4 py-2 rounded-full">
-              <Text variant="small" className="text-muted-foreground">
+          <View className="items-center mt-8 px-6 mb-40">
+            <View className="flex-row items-center bg-secondary px-4 py-2 rounded-full border border-border/30">
+              <Text variant="small" className="text-secondary-foreground font-medium">
                 Skanida v{Constants.expoConfig?.version}
               </Text>
             </View>
           </View>
         </ScrollView>
+
+        {/* === PREMIUM FLOATING DOCK === */}
+        <View className="absolute bottom-6 left-4 right-4">
+          <LinearGradient
+            colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="rounded-[28px] shadow-2xl overflow-hidden"
+          >
+            {/* Dock Content */}
+            <View className="flex-row items-center justify-around py-5 px-6">
+              {/* Riwayat Button */}
+              <TouchableOpacity
+                onPress={navigateToHistory}
+                activeOpacity={0.7}
+                className="items-center flex-1"
+              >
+                <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center mb-2 border border-white/20">
+                  <Icon as={History} className="size-6 text-white" />
+                </View>
+                <Text className="text-xs font-semibold text-white tracking-wide">
+                  Riwayat
+                </Text>
+                <Text className="text-[10px] text-white/70 mt-0.5">
+                  Lihat absensi
+                </Text>
+              </TouchableOpacity>
+
+              {/* Center Divider */}
+              <View className="w-px h-16 bg-white/20 mx-4" />
+
+              {/* Perizinan Button */}
+              <TouchableOpacity
+                onPress={navigateToPerizinan}
+                activeOpacity={0.7}
+                className="items-center flex-1"
+              >
+                <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center mb-2 border border-white/20">
+                  <Icon as={ClipboardPenLine} className="size-6 text-white" />
+                </View>
+                <Text className="text-xs font-semibold text-white tracking-wide">
+                  Perizinan
+                </Text>
+                <Text className="text-[10px] text-white/70 mt-0.5">
+                  Ajukan izin
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
       </SafeAreaView>
 
       {/* Success Popup */}

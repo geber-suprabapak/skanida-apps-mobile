@@ -240,7 +240,7 @@ export default function Riwayat() {
       {/* === PREMIUM HEADER WITH GRADIENT === */}
       <View className="relative overflow-hidden">
         <LinearGradient
-          colors={["#8b5cf6", "#7c3aed", "#6d28d9"]}
+          colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="px-6 pt-4 pb-8"
