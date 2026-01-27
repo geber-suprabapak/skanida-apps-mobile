@@ -333,6 +333,7 @@ const CameraAttendance = () => {
           {
             p_user_id: user.id,
             p_action_type: actionType,
+            p_photo_path: "",
             p_latitude: resolvedLocation.latitude,
             p_longitude: resolvedLocation.longitude,
           },
