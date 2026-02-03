@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
+import axios, { isAxiosError } from "axios";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -53,6 +54,12 @@ interface UserProfile {
 // Enrollment status types
 type EnrollmentStatus = "loading" | "enrolled" | "not_enrolled" | "error";
 
+interface EnrollmentStatusResponse {
+  is_enrolled: boolean;
+  embedding_count: number;
+  user_id: string;
+}
+
 // Face API base URL
 const FACE_API_BASE_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
 const ENROLL_STATUS_URL = `${FACE_API_BASE_URL}/v1/enroll/status`;
@@ -63,9 +70,7 @@ const PROFILE_CACHE_KEY = "user_profile_cache";
 const clearProfileCache = async () => {
   try {
     await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
-  } catch (error) {
-    console.log("Failed to clear profile cache:", error);
-  }
+  } catch (error) {}
 };
 
 const base64ToUint8Array = (base64: string): Uint8Array => {
@@ -139,8 +144,6 @@ export default function EditProfile() {
 
       // First try to fetch data from user_profiles table (primary source)
       try {
-        console.log("Fetching profile for user id:", user?.id);
-
         // Implement retry mechanism for race condition
         const maxRetries = 3;
         let profileData = null;
@@ -151,7 +154,6 @@ export default function EditProfile() {
           if (attempt > 0) {
             // Wait before retry
             await new Promise((resolve) => setTimeout(resolve, 500));
-            console.log(`Retry attempt ${attempt + 1} for profile data...`);
           }
 
           const { data, error } = await supabase
@@ -184,7 +186,6 @@ export default function EditProfile() {
 
         if (profileData) {
           // If we have profile data from database, use it as primary source
-          console.log("Profile data found:", profileData);
           setProfileData(profileData as UserProfile);
 
           // Prioritize profile data, fall back to user metadata only if needed
@@ -210,17 +211,7 @@ export default function EditProfile() {
             profileData.absence_number || currentAbsenceNumber,
           );
           setInitialAvatarUrl(profileData.avatar_url || currentAvatarUrl);
-
-          console.log("Data set from user_profiles:", {
-            name: profileData.full_name,
-            nis: profileData.nis,
-            gender: profileData.gender,
-            className: profileData.class_name,
-            absenceNumber: profileData.absence_number,
-          });
         } else {
-          console.log("No profile data found for user:", user.id);
-
           // Fallback to user metadata if no profile data
           let currentName =
             user.user_metadata?.name || user.user_metadata?.full_name || "";
@@ -242,8 +233,6 @@ export default function EditProfile() {
           setAvatarUrl(currentAvatarUrl);
           setInitialAbsenceNumber(currentAbsenceNumber);
           setInitialAvatarUrl(currentAvatarUrl);
-
-          console.log("Using fallback data from user metadata");
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
@@ -295,30 +284,27 @@ export default function EditProfile() {
         return;
       }
 
-      const response = await fetch(ENROLL_STATUS_URL, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
+      const response = await axios.get<EnrollmentStatusResponse>(
+        ENROLL_STATUS_URL,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: "application/json",
+          },
         },
-      });
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        // API returns enrolled status - check the response structure
-        setEnrollmentStatus(
-          data.enrolled || data.status === "enrolled"
-            ? "enrolled"
-            : "not_enrolled",
-        );
-      } else if (response.status === 404) {
-        // Not enrolled
-        setEnrollmentStatus("not_enrolled");
-      } else {
-        setEnrollmentStatus("error");
-        setEnrollmentError("Gagal memeriksa status");
-      }
+      const data = response.data;
+      setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
     } catch (error) {
       console.error("Error checking enrollment status:", error);
+      if (isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 404) {
+          setEnrollmentStatus("not_enrolled");
+          return;
+        }
+      }
       setEnrollmentStatus("error");
       setEnrollmentError("Gagal terhubung ke server");
     }
@@ -370,14 +356,6 @@ export default function EditProfile() {
           user.user_metadata.name.trim().length > 0) ||
         (user?.user_metadata?.full_name &&
           user.user_metadata.full_name.trim().length > 0);
-
-      console.log("Hardware back button check:", {
-        hasAnyName,
-        profileDataFullName: profileData?.full_name,
-        formName: name,
-        userMetadataName: user?.user_metadata?.name,
-        userMetadataFullName: user?.user_metadata?.full_name,
-      });
 
       // Only prevent navigation if user truly has no name data anywhere
       if (!hasAnyName) {
@@ -723,14 +701,6 @@ export default function EditProfile() {
                 user.user_metadata.name.trim().length > 0) ||
               (user?.user_metadata?.full_name &&
                 user.user_metadata.full_name.trim().length > 0);
-
-            console.log("Header back button check:", {
-              hasAnyName,
-              profileDataFullName: profileData?.full_name,
-              formName: name,
-              userMetadataName: user?.user_metadata?.name,
-              userMetadataFullName: user?.user_metadata?.full_name,
-            });
 
             // Only prevent navigation if user truly has no name data anywhere
             if (!hasAnyName) {
@@ -1127,7 +1097,7 @@ export default function EditProfile() {
               </View>
             )}
 
-            {enrollmentStatus === "not_enrolled" && (
+            {enrollmentStatus !== "not_enrolled" && (
               <View>
                 <View className="flex-row items-center py-2 mb-3">
                   <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
