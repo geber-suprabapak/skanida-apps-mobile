@@ -37,7 +37,8 @@ import { timeSync } from "~/utils/timeSync";
 import useAuthStore from "~/store/authStore";
 
 // --- CONSTANTS ---
-const FACE_API_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
+const FACE_API_BASE_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
+const FACE_API_URL = `${FACE_API_BASE_URL}/v1/identify`;
 
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
@@ -341,7 +342,8 @@ const CameraAttendance = () => {
 
         if (saveError || !saveData?.success) {
           throw new Error(
-            `Gagal menyimpan data: ${saveError?.message || saveData?.message || "Respons tidak valid"
+            `Gagal menyimpan data: ${
+              saveError?.message || saveData?.message || "Respons tidak valid"
             }`,
           );
         }
