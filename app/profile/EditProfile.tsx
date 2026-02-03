@@ -744,7 +744,8 @@ export default function EditProfile() {
                         style={{ width: 112, height: 112 }}
                       >
                         <Text className="text-white text-4xl font-bold">
-                          {(name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                          {(name || user?.email)?.charAt(0).toUpperCase() ||
+                            "U"}
                         </Text>
                       </LinearGradient>
                     )}
@@ -765,7 +766,7 @@ export default function EditProfile() {
                   </>
                 )}
               </View>
-              
+
               <Text className="text-foreground font-bold text-lg">
                 {name || "Nama Pengguna"}
               </Text>
@@ -1021,7 +1022,11 @@ export default function EditProfile() {
             className="overflow-hidden rounded-2xl"
           >
             <LinearGradient
-              colors={loading ? ["#9ca3af", "#6b7280"] : ["#3b82f6", "#2563eb", "#1d4ed8"]}
+              colors={
+                loading
+                  ? ["#9ca3af", "#6b7280"]
+                  : ["#3b82f6", "#2563eb", "#1d4ed8"]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               className="py-4 flex-row items-center justify-center rounded-2xl"

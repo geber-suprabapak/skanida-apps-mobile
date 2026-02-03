@@ -12,10 +12,11 @@ import {
   RefreshControl,
   Animated,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -107,6 +108,7 @@ const DAY_KEY_MAP = [
 type DayKey = (typeof DAY_KEY_MAP)[number];
 
 export default function Dashboard() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const syncStatus = useTimeSyncStore((state) => state.status);
   const syncSource = useTimeSyncStore((state) => state.syncSource);
@@ -772,7 +774,8 @@ export default function Dashboard() {
           gestureEnabled: false,
         }}
       />
-      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+      <StatusBar style="light" />
+      <View className="flex-1 bg-background">
         <ScrollView
           className="flex-1 bg-background"
           refreshControl={
@@ -781,14 +784,15 @@ export default function Dashboard() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 32 }}
         >
-          {/* === HEADER SECTION - Modern Minimal Style === */}
+          {/* === HEADER SECTION - Edge-to-Edge Modern Style === */}
           <View className="relative overflow-hidden">
             {/* Gradient Background Header - Matching tweakcn primary */}
             <LinearGradient
               colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              className="px-6 pt-4 pb-10"
+              className="px-6 pb-10"
+              style={{ paddingTop: insets.top + 16 }}
             >
               {/* Top Bar - Avatar, Date & Bug Report */}
               <View className="flex-row items-center justify-between mb-6">
@@ -1048,7 +1052,10 @@ export default function Dashboard() {
           {/* === VERSION INFO === */}
           <View className="items-center mt-8 px-6 mb-40">
             <View className="flex-row items-center bg-secondary px-4 py-2 rounded-full border border-border/30">
-              <Text variant="small" className="text-secondary-foreground font-medium">
+              <Text
+                variant="small"
+                className="text-secondary-foreground font-medium"
+              >
                 Skanida v{Constants.expoConfig?.version}
               </Text>
             </View>
@@ -1104,7 +1111,7 @@ export default function Dashboard() {
             </View>
           </LinearGradient>
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Success Popup */}
       {successData && (
