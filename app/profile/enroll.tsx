@@ -469,7 +469,7 @@ const FaceEnrollment = () => {
       const formData = new FormData();
       for (let i = 0; i < capturedImages.length; i++) {
         const img = capturedImages[i];
-        formData.append("images", {
+        formData.append("files", {
           uri: img.uri,
           type: "image/jpeg",
           name: `face_${i}.jpg`,
