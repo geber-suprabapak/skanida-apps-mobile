@@ -747,12 +747,14 @@ export default function Dashboard() {
             {/* Top Bar - Logo & Actions */}
             <View className="flex-row items-center justify-between mb-8">
               <View className="flex-row items-center gap-3">
-                <Image
-                  source={require("../assets/skanidatransparan.png")}
-                  className="w-12 h-12"
-                  resizeMode="contain"
-                />
-                <Text className="text-2xl font-bold text-stone-700 tracking-tight">
+                <View className="w-12 h-12 rounded-xl border-2 border-transparent dark:border-white dark:bg-white items-center justify-center overflow-hidden">
+                  <Image
+                    source={require("../assets/skanidatransparan.png")}
+                    className="w-10 h-10"
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text className="text-2xl font-bold text-stone-700 dark:text-white tracking-tight">
                   SKANIDA APPS
                 </Text>
               </View>
@@ -774,7 +776,7 @@ export default function Dashboard() {
             </View>
 
             {/* Greeting Text */}
-            <Text className="text-stone-600 font-semibold text-base mb-3 ml-1">
+            <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
               {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
             </Text>
 

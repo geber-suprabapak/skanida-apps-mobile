@@ -101,7 +101,6 @@ interface UserProfile {
   absence_number?: string;
   class_name?: string;
   nis?: string;
-  gender?: string;
   avatar_url?: string;
 }
 

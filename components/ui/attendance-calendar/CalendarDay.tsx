@@ -58,19 +58,17 @@ const getDayTextClasses = (day: CalendarDay, isDark: boolean) => {
     return `${baseText} ${todayClass}`;
   }
 
-  if (day.attendance.status === "present") {
-    return `${baseText} text-emerald-600 dark:text-emerald-400`;
+  switch (day.attendance.status) {
+    case "present":
+      return `${baseText} text-emerald-600 dark:text-emerald-400`;
+    case "late":
+      return `${baseText} text-orange-600 dark:text-orange-400`;
+    case "leave":
+      return `${baseText} text-blue-600 dark:text-blue-400`;
+    case "sick":
+    default:
+      return `${baseText} text-rose-600 dark:text-rose-400`;
   }
-
-  if (day.attendance.status === "late") {
-    return `${baseText} text-orange-600 dark:text-orange-400`;
-  }
-
-  if (day.attendance.status === "leave") {
-    return `${baseText} text-blue-600 dark:text-blue-400`;
-  }
-
-  return `${baseText} text-rose-600 dark:text-rose-400`;
 };
 
 export const CalendarDayComponent = memo(
