@@ -1097,7 +1097,7 @@ export default function EditProfile() {
               </View>
             )}
 
-            {enrollmentStatus !== "not_enrolled" && (
+            {enrollmentStatus === "not_enrolled" && (
               <View>
                 <View className="flex-row items-center py-2 mb-3">
                   <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
