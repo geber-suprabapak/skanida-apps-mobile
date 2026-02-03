@@ -736,6 +736,7 @@ const FaceEnrollment = () => {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={step === "capture"}
+        video={true}
         photo
         onInitialized={handleCameraReady}
       />
