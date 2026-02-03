@@ -1,6 +1,6 @@
 {
   "name": "skanida-apps-mobile",
-  "version": "1.2.0-firefly",
+  "version": "1.2.0-development",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
