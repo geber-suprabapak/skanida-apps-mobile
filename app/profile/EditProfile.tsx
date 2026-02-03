@@ -21,7 +21,8 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
@@ -60,17 +61,13 @@ interface EnrollmentStatusResponse {
   user_id: string;
 }
 
-// Face API base URL
-const FACE_API_BASE_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
-const ENROLL_STATUS_URL = `${FACE_API_BASE_URL}/v1/enroll/status`;
-
 // Cache management utility
 const PROFILE_CACHE_KEY = "user_profile_cache";
 
 const clearProfileCache = async () => {
   try {
     await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
-  } catch (error) {}
+  } catch {}
 };
 
 const base64ToUint8Array = (base64: string): Uint8Array => {
@@ -265,18 +262,24 @@ export default function EditProfile() {
   }, [user]);
   // Check face enrollment status
   const checkEnrollmentStatus = async () => {
-    if (!ENROLL_STATUS_URL) {
-      setEnrollmentStatus("not_enrolled");
-      setEnrollmentError("");
-      return;
-    }
-
     try {
       setEnrollmentStatus("loading");
+
+      // Ensure Supabase client ready before fetching session
+      await ensureSupabaseInitialized();
+
+      const faceApiBaseUrl = await ensureFaceApiConfigured();
+      const enrollStatusUrl = `${faceApiBaseUrl}/v1/enroll/status`;
 
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
+      // Debug: print full token in dev
+      if (typeof __DEV__ !== "undefined" && __DEV__) {
+        const t = session?.access_token;
+        console.debug("[DEBUG] enroll full token:", t ?? "NO_TOKEN");
+      }
 
       if (!session) {
         setEnrollmentStatus("error");
@@ -285,7 +288,7 @@ export default function EditProfile() {
       }
 
       const response = await axios.get<EnrollmentStatusResponse>(
-        ENROLL_STATUS_URL,
+        enrollStatusUrl,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,

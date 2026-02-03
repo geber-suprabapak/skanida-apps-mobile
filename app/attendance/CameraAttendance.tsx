@@ -25,7 +25,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
 
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
 import {
   Camera as CameraIcon,
@@ -37,8 +38,6 @@ import { timeSync } from "~/utils/timeSync";
 import useAuthStore from "~/store/authStore";
 
 // --- CONSTANTS ---
-const FACE_API_BASE_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
-const FACE_API_URL = `${FACE_API_BASE_URL}/v1/identify`;
 const MAX_BASE64_SIZE_MB = 5;
 const MAX_BASE64_SIZE_BYTES = MAX_BASE64_SIZE_MB * 1024 * 1024;
 const FACE_API_TIMEOUT_MS = 30_000;
@@ -256,6 +255,8 @@ const CameraAttendance = () => {
   // --- FACE RECOGNITION API ---
   const verifyFaceWithServer = useCallback(
     async (base64Image: string): Promise<FaceRecogResponse> => {
+      await ensureSupabaseInitialized();
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -264,9 +265,8 @@ const CameraAttendance = () => {
         throw new Error("Sesi tidak valid. Silakan login ulang.");
       }
 
-      if (!FACE_API_URL) {
-        throw new Error("URL Face API belum dikonfigurasi.");
-      }
+      const faceApiBaseUrl = await ensureFaceApiConfigured();
+      const faceApiUrl = `${faceApiBaseUrl}/v1/identify`;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(
@@ -275,7 +275,7 @@ const CameraAttendance = () => {
       );
 
       try {
-        const response = await fetch(FACE_API_URL, {
+        const response = await fetch(faceApiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

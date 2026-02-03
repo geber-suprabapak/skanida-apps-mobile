@@ -26,7 +26,8 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
 
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -41,8 +42,6 @@ import {
 } from "lucide-react-native";
 
 // --- CONSTANTS ---
-const FACE_API_BASE_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
-const ENROLL_API_URL = `${FACE_API_BASE_URL}/v1/enroll`;
 const REQUIRED_IMAGES = 10;
 const MAX_IMAGE_SIZE_MB = 2;
 const SNAPSHOT_QUALITY = 60; // Lower quality for smaller file size
@@ -457,17 +456,23 @@ const FaceEnrollment = () => {
       uploadController.current = controller;
 
       // Get JWT token
+      await ensureSupabaseInitialized();
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
+      // Debug: print full token in dev
+      if (typeof __DEV__ !== "undefined" && __DEV__) {
+        const t = session?.access_token;
+        console.debug("[DEBUG] enroll upload full token:", t ?? "NO_TOKEN");
+      }
 
       if (!session) {
         throw new Error("Sesi tidak valid. Silakan login ulang.");
       }
 
-      if (!ENROLL_API_URL) {
-        throw new Error("URL API enrollment belum dikonfigurasi.");
-      }
+      const faceApiBaseUrl = await ensureFaceApiConfigured();
+      const enrollApiUrl = `${faceApiBaseUrl}/v1/enroll`;
 
       setUploadMessage("Mengunggah foto ke server...");
 
@@ -487,7 +492,7 @@ const FaceEnrollment = () => {
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
 
       const response = await axios.post<EnrollmentSuccessResponse>(
-        ENROLL_API_URL,
+        enrollApiUrl,
         formData,
         {
           headers: {
