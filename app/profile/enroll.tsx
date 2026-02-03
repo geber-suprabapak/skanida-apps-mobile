@@ -71,6 +71,12 @@ interface EnrollmentErrorResponse {
   detail?: string | { loc: (string | number)[]; msg: string; type: string }[];
 }
 
+type FormDataFilePart = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 // --- UTILITY FUNCTIONS ---
 const getReadableError = (
   error: unknown,
@@ -469,11 +475,13 @@ const FaceEnrollment = () => {
       const formData = new FormData();
       for (let i = 0; i < capturedImages.length; i++) {
         const img = capturedImages[i];
-        formData.append("files", {
+        const filePart: FormDataFilePart = {
           uri: img.uri,
           type: "image/jpeg",
           name: `face_${i}.jpg`,
-        } as any);
+        };
+
+        formData.append("files", filePart as unknown as Blob);
       }
 
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
@@ -493,11 +501,6 @@ const FaceEnrollment = () => {
       const successData = response.data;
       setSuccessResponse(successData);
       setStep("success");
-
-      // Clean up temporary files
-      capturedImages.forEach((img) => {
-        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
-      });
     } catch (error) {
       if (isAxiosError(error)) {
         if (error.code === "ERR_CANCELED") {
@@ -525,6 +528,10 @@ const FaceEnrollment = () => {
       setStep("error");
     } finally {
       uploadController.current = null;
+      // Clean up temporary files
+      capturedImages.forEach((img) => {
+        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
+      });
     }
   }, [capturedImages]);
 

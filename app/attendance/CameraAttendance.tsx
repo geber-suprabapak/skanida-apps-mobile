@@ -39,6 +39,9 @@ import useAuthStore from "~/store/authStore";
 // --- CONSTANTS ---
 const FACE_API_BASE_URL = process.env.EXPO_PUBLIC_FACE_API_URL || "";
 const FACE_API_URL = `${FACE_API_BASE_URL}/v1/identify`;
+const MAX_BASE64_SIZE_MB = 5;
+const MAX_BASE64_SIZE_BYTES = MAX_BASE64_SIZE_MB * 1024 * 1024;
+const FACE_API_TIMEOUT_MS = 30_000;
 
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
@@ -167,6 +170,13 @@ const getReadableError = (error: unknown, fallback = "Terjadi kesalahan.") => {
   }
 };
 
+const sanitizeBase64 = (value: string) => value.replace(/[^A-Za-z0-9+/=]/g, "");
+
+const getBase64ByteSize = (base64: string) => {
+  const paddingLength = base64.match(/=+$/)?.[0]?.length ?? 0;
+  return (base64.length * 3) / 4 - paddingLength;
+};
+
 // --- MAIN COMPONENT ---
 const CameraAttendance = () => {
   // --- HOOKS ---
@@ -258,23 +268,41 @@ const CameraAttendance = () => {
         throw new Error("URL Face API belum dikonfigurasi.");
       }
 
-      const response = await fetch(FACE_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ image_base64: base64Image }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        FACE_API_TIMEOUT_MS,
+      );
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(
-          errData.message || `Gagal verifikasi wajah (${response.status})`,
-        );
+      try {
+        const response = await fetch(FACE_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ image_base64: base64Image }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(
+            errData.message || `Gagal verifikasi wajah (${response.status})`,
+          );
+        }
+
+        return response.json();
+      } catch (error: any) {
+        if (error?.name === "AbortError") {
+          throw new Error(
+            "Permintaan verifikasi wajah melebihi batas waktu. Silakan coba lagi.",
+          );
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      return response.json();
     },
     [],
   );
@@ -292,6 +320,17 @@ const CameraAttendance = () => {
         return;
       }
 
+      const sanitizedBase64 = sanitizeBase64(base64Image);
+      const payloadSizeBytes = getBase64ByteSize(sanitizedBase64);
+
+      if (payloadSizeBytes > MAX_BASE64_SIZE_BYTES) {
+        Alert.alert(
+          "Error",
+          `Ukuran data foto melebihi batas ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto dengan pencahayaan lebih baik atau jarak lebih dekat.`,
+        );
+        return;
+      }
+
       setIsProcessing(true);
       const startTime = Date.now();
 
@@ -303,7 +342,7 @@ const CameraAttendance = () => {
           message: "Memverifikasi wajah...",
         });
 
-        const faceResult = await verifyFaceWithServer(base64Image);
+        const faceResult = await verifyFaceWithServer(sanitizedBase64);
 
         if (faceResult.status !== "ok") {
           throw new Error(faceResult.message || "Wajah tidak dikenali.");
@@ -423,6 +462,8 @@ const CameraAttendance = () => {
 
     setIsCapturingPhoto(true);
 
+    let photoUri: string | null = null;
+
     try {
       // Use takeSnapshot for faster capture
       const snapshot = await cameraRef.current.takeSnapshot({
@@ -433,16 +474,27 @@ const CameraAttendance = () => {
         throw new Error("Failed to capture photo - no file path returned");
       }
 
-      const photoUri = snapshot.path.startsWith("file://")
+      photoUri = snapshot.path.startsWith("file://")
         ? snapshot.path
         : `file://${snapshot.path}`;
 
       // Read file as base64 directly (no compression)
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
+      const rawBase64 = await FileSystem.readAsStringAsync(photoUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      await processAttendance(base64);
+      const sanitizedBase64 = sanitizeBase64(rawBase64);
+      const base64SizeBytes = getBase64ByteSize(sanitizedBase64);
+
+      if (base64SizeBytes > MAX_BASE64_SIZE_BYTES) {
+        Alert.alert(
+          "Error",
+          `Ukuran data foto melebihi ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto.`,
+        );
+        return;
+      }
+
+      await processAttendance(sanitizedBase64);
     } catch (error) {
       Alert.alert(
         "Error",
@@ -451,6 +503,9 @@ const CameraAttendance = () => {
           : "Terjadi kesalahan saat mengambil foto. Silakan coba lagi.",
       );
     } finally {
+      if (photoUri) {
+        FileSystem.deleteAsync(photoUri, { idempotent: true }).catch(() => {});
+      }
       setIsCapturingPhoto(false);
     }
   }, [isCameraReady, isCapturingPhoto, processAttendance, isProcessing]);

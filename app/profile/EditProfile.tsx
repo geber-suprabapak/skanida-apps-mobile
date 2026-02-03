@@ -266,8 +266,8 @@ export default function EditProfile() {
   // Check face enrollment status
   const checkEnrollmentStatus = async () => {
     if (!ENROLL_STATUS_URL) {
-      setEnrollmentStatus("error");
-      setEnrollmentError("URL API belum dikonfigurasi");
+      setEnrollmentStatus("not_enrolled");
+      setEnrollmentError("");
       return;
     }
 
