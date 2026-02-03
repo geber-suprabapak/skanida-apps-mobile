@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.1.1-cyrene",
+  version: "1.2.0-development",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -17,6 +17,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   newArchEnabled: true,
   updates: {
     url: "https://ota.hysilens.my.id/manifest",
+    codeSigningMetadata: {
+      keyid: "main",
+      alg: "rsa-v1_5-sha256",
+    },
+    codeSigningCertificate: "./certs/certificate.pem",
     enabled: true,
     requestHeaders: {
       "expo-channel-name": process.env.RELEASE_CHANNEL || "production",
@@ -85,7 +90,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    package: "com.hfzrk.skanidaappsmobile",
+    package: "com.hfzrk.skanidaappsmobile.dev",
     permissions: [
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",
