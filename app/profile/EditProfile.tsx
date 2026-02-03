@@ -15,12 +15,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
+import axios, { isAxiosError } from "axios";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
@@ -28,6 +30,10 @@ import {
   Image as ImageIcon,
   Trash2,
   Eye,
+  CheckCircle,
+  AlertCircle,
+  Scan,
+  Loader2,
 } from "lucide-react-native";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -46,15 +52,22 @@ interface UserProfile {
   updated_at?: string;
 }
 
+// Enrollment status types
+type EnrollmentStatus = "loading" | "enrolled" | "not_enrolled" | "error";
+
+interface EnrollmentStatusResponse {
+  is_enrolled: boolean;
+  embedding_count: number;
+  user_id: string;
+}
+
 // Cache management utility
 const PROFILE_CACHE_KEY = "user_profile_cache";
 
 const clearProfileCache = async () => {
   try {
     await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
-  } catch (error) {
-    console.log("Failed to clear profile cache:", error);
-  }
+  } catch {}
 };
 
 const base64ToUint8Array = (base64: string): Uint8Array => {
@@ -113,6 +126,11 @@ export default function EditProfile() {
   const [initialAbsenceNumber, setInitialAbsenceNumber] = useState("");
   const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
 
+  // Enrollment status state
+  const [enrollmentStatus, setEnrollmentStatus] =
+    useState<EnrollmentStatus>("loading");
+  const [enrollmentError, setEnrollmentError] = useState<string>("");
+
   useEffect(() => {
     const fetchAndSetProfileData = async () => {
       if (!user) {
@@ -123,8 +141,6 @@ export default function EditProfile() {
 
       // First try to fetch data from user_profiles table (primary source)
       try {
-        console.log("Fetching profile for user id:", user?.id);
-
         // Implement retry mechanism for race condition
         const maxRetries = 3;
         let profileData = null;
@@ -135,7 +151,6 @@ export default function EditProfile() {
           if (attempt > 0) {
             // Wait before retry
             await new Promise((resolve) => setTimeout(resolve, 500));
-            console.log(`Retry attempt ${attempt + 1} for profile data...`);
           }
 
           const { data, error } = await supabase
@@ -168,7 +183,6 @@ export default function EditProfile() {
 
         if (profileData) {
           // If we have profile data from database, use it as primary source
-          console.log("Profile data found:", profileData);
           setProfileData(profileData as UserProfile);
 
           // Prioritize profile data, fall back to user metadata only if needed
@@ -194,17 +208,7 @@ export default function EditProfile() {
             profileData.absence_number || currentAbsenceNumber,
           );
           setInitialAvatarUrl(profileData.avatar_url || currentAvatarUrl);
-
-          console.log("Data set from user_profiles:", {
-            name: profileData.full_name,
-            nis: profileData.nis,
-            gender: profileData.gender,
-            className: profileData.class_name,
-            absenceNumber: profileData.absence_number,
-          });
         } else {
-          console.log("No profile data found for user:", user.id);
-
           // Fallback to user metadata if no profile data
           let currentName =
             user.user_metadata?.name || user.user_metadata?.full_name || "";
@@ -226,8 +230,6 @@ export default function EditProfile() {
           setAvatarUrl(currentAvatarUrl);
           setInitialAbsenceNumber(currentAbsenceNumber);
           setInitialAvatarUrl(currentAvatarUrl);
-
-          console.log("Using fallback data from user metadata");
         }
       } catch (err) {
         console.error("Unexpected error fetching profile:", err);
@@ -258,6 +260,63 @@ export default function EditProfile() {
 
     fetchAndSetProfileData();
   }, [user]);
+  // Check face enrollment status
+  const checkEnrollmentStatus = async () => {
+    try {
+      setEnrollmentStatus("loading");
+
+      // Ensure Supabase client ready before fetching session
+      await ensureSupabaseInitialized();
+
+      const faceApiBaseUrl = await ensureFaceApiConfigured();
+      const enrollStatusUrl = `${faceApiBaseUrl}/v1/enroll/status`;
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      // Debug: print full token in dev
+      if (typeof __DEV__ !== "undefined" && __DEV__) {
+        const t = session?.access_token;
+        console.debug("[DEBUG] enroll full token:", t ?? "NO_TOKEN");
+      }
+
+      if (!session) {
+        setEnrollmentStatus("error");
+        setEnrollmentError("Sesi tidak valid");
+        return;
+      }
+
+      const response = await axios.get<EnrollmentStatusResponse>(
+        enrollStatusUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: "application/json",
+          },
+        },
+      );
+
+      const data = response.data;
+      setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
+    } catch (error) {
+      console.error("Error checking enrollment status:", error);
+      if (isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 404) {
+          setEnrollmentStatus("not_enrolled");
+          return;
+        }
+      }
+      setEnrollmentStatus("error");
+      setEnrollmentError("Gagal terhubung ke server");
+    }
+  };
+
+  useEffect(() => {
+    checkEnrollmentStatus();
+  }, []);
+
   useEffect(() => {
     const onBeforeRemove = (e: any) => {
       const hasUnsavedChanges = avatarUrl !== initialAvatarUrl;
@@ -300,14 +359,6 @@ export default function EditProfile() {
           user.user_metadata.name.trim().length > 0) ||
         (user?.user_metadata?.full_name &&
           user.user_metadata.full_name.trim().length > 0);
-
-      console.log("Hardware back button check:", {
-        hasAnyName,
-        profileDataFullName: profileData?.full_name,
-        formName: name,
-        userMetadataName: user?.user_metadata?.name,
-        userMetadataFullName: user?.user_metadata?.full_name,
-      });
 
       // Only prevent navigation if user truly has no name data anywhere
       if (!hasAnyName) {
@@ -653,14 +704,6 @@ export default function EditProfile() {
                 user.user_metadata.name.trim().length > 0) ||
               (user?.user_metadata?.full_name &&
                 user.user_metadata.full_name.trim().length > 0);
-
-            console.log("Header back button check:", {
-              hasAnyName,
-              profileDataFullName: profileData?.full_name,
-              formName: name,
-              userMetadataName: user?.user_metadata?.name,
-              userMetadataFullName: user?.user_metadata?.full_name,
-            });
 
             // Only prevent navigation if user truly has no name data anywhere
             if (!hasAnyName) {
@@ -1017,6 +1060,107 @@ export default function EditProfile() {
                 />
               </View>
             </View>
+          </Card>
+        </View>
+
+        {/* Face Enrollment Section */}
+        <View className="px-6 mb-3">
+          <Card
+            className={`p-4 dark:bg-gray-800 border-gray-200 dark:border-gray-700`}
+          >
+            <Text variant="h3" className={`mb-3 text-foreground`}>
+              Verifikasi Wajah
+            </Text>
+
+            {enrollmentStatus === "loading" && (
+              <View className="flex-row items-center py-2">
+                <ActivityIndicator size="small" color="#3b82f6" />
+                <Text variant="default" className="text-muted-foreground ml-3">
+                  Memeriksa status enrollment...
+                </Text>
+              </View>
+            )}
+
+            {enrollmentStatus === "enrolled" && (
+              <View className="flex-row items-center py-2">
+                <View className="w-10 h-10 rounded-full bg-green-500/20 items-center justify-center">
+                  <Icon as={CheckCircle} className="size-6 text-green-600" />
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text
+                    variant="default"
+                    className="text-foreground font-medium"
+                  >
+                    Wajah Sudah Terdaftar
+                  </Text>
+                  <Text variant="small" className="text-muted-foreground">
+                    Data wajah Anda tersimpan untuk verifikasi absensi
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {enrollmentStatus === "not_enrolled" && (
+              <View>
+                <View className="flex-row items-center py-2 mb-3">
+                  <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
+                    <Icon as={AlertCircle} className="size-6 text-amber-600" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text
+                      variant="default"
+                      className="text-foreground font-medium"
+                    >
+                      Wajah Belum Terdaftar
+                    </Text>
+                    <Text variant="small" className="text-muted-foreground">
+                      Daftarkan wajah untuk mengaktifkan fitur absensi
+                    </Text>
+                  </View>
+                </View>
+                <Button
+                  variant="default"
+                  size="default"
+                  onPress={() => router.push("./enroll")}
+                  className="w-full bg-blue-500"
+                >
+                  <Icon as={Scan} className="size-5 text-white mr-2" />
+                  <Text className="text-white font-medium">
+                    Daftar Sekarang
+                  </Text>
+                </Button>
+              </View>
+            )}
+
+            {enrollmentStatus === "error" && (
+              <View>
+                <View className="flex-row items-center py-2 mb-3">
+                  <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                    <Icon as={AlertCircle} className="size-6 text-red-600" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text
+                      variant="default"
+                      className="text-foreground font-medium"
+                    >
+                      Gagal Memeriksa Status
+                    </Text>
+                    <Text variant="small" className="text-muted-foreground">
+                      {enrollmentError || "Terjadi kesalahan"}
+                    </Text>
+                  </View>
+                </View>
+                <Button
+                  variant="outline"
+                  size="default"
+                  onPress={checkEnrollmentStatus}
+                  className="w-full border-gray-300 dark:border-gray-600"
+                >
+                  <Icon as={Loader2} className="size-5 text-foreground mr-2" />
+                  <Text className="text-foreground font-medium">Coba Lagi</Text>
+                </Button>
+              </View>
+            )}
           </Card>
         </View>
 

@@ -7,8 +7,17 @@ export type SupabaseConfig = {
   source: "secure" | "async" | "env";
 };
 
+export type FaceApiConfig = {
+  url: string;
+  source: "secure" | "async" | "env" | "default";
+};
+
 const KEY_URL = "sb.url";
 const KEY_ANON = "sb.anon";
+const KEY_FACE_API_URL = "face.api.url";
+
+// Default Face API URL (hardcoded fallback)
+const DEFAULT_FACE_API_URL = "https://api-staging.hysilens.my.id";
 
 async function getFromSecureStore(key: string) {
   try {
@@ -90,4 +99,72 @@ export async function getSupabaseConfig(): Promise<SupabaseConfig | null> {
   }
 
   return null;
+}
+
+// --- FACE API CONFIG ---
+
+export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
+  // 1) SecureStore
+  const urlSecure = await getFromSecureStore(KEY_FACE_API_URL);
+  if (urlSecure) {
+    return { url: urlSecure, source: "secure" };
+  }
+
+  // 2) AsyncStorage (legacy fallback)
+  const urlAsync = await getFromAsyncStorage(KEY_FACE_API_URL);
+  if (urlAsync) {
+    // Self-heal: migrate to SecureStore
+    await setInSecureStore(KEY_FACE_API_URL, urlAsync);
+    return { url: urlAsync, source: "async" };
+  }
+
+  // 3) Env fallback
+  const envUrl = process.env.EXPO_PUBLIC_FACE_API_URL as string | undefined;
+  if (envUrl) {
+    // Persist for future OTA runs
+    await Promise.all([
+      setInSecureStore(KEY_FACE_API_URL, envUrl),
+      setInAsyncStorage(KEY_FACE_API_URL, envUrl),
+    ]);
+    return { url: envUrl, source: "env" };
+  }
+
+  // 4) Default hardcoded fallback
+  if (DEFAULT_FACE_API_URL) {
+    await Promise.all([
+      setInSecureStore(KEY_FACE_API_URL, DEFAULT_FACE_API_URL),
+      setInAsyncStorage(KEY_FACE_API_URL, DEFAULT_FACE_API_URL),
+    ]);
+    return { url: DEFAULT_FACE_API_URL, source: "default" };
+  }
+
+  return null;
+}
+
+export async function setFaceApiUrl(url: string): Promise<void> {
+  await Promise.all([
+    setInSecureStore(KEY_FACE_API_URL, url),
+    setInAsyncStorage(KEY_FACE_API_URL, url),
+  ]);
+}
+
+// Cached face API URL for synchronous access after initialization
+let cachedFaceApiUrl: string | null = null;
+
+export async function ensureFaceApiConfigured(): Promise<string> {
+  if (cachedFaceApiUrl) {
+    return cachedFaceApiUrl;
+  }
+
+  const config = await getFaceApiConfig();
+  if (!config) {
+    throw new Error("Face API URL tidak dikonfigurasi. Hubungi administrator.");
+  }
+
+  cachedFaceApiUrl = config.url;
+  return config.url;
+}
+
+export function getFaceApiUrlSync(): string | null {
+  return cachedFaceApiUrl;
 }

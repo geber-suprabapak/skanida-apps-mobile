@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.2.0-firefly",
+  version: "1.2.0-development",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -83,14 +83,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.hfzrk.skanidaappsmobile",
+    bundleIdentifier: "com.hfzrk.skanidaappsmobile.dev",
   },
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    package: "com.hfzrk.skanidaappsmobile",
+    package: "com.hfzrk.skanidaappsmobile.dev",
     permissions: [
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",
