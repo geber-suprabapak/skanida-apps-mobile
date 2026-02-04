@@ -34,11 +34,22 @@ const useAuthStore = create<AuthState>((set, get) => ({
   // Action to set the user and fetch the profile
   setUser: (user) => {
     set({ user });
-    // If user exists, fetch their profile. If not, clear the profile.
     if (user?.id) {
-      get().fetchUserProfile(user.id);
-      // Register push notification token after login
-      registerAndSaveNotificationToken(user.id);
+      (async () => {
+        try {
+          await get().fetchUserProfile(user.id);
+        } catch (error) {
+          console.error("Error fetching user profile during setUser:", error);
+        }
+        try {
+          await registerAndSaveNotificationToken(user.id);
+        } catch (error) {
+          console.error(
+            "Error registering notification token during setUser:",
+            error,
+          );
+        }
+      })();
     } else {
       set({ userProfile: null });
     }
