@@ -842,7 +842,7 @@ export default function Dashboard() {
           </View>
 
           {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
-          <View className="px-6 -mt-4">
+          <View className="px-6 mt-4">
             <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
               {/* Two Column Time Display */}
               <View className="flex-row">
@@ -966,67 +966,48 @@ export default function Dashboard() {
             </Card>
           </View>
 
-          {/* === VERSION INFO === */}
-          <View className="items-center mt-8 px-6 mb-40">
-            <View className="flex-row items-center bg-secondary px-4 py-2 rounded-full border border-border/30">
-              <Text
-                variant="small"
-                className="text-secondary-foreground font-medium"
-              >
-                Skanida v{Constants.expoConfig?.version}
+          {/* === NAVIGATION BUTTONS (Split) === */}
+          <View className="flex-row mx-6 mt-10 mb-10 gap-3">
+            {/* Riwayat Button */}
+            <TouchableOpacity
+              onPress={navigateToHistory}
+              activeOpacity={0.7}
+              className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
+            >
+              <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                <Icon as={History} className="size-5 text-white" />
+              </View>
+              <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                Riwayat
               </Text>
-            </View>
+            </TouchableOpacity>
+
+            {/* Perizinan Button */}
+            <TouchableOpacity
+              onPress={navigateToPerizinan}
+              activeOpacity={0.7}
+              className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
+            >
+              <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                <Icon as={ClipboardPenLine} className="size-5 text-white" />
+              </View>
+              <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                Perizinan
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
-        {/* === PREMIUM FLOATING DOCK === */}
-        <View className="absolute bottom-6 left-4 right-4">
-          <LinearGradient
-            colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-[28px] shadow-2xl overflow-hidden"
-          >
-            {/* Dock Content */}
-            <View className="flex-row items-center justify-around py-5 px-6">
-              {/* Riwayat Button */}
-              <TouchableOpacity
-                onPress={navigateToHistory}
-                activeOpacity={0.7}
-                className="items-center flex-1"
-              >
-                <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center mb-2 border border-white/20">
-                  <Icon as={History} className="size-6 text-white" />
-                </View>
-                <Text className="text-xs font-semibold text-white tracking-wide">
-                  Riwayat
-                </Text>
-                <Text className="text-[10px] text-white/70 mt-0.5">
-                  Lihat absensi
-                </Text>
-              </TouchableOpacity>
-
-              {/* Center Divider */}
-              <View className="w-px h-16 bg-white/20 mx-4" />
-
-              {/* Perizinan Button */}
-              <TouchableOpacity
-                onPress={navigateToPerizinan}
-                activeOpacity={0.7}
-                className="items-center flex-1"
-              >
-                <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center mb-2 border border-white/20">
-                  <Icon as={ClipboardPenLine} className="size-6 text-white" />
-                </View>
-                <Text className="text-xs font-semibold text-white tracking-wide">
-                  Perizinan
-                </Text>
-                <Text className="text-[10px] text-white/70 mt-0.5">
-                  Ajukan izin
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
+        {/* === FLOATING VERSION INFO (Moved Here) === */}
+        <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
+          <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30 shadow-sm">
+            <Text
+              variant="small"
+              className="text-secondary-foreground font-medium text-xs"
+            >
+              Skanida v{Constants.expoConfig?.version}
+            </Text>
+          </View>
         </View>
       </View>
 
