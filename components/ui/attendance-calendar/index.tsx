@@ -184,7 +184,10 @@ const AttendanceCalendar = forwardRef<
         if (day.attendance?.status === "present") acc.present++;
         else if (day.attendance?.status === "leave") acc.leave++;
         else if (day.attendance?.status === "sick") acc.sick++;
-        else if (!day.attendance) acc.absent++; // Assuming no record in past = absent/alpha
+        // TODO: This counts all past days without records as absent, including
+        // weekends and holidays. Consider implementing weekend/holiday filtering
+        // or fetching expected school days from the backend.
+        else if (!day.attendance) acc.absent++;
 
         return acc;
       }, initialStats);
