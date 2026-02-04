@@ -75,6 +75,8 @@ export async function registerAndSaveNotificationToken(userId: string) {
       Sentry.captureException(
         new Error(`[Notifications] Save error: ${error.message}`),
       );
+    } else {
+      console.log("[Notifications] Token saved successfully");
     }
   } catch (err) {
     Sentry.captureException(err);
