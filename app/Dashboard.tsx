@@ -551,7 +551,7 @@ export default function Dashboard() {
   };
   const navigateToSettings = () => router.push("/extra/pengaturan");
   const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
-  const navigateToEditProfile = () => router.push("/profile/EditProfile");
+  const navigateToEditProfile = () => router.push("/profile/ManageAccount");
 
   // Prevent back navigation
   useEffect(() => {
@@ -580,44 +580,6 @@ export default function Dashboard() {
     return () => backHandler.remove();
   }, []);
 
-  // Get status badge color and text
-  const getStatusBadge = () => {
-    switch (attendanceStatus.todayStatus) {
-      case "present":
-        if (attendanceStatus.checkInStatus === "Terlambat") {
-          return {
-            color: "bg-orange-500",
-            text: "Terlambat",
-            textColor: "text-white",
-          };
-        }
-        return {
-          color: "bg-green-500",
-          text: "Hadir",
-          textColor: "text-white",
-        };
-      case "leave":
-        return {
-          color: "bg-yellow-500",
-          text: "Izin",
-          textColor: "text-white",
-        };
-      case "absent":
-        return {
-          color: "bg-red-500",
-          text: "Tidak Hadir",
-          textColor: "text-white",
-        };
-      default:
-        return {
-          color: "bg-gray-500",
-          text: "Pending",
-          textColor: "text-white",
-        };
-    }
-  };
-
-  const statusBadge = getStatusBadge();
 
   const derivedActionType =
     attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
@@ -748,24 +710,6 @@ export default function Dashboard() {
     }
   }, [isPrimaryActionDisabled, pulseAnim]);
 
-  // Get greeting based on time
-  const greeting = useMemo(() => {
-    const hour = currentTime.getHours();
-    if (hour < 10) return "Selamat Pagi";
-    if (hour < 15) return "Selamat Siang";
-    if (hour < 18) return "Selamat Sore";
-    return "Selamat Malam";
-  }, [currentTime]);
-
-  // Emoji for greeting
-  const greetingEmoji = useMemo(() => {
-    const hour = currentTime.getHours();
-    if (hour < 10) return "🌅";
-    if (hour < 15) return "☀️";
-    if (hour < 18) return "🌤️";
-    return "🌙";
-  }, [currentTime]);
-
   return (
     <>
       <Stack.Screen
@@ -821,13 +765,11 @@ export default function Dashboard() {
                     </View>
                   )}
                   <View className="ml-4 flex-1">
-                    <Text className="text-white/80 text-sm font-medium">
-                      {greeting} {greetingEmoji}
-                    </Text>
                     <Text className="text-white text-xl font-bold tracking-tight">
                       {displayName}
                     </Text>
                   </View>
+
                 </TouchableOpacity>
 
                 <View className="flex-row items-center gap-3">
@@ -949,15 +891,23 @@ export default function Dashboard() {
                       ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
                       : "--:--"}
                   </Text>
-                  {attendanceStatus.hasCheckedOut && (
+                  {attendanceStatus.hasCheckedOut ? (
                     <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
                       <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
                       <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                         Selesai
                       </Text>
                     </View>
-                  )}
+                  ) : attendanceStatus.hasCheckedIn && attendanceSchedule?.mulai_pulang ? (
+                    <View className="mt-3 items-center">
+                      <Text className="text-xs text-muted-foreground">
+                        Jadwal: {attendanceSchedule.mulai_pulang?.slice(0, 5)}
+                        {attendanceSchedule.selesai_pulang ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}` : ""}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
+
               </View>
 
               {/* Horizontal Divider */}
@@ -1000,39 +950,6 @@ export default function Dashboard() {
                     </LinearGradient>
                   )}
                 </TouchableOpacity>
-
-                {/* Status Badge Below Button */}
-                <View className="mt-3 items-center">
-                  <View
-                    className={`px-4 py-1.5 rounded-full ${
-                      attendanceStatus.todayStatus === "present"
-                        ? attendanceStatus.checkInStatus === "Terlambat"
-                          ? "bg-orange-500/10"
-                          : "bg-emerald-500/10"
-                        : attendanceStatus.todayStatus === "leave"
-                          ? "bg-amber-500/10"
-                          : attendanceStatus.todayStatus === "absent"
-                            ? "bg-red-500/10"
-                            : "bg-gray-500/10"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        attendanceStatus.todayStatus === "present"
-                          ? attendanceStatus.checkInStatus === "Terlambat"
-                            ? "text-orange-600 dark:text-orange-400"
-                            : "text-emerald-600 dark:text-emerald-400"
-                          : attendanceStatus.todayStatus === "leave"
-                            ? "text-amber-600 dark:text-amber-400"
-                            : attendanceStatus.todayStatus === "absent"
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-gray-600 dark:text-gray-400"
-                      }`}
-                    >
-                      Status: {statusBadge.text}
-                    </Text>
-                  </View>
-                </View>
 
                 {/* Total Hours (if both checked) */}
                 {attendanceStatus.totalWorkHours && (

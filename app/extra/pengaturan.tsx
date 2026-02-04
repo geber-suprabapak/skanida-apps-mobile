@@ -26,8 +26,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
-  User,
-  Key,
+
   CircleFadingArrowUp,
   LogOut,
   ChevronRight,
@@ -36,6 +35,7 @@ import {
   Settings,
   Shield,
   Smartphone,
+  Pencil,
 } from "lucide-react-native";
 import * as Updates from "expo-updates";
 import { LinearGradient } from "expo-linear-gradient";
@@ -66,19 +66,7 @@ function Pengaturan() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
-  // Optimized navigation handlers with useCallback
-  const navigateToEditProfile = useCallback(() => {
-    // Preload the destination with a slight delay to improve perceived performance
-    requestAnimationFrame(() => {
-      router.push("/profile/EditProfile");
-    });
-  }, [router]);
 
-  const navigateToChangePassword = useCallback(() => {
-    requestAnimationFrame(() => {
-      router.push("/profile/ChangePassword");
-    });
-  }, [router]);
 
   // Handle hardware back button
   useEffect(() => {
@@ -298,9 +286,13 @@ function Pengaturan() {
                       className="w-18 h-18 rounded-2xl"
                       style={{ width: 72, height: 72 }}
                     />
-                    <View className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card items-center justify-center">
-                      <View className="w-2 h-2 rounded-full bg-white" />
-                    </View>
+                    <TouchableOpacity 
+                      onPress={() => router.push("/profile/ManageAccount")}
+                      activeOpacity={0.8}
+                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
+                    >
+                      <Icon as={Pencil} className="size-4 text-white" />
+                    </TouchableOpacity>
                   </View>
                 ) : (
                   <View className="relative">
@@ -315,9 +307,13 @@ function Pengaturan() {
                           .toUpperCase() || "U"}
                       </Text>
                     </LinearGradient>
-                    <View className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card items-center justify-center">
-                      <View className="w-2 h-2 rounded-full bg-white" />
-                    </View>
+                    <TouchableOpacity 
+                      onPress={() => router.push("/profile/ManageAccount")}
+                      activeOpacity={0.8}
+                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
+                    >
+                      <Icon as={Pencil} className="size-4 text-white" />
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -358,59 +354,7 @@ function Pengaturan() {
           </Card>
         </View>
 
-        {/* Account Settings Section */}
-        <View className="px-5 mt-5">
-          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
-            Akun
-          </Text>
-          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
-            {/* Edit Profile */}
-            <TouchableOpacity
-              className="flex-row items-center p-4 border-b border-border/50"
-              onPress={navigateToEditProfile}
-              activeOpacity={0.7}
-            >
-              <View className="w-11 h-11 rounded-xl bg-blue-500/10 items-center justify-center mr-4">
-                <Icon as={User} className="size-5 text-blue-500" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-foreground font-semibold">
-                  Edit Profil
-                </Text>
-                <Text className="text-muted-foreground text-xs mt-0.5">
-                  Ubah nama dan foto profil
-                </Text>
-              </View>
-              <Icon
-                as={ChevronRight}
-                className="size-5 text-muted-foreground"
-              />
-            </TouchableOpacity>
 
-            {/* Change Password */}
-            <TouchableOpacity
-              className="flex-row items-center p-4"
-              onPress={navigateToChangePassword}
-              activeOpacity={0.7}
-            >
-              <View className="w-11 h-11 rounded-xl bg-amber-500/10 items-center justify-center mr-4">
-                <Icon as={Key} className="size-5 text-amber-500" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-foreground font-semibold">
-                  Ubah Password
-                </Text>
-                <Text className="text-muted-foreground text-xs mt-0.5">
-                  Perbarui kata sandi akun
-                </Text>
-              </View>
-              <Icon
-                as={ChevronRight}
-                className="size-5 text-muted-foreground"
-              />
-            </TouchableOpacity>
-          </Card>
-        </View>
 
         {/* Preferences Section */}
         <View className="px-5 mt-5">
