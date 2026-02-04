@@ -166,6 +166,31 @@ const AttendanceCalendar = forwardRef<
       }
     }, [user?.id, monthlyAttendance]);
 
+    // Calculate monthly stats
+    const stats = useMemo(() => {
+      const initialStats = {
+        present: 0,
+        leave: 0,
+        sick: 0,
+        absent: 0,
+      };
+
+      if (!calendarDays.length) return initialStats;
+
+      return calendarDays.reduce((acc, day) => {
+        // Only count current month days that are not in the future
+        if (!day.isCurrentMonth || day.isFuture) return acc;
+
+        if (day.attendance?.status === "present") acc.present++;
+        else if (day.attendance?.status === "leave") acc.leave++;
+        else if (day.attendance?.status === "sick") acc.sick++;
+        else if (!day.attendance) acc.absent++; // Assuming no record in past = absent/alpha
+
+        return acc;
+      }, initialStats);
+    }, [calendarDays]);
+
+
     // Date picker handlers (if not using props)
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);
@@ -213,92 +238,53 @@ const AttendanceCalendar = forwardRef<
           </View>
         )}
 
-        {/* Legend */}
-        <View
-          className={`p-4 rounded-lg mb-6 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"}`}
-        >
-          <Text
-            className={`font-semibold mb-3 ${isDarkColorScheme ? "text-white" : "text-gray-900"}`}
-          >
-            Keterangan:
-          </Text>
-          <View className="flex-row flex-wrap">
-            <View
-              key="legend-present"
-              className="flex-row items-center mr-4 mb-2"
-            >
-              <View
-                className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-green-900" : "bg-green-100"}`}
-              />
-              <Text
-                className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Hadir
-              </Text>
-            </View>
-            <View
-              key="legend-leave"
-              className="flex-row items-center mr-4 mb-2"
-            >
-              <View
-                className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-blue-900" : "bg-blue-100"}`}
-              />
-              <Text
-                className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Izin
-              </Text>
-            </View>
-            <View key="legend-sick" className="flex-row items-center mr-4 mb-2">
-              <View
-                className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-yellow-900" : "bg-yellow-100"}`}
-              />
-              <Text
-                className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Sakit
-              </Text>
-            </View>
-            <View
-              key="legend-absent"
-              className="flex-row items-center mr-4 mb-2"
-            >
-              <View
-                className={`w-4 h-4 rounded mr-2 ${isDarkColorScheme ? "bg-red-900" : "bg-red-100"}`}
-              />
-              <Text
-                className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Tidak Hadir
-              </Text>
-            </View>
-            <View key="legend-today" className="flex-row items-center mb-2">
-              <View
-                className={`w-4 h-4 rounded mr-2 border-2 relative ${isDarkColorScheme ? "border-pink-400 bg-gray-700" : "border-pink-500 bg-white"}`}
-              >
-                <View
-                  className={`absolute top-0 right-0 w-1.5 h-1.5 rounded-full ${isDarkColorScheme ? "bg-pink-400" : "bg-pink-500"}`}
-                />
-              </View>
-              <Text
-                className={`text-sm ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Hari Ini
-              </Text>
-            </View>
+        {/* Summary Stats Cards */}
+        <View className="flex-row gap-3 mb-6">
+          <View className="flex-1 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-2xl p-3 items-center">
+            <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase mb-1">
+              Hadir
+            </Text>
+            <Text className="text-emerald-700 dark:text-emerald-300 text-xl font-bold">
+              {stats.present}
+            </Text>
           </View>
+          <View className="flex-1 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-2xl p-3 items-center">
+            <Text className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase mb-1">
+              Izin
+            </Text>
+            <Text className="text-blue-700 dark:text-blue-300 text-xl font-bold">
+              {stats.leave}
+            </Text>
+          </View>
+          <View className="flex-1 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-2xl p-3 items-center">
+            <Text className="text-rose-600 dark:text-rose-400 text-xs font-bold uppercase mb-1">
+              Sakit
+            </Text>
+            <Text className="text-rose-700 dark:text-rose-300 text-xl font-bold">
+              {stats.sick}
+            </Text>
+          </View>
+
         </View>
 
-        {/* Calendar */}
+        {/* Calendar Card */}
         <View
-          className={`rounded-lg p-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-white"}`}
+          className={`rounded-3xl p-5 border border-border shadow-sm ${
+            isDarkColorScheme ? "bg-card" : "bg-white"
+          }`}
         >
           {/* Day names header */}
-          <View className="flex-row mb-2">
+          <View className="flex-row mb-4">
             {dayNames.map((dayName) => (
-              <View key={dayName} className="flex-1 items-center py-2">
+              <View key={dayName} className="flex-1 items-center">
                 <Text
-                  className={`font-medium ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                  className={`text-xs font-bold uppercase tracking-wider ${
+                    dayName === "Min"
+                      ? "text-rose-500"
+                      : isDarkColorScheme
+                        ? "text-muted-foreground"
+                        : "text-gray-400"
+                  }`}
                 >
                   {dayName}
                 </Text>
@@ -309,11 +295,13 @@ const AttendanceCalendar = forwardRef<
           {/* Calendar days */}
           {monthlyAttendance.loading ? (
             <View className="items-center justify-center py-20">
-              <ActivityIndicator size="large" color="#0284c7" />
+              <ActivityIndicator size="large" color="#3b82f6" />
               <Text
-                className={`mt-2 ${isDarkColorScheme ? "text-gray-400" : "text-gray-600"}`}
+                className={`mt-4 text-sm font-medium ${
+                  isDarkColorScheme ? "text-muted-foreground" : "text-gray-500"
+                }`}
               >
-                Memuat data kehadiran...
+                Memuat data...
               </Text>
             </View>
           ) : (
@@ -323,7 +311,7 @@ const AttendanceCalendar = forwardRef<
                 (_, weekIndex) => (
                   <View
                     key={`week-${displayYear}-${displayMonth}-${weekIndex}`}
-                    className="flex-row"
+                    className="flex-row mb-2 last:mb-0"
                   >
                     {(calendarDays || [])
                       .slice(weekIndex * 7, weekIndex * 7 + 7)
@@ -341,6 +329,23 @@ const AttendanceCalendar = forwardRef<
               )}
             </View>
           )}
+
+          {/* New Legend Style - Bottom of Card */}
+          <View className="flex-row justify-center gap-4 mt-8 pt-4 border-t border-dashed border-border/50">
+            <View className="flex-row items-center gap-1.5">
+              <View className="w-2 h-2 rounded-full bg-emerald-500" />
+              <Text className="text-[10px] font-bold text-muted-foreground uppercase">Hadir</Text>
+            </View>
+            <View className="flex-row items-center gap-1.5">
+              <View className="w-2 h-2 rounded-full bg-blue-500" />
+              <Text className="text-[10px] font-bold text-muted-foreground uppercase">Izin</Text>
+            </View>
+            <View className="flex-row items-center gap-1.5">
+              <View className="w-2 h-2 rounded-full bg-rose-500" />
+              <Text className="text-[10px] font-bold text-muted-foreground uppercase">Sakit</Text>
+            </View>
+
+          </View>
         </View>
 
         {/* Detail Card - shows when a day is tapped */}

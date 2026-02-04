@@ -18,140 +18,94 @@ export const CalendarDayComponent = ({
     );
   }
 
-  const getStatusColor = () => {
-    // Future dates in current month should be greyed out but distinct from next month
+  const getStatusClasses = () => {
+    // Basic shape and layout
+    const base = "flex-1 aspect-square items-center justify-center m-1 rounded-full";
+
+    // Future dates in current month
     if (day.isCurrentMonth && day.isFuture) {
-      return isDarkColorScheme ? "bg-gray-800" : "bg-gray-50";
+      return `${base} ${isDarkColorScheme ? "bg-gray-800/50" : "bg-gray-50"}`;
     }
 
-    // Previous/next month dates (outside current month)
+    // Dates outside current month
     if (!day.isCurrentMonth) {
-      return "bg-transparent";
+      return `${base} opacity-0`; // Hide or make very subtle
     }
+
+    // Selection State (Ring)
+    const selectionClass = isSelected
+      ? "ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-background"
+      : "";
 
     if (!day.attendance) {
-      return isDarkColorScheme ? "bg-red-900" : "bg-red-100";
+      // Absent if it's a past date (and not future)
+      // This logic might need adjustment based on how 'absent' is typically handled in your app
+      // For now, assuming only explicitly 'present'/'leave'/'sick' records exist.
+      // If a day is past and no record => it might be weekend or holiday.
+      // Keeping it simple: transparent unless specific status
+      return `${base} ${selectionClass}`;
     }
 
     switch (day.attendance.status) {
       case "present":
-        return isDarkColorScheme ? "bg-green-900" : "bg-green-100";
+        return `${base} ${isDarkColorScheme ? "bg-emerald-900/60" : "bg-emerald-50"} ${selectionClass}`;
       case "leave":
-        return isDarkColorScheme ? "bg-blue-900" : "bg-blue-100";
+        return `${base} ${isDarkColorScheme ? "bg-blue-900/60" : "bg-blue-50"} ${selectionClass}`;
       case "sick":
-        return isDarkColorScheme ? "bg-yellow-900" : "bg-yellow-100";
-      default:
-        return isDarkColorScheme ? "bg-red-900" : "bg-red-100";
+        return `${base} ${isDarkColorScheme ? "bg-rose-900/60" : "bg-rose-50"} ${selectionClass}`;
+      default: // alpha/absent
+        return `${base} ${isDarkColorScheme ? "bg-rose-900/60" : "bg-rose-50"} ${selectionClass}`;
     }
   };
 
-  const getTextColor = () => {
-    // Previous/next month dates (outside current month) - very faded
-    if (!day.isCurrentMonth) {
-      return isDarkColorScheme ? "text-gray-600" : "text-gray-400";
-    }
+  const getTextClasses = () => {
+    // Outside month
+    if (!day.isCurrentMonth) return "text-transparent";
+    
+    // Future
+    if (day.isFuture) return isDarkColorScheme ? "text-muted-foreground" : "text-gray-300";
 
-    // Future dates in current month - greyed out but readable
-    if (day.isCurrentMonth && day.isFuture) {
-      return isDarkColorScheme ? "text-gray-500" : "text-gray-500";
-    }
-
-    // Today's date text color
-    if (day.isToday) {
-      return isDarkColorScheme
-        ? "text-pink-400 font-semibold"
-        : "text-pink-600 font-semibold";
-    }
-
+    const baseText = "text-sm font-semibold";
+    
     if (!day.attendance) {
-      return isDarkColorScheme ? "text-red-400" : "text-red-600";
+      // Normal day text
+      const todayClass = day.isToday ? "text-blue-600 dark:text-blue-400 font-bold" : isDarkColorScheme ? "text-gray-300" : "text-gray-700";
+       return `${baseText} ${todayClass}`;
     }
 
     switch (day.attendance.status) {
       case "present":
-        return isDarkColorScheme ? "text-green-400" : "text-green-700";
+        return `${baseText} text-emerald-600 dark:text-emerald-400`;
       case "leave":
-        return isDarkColorScheme ? "text-blue-400" : "text-blue-700";
+        return `${baseText} text-blue-600 dark:text-blue-400`;
       case "sick":
-        return isDarkColorScheme ? "text-yellow-400" : "text-yellow-700";
+        return `${baseText} text-rose-600 dark:text-rose-400`;
       default:
-        return isDarkColorScheme ? "text-red-400" : "text-red-600";
+        return `${baseText} text-rose-600 dark:text-rose-400`;
     }
-  };
-
-  const getBorderAndBackground = () => {
-    // Today's date gets a pink border indicator
-    if (day.isToday) {
-      return isDarkColorScheme
-        ? "border-2 border-pink-400"
-        : "border-2 border-pink-500";
-    }
-
-    // Default border
-    return isDarkColorScheme
-      ? "border border-gray-600"
-      : "border border-gray-200";
   };
 
   const handlePress = () => {
-    try {
-      if (!day?.isCurrentMonth) {
-        console.log("Day is not in current month, press ignored");
-        return;
-      }
-
-      // Prevent interaction with future dates
-      if (day.isFuture) {
-        console.log("Future date clicked, press ignored");
-        return;
-      }
-
-      if (typeof onPress === "function") {
-        onPress();
-      } else {
-        console.warn("onPress is not a function");
-      }
-    } catch (error) {
-      console.error("Error in day press handler:", error);
-    }
+    if (!day?.isCurrentMonth || day.isFuture) return;
+    onPress?.();
   };
 
-  const getButtonClassName = () => {
-    const baseClasses =
-      "flex-1 h-12 items-center justify-center m-0.5 rounded-lg";
-    const statusColor = getStatusColor();
-    const borderAndBackground = getBorderAndBackground();
-    const selectionBorder = isSelected
-      ? isDarkColorScheme
-        ? "border-green-400"
-        : "border-green-500"
-      : "";
-
-    return `${baseClasses} ${statusColor} ${borderAndBackground} ${selectionBorder}`;
-  };
+  if (!day) {
+     return <View className="flex-1 aspect-square m-1" />;
+  }
 
   return (
     <TouchableOpacity
-      className={getButtonClassName()}
+      className={getStatusClasses()}
       onPress={handlePress}
       disabled={!day.isCurrentMonth || day.isFuture}
-      activeOpacity={day.isCurrentMonth && !day.isFuture ? 0.7 : 1}
-      style={{ minHeight: 48 }}
+      activeOpacity={0.7}
     >
-      <Text className={`text-sm ${getTextColor()}`}>{day.date}</Text>
+      <Text className={getTextClasses()}>{day.date}</Text>
 
-      {/* Attendance indicator dot */}
-      {day.attendance && day.isCurrentMonth && (
-        <View className="absolute bottom-1 w-1 h-1 rounded-full bg-current" />
-      )}
-
-      {/* Today indicator - small dot at top-right */}
-      {day.isToday && (
-        <View
-          className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
-            isDarkColorScheme ? "bg-pink-400" : "bg-pink-500"
-          }`}
-        />
+      {/* Today Indicator (Small Dot below text) */}
+      {day.isToday && !day.attendance && (
+        <View className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-500" />
       )}
     </TouchableOpacity>
   );
