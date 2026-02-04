@@ -227,54 +227,37 @@ function Pengaturan() {
   }, [theme]);
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <StatusBar style="light" />
+    <SafeAreaView className="flex-1 bg-white dark:bg-background">
+      <StatusBar style="dark" />
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
 
-      {/* Premium Gradient Header */}
-      <LinearGradient
-        colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="pb-8 pt-4 px-5"
-      >
-        {/* Top Bar */}
-        <View className="flex-row items-center mb-6">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
-          >
-            <Icon as={ChevronLeft} className="size-6 text-white" />
-          </TouchableOpacity>
-          <View className="flex-1" />
-        </View>
+      {/* Simple Header */}
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+        >
+          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
+        </TouchableOpacity>
+        
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Pengaturan
+        </Text>
 
-        {/* Header Content */}
-        <View className="flex-row items-center">
-          <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center mr-4">
-            <Icon as={Settings} className="size-7 text-white" />
-          </View>
-          <View>
-            <Text className="text-white/70 text-sm">Kelola akun</Text>
-            <Text className="text-white text-xl font-bold">Pengaturan</Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {/* Curved bottom effect */}
-      <View className="h-4 -mt-4 bg-background rounded-t-3xl" />
+        <View className="w-10" /> 
+      </View>
 
       <ScrollView
-        className="flex-1 bg-background"
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Profile Card - Premium Design */}
-        <View className="px-5 -mt-2">
+        {/* Profile Card */}
+        <View className="px-5 mt-4">
           <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
             <View className="p-5">
               <View className="flex-row items-center">
@@ -353,8 +336,6 @@ function Pengaturan() {
             </View>
           </Card>
         </View>
-
-
 
         {/* Preferences Section */}
         <View className="px-5 mt-5">

@@ -237,23 +237,23 @@ export default function AbsenceReport() {
   const locationName = status?.details?.location_name;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950">
+    <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header Kustom */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      {/* Header */}
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="p-2 -ml-2 mr-1"
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          <Icon
-            as={ChevronLeft}
-            className="size-6 text-gray-900 dark:text-gray-100"
-          />
+          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
         </TouchableOpacity>
-        <Text variant="h3" className="text-gray-900 dark:text-gray-100">
+        
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Lapor Absensi
         </Text>
+
+        <View className="w-10" /> 
       </View>
 
       {/* Konten Utama */}

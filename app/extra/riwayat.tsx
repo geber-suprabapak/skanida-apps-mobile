@@ -12,6 +12,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { Text } from "~/components/ui/text";
+import { StatusBar } from "expo-status-bar";
 import AttendanceCalendar, {
   AttendanceCalendarRef,
 } from "~/components/ui/attendance-calendar";
@@ -230,90 +231,40 @@ export default function Riwayat() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
+      <StatusBar style="dark" />
 
-      {/* === PREMIUM HEADER WITH GRADIENT === */}
-      <View className="relative overflow-hidden">
-        <LinearGradient
-          colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="px-6 pt-4 pb-8"
+      {/* Simple Header */}
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <TouchableOpacity
+          onPress={() => {
+            try {
+              if (router.canGoBack()) {
+                router.back();
+              }
+            } catch (error) {
+              console.error("Error navigating back:", error);
+            }
+          }}
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          {/* Top Bar */}
-          <View className="flex-row items-center justify-between mb-6">
-            <TouchableOpacity
-              onPress={() => {
-                try {
-                  if (router.canGoBack()) {
-                    router.back();
-                  }
-                } catch (error) {
-                  console.error("Error navigating back:", error);
-                }
-              }}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
-            >
-              <Icon as={ChevronLeft} className="size-5 text-white" />
-            </TouchableOpacity>
+          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
+        </TouchableOpacity>
+        
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Riwayat Kehadiran
+        </Text>
 
-            <View className="flex-row items-center gap-2">
-              {/* Cache management button (only in development) */}
-              {__DEV__ && (
-                <TouchableOpacity
-                  onPress={showCacheInfo}
-                  className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
-                >
-                  <Icon as={Settings} className="size-5 text-white" />
-                </TouchableOpacity>
-              )}
-
-              {/* Force refresh button */}
-              <TouchableOpacity
-                onPress={forceRefresh}
-                className={`w-10 h-10 rounded-full bg-white/10 items-center justify-center ${isRefreshing ? "opacity-50" : ""}`}
-                disabled={isRefreshing}
-              >
-                <Animated.View
-                  style={
-                    isRefreshing
-                      ? {
-                          transform: [{ rotate: "0deg" }],
-                        }
-                      : undefined
-                  }
-                >
-                  <SpinningIcon spinning={isRefreshing} />
-                </Animated.View>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Title Section */}
-          <View className="flex-row items-center">
-            <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center">
-              <Icon as={Calendar} className="size-7 text-white" />
-            </View>
-            <View className="ml-4 flex-1">
-              <Text className="text-white/70 text-sm">Lihat & Pantau</Text>
-              <Text className="text-white text-2xl font-bold">
-                Riwayat Kehadiran
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* Curved Bottom Effect */}
-        <View className="absolute -bottom-4 left-0 right-0 h-8 bg-background rounded-t-[32px]" />
+        <View className="w-10" />
       </View>
 
       {/* === MONTH/YEAR PICKER - MODERN CARD === */}
-      <View className="px-6 -mt-2 mb-4">
+      <View className="px-6 mt-6 mb-4">
         <View className="bg-card rounded-2xl p-4 border border-border shadow-sm">
           <View className="flex-row items-center mb-3">
             <View className="w-8 h-8 rounded-lg bg-violet-500/10 items-center justify-center">
