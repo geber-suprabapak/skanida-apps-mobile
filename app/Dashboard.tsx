@@ -536,6 +536,19 @@ export default function Dashboard() {
     profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
   const hasCustomAvatar = Boolean(avatarUrl);
 
+  const greeting = useMemo(() => {
+    const hours = currentTime.getHours();
+    if (hours >= 3 && hours < 11) {
+      return "Selamat Pagi";
+    } else if (hours >= 11 && hours < 15) {
+      return "Selamat Siang";
+    } else if (hours >= 15 && hours < 18) {
+      return "Selamat Sore";
+    } else {
+      return "Selamat Malam";
+    }
+  }, [currentTime]);
+
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = async () => {
@@ -764,7 +777,7 @@ export default function Dashboard() {
 
             {/* Greeting Text */}
             <Text className="text-stone-600 font-semibold text-base mb-3 ml-1">
-              Selamat Pagi, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
+              {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
             </Text>
 
             {/* Profile & Time Card */}
