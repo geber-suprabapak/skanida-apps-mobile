@@ -37,21 +37,10 @@ const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
     if (user?.id) {
       (async () => {
-        try {
-          await get().fetchUserProfile(user.id);
-        } catch (error) {
-          console.error("Error fetching user profile during setUser:", error);
-          Sentry.captureException(error);
-        }
-        try {
-          await registerAndSaveNotificationToken(user.id);
-        } catch (error) {
-          console.error(
-            "Error registering notification token during setUser:",
-            error,
-          );
-          Sentry.captureException(error);
-        }
+        await Promise.all([
+          get().fetchUserProfile(user.id),
+          registerAndSaveNotificationToken(user.id),
+        ]);
       })();
     } else {
       set({ userProfile: null });
