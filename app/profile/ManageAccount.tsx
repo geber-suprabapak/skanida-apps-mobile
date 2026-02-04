@@ -116,11 +116,11 @@ export default function ManageAccount() {
   const [nis, setNis] = useState("");
   const [gender, setGender] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  
+
   const [profileLoading, setProfileLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isAvatarOptionsVisible, setIsAvatarOptionsVisible] = useState(false);
-  
+
   // Initial values for change detection
   const [initialData, setInitialData] = useState({
     name: "",
@@ -145,11 +145,14 @@ export default function ManageAccount() {
       try {
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("full_name, email, absence_number, class_name, nis, gender, avatar_url")
+          .select(
+            "full_name, email, absence_number, class_name, nis, gender, avatar_url",
+          )
           .eq("user_id", user.id)
           .single();
 
-        let profileName = user.user_metadata?.name || user.user_metadata?.full_name || "";
+        let profileName =
+          user.user_metadata?.name || user.user_metadata?.full_name || "";
         let profileEmail = user.email || "";
         let profileAbsence = user.user_metadata?.absence_number || "";
         let profileClass = user.user_metadata?.class_name || "";
@@ -182,7 +185,6 @@ export default function ManageAccount() {
           nis: profileNis,
           avatarUrl: profileAvatar,
         });
-
       } catch (error) {
         console.error("Error fetching profile:", error);
       }
@@ -194,7 +196,8 @@ export default function ManageAccount() {
   // --- Avatar Logic ---
   const pickImageFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Izin Ditolak", "Kami membutuhkan izin akses galeri foto.");
         return;
@@ -285,15 +288,18 @@ export default function ManageAccount() {
         .from("user_profiles")
         .update({ avatar_url: newAvatarUrl })
         .eq("user_id", user.id);
-        
+
       if (profileError) {
-          // If update fails (e.g. row doesn't exist), try upsert
-          console.log("Update failed, trying upsert for avatar...");
-           await supabase.from("user_profiles").upsert({
-              user_id: user.id,
-              avatar_url: newAvatarUrl,
-              full_name: name || user.email, // Minimal required fields
-           }, { onConflict: "user_id" });
+        // If update fails (e.g. row doesn't exist), try upsert
+        console.log("Update failed, trying upsert for avatar...");
+        await supabase.from("user_profiles").upsert(
+          {
+            user_id: user.id,
+            avatar_url: newAvatarUrl,
+            full_name: name || user.email, // Minimal required fields
+          },
+          { onConflict: "user_id" },
+        );
       }
 
       // 3. Update Local State
@@ -305,10 +311,12 @@ export default function ManageAccount() {
       if (userData?.user) setUser(userData.user);
 
       Alert.alert("Sukses", "Foto profil berhasil diperbarui.");
-
     } catch (error: any) {
       console.error("Upload error:", error);
-      Alert.alert("Gagal Upload", error.message || "Terjadi kesalahan saat mengunggah foto.");
+      Alert.alert(
+        "Gagal Upload",
+        error.message || "Terjadi kesalahan saat mengunggah foto.",
+      );
     } finally {
       setUploadingAvatar(false);
     }
@@ -319,43 +327,44 @@ export default function ManageAccount() {
       Alert.alert("Info", "Tidak ada foto untuk dihapus.");
       return;
     }
-    
+
     Alert.alert(
-        "Hapus Foto",
-        "Apakah Anda yakin ingin menghapus foto profil?",
-        [
-            { text: "Batal", style: "cancel" },
-            { 
-                text: "Hapus", 
-                style: "destructive", 
-                onPress: async () => {
-                    setIsAvatarOptionsVisible(false);
-                    setUploadingAvatar(true);
-                    try {
-                        // Remove from Auth
-                        await supabase.auth.updateUser({ data: { avatar_url: null } });
-                        // Remove from Table
-                        await supabase.from("user_profiles").update({ avatar_url: null }).eq("user_id", user?.id);
-                        
-                        setAvatarUrl(null);
-                        await clearProfileCache();
-                        
-                        const { data: userData } = await supabase.auth.getUser();
-                        if (userData?.user) setUser(userData.user);
-                        
-                        Alert.alert("Sukses", "Foto profil telah dihapus.");
-                    } catch (error: any) {
-                        Alert.alert("Error", "Gagal menghapus foto profil.");
-                    } finally {
-                        setUploadingAvatar(false);
-                    }
-                }
+      "Hapus Foto",
+      "Apakah Anda yakin ingin menghapus foto profil?",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            setIsAvatarOptionsVisible(false);
+            setUploadingAvatar(true);
+            try {
+              // Remove from Auth
+              await supabase.auth.updateUser({ data: { avatar_url: null } });
+              // Remove from Table
+              await supabase
+                .from("user_profiles")
+                .update({ avatar_url: null })
+                .eq("user_id", user?.id);
+
+              setAvatarUrl(null);
+              await clearProfileCache();
+
+              const { data: userData } = await supabase.auth.getUser();
+              if (userData?.user) setUser(userData.user);
+
+              Alert.alert("Sukses", "Foto profil telah dihapus.");
+            } catch (error: any) {
+              Alert.alert("Error", "Gagal menghapus foto profil.");
+            } finally {
+              setUploadingAvatar(false);
             }
-        ]
+          },
+        },
+      ],
     );
   };
-
-
 
   // --- Change Password Logic ---
   const handleChangePassword = async () => {
@@ -375,9 +384,11 @@ export default function ManageAccount() {
     setPasswordLoading(true);
     try {
       // 1. Re-authenticate
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const userEmail = session?.user.email;
-      
+
       if (!userEmail) throw new Error("Sesi tidak valid.");
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -402,7 +413,6 @@ export default function ManageAccount() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-
     } catch (error: any) {
       Alert.alert("Error", error.message || "Gagal mengubah password.");
     } finally {
@@ -413,34 +423,40 @@ export default function ManageAccount() {
   // --- Back Handler ---
   useEffect(() => {
     const onBackPress = () => {
-        // Simple check for unsaved profile changes
-        const hasChanges = 
-            name !== initialData.name || 
-            absenceNumber !== initialData.absenceNumber ||
-            className !== initialData.className ||
-            nis !== initialData.nis ||
-            avatarUrl !== initialData.avatarUrl;
+      // Simple check for unsaved profile changes
+      const hasChanges =
+        name !== initialData.name ||
+        absenceNumber !== initialData.absenceNumber ||
+        className !== initialData.className ||
+        nis !== initialData.nis ||
+        avatarUrl !== initialData.avatarUrl;
 
-        if (hasChanges) {
-            Alert.alert(
-                "Perubahan Belum Disimpan",
-                "Anda memiliki perubahan profil yang belum disimpan. Yakin ingin kembali?",
-                [
-                    { text: "Batal", style: "cancel" },
-                    { text: "Ya, Kembali", style: "destructive", onPress: () => router.back() }
-                ]
-            );
-            return true;
-        }
-        
-        router.back();
+      if (hasChanges) {
+        Alert.alert(
+          "Perubahan Belum Disimpan",
+          "Anda memiliki perubahan profil yang belum disimpan. Yakin ingin kembali?",
+          [
+            { text: "Batal", style: "cancel" },
+            {
+              text: "Ya, Kembali",
+              style: "destructive",
+              onPress: () => router.back(),
+            },
+          ],
+        );
         return true;
+      }
+
+      router.back();
+      return true;
     };
 
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress,
+    );
     return () => backHandler.remove();
   }, [name, absenceNumber, className, nis, avatarUrl, initialData, router]);
-
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
@@ -453,17 +469,20 @@ export default function ManageAccount() {
           onPress={() => router.back()}
           className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
         </TouchableOpacity>
-        
+
         <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Kelola Akun
         </Text>
 
-        <View className="w-10" /> 
+        <View className="w-10" />
       </View>
 
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -471,134 +490,150 @@ export default function ManageAccount() {
       >
         {/* --- SECTION 1: EDIT PROFILE --- */}
         <View className="px-5 mt-2">
-            <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
-                Edit Profil
-            </Text>
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
+            Edit Profil
+          </Text>
 
-            {/* Avatar Card */}
-            <Card className="p-6 mb-6 items-center bg-card border-border shadow-sm rounded-2xl">
-                <View className="relative mb-4">
-                    {uploadingAvatar ? (
-                        <View className="w-28 h-28 rounded-2xl items-center justify-center bg-muted">
-                            <ActivityIndicator size="large" color="#3b82f6" />
-                        </View>
-                    ) : (
-                        <View>
-                            {avatarUrl ? (
-                                <RNImage
-                                    source={{ uri: avatarUrl }}
-                                    style={{ width: 112, height: 112, borderRadius: 24 }}
-                                />
-                            ) : (
-                                <LinearGradient
-                                    colors={["#3b82f6", "#2563eb"]}
-                                    className="rounded-2xl items-center justify-center"
-                                    style={{ width: 112, height: 112 }}
-                                >
-                                    <Text className="text-white text-4xl font-bold">
-                                        {(name || user?.email || "U").charAt(0).toUpperCase()}
-                                    </Text>
-                                </LinearGradient>
-                            )}
-                            <TouchableOpacity
-                                className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center shadow-md bg-blue-600 border-2 border-white"
-                                onPress={() => setIsAvatarOptionsVisible(true)}
-                                activeOpacity={0.9}
-                            >
-                                <Icon as={Camera} className="size-5 text-white" />
-                            </TouchableOpacity>
-                        </View>
-                    )}
+          {/* Avatar Card */}
+          <Card className="p-6 mb-6 items-center bg-card border-border shadow-sm rounded-2xl">
+            <View className="relative mb-4">
+              {uploadingAvatar ? (
+                <View className="w-28 h-28 rounded-2xl items-center justify-center bg-muted">
+                  <ActivityIndicator size="large" color="#3b82f6" />
                 </View>
-                <Text className="text-foreground font-bold text-lg text-center">{name || "User"}</Text>
-            </Card>
-
-            {/* Profile Form */}
-            <View className="space-y-4 mb-6">
+              ) : (
                 <View>
-                    <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">Nama Lengkap</Text>
-                    <View className="relative">
-                         <View className="absolute left-3 top-3 z-10">
-                            <Icon as={User} className="size-5 text-muted-foreground" />
-                        </View>
-                        <Input 
-                            value={name} 
-                            onChangeText={setName}
-                            editable={false}
-                            className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                            placeholder="Nama Lengkap" 
-                        />
-                    </View>
+                  {avatarUrl ? (
+                    <RNImage
+                      source={{ uri: avatarUrl }}
+                      style={{ width: 112, height: 112, borderRadius: 24 }}
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={["#3b82f6", "#2563eb"]}
+                      className="rounded-2xl items-center justify-center"
+                      style={{ width: 112, height: 112 }}
+                    >
+                      <Text className="text-white text-4xl font-bold">
+                        {(name || user?.email || "U").charAt(0).toUpperCase()}
+                      </Text>
+                    </LinearGradient>
+                  )}
+                  <TouchableOpacity
+                    className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center shadow-md bg-blue-600 border-2 border-white"
+                    onPress={() => setIsAvatarOptionsVisible(true)}
+                    activeOpacity={0.9}
+                  >
+                    <Icon as={Camera} className="size-5 text-white" />
+                  </TouchableOpacity>
                 </View>
-
-                <View>
-                    <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">Email</Text>
-                    <View className="relative">
-                        <View className="absolute left-3 top-3 z-10">
-                            <Icon as={Mail} className="size-5 text-muted-foreground" />
-                        </View>
-                        <Input 
-                            value={email} 
-                            onChangeText={setEmail}
-                            editable={false}
-                            className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent" 
-                        />
-                    </View>
-                </View>
-
-                <View className="flex-row gap-4">
-                     <View className="flex-1">
-                        <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">Kelas</Text>
-                        <View className="relative">
-                            <View className="absolute left-3 top-3 z-10">
-                                <Icon as={GraduationCap} className="size-5 text-muted-foreground" />
-                            </View>
-                            <Input 
-                                value={className} 
-                                onChangeText={setClassName}
-                                editable={false}
-                                className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                                placeholder="Contoh: XII RPL 1"
-                            />
-                        </View>
-                    </View>
-                    <View className="flex-1">
-                        <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">No. Absen</Text>
-                        <View className="relative">
-                            <View className="absolute left-3 top-3 z-10">
-                                <Icon as={Hash} className="size-5 text-muted-foreground" />
-                            </View>
-                            <Input 
-                                value={absenceNumber} 
-                                onChangeText={setAbsenceNumber}
-                                editable={false}
-                                keyboardType="numeric"
-                                className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                                placeholder="00"
-                            />
-                        </View>
-                    </View>
-                </View>
-
-                <View>
-                    <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">NIS / NISN</Text>
-                    <View className="relative">
-                        <View className="absolute left-3 top-3 z-10">
-                            <Icon as={CreditCard} className="size-5 text-muted-foreground" />
-                        </View>
-                        <Input 
-                            value={nis} 
-                            onChangeText={setNis}
-                            editable={false}
-                            keyboardType="numeric"
-                            className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                            placeholder="Nomor Induk Siswa"
-                        />
-                    </View>
-                </View>
-
-
+              )}
             </View>
+            <Text className="text-foreground font-bold text-lg text-center">
+              {name || "User"}
+            </Text>
+          </Card>
+
+          {/* Profile Form */}
+          <View className="space-y-4 mb-6">
+            <View>
+              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                Nama Lengkap
+              </Text>
+              <View className="relative">
+                <View className="absolute left-3 top-3 z-10">
+                  <Icon as={User} className="size-5 text-muted-foreground" />
+                </View>
+                <Input
+                  value={name}
+                  onChangeText={setName}
+                  editable={false}
+                  className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                  placeholder="Nama Lengkap"
+                />
+              </View>
+            </View>
+
+            <View>
+              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                Email
+              </Text>
+              <View className="relative">
+                <View className="absolute left-3 top-3 z-10">
+                  <Icon as={Mail} className="size-5 text-muted-foreground" />
+                </View>
+                <Input
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={false}
+                  className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                />
+              </View>
+            </View>
+
+            <View className="flex-row gap-4">
+              <View className="flex-1">
+                <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                  Kelas
+                </Text>
+                <View className="relative">
+                  <View className="absolute left-3 top-3 z-10">
+                    <Icon
+                      as={GraduationCap}
+                      className="size-5 text-muted-foreground"
+                    />
+                  </View>
+                  <Input
+                    value={className}
+                    onChangeText={setClassName}
+                    editable={false}
+                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                    placeholder="Contoh: XII RPL 1"
+                  />
+                </View>
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                  No. Absen
+                </Text>
+                <View className="relative">
+                  <View className="absolute left-3 top-3 z-10">
+                    <Icon as={Hash} className="size-5 text-muted-foreground" />
+                  </View>
+                  <Input
+                    value={absenceNumber}
+                    onChangeText={setAbsenceNumber}
+                    editable={false}
+                    keyboardType="numeric"
+                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                    placeholder="00"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View>
+              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                NIS / NISN
+              </Text>
+              <View className="relative">
+                <View className="absolute left-3 top-3 z-10">
+                  <Icon
+                    as={CreditCard}
+                    className="size-5 text-muted-foreground"
+                  />
+                </View>
+                <Input
+                  value={nis}
+                  onChangeText={setNis}
+                  editable={false}
+                  keyboardType="numeric"
+                  className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                  placeholder="Nomor Induk Siswa"
+                />
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Divider */}
@@ -606,87 +641,96 @@ export default function ManageAccount() {
 
         {/* --- SECTION 2: CHANGE PASSWORD --- */}
         <View className="px-5 mt-6">
-             <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
-                Keamanan Akun
-            </Text>
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
+            Keamanan Akun
+          </Text>
 
-
-
-            <View className="space-y-4">
-                 <View>
-                    <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">Password Lama</Text>
-                    <View className="relative">
-                        <View className="absolute left-3 top-3 z-10">
-                            <Icon as={Key} className="size-5 text-muted-foreground" />
-                        </View>
-                        <Input 
-                            value={currentPassword} 
-                            onChangeText={setCurrentPassword} 
-                            secureTextEntry={!showAllPasswords}
-                            className="pl-10 pr-10 h-12 bg-card"
-                            placeholder="Masukkan password saat ini" 
-                        />
-                         <TouchableOpacity
-                            onPress={() => setShowAllPasswords(!showAllPasswords)}
-                            className="absolute right-3 top-3 p-1"
-                        >
-                             <Icon as={showAllPasswords ? EyeOff : Eye} className="size-4 text-muted-foreground" />
-                        </TouchableOpacity>
-                    </View>
+          <View className="space-y-4">
+            <View>
+              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                Password Lama
+              </Text>
+              <View className="relative">
+                <View className="absolute left-3 top-3 z-10">
+                  <Icon as={Key} className="size-5 text-muted-foreground" />
                 </View>
-
-                <View>
-                    <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">Password Baru</Text>
-                    <View className="relative">
-                        <View className="absolute left-3 top-3 z-10">
-                            <Icon as={Lock} className="size-5 text-muted-foreground" />
-                        </View>
-                        <Input 
-                            value={newPassword} 
-                            onChangeText={setNewPassword} 
-                            secureTextEntry={!showAllPasswords}
-                            className="pl-10 pr-10 h-12 bg-card"
-                            placeholder="Minimal 6 karakter" 
-                        />
-                    </View>
-                </View>
-
-                <View>
-                    <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">Konfirmasi Password Baru</Text>
-                    <View className="relative">
-                        <View className="absolute left-3 top-3 z-10">
-                            <Icon as={Lock} className="size-5 text-muted-foreground" />
-                        </View>
-                        <Input 
-                            value={confirmPassword} 
-                            onChangeText={setConfirmPassword} 
-                            secureTextEntry={!showAllPasswords}
-                            className="pl-10 pr-10 h-12 bg-card"
-                            placeholder="Ketik ulang password baru" 
-                        />
-                    </View>
-                     {confirmPassword && newPassword !== confirmPassword && (
-                        <Text className="text-xs text-red-500 mt-1 ml-1">
-                            Password tidak cocok
-                        </Text>
-                    )}
-                </View>
-
-                 <Button 
-                    onPress={handleChangePassword} 
-                    disabled={passwordLoading} 
-                    variant="outline"
-                    className="w-full mt-2 border-primary/20"
+                <Input
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  secureTextEntry={!showAllPasswords}
+                  className="pl-10 pr-10 h-12 bg-card"
+                  placeholder="Masukkan password saat ini"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowAllPasswords(!showAllPasswords)}
+                  className="absolute right-3 top-3 p-1"
                 >
-                    {passwordLoading ? (
-                        <ActivityIndicator color="#3b82f6" size="small" />
-                    ) : (
-                        <Text className="text-primary font-semibold">Ubah Password</Text>
-                    )}
-                </Button>
+                  <Icon
+                    as={showAllPasswords ? EyeOff : Eye}
+                    className="size-4 text-muted-foreground"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-            
-            <View className="h-10" />
+
+            <View>
+              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                Password Baru
+              </Text>
+              <View className="relative">
+                <View className="absolute left-3 top-3 z-10">
+                  <Icon as={Lock} className="size-5 text-muted-foreground" />
+                </View>
+                <Input
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showAllPasswords}
+                  className="pl-10 pr-10 h-12 bg-card"
+                  placeholder="Minimal 6 karakter"
+                />
+              </View>
+            </View>
+
+            <View>
+              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                Konfirmasi Password Baru
+              </Text>
+              <View className="relative">
+                <View className="absolute left-3 top-3 z-10">
+                  <Icon as={Lock} className="size-5 text-muted-foreground" />
+                </View>
+                <Input
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showAllPasswords}
+                  className="pl-10 pr-10 h-12 bg-card"
+                  placeholder="Ketik ulang password baru"
+                />
+              </View>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <Text className="text-xs text-red-500 mt-1 ml-1">
+                  Password tidak cocok
+                </Text>
+              )}
+            </View>
+
+            <Button
+              onPress={handleChangePassword}
+              disabled={passwordLoading}
+              variant="outline"
+              className="w-full mt-2 border-primary/20"
+            >
+              {passwordLoading ? (
+                <ActivityIndicator color="#3b82f6" size="small" />
+              ) : (
+                <Text className="text-primary font-semibold">
+                  Ubah Password
+                </Text>
+              )}
+            </Button>
+          </View>
+
+          <View className="h-10" />
         </View>
       </ScrollView>
 
@@ -697,61 +741,70 @@ export default function ManageAccount() {
         animationType="fade"
         onRequestClose={() => setIsAvatarOptionsVisible(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setIsAvatarOptionsVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => setIsAvatarOptionsVisible(false)}
+        >
           <View className="flex-1 bg-black/60 justify-end">
             <TouchableWithoutFeedback>
               <View className="bg-card rounded-t-3xl p-6">
                 <View className="items-center mb-6">
-                    <View className="w-12 h-1.5 bg-muted rounded-full mb-4" />
-                    <Text className="font-bold text-lg text-foreground">Ganti Foto Profil</Text>
+                  <View className="w-12 h-1.5 bg-muted rounded-full mb-4" />
+                  <Text className="font-bold text-lg text-foreground">
+                    Ganti Foto Profil
+                  </Text>
                 </View>
-                
+
                 <View className="space-y-3">
-                    <TouchableOpacity 
-                        onPress={captureImageWithCamera}
-                        className="flex-row items-center p-4 bg-muted/30 rounded-2xl active:bg-muted/50"
-                    >
-                        <View className="w-10 h-10 rounded-full bg-blue-100 items-center justify-center mr-4">
-                            <Icon as={Camera} className="size-5 text-blue-600" />
-                        </View>
-                        <Text className="font-semibold text-foreground">Ambil Foto</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={captureImageWithCamera}
+                    className="flex-row items-center p-4 bg-muted/30 rounded-2xl active:bg-muted/50"
+                  >
+                    <View className="w-10 h-10 rounded-full bg-blue-100 items-center justify-center mr-4">
+                      <Icon as={Camera} className="size-5 text-blue-600" />
+                    </View>
+                    <Text className="font-semibold text-foreground">
+                      Ambil Foto
+                    </Text>
+                  </TouchableOpacity>
 
-                    <TouchableOpacity 
-                         onPress={pickImageFromGallery}
-                        className="flex-row items-center p-4 bg-muted/30 rounded-2xl active:bg-muted/50"
-                    >
-                        <View className="w-10 h-10 rounded-full bg-purple-100 items-center justify-center mr-4">
-                             <Icon as={ImageIcon} className="size-5 text-purple-600" />
-                        </View>
-                        <Text className="font-semibold text-foreground">Pilih dari Galeri</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={pickImageFromGallery}
+                    className="flex-row items-center p-4 bg-muted/30 rounded-2xl active:bg-muted/50"
+                  >
+                    <View className="w-10 h-10 rounded-full bg-purple-100 items-center justify-center mr-4">
+                      <Icon as={ImageIcon} className="size-5 text-purple-600" />
+                    </View>
+                    <Text className="font-semibold text-foreground">
+                      Pilih dari Galeri
+                    </Text>
+                  </TouchableOpacity>
 
-                    {avatarUrl && (
-                        <TouchableOpacity 
-                             onPress={handleRemoveAvatar}
-                            className="flex-row items-center p-4 bg-red-50 rounded-2xl active:bg-red-100"
-                        >
-                            <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center mr-4">
-                                <Icon as={Trash2} className="size-5 text-red-600" />
-                            </View>
-                            <Text className="font-semibold text-red-600">Hapus Foto Saat Ini</Text>
-                        </TouchableOpacity>
-                    )}
+                  {avatarUrl && (
+                    <TouchableOpacity
+                      onPress={handleRemoveAvatar}
+                      className="flex-row items-center p-4 bg-red-50 rounded-2xl active:bg-red-100"
+                    >
+                      <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center mr-4">
+                        <Icon as={Trash2} className="size-5 text-red-600" />
+                      </View>
+                      <Text className="font-semibold text-red-600">
+                        Hapus Foto Saat Ini
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                <TouchableOpacity 
-                    onPress={() => setIsAvatarOptionsVisible(false)}
-                    className="mt-6 py-3 items-center"
+                <TouchableOpacity
+                  onPress={() => setIsAvatarOptionsVisible(false)}
+                  className="mt-6 py-3 items-center"
                 >
-                    <Text className="font-bold text-muted-foreground">Batal</Text>
+                  <Text className="font-bold text-muted-foreground">Batal</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
     </SafeAreaView>
   );
 }

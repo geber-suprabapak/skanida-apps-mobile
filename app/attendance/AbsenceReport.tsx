@@ -246,14 +246,17 @@ export default function AbsenceReport() {
           onPress={() => router.back()}
           className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
         </TouchableOpacity>
-        
+
         <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Lapor Absensi
         </Text>
 
-        <View className="w-10" /> 
+        <View className="w-10" />
       </View>
 
       {/* Konten Utama */}

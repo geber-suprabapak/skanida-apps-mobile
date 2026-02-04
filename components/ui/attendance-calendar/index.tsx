@@ -190,7 +190,6 @@ const AttendanceCalendar = forwardRef<
       }, initialStats);
     }, [calendarDays]);
 
-
     // Date picker handlers (if not using props)
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);
@@ -264,7 +263,6 @@ const AttendanceCalendar = forwardRef<
               {stats.sick}
             </Text>
           </View>
-
         </View>
 
         {/* Calendar Card */}
@@ -334,17 +332,22 @@ const AttendanceCalendar = forwardRef<
           <View className="flex-row justify-center gap-4 mt-8 pt-4 border-t border-dashed border-border/50">
             <View className="flex-row items-center gap-1.5">
               <View className="w-2 h-2 rounded-full bg-emerald-500" />
-              <Text className="text-[10px] font-bold text-muted-foreground uppercase">Hadir</Text>
+              <Text className="text-[10px] font-bold text-muted-foreground uppercase">
+                Hadir
+              </Text>
             </View>
             <View className="flex-row items-center gap-1.5">
               <View className="w-2 h-2 rounded-full bg-blue-500" />
-              <Text className="text-[10px] font-bold text-muted-foreground uppercase">Izin</Text>
+              <Text className="text-[10px] font-bold text-muted-foreground uppercase">
+                Izin
+              </Text>
             </View>
             <View className="flex-row items-center gap-1.5">
               <View className="w-2 h-2 rounded-full bg-rose-500" />
-              <Text className="text-[10px] font-bold text-muted-foreground uppercase">Sakit</Text>
+              <Text className="text-[10px] font-bold text-muted-foreground uppercase">
+                Sakit
+              </Text>
             </View>
-
           </View>
         </View>
 

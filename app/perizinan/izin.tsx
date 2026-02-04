@@ -132,18 +132,26 @@ const CategoryCard: React.FC<{
 }> = ({ value, isSelected, onPress, disabled }) => {
   const isSakit = value === "sakit";
   const activeColor = isSakit ? "text-red-500" : "text-blue-500";
-  const activeBg = isSakit ? "bg-red-50 dark:bg-red-900/20" : "bg-blue-50 dark:bg-blue-900/20";
-  const iconBg = isSakit ? "bg-red-100 dark:bg-red-900/40" : "bg-blue-100 dark:bg-blue-900/40";
-  
+  const activeBg = isSakit
+    ? "bg-red-50 dark:bg-red-900/20"
+    : "bg-blue-50 dark:bg-blue-900/20";
+  const iconBg = isSakit
+    ? "bg-red-100 dark:bg-red-900/40"
+    : "bg-blue-100 dark:bg-blue-900/40";
+
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
       className={cn(
         "flex-1 p-4 rounded-3xl bg-card border-2 relative",
-        isSelected ? (isSakit ? "border-red-100" : "border-blue-100") : "border-transparent",
+        isSelected
+          ? isSakit
+            ? "border-red-100"
+            : "border-blue-100"
+          : "border-transparent",
         "shadow-sm",
-        disabled && "opacity-50"
+        disabled && "opacity-50",
       )}
       activeOpacity={0.8}
     >
@@ -152,14 +160,19 @@ const CategoryCard: React.FC<{
           <Icon as={CheckCircle2} className={cn("size-5", activeColor)} />
         </View>
       )}
-      
-      <View className={cn("w-12 h-12 rounded-2xl items-center justify-center mb-3", iconBg)}>
-        <Icon 
-          as={isSakit ? HeartPulse : Briefcase} 
-          className={cn("size-6", activeColor)} 
+
+      <View
+        className={cn(
+          "w-12 h-12 rounded-2xl items-center justify-center mb-3",
+          iconBg,
+        )}
+      >
+        <Icon
+          as={isSakit ? HeartPulse : Briefcase}
+          className={cn("size-6", activeColor)}
         />
       </View>
-      
+
       <Text className="font-bold text-lg text-foreground mb-1">
         {CATEGORY_LABELS[value]}
       </Text>
@@ -242,11 +255,20 @@ const AlertBanner: React.FC<{
   };
 
   return (
-    <View className={cn("p-4 rounded-2xl border mb-4 flex-row gap-3", colors[type])}>
-      <Icon as={AlertCircle} className={cn("size-5 mt-0.5", iconColors[type])} />
+    <View
+      className={cn("p-4 rounded-2xl border mb-4 flex-row gap-3", colors[type])}
+    >
+      <Icon
+        as={AlertCircle}
+        className={cn("size-5 mt-0.5", iconColors[type])}
+      />
       <View className="flex-1">
-        <Text className="font-bold text-sm mb-0.5" style={{ color: 'inherit' }}>{title}</Text>
-        <Text className="text-xs opacity-90" style={{ color: 'inherit' }}>{message}</Text>
+        <Text className="font-bold text-sm mb-0.5" style={{ color: "inherit" }}>
+          {title}
+        </Text>
+        <Text className="text-xs opacity-90" style={{ color: "inherit" }}>
+          {message}
+        </Text>
       </View>
     </View>
   );
@@ -504,10 +526,10 @@ export default function PerizinanScreen() {
     const options = [
       { text: "Ambil Foto (Kamera)", onPress: pickFromCamera },
       { text: "Pilih dari Galeri", onPress: pickFromLibrary },
-      { text: "Batal", style: "cancel", onPress: () => {} }
+      { text: "Batal", style: "cancel", onPress: () => {} },
     ];
 
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options: ["Batal", "Ambil Foto", "Pilih dari Galeri"],
@@ -516,7 +538,7 @@ export default function PerizinanScreen() {
         (buttonIndex) => {
           if (buttonIndex === 1) pickFromCamera();
           else if (buttonIndex === 2) pickFromLibrary();
-        }
+        },
       );
     } else {
       Alert.alert(
@@ -524,7 +546,7 @@ export default function PerizinanScreen() {
         "Pilih sumber foto",
         // @ts-ignore
         options,
-        { cancelable: true }
+        { cancelable: true },
       );
     }
   }, [pickFromCamera, pickFromLibrary]);
@@ -668,7 +690,7 @@ export default function PerizinanScreen() {
 
       setHasSubmittedToday(true);
       Alert.alert("Berhasil", "Pengajuan izin berhasil dikirim", [
-        { text: "OK", onPress: () => router.back() }
+        { text: "OK", onPress: () => router.back() },
       ]);
     } catch (error: any) {
       const errorMessage = error.message || "Unknown error";
@@ -696,21 +718,24 @@ export default function PerizinanScreen() {
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="dark" />
-      
+
       {/* Simple Header */}
       <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
           onPress={() => router.back()}
           className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
         </TouchableOpacity>
-        
+
         <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Pengajuan Izin
         </Text>
 
-        <View className="w-10" /> 
+        <View className="w-10" />
       </View>
 
       {/* Content */}
@@ -732,9 +757,11 @@ export default function PerizinanScreen() {
         <View className="mb-8">
           <View className="flex-row items-center gap-2 mb-4">
             <Icon as={Briefcase} className="size-5 text-blue-600" />
-            <Text className="font-bold text-lg text-foreground">Pilih Kategori Izin</Text>
+            <Text className="font-bold text-lg text-foreground">
+              Pilih Kategori Izin
+            </Text>
           </View>
-          
+
           <View className="flex-row gap-4">
             {(["sakit", "pergi"] as const).map((catValue) => (
               <CategoryCard
@@ -757,9 +784,11 @@ export default function PerizinanScreen() {
         <View className="mb-8">
           <View className="flex-row items-center gap-2 mb-4">
             <Icon as={FileText} className="size-5 text-blue-600" />
-            <Text className="font-bold text-lg text-foreground">Detail Keterangan</Text>
+            <Text className="font-bold text-lg text-foreground">
+              Detail Keterangan
+            </Text>
           </View>
-          
+
           <View className="bg-gray-50 dark:bg-gray-900/50 rounded-3xl p-4 border border-gray-200 dark:border-gray-800">
             <TextInput
               ref={descriptionInputRef}
@@ -778,11 +807,13 @@ export default function PerizinanScreen() {
               textAlignVertical="top"
               maxLength={MAX_DESCRIPTION_LENGTH}
             />
-            
+
             <View className="flex-row justify-between items-center mt-4">
               <View className="flex-row items-center gap-1.5">
                 <Icon as={AlertCircle} className="size-3.5 text-gray-400" />
-                <Text className="text-xs text-gray-400 font-medium">MIN. 10 KARAKTER</Text>
+                <Text className="text-xs text-gray-400 font-medium">
+                  MIN. 10 KARAKTER
+                </Text>
               </View>
               <View className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-800">
                 <Text className="text-xs font-bold text-gray-500">
@@ -798,15 +829,22 @@ export default function PerizinanScreen() {
           <View className="flex-row justify-between items-center mb-4">
             <View className="flex-row items-center gap-2">
               <Icon as={Camera} className="size-5 text-blue-600" />
-              <Text className="font-bold text-lg text-foreground">Bukti Lampiran</Text>
+              <Text className="font-bold text-lg text-foreground">
+                Bukti Lampiran
+              </Text>
             </View>
             <View className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
-              <Text className="text-xs font-bold text-orange-600 dark:text-orange-400">WAJIB</Text>
+              <Text className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                WAJIB
+              </Text>
             </View>
           </View>
 
           {!formData.image ? (
-            <UploadArea onPress={showImageSourceOptions} disabled={isDisabled} />
+            <UploadArea
+              onPress={showImageSourceOptions}
+              disabled={isDisabled}
+            />
           ) : (
             <ImagePreview
               imageData={formData.image}
@@ -822,7 +860,9 @@ export default function PerizinanScreen() {
           activeOpacity={0.9}
           className={cn(
             "w-full py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-blue-500/30",
-            canSubmit ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-800 shadow-none"
+            canSubmit
+              ? "bg-blue-600"
+              : "bg-gray-200 dark:bg-gray-800 shadow-none",
           )}
         >
           {uiState.uploading ? (
@@ -832,14 +872,24 @@ export default function PerizinanScreen() {
             </>
           ) : (
             <>
-              <Icon as={Send} className={cn("size-5 mr-2", canSubmit ? "text-white" : "text-gray-400")} />
-              <Text className={cn("font-bold text-lg", canSubmit ? "text-white" : "text-gray-400")}>
+              <Icon
+                as={Send}
+                className={cn(
+                  "size-5 mr-2",
+                  canSubmit ? "text-white" : "text-gray-400",
+                )}
+              />
+              <Text
+                className={cn(
+                  "font-bold text-lg",
+                  canSubmit ? "text-white" : "text-gray-400",
+                )}
+              >
                 Kirim Pengajuan
               </Text>
             </>
           )}
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );

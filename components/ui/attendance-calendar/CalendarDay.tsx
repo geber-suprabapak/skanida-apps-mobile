@@ -20,7 +20,8 @@ export const CalendarDayComponent = ({
 
   const getStatusClasses = () => {
     // Basic shape and layout
-    const base = "flex-1 aspect-square items-center justify-center m-1 rounded-full";
+    const base =
+      "flex-1 aspect-square items-center justify-center m-1 rounded-full";
 
     // Future dates in current month
     if (day.isCurrentMonth && day.isFuture) {
@@ -61,16 +62,21 @@ export const CalendarDayComponent = ({
   const getTextClasses = () => {
     // Outside month
     if (!day.isCurrentMonth) return "text-transparent";
-    
+
     // Future
-    if (day.isFuture) return isDarkColorScheme ? "text-muted-foreground" : "text-gray-300";
+    if (day.isFuture)
+      return isDarkColorScheme ? "text-muted-foreground" : "text-gray-300";
 
     const baseText = "text-sm font-semibold";
-    
+
     if (!day.attendance) {
       // Normal day text
-      const todayClass = day.isToday ? "text-blue-600 dark:text-blue-400 font-bold" : isDarkColorScheme ? "text-gray-300" : "text-gray-700";
-       return `${baseText} ${todayClass}`;
+      const todayClass = day.isToday
+        ? "text-blue-600 dark:text-blue-400 font-bold"
+        : isDarkColorScheme
+          ? "text-gray-300"
+          : "text-gray-700";
+      return `${baseText} ${todayClass}`;
     }
 
     switch (day.attendance.status) {
@@ -91,7 +97,7 @@ export const CalendarDayComponent = ({
   };
 
   if (!day) {
-     return <View className="flex-1 aspect-square m-1" />;
+    return <View className="flex-1 aspect-square m-1" />;
   }
 
   return (

@@ -26,7 +26,6 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
-
   CircleFadingArrowUp,
   LogOut,
   ChevronRight,
@@ -65,8 +64,6 @@ function Pengaturan() {
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
-
-
 
   // Handle hardware back button
   useEffect(() => {
@@ -241,14 +238,17 @@ function Pengaturan() {
           onPress={() => router.back()}
           className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          <Icon as={ChevronLeft} className="size-6 text-gray-900 dark:text-gray-100" />
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
         </TouchableOpacity>
-        
+
         <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Pengaturan
         </Text>
 
-        <View className="w-10" /> 
+        <View className="w-10" />
       </View>
 
       <ScrollView
@@ -269,7 +269,7 @@ function Pengaturan() {
                       className="w-18 h-18 rounded-2xl"
                       style={{ width: 72, height: 72 }}
                     />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={() => router.push("/profile/ManageAccount")}
                       activeOpacity={0.8}
                       className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
@@ -290,7 +290,7 @@ function Pengaturan() {
                           .toUpperCase() || "U"}
                       </Text>
                     </LinearGradient>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={() => router.push("/profile/ManageAccount")}
                       activeOpacity={0.8}
                       className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"

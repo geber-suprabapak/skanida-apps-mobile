@@ -595,7 +595,6 @@ export default function Dashboard() {
     return () => backHandler.remove();
   }, []);
 
-
   const derivedActionType =
     attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
       ? "home"
@@ -811,15 +810,13 @@ export default function Dashboard() {
 
               <View className="flex-1 justify-center">
                 <Text className="text-blue-100 text-xs font-medium mb-1">
-                   {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                  {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
                 </Text>
 
                 {/* Clock Display */}
                 <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
                   {format(currentTime, "HH:mm:ss", { locale: id })}
                 </Text>
-
-
               </View>
             </LinearGradient>
           </View>
@@ -881,16 +878,18 @@ export default function Dashboard() {
                         Selesai
                       </Text>
                     </View>
-                  ) : attendanceStatus.hasCheckedIn && attendanceSchedule?.mulai_pulang ? (
+                  ) : attendanceStatus.hasCheckedIn &&
+                    attendanceSchedule?.mulai_pulang ? (
                     <View className="mt-3 items-center">
                       <Text className="text-xs text-muted-foreground">
                         Jadwal: {attendanceSchedule.mulai_pulang?.slice(0, 5)}
-                        {attendanceSchedule.selesai_pulang ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}` : ""}
+                        {attendanceSchedule.selesai_pulang
+                          ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}`
+                          : ""}
                       </Text>
                     </View>
                   ) : null}
                 </View>
-
               </View>
 
               {/* Horizontal Divider */}
