@@ -11,6 +11,7 @@ import {
   Alert,
   RefreshControl,
   Animated,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
@@ -41,6 +42,7 @@ import {
   UserRound,
   WifiOff,
   Wifi,
+  MapPin,
   Calendar,
 } from "lucide-react-native";
 import Constants from "expo-constants";
@@ -718,7 +720,7 @@ export default function Dashboard() {
           gestureEnabled: false,
         }}
       />
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View className="flex-1 bg-background">
         <ScrollView
           className="flex-1 bg-background"
@@ -729,116 +731,84 @@ export default function Dashboard() {
           contentContainerStyle={{ paddingBottom: 32 }}
         >
           {/* === HEADER SECTION - Edge-to-Edge Modern Style === */}
-          <View className="relative overflow-hidden">
-            {/* Gradient Background Header - Matching tweakcn primary */}
+          {/* === HEADER SECTION - Modern Clean Style === */}
+          <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
+            {/* Top Bar - Logo & Actions */}
+            <View className="flex-row items-center justify-between mb-8">
+              <View className="flex-row items-center gap-3">
+                <Image
+                  source={require("../assets/skanidatransparan.png")}
+                  className="w-12 h-12"
+                  resizeMode="contain"
+                />
+                <Text className="text-2xl font-bold text-stone-700 tracking-tight">
+                  SKANIDA APPS
+                </Text>
+              </View>
+
+              <View className="flex-row items-center gap-2">
+                <TouchableOpacity
+                  onPress={navigateToSettings}
+                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                >
+                  <Icon as={Settings} className="size-5 text-foreground/70" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => Sentry.showFeedbackWidget()}
+                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                >
+                  <Icon as={Bug} className="size-5 text-foreground/70" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Greeting Text */}
+            <Text className="text-stone-600 font-semibold text-base mb-3 ml-1">
+              Selamat Pagi, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
+            </Text>
+
+            {/* Profile & Time Card */}
             <LinearGradient
-              colors={["#3b82f6", "#2563eb", "#1d4ed8"]}
+              colors={["#3b82f6", "#1d4ed8"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              className="px-6 pb-10"
-              style={{ paddingTop: insets.top + 16 }}
+              style={{ borderRadius: 35 }}
+              className="p-5 flex-row items-center shadow-lg shadow-blue-900/20"
             >
-              {/* Top Bar - Avatar, Date & Bug Report */}
-              <View className="flex-row items-center justify-between mb-6">
-                <TouchableOpacity
-                  className="flex-row items-center flex-1"
-                  onPress={navigateToEditProfile}
-                  activeOpacity={0.85}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  {hasCustomAvatar ? (
-                    <View className="relative">
-                      <Avatar
-                        size="md"
-                        fallback={displayName.charAt(0).toUpperCase() || "?"}
-                        className="border-2 border-white/40 shadow-sm"
-                        source={avatarUrl ?? undefined}
-                      />
-                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white" />
-                    </View>
-                  ) : (
-                    <View className="relative">
-                      <View className="w-14 h-14 rounded-full bg-white/15 border border-white/30 items-center justify-center">
-                        <Icon as={UserRound} className="size-7 text-white" />
-                      </View>
-                      <View className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white" />
-                    </View>
-                  )}
-                  <View className="ml-4 flex-1">
-                    <Text className="text-white text-xl font-bold tracking-tight">
-                      {displayName}
-                    </Text>
+              <TouchableOpacity
+                onPress={navigateToEditProfile}
+                activeOpacity={0.8}
+                className="mr-5 relative"
+              >
+                {hasCustomAvatar ? (
+                  <Avatar
+                    size="lg"
+                    fallback={displayName.charAt(0).toUpperCase() || "?"}
+                    className="border-2 border-white/30 w-20 h-20"
+                    source={avatarUrl ?? undefined}
+                  />
+                ) : (
+                  <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center border border-white/30">
+                    <Icon as={UserRound} className="size-10 text-white" />
                   </View>
+                )}
+                {/* Active Indicator */}
+                <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
+              </TouchableOpacity>
 
-                </TouchableOpacity>
+              <View className="flex-1 justify-center">
+                <Text className="text-blue-100 text-xs font-medium mb-1">
+                   {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                </Text>
 
-                <View className="flex-row items-center gap-3">
-                  <TouchableOpacity
-                    onPress={navigateToSettings}
-                    className="w-10 h-10 rounded-full bg-white/15 items-center justify-center border border-white/20"
-                  >
-                    <Icon as={Settings} className="size-5 text-white" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => Sentry.showFeedbackWidget()}
-                    className="w-10 h-10 rounded-full bg-white/15 items-center justify-center border border-white/20"
-                  >
-                    <Icon as={Bug} className="size-5 text-white" />
-                  </TouchableOpacity>
-                </View>
-              </View>
+                {/* Clock Display */}
+                <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
+                  {format(currentTime, "HH:mm:ss", { locale: id })}
+                </Text>
 
-              {/* Live Time Display - Clean Modern Card */}
-              <View className="bg-white/10 rounded-3xl p-5 border border-white/15 backdrop-blur-sm">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center">
-                      <Icon as={Clock} className="size-7 text-white" />
-                    </View>
-                    <View className="ml-4">
-                      <View className="flex-row items-center mb-1">
-                        {syncStatus === "synced" ? (
-                          <Icon as={Wifi} className="size-3 text-emerald-300" />
-                        ) : syncStatus === "syncing" ? (
-                          <Icon as={Clock} className="size-3 text-amber-300" />
-                        ) : (
-                          <Icon as={WifiOff} className="size-3 text-red-300" />
-                        )}
-                        <Text className="text-white/70 text-xs ml-1.5 font-medium">
-                          {syncStatus === "synced"
-                            ? syncSource === "server"
-                              ? "Server"
-                              : syncSource === "ntp"
-                                ? "NTP"
-                                : "Lokal"
-                            : syncStatus === "syncing"
-                              ? "Menyinkronkan..."
-                              : "Offline"}
-                          {driftDetected && " • Drift"}
-                        </Text>
-                      </View>
-                      <Text className="text-white text-4xl font-bold tracking-tight">
-                        {format(currentTime, "HH:mm:ss", { locale: id })}
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="items-end">
-                    <View className="flex-row items-center bg-white/15 rounded-full px-3 py-1.5">
-                      <Icon as={Calendar} className="size-3.5 text-white/90" />
-                      <Text className="text-white text-xs ml-1.5 font-semibold">
-                        {format(currentTime, "EEEE", { locale: id })}
-                      </Text>
-                    </View>
-                    <Text className="text-white/80 text-sm mt-2 font-medium">
-                      {format(currentTime, "dd MMMM yyyy", { locale: id })}
-                    </Text>
-                  </View>
-                </View>
+
               </View>
             </LinearGradient>
-
-            {/* Curved Bottom Effect */}
-            <View className="absolute -bottom-4 left-0 right-0 h-8 bg-background rounded-t-[32px]" />
           </View>
 
           {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
