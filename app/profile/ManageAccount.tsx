@@ -1,4 +1,4 @@
-import { useRouter, Stack, useNavigation } from "expo-router";
+import { useRouter, Stack } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -34,11 +34,6 @@ import {
   Mail,
   GraduationCap,
   Hash,
-  Save,
-  Lock,
-  Key,
-  CreditCard,
-  Settings,
 } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
@@ -106,7 +101,6 @@ export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const navigation = useNavigation();
 
   // --- Profile State ---
   const [name, setName] = useState("");
@@ -114,10 +108,8 @@ export default function ManageAccount() {
   const [absenceNumber, setAbsenceNumber] = useState("");
   const [className, setClassName] = useState("");
   const [nis, setNis] = useState("");
-  const [gender, setGender] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const [profileLoading, setProfileLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isAvatarOptionsVisible, setIsAvatarOptionsVisible] = useState(false);
 
@@ -143,10 +135,10 @@ export default function ManageAccount() {
       if (!user) return;
 
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("user_profiles")
           .select(
-            "full_name, email, absence_number, class_name, nis, gender, avatar_url",
+            "full_name, email, absence_number, class_name, nis, avatar_url",
           )
           .eq("user_id", user.id)
           .single();
@@ -157,7 +149,6 @@ export default function ManageAccount() {
         let profileAbsence = user.user_metadata?.absence_number || "";
         let profileClass = user.user_metadata?.class_name || "";
         let profileNis = user.user_metadata?.nis || "";
-        let profileGender = user.user_metadata?.gender || "";
         let profileAvatar = user.user_metadata?.avatar_url || null;
 
         if (data) {
@@ -166,7 +157,6 @@ export default function ManageAccount() {
           profileAbsence = data.absence_number || profileAbsence;
           profileClass = data.class_name || profileClass;
           profileNis = data.nis || profileNis;
-          profileGender = data.gender || profileGender;
           profileAvatar = data.avatar_url || profileAvatar;
         }
 
@@ -175,7 +165,6 @@ export default function ManageAccount() {
         setAbsenceNumber(profileAbsence);
         setClassName(profileClass);
         setNis(profileNis);
-        setGender(profileGender);
         setAvatarUrl(profileAvatar);
 
         setInitialData({

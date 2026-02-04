@@ -96,10 +96,6 @@ export const CalendarDayComponent = ({
     onPress?.();
   };
 
-  if (!day) {
-    return <View className="flex-1 aspect-square m-1" />;
-  }
-
   return (
     <TouchableOpacity
       className={getStatusClasses()}

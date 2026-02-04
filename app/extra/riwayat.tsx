@@ -9,7 +9,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 
 import { Text } from "~/components/ui/text";
 import { StatusBar } from "expo-status-bar";
@@ -18,12 +17,7 @@ import AttendanceCalendar, {
 } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { Icon } from "~/components/ui/icon";
-import {
-  ChevronLeft,
-  Settings,
-  RefreshCw,
-  Calendar,
-} from "lucide-react-native";
+import { ChevronLeft, RefreshCw, Calendar } from "lucide-react-native";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
 import Animated, {
@@ -213,22 +207,6 @@ export default function Riwayat() {
       }
     }
   };
-
-  // Get month name for display
-  const monthNames = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
