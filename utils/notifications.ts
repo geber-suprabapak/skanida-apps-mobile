@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "~/utils/supabase";
 
+export const NOTIFICATION_CHANNEL_ID = "skanida-default";
 
 export function setupNotificationHandler() {
     Notifications.setNotificationHandler({
@@ -17,50 +18,34 @@ export function setupNotificationHandler() {
 }
 
 export async function setupNotificationChannel() {
-    if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("default", {
-            name: "Notifikasi Umum",
-            description: "Notifikasi umum dari Skanida Apps",
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: "#3B82F6",
-            sound: "default",
-        });
-    }
+    if (Platform.OS !== "android") return null;
+
+    return Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
+        name: "Notifikasi Skanida",
+        importance: Notifications.AndroidImportance.DEFAULT,
+    });
 }
 
-export async function registerAndSaveNotificationToken(
-    userId: string,
-): Promise<void> {
+export async function registerAndSaveNotificationToken(userId: string) {
     if (!Device.isDevice) return;
 
-    try {
-        const { status: existingStatus } =
-            await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    const { status } =
+        existing === "granted"
+            ? { status: existing }
+            : await Notifications.requestPermissionsAsync();
 
-        if (existingStatus !== "granted") {
-            const { status } = await Notifications.requestPermissionsAsync({
-                ios: { allowAlert: true, allowBadge: true, allowSound: true },
-            });
-            finalStatus = status;
-        }
+    if (status !== "granted") return;
 
-        if (finalStatus !== "granted") return;
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) return;
 
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-        if (!projectId) return;
+    const { data: token } = await Notifications.getExpoPushTokenAsync({
+        projectId,
+    });
 
-        const tokenResponse = await Notifications.getExpoPushTokenAsync({
-            projectId,
-        });
-        const token = tokenResponse.data;
-
-        await supabase
-            .from("user_profiles")
-            .update({ notification_token: token })
-            .eq("user_id", userId);
-    } catch (error) {
-        return;
-    }
+    await supabase
+        .from("user_profiles")
+        .update({ notification_token: token })
+        .eq("user_id", userId);
 }
