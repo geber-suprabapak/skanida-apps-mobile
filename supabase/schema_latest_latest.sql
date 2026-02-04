@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     class_name TEXT,
     gender TEXT,
     role TEXT,
+    notification_token TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     CONSTRAINT fk_user_profiles_user_id FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -241,6 +242,7 @@ COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pendin
 COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries';
 COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location in meters';
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
+COMMENT ON COLUMN user_profiles.notification_token IS 'Expo push notification token for the user device';
 
 -- ============================================================================
 -- Row Level Security (RLS) Policies
