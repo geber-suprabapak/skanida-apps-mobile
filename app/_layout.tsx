@@ -9,6 +9,10 @@ import { useEffect } from "react";
 import { colorScheme } from "nativewind";
 import useThemeStore from "~/store/themeStore";
 import { timeSync } from "~/utils/timeSync";
+import {
+  setupNotificationHandler,
+  setupNotificationChannel,
+} from "~/utils/notifications";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -33,6 +37,9 @@ Sentry.init({
   // spotlight: __DEV__,
   _experiments: { enableLogs: true },
 });
+
+// Setup notification handler for foreground notifications
+setupNotificationHandler();
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -62,6 +69,11 @@ export default Sentry.wrap(function RootLayout() {
     return () => {
       timeSync.cleanup();
     };
+  }, []);
+
+  // Setup Android notification channel
+  useEffect(() => {
+    setupNotificationChannel();
   }, []);
 
   return (

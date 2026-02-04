@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "817964494452",
+    "project_id": "skapps-skrrt",
+    "storage_bucket": "skapps-skrrt.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:817964494452:android:a5b35bc072f26a372c6b21",
+        "android_client_info": {
+          "package_name": "com.hfzrk.skanidaappsmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBHqgGxH1jBA5yfgy97_MGdaIH0iZlv6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
