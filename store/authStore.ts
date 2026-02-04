@@ -1,4 +1,5 @@
 // store/authStore.ts
+import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "~/utils/supabase";
@@ -40,6 +41,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
           await get().fetchUserProfile(user.id);
         } catch (error) {
           console.error("Error fetching user profile during setUser:", error);
+          Sentry.captureException(error);
         }
         try {
           await registerAndSaveNotificationToken(user.id);
@@ -48,6 +50,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
             "Error registering notification token during setUser:",
             error,
           );
+          Sentry.captureException(error);
         }
       })();
     } else {
@@ -77,6 +80,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
         // If we get an error that is NOT a "resource not found" error, something is wrong.
         if (error && status !== 406) {
           console.error("Error fetching user profile:", error.message);
+          Sentry.captureException(error);
           set({ userProfile: null }); // Clear profile on definitive error
           return;
         }
@@ -91,15 +95,18 @@ const useAuthStore = create<AuthState>((set, get) => ({
         }
       } catch (error) {
         console.error("An unexpected error occurred fetching profile:", error);
+        Sentry.captureException(error);
         set({ userProfile: null }); // Clear profile on unexpected error
         return;
       }
     }
 
     // If the loop completes without finding a profile
-    console.error(
+    const fetchFailureError = new Error(
       `Failed to fetch user profile for ${userId} after ${maxRetries} attempts.`,
     );
+    console.error(fetchFailureError.message);
+    Sentry.captureException(fetchFailureError);
     set({ userProfile: null });
   },
 

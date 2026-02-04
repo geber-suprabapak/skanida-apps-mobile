@@ -71,10 +71,6 @@ export default Sentry.wrap(function RootLayout() {
   // Setup notification handler for foreground notifications
   useEffect(() => {
     setupNotificationHandler();
-  }, []);
-
-  // Setup Android notification channel
-  useEffect(() => {
     setupNotificationChannel().catch((error) => {
       console.error("Notification channel setup failed:", error);
     });

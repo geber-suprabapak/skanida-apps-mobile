@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import { Platform, Alert } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "~/utils/supabase";
+import * as Sentry from "@sentry/react-native";
 
 export const NOTIFICATION_CHANNEL_ID = "skanida-default";
 
@@ -50,7 +51,9 @@ export async function registerAndSaveNotificationToken(userId: string) {
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
-      console.error("[Notifications] Missing EAS projectId");
+      Sentry.captureException(
+        new Error("[Notifications] Missing EAS projectId"),
+      );
       return;
     }
 
@@ -59,7 +62,7 @@ export async function registerAndSaveNotificationToken(userId: string) {
     });
 
     if (!token) {
-      console.error("[Notifications] Token undefined");
+      Sentry.captureException(new Error("[Notifications] Token undefined"));
       return;
     }
 
@@ -69,9 +72,11 @@ export async function registerAndSaveNotificationToken(userId: string) {
       .eq("user_id", userId);
 
     if (error) {
-      console.error("[Notifications] Save error:", error.message);
+      Sentry.captureException(
+        new Error(`[Notifications] Save error: ${error.message}`),
+      );
     }
   } catch (err) {
-    console.error("[Notifications] Error:", err);
+    Sentry.captureException(err);
   }
 }
