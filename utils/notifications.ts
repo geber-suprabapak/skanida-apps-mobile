@@ -1,0 +1,84 @@
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+import { Platform, Alert } from "react-native";
+import Constants from "expo-constants";
+import { supabase } from "~/utils/supabase";
+import * as Sentry from "@sentry/react-native";
+
+export const NOTIFICATION_CHANNEL_ID = "skanida-default";
+
+export function setupNotificationHandler() {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
+
+export async function setupNotificationChannel() {
+  if (Platform.OS !== "android") return null;
+
+  return Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
+    name: "Notifikasi Skanida",
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
+export async function registerAndSaveNotificationToken(userId: string) {
+  try {
+    if (!Device.isDevice) {
+      // Expo push notifications only work on a physical device
+      return;
+    }
+
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    const { status } =
+      existing === "granted"
+        ? { status: existing }
+        : await Notifications.requestPermissionsAsync();
+
+    if (status !== "granted") {
+      console.log("[Notifications] Permission denied");
+      Alert.alert(
+        "Izin Notifikasi",
+        "Aktifkan izin notifikasi di pengaturan perangkat Anda untuk menerima pembaruan penting.",
+      );
+      return;
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) {
+      Sentry.captureException(
+        new Error("[Notifications] Missing EAS projectId"),
+      );
+      return;
+    }
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+
+    if (!token) {
+      Sentry.captureException(new Error("[Notifications] Token undefined"));
+      return;
+    }
+
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({ notification_token: token })
+      .eq("user_id", userId);
+
+    if (error) {
+      Sentry.captureException(
+        new Error(`[Notifications] Save error: ${error.message}`),
+      );
+    } else {
+      console.log("[Notifications] Token saved successfully");
+    }
+  } catch (err) {
+    Sentry.captureException(err);
+  }
+}

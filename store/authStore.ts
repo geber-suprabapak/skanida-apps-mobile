@@ -1,7 +1,9 @@
 // store/authStore.ts
+import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "~/utils/supabase";
+import { registerAndSaveNotificationToken } from "~/utils/notifications";
 
 // Define a more specific type for your user profile based on your table
 export interface UserProfile {
@@ -15,6 +17,7 @@ export interface UserProfile {
   avatar_url: string | null;
   role: string | null;
   gender: string | null;
+  notification_token: string | null;
 }
 
 interface AuthState {
@@ -32,9 +35,13 @@ const useAuthStore = create<AuthState>((set, get) => ({
   // Action to set the user and fetch the profile
   setUser: (user) => {
     set({ user });
-    // If user exists, fetch their profile. If not, clear the profile.
     if (user?.id) {
-      get().fetchUserProfile(user.id);
+      (async () => {
+        await Promise.all([
+          get().fetchUserProfile(user.id),
+          registerAndSaveNotificationToken(user.id),
+        ]);
+      })();
     } else {
       set({ userProfile: null });
     }
@@ -62,6 +69,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
         // If we get an error that is NOT a "resource not found" error, something is wrong.
         if (error && status !== 406) {
           console.error("Error fetching user profile:", error.message);
+          Sentry.captureException(error);
           set({ userProfile: null }); // Clear profile on definitive error
           return;
         }
@@ -76,15 +84,18 @@ const useAuthStore = create<AuthState>((set, get) => ({
         }
       } catch (error) {
         console.error("An unexpected error occurred fetching profile:", error);
+        Sentry.captureException(error);
         set({ userProfile: null }); // Clear profile on unexpected error
         return;
       }
     }
 
     // If the loop completes without finding a profile
-    console.error(
+    const fetchFailureError = new Error(
       `Failed to fetch user profile for ${userId} after ${maxRetries} attempts.`,
     );
+    console.error(fetchFailureError.message);
+    Sentry.captureException(fetchFailureError);
     set({ userProfile: null });
   },
 

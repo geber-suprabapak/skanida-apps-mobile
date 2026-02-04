@@ -34,3 +34,4 @@ certs/private-key.pem
 certs/public-key.pem
 
 .serena
+google-services.json
