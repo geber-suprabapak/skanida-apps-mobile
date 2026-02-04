@@ -34,6 +34,9 @@ import {
   Mail,
   GraduationCap,
   Hash,
+  Lock,
+  Key,
+  CreditCard,
 } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
