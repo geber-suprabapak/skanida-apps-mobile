@@ -13,12 +13,29 @@ export const DetailCard = ({
 }: DetailCardProps) => {
   if (!day) return null;
 
+  const calculateTotalHours = () => {
+    if (!day.attendance?.checkInTime || !day.attendance?.checkOutTime) {
+      return null;
+    }
+
+    const checkIn = new Date(day.attendance.checkInTime);
+    const checkOut = new Date(day.attendance.checkOutTime);
+    const diffMs = checkOut.getTime() - checkIn.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+
+    return `${hours}j ${mins}m`;
+  };
+
   const getStatusText = () => {
     if (!day.attendance) return "Tidak Hadir";
 
     switch (day.attendance.status) {
       case "present":
         return "Hadir";
+      case "late":
+        return "Hadir (Terlambat)";
       case "leave":
         return "Izin";
       case "sick":
@@ -36,6 +53,8 @@ export const DetailCard = ({
     switch (day.attendance.status) {
       case "present":
         return <Icon as={CheckCircle} className="size-6 text-green-600" />;
+      case "late":
+        return <Icon as={AlertCircle} className="size-6 text-orange-600" />;
       case "leave":
         return <Icon as={FileText} className="size-6 text-blue-600" />;
       case "sick":
@@ -108,34 +127,57 @@ export const DetailCard = ({
           </Text>
         </View>
 
-        {/* Check-in/Check-out times */}
-        {day.attendance?.status === "present" && (
+        {/* Check-in/Check-out times - always show for all statuses */}
+        {day.attendance && (
           <>
-            {day.attendance.checkInTime && (
-              <View className="flex-row justify-between mb-3">
-                <Text
-                  className={`font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
-                >
-                  Jam Masuk:
-                </Text>
+            <View className="flex-row justify-between mb-3">
+              <Text
+                className={`font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+              >
+                Jam Masuk:
+              </Text>
+              <View className="flex-row items-center gap-2">
                 <Text
                   className={`font-medium ${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
                 >
-                  {formatTime(day.attendance.checkInTime)}
+                  {day.attendance.checkInTime
+                    ? formatTime(day.attendance.checkInTime)
+                    : "-"}
                 </Text>
+                {day.attendance.isLate && (
+                  <View className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 rounded-full">
+                    <Text className="text-xs font-bold text-orange-700 dark:text-orange-400">
+                      Terlambat
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-            {day.attendance.checkOutTime && (
+            </View>
+            <View className="flex-row justify-between mb-3">
+              <Text
+                className={`font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
+              >
+                Jam Pulang:
+              </Text>
+              <Text
+                className={`font-medium ${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
+              >
+                {day.attendance.checkOutTime
+                  ? formatTime(day.attendance.checkOutTime)
+                  : "-"}
+              </Text>
+            </View>
+            {calculateTotalHours() && (
               <View className="flex-row justify-between mb-3">
                 <Text
                   className={`font-medium ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}`}
                 >
-                  Jam Pulang:
+                  Total Jam:
                 </Text>
                 <Text
-                  className={`font-medium ${isDarkColorScheme ? "text-white" : "text-gray-800"}`}
+                  className={`font-bold text-lg ${isDarkColorScheme ? "text-emerald-400" : "text-emerald-600"}`}
                 >
-                  {formatTime(day.attendance.checkOutTime)}
+                  {calculateTotalHours()}
                 </Text>
               </View>
             )}

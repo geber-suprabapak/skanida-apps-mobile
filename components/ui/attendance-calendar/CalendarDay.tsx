@@ -47,9 +47,20 @@ export const CalendarDayComponent = ({
       return `${base} ${selectionClass}`;
     }
 
+    const hasCompleteAttendance =
+      !!day.attendance?.checkInTime && !!day.attendance?.checkOutTime;
+
     switch (day.attendance.status) {
       case "present":
-        return `${base} ${isDarkColorScheme ? "bg-emerald-900/60" : "bg-emerald-50"} ${selectionClass}`;
+      case "late": {
+        const completeClass = isDarkColorScheme
+          ? "bg-emerald-700/70"
+          : "bg-emerald-400/50";
+        const partialClass = isDarkColorScheme
+          ? "bg-emerald-900/30"
+          : "bg-emerald-100/70";
+        return `${base} ${hasCompleteAttendance ? completeClass : partialClass} ${selectionClass}`;
+      }
       case "leave":
         return `${base} ${isDarkColorScheme ? "bg-blue-900/60" : "bg-blue-50"} ${selectionClass}`;
       case "sick":
@@ -82,6 +93,8 @@ export const CalendarDayComponent = ({
     switch (day.attendance.status) {
       case "present":
         return `${baseText} text-emerald-600 dark:text-emerald-400`;
+      case "late":
+        return `${baseText} text-orange-600 dark:text-orange-400`;
       case "leave":
         return `${baseText} text-blue-600 dark:text-blue-400`;
       case "sick":

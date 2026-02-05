@@ -237,34 +237,6 @@ const AttendanceCalendar = forwardRef<
           </View>
         )}
 
-        {/* Summary Stats Cards */}
-        <View className="flex-row gap-3 mb-6">
-          <View className="flex-1 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-2xl p-3 items-center">
-            <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase mb-1">
-              Hadir
-            </Text>
-            <Text className="text-emerald-700 dark:text-emerald-300 text-xl font-bold">
-              {stats.present}
-            </Text>
-          </View>
-          <View className="flex-1 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-2xl p-3 items-center">
-            <Text className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase mb-1">
-              Izin
-            </Text>
-            <Text className="text-blue-700 dark:text-blue-300 text-xl font-bold">
-              {stats.leave}
-            </Text>
-          </View>
-          <View className="flex-1 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-2xl p-3 items-center">
-            <Text className="text-rose-600 dark:text-rose-400 text-xs font-bold uppercase mb-1">
-              Sakit
-            </Text>
-            <Text className="text-rose-700 dark:text-rose-300 text-xl font-bold">
-              {stats.sick}
-            </Text>
-          </View>
-        </View>
-
         {/* Calendar Card */}
         <View
           className={`rounded-3xl p-5 border border-border shadow-sm ${
@@ -327,28 +299,6 @@ const AttendanceCalendar = forwardRef<
               )}
             </View>
           )}
-
-          {/* New Legend Style - Bottom of Card */}
-          <View className="flex-row justify-center gap-4 mt-8 pt-4 border-t border-dashed border-border/50">
-            <View className="flex-row items-center gap-1.5">
-              <View className="w-2 h-2 rounded-full bg-emerald-500" />
-              <Text className="text-[10px] font-bold text-muted-foreground uppercase">
-                Hadir
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <View className="w-2 h-2 rounded-full bg-blue-500" />
-              <Text className="text-[10px] font-bold text-muted-foreground uppercase">
-                Izin
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <View className="w-2 h-2 rounded-full bg-rose-500" />
-              <Text className="text-[10px] font-bold text-muted-foreground uppercase">
-                Sakit
-              </Text>
-            </View>
-          </View>
         </View>
 
         {/* Detail Card - shows when a day is tapped */}

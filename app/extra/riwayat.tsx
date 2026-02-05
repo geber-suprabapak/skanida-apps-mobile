@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   TouchableOpacity,
@@ -7,9 +7,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
-
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 
 import { Text } from "~/components/ui/text";
 import { StatusBar } from "expo-status-bar";
@@ -26,6 +24,8 @@ import {
 } from "lucide-react-native";
 import { attendanceCache } from "~/utils/attendanceCache";
 import useAuthStore from "~/store/authStore";
+import { supabase } from "~/utils/supabase";
+import { timeSync } from "~/utils/timeSync";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -68,7 +68,6 @@ const SpinningIcon = ({ spinning }: { spinning: boolean }) => {
 export default function Riwayat() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isFocused = useIsFocused();
   const colorScheme = useColorScheme();
   const isDarkColorScheme = colorScheme === "dark";
 
@@ -76,43 +75,56 @@ export default function Riwayat() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const calendarRef = useRef<AttendanceCalendarRef>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState({
+    hadir: 0,
+    terlambat: 0,
+    sakit: 0,
+    izin: 0,
+  });
 
   // Auto-refresh when screen becomes focused
-  useEffect(() => {
-    if (isFocused && user?.id) {
-      const autoRefresh = async () => {
-        try {
-          // Clear cache for current and selected months for fresh data
-          const currentDate = new Date();
-          const selectedYear = selectedDate.getFullYear();
-          const selectedMonth = selectedDate.getMonth();
-          const currentYear = currentDate.getFullYear();
-          const currentMonth = currentDate.getMonth();
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        const autoRefresh = async () => {
+          try {
+            // Clear cache for current and selected months for fresh data
+            const currentDate = new Date();
+            const selectedYear = selectedDate.getFullYear();
+            const selectedMonth = selectedDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth();
 
-          // Clear cache for both current and selected months
-          await Promise.all([
-            attendanceCache.invalidate(user.id, currentYear, currentMonth),
-            selectedYear !== currentYear || selectedMonth !== currentMonth
-              ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
-              : Promise.resolve(),
-          ]);
+            // Clear cache for both current and selected months
+            await Promise.all([
+              attendanceCache.invalidate(user.id, currentYear, currentMonth),
+              selectedYear !== currentYear || selectedMonth !== currentMonth
+                ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
+                : Promise.resolve(),
+            ]);
 
-          // Trigger calendar refresh
-          if (calendarRef.current) {
-            await calendarRef.current.refetch(true);
+            // Trigger calendar refresh
+            if (calendarRef.current) {
+              await calendarRef.current.refetch(true);
+            }
+
+            console.log("📅 Auto-refreshed riwayat data on focus");
+          } catch (error) {
+            console.error("Error auto-refreshing riwayat:", error);
           }
+        };
 
-          console.log("📅 Auto-refreshed riwayat data on focus");
-        } catch (error) {
-          console.error("Error auto-refreshing riwayat:", error);
-        }
-      };
+        autoRefresh();
+      }
+    }, [user?.id, selectedDate]),
+  );
 
-      // Small delay to ensure screen is fully loaded
-      const timeoutId = setTimeout(autoRefresh, 100);
-      return () => clearTimeout(timeoutId);
+  // Fetch monthly stats when date changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchMonthlyStats();
     }
-  }, [isFocused, user?.id, selectedDate]);
+  }, [user?.id, selectedDate]);
 
   // Handle back button
   useEffect(() => {
@@ -167,6 +179,77 @@ export default function Riwayat() {
       Alert.alert("❌ Error", "Failed to clear cache");
     }
   };
+
+  // Fetch monthly statistics
+  const fetchMonthlyStats = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const year = selectedDate.getFullYear();
+      const month = selectedDate.getMonth();
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      // Fetch absences for the selected month
+      const { data: absences } = await supabase
+        .from('absences')
+        .select('status, created_at, date')
+        .eq('user_id', user.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      // Fetch leaves for the selected month
+      const { data: leaves } = await supabase
+        .from('perizinan')
+        .select('kategori_izin, tanggal')
+        .eq('user_id', user.id)
+        .gte('tanggal', `${startDate}T00:00:00.000Z`)
+        .lt('tanggal', `${year}-${String(month + 2).padStart(2, '0')}-01T00:00:00.000Z`);
+
+      // Calculate statistics
+      let hadirCount = 0;
+      let terlambatCount = 0;
+      let sakitCount = 0;
+
+      // Group absences by date
+      const absencesByDate: Record<string, any[]> = {};
+      absences?.forEach((record) => {
+        if (!absencesByDate[record.date]) {
+          absencesByDate[record.date] = [];
+        }
+        absencesByDate[record.date].push(record);
+      });
+
+      // Count hadir, tidak hadir, terlambat
+      Object.entries(absencesByDate).forEach(([date, records]) => {
+        const hasAlpha = records.some((r) => r.status === 'Alpha');
+        const hasTerlambat = records.some((r) => r.status === 'Terlambat');
+        
+        if (hasAlpha) {
+          // Alpha is counted as not present, but not displayed in cards now
+        } else if (hasTerlambat) {
+          terlambatCount++;
+        } else {
+          hadirCount++;
+        }
+      });
+
+      sakitCount =
+        leaves?.filter((leave) => leave.kategori_izin === "sakit").length || 0;
+      const izinCount =
+        leaves?.filter((leave) => leave.kategori_izin !== "sakit").length || 0;
+
+      setMonthlyStats({
+        hadir: hadirCount,
+        terlambat: terlambatCount,
+        sakit: sakitCount,
+        izin: izinCount,
+      });
+    } catch (error) {
+      console.error('Error fetching monthly stats:', error);
+    }
+  }, [user, selectedDate]);
 
   // Force refresh function for manual data refresh
   const forceRefresh = async () => {
@@ -284,6 +367,51 @@ export default function Riwayat() {
             maximumDate={new Date()}
             isDarkColorScheme={isDarkColorScheme}
           />
+        </View>
+      </View>
+
+      {/* === MONTHLY STATISTICS CARDS === */}
+      <View className="px-6 mb-4">
+        <View className="flex-row flex-wrap gap-3">
+          {/* Hadir Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-green-400 dark:border-green-700 shadow-sm">
+            <Text className="text-green-600 dark:text-green-400 text-4xl font-bold mb-1">
+              {monthlyStats.hadir}
+            </Text>
+            <Text className="text-green-600 dark:text-green-400 text-sm font-semibold">
+              Hadir
+            </Text>
+          </View>
+
+          {/* Terlambat Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-orange-400 dark:border-orange-700 shadow-sm">
+            <Text className="text-orange-600 dark:text-orange-400 text-4xl font-bold mb-1">
+              {monthlyStats.terlambat}
+            </Text>
+            <Text className="text-orange-600 dark:text-orange-400 text-sm font-semibold">
+              Terlambat
+            </Text>
+          </View>
+
+          {/* Sakit Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-red-400 dark:border-red-700 shadow-sm">
+            <Text className="text-red-600 dark:text-red-400 text-4xl font-bold mb-1">
+              {monthlyStats.sakit}
+            </Text>
+            <Text className="text-red-600 dark:text-red-400 text-sm font-semibold">
+              Sakit
+            </Text>
+          </View>
+
+          {/* Izin Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-blue-400 dark:border-blue-700 shadow-sm">
+            <Text className="text-blue-600 dark:text-blue-400 text-4xl font-bold mb-1">
+              {monthlyStats.izin}
+            </Text>
+            <Text className="text-blue-600 dark:text-blue-400 text-sm font-semibold">
+              Izin
+            </Text>
+          </View>
         </View>
       </View>
 
