@@ -133,21 +133,24 @@ const CategoryCard: React.FC<{
   const isSakit = value === "sakit";
   const activeColor = isSakit ? "text-red-500" : "text-blue-500";
   const activeBg = isSakit
-    ? "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/30"
-    : "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30";
+    ? "bg-red-50 dark:bg-red-900/20"
+    : "bg-blue-50 dark:bg-blue-900/20";
   const iconBg = isSakit
-    ? "bg-red-200 dark:bg-red-900/50"
-    : "bg-blue-200 dark:bg-blue-900/50";
-  const borderColor = isSakit ? "border-red-200 dark:border-red-800" : "border-blue-200 dark:border-blue-800";
+    ? "bg-red-100 dark:bg-red-900/40"
+    : "bg-blue-100 dark:bg-blue-900/40";
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
       className={cn(
-        "flex-1 p-6 rounded-2xl border-2 relative shadow-sm overflow-hidden",
-        isSelected ? activeBg : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700",
-        isSelected && borderColor,
+        "flex-1 p-4 rounded-3xl bg-card border-2 relative",
+        isSelected
+          ? isSakit
+            ? "border-red-100"
+            : "border-blue-100"
+          : "border-transparent",
+        "shadow-sm",
         disabled && "opacity-50",
       )}
       activeOpacity={0.8}
@@ -190,20 +193,17 @@ const UploadArea: React.FC<{
   <TouchableOpacity
     onPress={onPress}
     disabled={disabled}
-    activeOpacity={0.7}
-    className="w-full border-2 border-dashed border-blue-300 dark:border-blue-600 rounded-2xl p-8 items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/10 dark:to-blue-900/20"
+    activeOpacity={0.8}
+    className="w-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-3xl p-8 items-center justify-center bg-gray-50/50 dark:bg-gray-900/20"
   >
-    <View className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 items-center justify-center mb-4 shadow-sm">
-      <Icon as={CloudUpload} className="size-10 text-blue-500" />
+    <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+      <Icon as={CloudUpload} className="size-8 text-gray-400" />
     </View>
-    <Text className="font-bold text-foreground text-base mb-2">
+    <Text className="font-bold text-foreground text-base mb-1">
       Ambil atau Pilih Foto
     </Text>
-    <Text className="text-xs text-muted-foreground text-center">
+    <Text className="text-xs text-muted-foreground">
       Format: JPG, PNG • Max 10MB
-    </Text>
-    <Text className="text-xs text-blue-600 dark:text-blue-400 mt-3 font-medium">
-      Tap untuk memilih foto
     </Text>
   </TouchableOpacity>
 );
@@ -215,22 +215,18 @@ const ImagePreview: React.FC<{
   imageData: ImageData;
   onRemove: () => void;
 }> = ({ imageData, onRemove }) => (
-  <View className="relative w-full h-64 rounded-2xl overflow-hidden bg-gray-100 shadow-md">
+  <View className="relative w-full h-56 rounded-3xl overflow-hidden bg-gray-100">
     <Image
       source={{ uri: imageData.uri }}
       className="w-full h-full"
       resizeMode="cover"
     />
-    <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex-row justify-between items-end">
-      <View>
-        <Text className="text-xs text-gray-200 font-medium">Foto dipilih</Text>
-        <Text className="text-sm text-white font-semibold">{formatFileSize(imageData.fileSize)}</Text>
-      </View>
+    <View className="absolute top-0 left-0 right-0 p-4 flex-row justify-end items-start bg-black/20">
       <TouchableOpacity
         onPress={onRemove}
-        className="w-10 h-10 rounded-full bg-red-500 items-center justify-center shadow-lg active:bg-red-600"
+        className="w-8 h-8 rounded-full bg-red-500 items-center justify-center shadow-sm"
       >
-        <Icon as={Trash2} className="size-5 text-white" />
+        <Icon as={Trash2} className="size-4 text-white" />
       </TouchableOpacity>
     </View>
   </View>
@@ -245,10 +241,10 @@ const AlertBanner: React.FC<{
   message: string;
 }> = ({ type, title, message }) => {
   const colors = {
-    warning: "bg-gradient-to-br from-orange-50 to-orange-100/80 dark:from-orange-900/20 dark:to-orange-900/30 text-orange-900 dark:text-orange-100 border-orange-200 dark:border-orange-700",
-    error: "bg-gradient-to-br from-red-50 to-red-100/80 dark:from-red-900/20 dark:to-red-900/30 text-red-900 dark:text-red-100 border-red-200 dark:border-red-700",
-    success: "bg-gradient-to-br from-green-50 to-green-100/80 dark:from-green-900/20 dark:to-green-900/30 text-green-900 dark:text-green-100 border-green-200 dark:border-green-700",
-    info: "bg-gradient-to-br from-blue-50 to-blue-100/80 dark:from-blue-900/20 dark:to-blue-900/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700",
+    warning: "bg-orange-50 text-orange-700 border-orange-200",
+    error: "bg-red-50 text-red-700 border-red-200",
+    success: "bg-green-50 text-green-700 border-green-200",
+    info: "bg-blue-50 text-blue-700 border-blue-200",
   };
 
   const iconColors = {
@@ -258,26 +254,19 @@ const AlertBanner: React.FC<{
     info: "text-blue-500",
   };
 
-  const icons = {
-    warning: AlertCircle,
-    error: AlertCircle,
-    success: CheckCircle,
-    info: AlertCircle,
-  };
-
   return (
     <View
-      className={cn("p-4 rounded-xl border mb-6 flex-row gap-3", colors[type])}
+      className={cn("p-4 rounded-2xl border mb-4 flex-row gap-3", colors[type])}
     >
       <Icon
-        as={icons[type]}
-        className={cn("size-6 mt-0.5 flex-shrink-0", iconColors[type])}
+        as={AlertCircle}
+        className={cn("size-5 mt-0.5", iconColors[type])}
       />
       <View className="flex-1">
-        <Text className="font-bold text-base mb-1" style={{ color: "inherit" }}>
+        <Text className="font-bold text-sm mb-0.5" style={{ color: "inherit" }}>
           {title}
         </Text>
-        <Text className="text-sm opacity-90" style={{ color: "inherit" }}>
+        <Text className="text-xs opacity-90" style={{ color: "inherit" }}>
           {message}
         </Text>
       </View>
@@ -730,26 +719,21 @@ export default function PerizinanScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="dark" />
 
-      {/* Enhanced Header */}
-      <View className="px-6 py-5 flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-900 dark:to-blue-950 border-b border-blue-700 dark:border-blue-800 shadow-sm">
+      {/* Simple Header */}
+      <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-white/20 dark:bg-white/10 items-center justify-center border border-white/30 active:bg-white/30"
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
           <Icon
             as={ChevronLeft}
-            className="size-6 text-white"
+            className="size-6 text-gray-900 dark:text-gray-100"
           />
         </TouchableOpacity>
 
-        <View className="flex-1 items-center">
-          <Text className="text-xl font-bold text-white">
-            Pengajuan Izin
-          </Text>
-          <Text className="text-xs text-white/70 mt-1">
-            Ajukan izin sesuai kebutuhan Anda
-          </Text>
-        </View>
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Pengajuan Izin
+        </Text>
 
         <View className="w-10" />
       </View>
@@ -770,9 +754,9 @@ export default function PerizinanScreen() {
         )}
 
         {/* Category Selection */}
-        <View className="mb-10">
-          <View className="flex-row items-center gap-2.5 mb-5">
-            <View className="w-1 h-6 bg-blue-600 rounded-full" />
+        <View className="mb-8">
+          <View className="flex-row items-center gap-2 mb-4">
+            <Icon as={Briefcase} className="size-5 text-blue-600" />
             <Text className="font-bold text-lg text-foreground">
               Pilih Kategori Izin
             </Text>
@@ -797,21 +781,21 @@ export default function PerizinanScreen() {
         </View>
 
         {/* Description */}
-        <View className="mb-10">
-          <View className="flex-row items-center gap-2.5 mb-5">
-            <View className="w-1 h-6 bg-blue-600 rounded-full" />
+        <View className="mb-8">
+          <View className="flex-row items-center gap-2 mb-4">
+            <Icon as={FileText} className="size-5 text-blue-600" />
             <Text className="font-bold text-lg text-foreground">
               Detail Keterangan
             </Text>
           </View>
 
-          <View className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/30 dark:to-gray-900/50 rounded-2xl p-5 border border-gray-200 dark:border-gray-700/50 shadow-sm">
+          <View className="bg-gray-50 dark:bg-gray-900/50 rounded-3xl p-4 border border-gray-200 dark:border-gray-800">
             <TextInput
               ref={descriptionInputRef}
               editable={!isDisabled}
-              className="min-h-[140px] text-base text-foreground leading-6"
+              className="min-h-[120px] text-base text-foreground leading-6"
               placeholder="Tuliskan alasan pengajuan Anda secara detail..."
-              placeholderTextColor="#a0a0a0"
+              placeholderTextColor="#9ca3af"
               multiline
               value={formData.description}
               onChangeText={(text) =>
@@ -824,25 +808,15 @@ export default function PerizinanScreen() {
               maxLength={MAX_DESCRIPTION_LENGTH}
             />
 
-            <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-              <View className="flex-row items-center gap-2">
-                <Icon as={AlertCircle} className="size-4 text-blue-500" />
-                <Text className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                  MINIMAL 10 KARAKTER
+            <View className="flex-row justify-between items-center mt-4">
+              <View className="flex-row items-center gap-1.5">
+                <Icon as={AlertCircle} className="size-3.5 text-gray-400" />
+                <Text className="text-xs text-gray-400 font-medium">
+                  MIN. 10 KARAKTER
                 </Text>
               </View>
-              <View className={cn(
-                "px-3 py-1.5 rounded-full",
-                formData.description.trim().length < MIN_DESCRIPTION_LENGTH
-                  ? "bg-red-100 dark:bg-red-900/30"
-                  : "bg-green-100 dark:bg-green-900/30"
-              )}>
-                <Text className={cn(
-                  "text-xs font-bold",
-                  formData.description.trim().length < MIN_DESCRIPTION_LENGTH
-                    ? "text-red-700 dark:text-red-400"
-                    : "text-green-700 dark:text-green-400"
-                )}>
+              <View className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-800">
+                <Text className="text-xs font-bold text-gray-500">
                   {formData.description.length}/{MAX_DESCRIPTION_LENGTH}
                 </Text>
               </View>
@@ -852,9 +826,9 @@ export default function PerizinanScreen() {
 
         {/* Attachment */}
         <View className="mb-10">
-          <View className="flex-row justify-between items-center mb-5">
-            <View className="flex-row items-center gap-2.5">
-              <View className="w-1 h-6 bg-blue-600 rounded-full" />
+          <View className="flex-row justify-between items-center mb-4">
+            <View className="flex-row items-center gap-2">
+              <Icon as={Camera} className="size-5 text-blue-600" />
               <Text className="font-bold text-lg text-foreground">
                 Bukti Lampiran
               </Text>
@@ -883,35 +857,35 @@ export default function PerizinanScreen() {
         <TouchableOpacity
           onPress={uploadPermit}
           disabled={!canSubmit}
-          activeOpacity={canSubmit ? 0.8 : 1}
+          activeOpacity={0.9}
           className={cn(
-            "w-full py-5 rounded-xl flex-row items-center justify-center shadow-lg",
+            "w-full py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-blue-500/30",
             canSubmit
-              ? "bg-gradient-to-r from-blue-600 to-blue-700 shadow-blue-600/50"
-              : "bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 shadow-gray-400/20",
+              ? "bg-blue-600"
+              : "bg-gray-200 dark:bg-gray-800 shadow-none",
           )}
         >
           {uiState.uploading ? (
             <>
-              <View className="w-5 h-5 border-3 border-t-transparent border-white rounded-full mr-3 animate-spin" />
-              <Text className="text-white font-bold text-base">Mengirim...</Text>
+              <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full mr-3 animate-spin" />
+              <Text className="text-white font-bold text-lg">Mengirim...</Text>
             </>
           ) : (
             <>
               <Icon
                 as={Send}
                 className={cn(
-                  "size-5 mr-2.5",
-                  canSubmit ? "text-white" : "text-gray-500",
+                  "size-5 mr-2",
+                  canSubmit ? "text-white" : "text-gray-400",
                 )}
               />
               <Text
                 className={cn(
-                  "font-bold text-base tracking-wide",
-                  canSubmit ? "text-white" : "text-gray-500",
+                  "font-bold text-lg",
+                  canSubmit ? "text-white" : "text-gray-400",
                 )}
               >
-                KIRIM PENGAJUAN
+                Kirim Pengajuan
               </Text>
             </>
           )}
