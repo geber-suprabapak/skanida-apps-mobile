@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
+
 
 import { Text } from "~/components/ui/text";
 import { StatusBar } from "expo-status-bar";

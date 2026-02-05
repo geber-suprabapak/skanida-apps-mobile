@@ -15,7 +15,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 
 import { Button } from "~/components/ui/button";
@@ -509,15 +508,14 @@ export default function ManageAccount() {
                       style={{ width: 112, height: 112, borderRadius: 24 }}
                     />
                   ) : (
-                    <LinearGradient
-                      colors={["#3b82f6", "#2563eb"]}
-                      className="rounded-2xl items-center justify-center"
+                    <View
+                      className="rounded-2xl items-center justify-center bg-blue-600"
                       style={{ width: 112, height: 112 }}
                     >
                       <Text className="text-white text-4xl font-bold">
                         {(name || user?.email || "U").charAt(0).toUpperCase()}
                       </Text>
-                    </LinearGradient>
+                    </View>
                   )}
                   <TouchableOpacity
                     className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center shadow-md bg-blue-600 border-2 border-white"
