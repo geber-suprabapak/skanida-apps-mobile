@@ -2,6 +2,9 @@ import { useState, useCallback, useRef } from "react";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
 import { AttendanceRecord } from "~/components/ui/attendance-calendar/types";
+import { processAttendanceData } from "~/components/ui/attendance-calendar/utils";
+
+const __DEV__ = process.env.NODE_ENV === "development";
 
 export const useOptimizedMonthlyAttendance = (
   userId: string,
@@ -27,7 +30,7 @@ export const useOptimizedMonthlyAttendance = (
       setCacheLoading(false);
       return cachedData;
     } catch (error) {
-      console.error("Error fetching from cache:", error);
+      if (__DEV__) console.error("Error fetching from cache:", error);
       setCacheLoading(false);
       return null;
     }
@@ -42,112 +45,45 @@ export const useOptimizedMonthlyAttendance = (
       const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
       try {
-        console.log(
-          `🔄 Fetching attendance data for ${year}-${month + 1} from server...`,
-        );
-
-        // Fetch attendance records with abort signal
-        const attendancePromise = supabase
-          .from("absences")
-          .select("id, date, status, photo_url, created_at")
-          .eq("user_id", userId)
-          .gte("date", startDate)
-          .lte("date", endDate);
-
-        // Fetch leave requests with abort signal - using proper timestamp filtering
-        const leavePromise = supabase
-          .from("perizinan")
-          .select(
-            "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
-          )
-          .eq("user_id", userId)
-          .gte("tanggal", `${startDate}T00:00:00.000Z`)
-          .lt(
-            "tanggal",
-            `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`,
-          );
-
-        // Execute both queries in parallel
+        // Fetch attendance and leave records in parallel
         const [attendanceResult, leaveResult] = await Promise.all([
-          attendancePromise,
-          leavePromise,
+          supabase
+            .from("absences")
+            .select("id, date, status, photo_url, created_at")
+            .eq("user_id", userId)
+            .gte("date", startDate)
+            .lte("date", endDate),
+          supabase
+            .from("perizinan")
+            .select(
+              "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
+            )
+            .eq("user_id", userId)
+            .gte("tanggal", `${startDate}T00:00:00.000Z`)
+            .lt(
+              "tanggal",
+              `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`,
+            ),
         ]);
 
-        // Check if request was aborted
-        if (signal?.aborted) {
-          console.log("Request aborted");
-          return {};
-        }
+        if (signal?.aborted) return {};
 
         if (attendanceResult.error) throw attendanceResult.error;
         if (leaveResult.error) throw leaveResult.error;
 
-        // Process data
-        const processedData: Record<string, AttendanceRecord> = {};
-
-        // Process attendance records (group by date)
-        const attendanceByDate: Record<string, any[]> = {};
-        attendanceResult.data?.forEach((record) => {
-          if (!attendanceByDate[record.date]) {
-            attendanceByDate[record.date] = [];
-          }
-          attendanceByDate[record.date].push(record);
-        });
-
-        Object.entries(attendanceByDate).forEach(([date, records]) => {
-          const hasAlphaRecord = records.some((r) => r.status === "Alpha");
-          const checkInRecord = records.find(
-            (r) => r.status === "Hadir" || r.status === "Terlambat",
-          );
-          const checkOutRecord = records.find((r) => r.status === "Pulang");
-
-          if (hasAlphaRecord) {
-            processedData[date] = {
-              id: records[0].id,
-              date,
-              status: "absent",
-              photo_url: records[0].photo_url,
-            };
-          } else if (checkInRecord || checkOutRecord) {
-            processedData[date] = {
-              id: records[0].id,
-              date,
-              status: "present",
-              checkInTime: checkInRecord?.created_at,
-              checkOutTime: checkOutRecord?.created_at,
-              photo_url: records[0].photo_url,
-            };
-          }
-        });
-
-        // Process leave requests (these override attendance records)
-        leaveResult.data?.forEach((leave) => {
-          const status = leave.kategori_izin === "sakit" ? "sick" : "leave";
-          processedData[leave.tanggal] = {
-            id: leave.id,
-            date: leave.tanggal,
-            status,
-            leaveType: leave.kategori_izin,
-            description: leave.deskripsi,
-            photo_url: leave.link_foto,
-            approval_status: leave.approval_status,
-          };
-        });
+        // Use shared processing function
+        const processedData = processAttendanceData(
+          attendanceResult.data,
+          leaveResult.data,
+        );
 
         // Cache the results
         await attendanceCache.set(userId, year, month, processedData);
 
-        console.log(
-          `✅ Successfully fetched and cached ${Object.keys(processedData).length} attendance records`,
-        );
         return processedData;
       } catch (error) {
-        if (signal?.aborted) {
-          console.log("Request was aborted");
-          return {};
-        }
-
-        console.error("Error fetching attendance data from server:", error);
+        if (signal?.aborted) return {};
+        if (__DEV__) console.error("Error fetching from server:", error);
         throw error;
       }
     },
@@ -167,7 +103,6 @@ export const useOptimizedMonthlyAttendance = (
         lastFetchRef.current.year === currentRequest.year &&
         lastFetchRef.current.month === currentRequest.month
       ) {
-        console.log("Skipping duplicate request for same month");
         return;
       }
 
@@ -191,15 +126,11 @@ export const useOptimizedMonthlyAttendance = (
           if (cachedData) {
             setData(cachedData);
             setLoading(false);
-            console.log(`📱 Using cached data for ${year}-${month + 1}`);
             return;
           }
         }
 
         // Fetch from server
-        console.log(
-          `🌐 Fetching fresh data for ${year}-${month + 1}${forceRefresh ? " (force refresh)" : ""}`,
-        );
         const serverData = await fetchFromServer(signal);
 
         if (!signal.aborted) {
@@ -207,13 +138,12 @@ export const useOptimizedMonthlyAttendance = (
         }
       } catch (error) {
         if (!signal?.aborted) {
-          console.error("Error in fetchData:", error);
+          if (__DEV__) console.error("Error in fetchData:", error);
           // Fallback to cache if server fails and we don't have data yet
           if (Object.keys(data).length === 0) {
             const cachedData = await fetchFromCache();
             if (cachedData) {
               setData(cachedData);
-              console.log("📱 Using stale cache due to server error");
             } else {
               setData({});
             }
@@ -247,90 +177,39 @@ export const useOptimizedMonthlyAttendance = (
       try {
         // Check if already cached
         const cached = await attendanceCache.get(userId, adjYear, adjMonth);
-        if (!cached) {
-          console.log(`🔮 Prefetching ${adjYear}-${adjMonth + 1}...`);
+        if (cached) continue;
 
-          const startDate = `${adjYear}-${String(adjMonth + 1).padStart(2, "0")}-01`;
-          const lastDay = new Date(adjYear, adjMonth + 1, 0).getDate();
-          const endDate = `${adjYear}-${String(adjMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+        const startDate = `${adjYear}-${String(adjMonth + 1).padStart(2, "0")}-01`;
+        const lastDay = new Date(adjYear, adjMonth + 1, 0).getDate();
+        const endDate = `${adjYear}-${String(adjMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-          // Prefetch in background (no loading state)
-          const [attendanceResult, leaveResult] = await Promise.all([
-            supabase
-              .from("absences")
-              .select("id, date, status, photo_url, created_at")
-              .eq("user_id", userId)
-              .gte("date", startDate)
-              .lte("date", endDate),
-            supabase
-              .from("perizinan")
-              .select(
-                "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
-              )
-              .eq("user_id", userId)
-              .gte("tanggal", startDate)
-              .lte("tanggal", endDate),
-          ]);
+        // Prefetch in background (no loading state)
+        const [attendanceResult, leaveResult] = await Promise.all([
+          supabase
+            .from("absences")
+            .select("id, date, status, photo_url, created_at")
+            .eq("user_id", userId)
+            .gte("date", startDate)
+            .lte("date", endDate),
+          supabase
+            .from("perizinan")
+            .select(
+              "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
+            )
+            .eq("user_id", userId)
+            .gte("tanggal", startDate)
+            .lte("tanggal", endDate),
+        ]);
 
-          if (!attendanceResult.error && !leaveResult.error) {
-            // Process and cache the prefetched data
-            const processedData: Record<string, AttendanceRecord> = {};
-
-            // Process attendance records
-            const attendanceByDate: Record<string, any[]> = {};
-            attendanceResult.data?.forEach((record) => {
-              if (!attendanceByDate[record.date]) {
-                attendanceByDate[record.date] = [];
-              }
-              attendanceByDate[record.date].push(record);
-            });
-
-            Object.entries(attendanceByDate).forEach(([date, records]) => {
-              const hasAlphaRecord = records.some((r) => r.status === "Alpha");
-              const checkInRecord = records.find(
-                (r) => r.status === "Hadir" || r.status === "Terlambat",
-              );
-              const checkOutRecord = records.find((r) => r.status === "Pulang");
-
-              if (hasAlphaRecord) {
-                processedData[date] = {
-                  id: records[0].id,
-                  date,
-                  status: "absent",
-                  photo_url: records[0].photo_url,
-                };
-              } else if (checkInRecord || checkOutRecord) {
-                processedData[date] = {
-                  id: records[0].id,
-                  date,
-                  status: "present",
-                  checkInTime: checkInRecord?.created_at,
-                  checkOutTime: checkOutRecord?.created_at,
-                  photo_url: records[0].photo_url,
-                };
-              }
-            });
-
-            // Process leave requests
-            leaveResult.data?.forEach((leave) => {
-              const status = leave.kategori_izin === "sakit" ? "sick" : "leave";
-              processedData[leave.tanggal] = {
-                id: leave.id,
-                date: leave.tanggal,
-                status,
-                leaveType: leave.kategori_izin,
-                description: leave.deskripsi,
-                photo_url: leave.link_foto,
-                approval_status: leave.approval_status,
-              };
-            });
-
-            await attendanceCache.set(userId, adjYear, adjMonth, processedData);
-            console.log(`✅ Prefetched and cached ${adjYear}-${adjMonth + 1}`);
-          }
+        if (!attendanceResult.error && !leaveResult.error) {
+          // Use shared processing function
+          const processedData = processAttendanceData(
+            attendanceResult.data,
+            leaveResult.data,
+          );
+          await attendanceCache.set(userId, adjYear, adjMonth, processedData);
         }
-      } catch (error) {
-        console.log(`Failed to prefetch ${adjYear}-${adjMonth + 1}:`, error);
+      } catch {
         // Prefetch failures are not critical, continue silently
       }
     }

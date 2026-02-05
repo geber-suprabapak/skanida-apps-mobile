@@ -18,19 +18,17 @@ import MonthYearPicker from "~/components/ui/month-year-picker";
 import useAuthStore from "~/store/authStore";
 
 import { CalendarDayComponent } from "~/components/ui/attendance-calendar/CalendarDay";
-import { DetailCard } from "~/components/ui/attendance-calendar/DetailCard";
 import { useOptimizedMonthlyAttendance } from "~/components/ui/attendance-calendar/hooks";
+import { getMonthDays } from "~/components/ui/attendance-calendar/utils";
 import {
-  getMonthDays,
-  formatTime,
-} from "~/components/ui/attendance-calendar/utils";
-import {
-  CalendarDay,
   AttendanceCalendarProps,
   AttendanceCalendarRef,
 } from "~/components/ui/attendance-calendar/types";
 import { RefreshCw } from "lucide-react-native";
 import { Icon } from "~/components/ui/icon";
+
+const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
 const AttendanceCalendar = forwardRef<
   AttendanceCalendarRef,
   AttendanceCalendarProps
@@ -39,14 +37,11 @@ const AttendanceCalendar = forwardRef<
     { isDarkColorScheme, currentYear: propYear, currentMonth: propMonth },
     ref,
   ) => {
-    const user = useAuthStore((state: any) => state.user);
-    const [detailDay, setDetailDay] = useState<CalendarDay | null>(null);
-    const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+    const user = useAuthStore((state) => state.user);
 
     // Date picker state
     const [pickerDate, setPickerDate] = useState(new Date());
 
-    // Use props if provided, otherwise use current date
     // Use props if provided, otherwise use internal date picker
     const displayYear =
       propYear !== undefined ? propYear : pickerDate.getFullYear();
@@ -82,120 +77,39 @@ const AttendanceCalendar = forwardRef<
           ...day,
           attendance: monthlyAttendance.data?.[day.fullDate],
         }));
-      } catch (error) {
-        console.error("Error generating calendar days:", error);
+      } catch {
         return [];
       }
     }, [displayYear, displayMonth, monthlyAttendance.data]);
 
-    const handleDayPress = useCallback((day: CalendarDay) => {
-      try {
-        // Only allow clicks on current month days
-        if (!day?.isCurrentMonth) {
-          console.log(
-            `🚫 Day ${day?.date} not in current month, ignoring press`,
-          );
-          return;
-        }
-
-        console.log(`📅 Date clicked: ${day.fullDate}`);
-
-        if (day.attendance) {
-          console.log(`✅ Attendance found: ${day.attendance.status}`);
-          if (day.attendance.checkInTime) {
-            console.log(
-              `🕒 Check-in time: ${formatTime(day.attendance.checkInTime)}`,
-            );
-          }
-          if (day.attendance.checkOutTime) {
-            console.log(
-              `🕕 Check-out time: ${formatTime(day.attendance.checkOutTime)}`,
-            );
-          }
-        } else {
-          console.log(`❌ No attendance record found for ${day.fullDate}`);
-        }
-
-        setDetailDay(day);
-        setSelectedDay(day);
-      } catch (error) {
-        console.error("Error in handleDayPress:", error);
-        console.warn("Failed to show date details, please try again");
-      }
-    }, []);
-
     // Effects
     useEffect(() => {
-      try {
-        if (user?.id && typeof monthlyAttendance.refetch === "function") {
-          // Fetch current month data
-          monthlyAttendance.refetch(false);
+      if (user?.id && typeof monthlyAttendance.refetch === "function") {
+        // Fetch current month data
+        monthlyAttendance.refetch(false);
 
-          // Prefetch adjacent months after a short delay
-          const prefetchTimer = setTimeout(() => {
-            if (typeof monthlyAttendance.prefetchAdjacent === "function") {
-              monthlyAttendance.prefetchAdjacent();
-            }
-          }, 1000);
+        // Prefetch adjacent months after a short delay
+        const prefetchTimer = setTimeout(() => {
+          if (typeof monthlyAttendance.prefetchAdjacent === "function") {
+            monthlyAttendance.prefetchAdjacent();
+          }
+        }, 1000);
 
-          return () => clearTimeout(prefetchTimer);
-        } else {
-          console.warn(
-            "Unable to refetch attendance data - missing user ID or refetch function",
-          );
-        }
-      } catch (error) {
-        console.error("Error refetching attendance data:", error);
+        return () => clearTimeout(prefetchTimer);
       }
     }, [displayYear, displayMonth, user?.id, monthlyAttendance]);
 
-    // Clear selected day when month changes
-    useEffect(() => {
-      setDetailDay(null);
-      setSelectedDay(null);
-    }, [displayYear, displayMonth]);
-
     // Handle manual refresh
     const handleRefresh = useCallback(() => {
-      try {
-        if (user?.id && typeof monthlyAttendance.refetch === "function") {
-          monthlyAttendance.refetch(true); // Force refresh
-        }
-      } catch (error) {
-        console.error("Error refreshing data:", error);
+      if (user?.id && typeof monthlyAttendance.refetch === "function") {
+        monthlyAttendance.refetch(true); // Force refresh
       }
     }, [user?.id, monthlyAttendance]);
-
-    // Calculate monthly stats
-    const stats = useMemo(() => {
-      const initialStats = {
-        present: 0,
-        leave: 0,
-        sick: 0,
-        absent: 0,
-      };
-
-      if (!calendarDays.length) return initialStats;
-
-      return calendarDays.reduce((acc, day) => {
-        // Only count current month days that are not in the future
-        if (!day.isCurrentMonth || day.isFuture) return acc;
-
-        if (day.attendance?.status === "present") acc.present++;
-        else if (day.attendance?.status === "leave") acc.leave++;
-        else if (day.attendance?.status === "sick") acc.sick++;
-        else if (!day.attendance) acc.absent++; // Assuming no record in past = absent/alpha
-
-        return acc;
-      }, initialStats);
-    }, [calendarDays]);
 
     // Date picker handlers (if not using props)
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);
     }, []);
-
-    const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
     return (
       <ScrollView className="flex-1 px-4">
@@ -245,7 +159,7 @@ const AttendanceCalendar = forwardRef<
         >
           {/* Day names header */}
           <View className="flex-row mb-4">
-            {dayNames.map((dayName) => (
+            {DAY_NAMES.map((dayName) => (
               <View key={dayName} className="flex-1 items-center">
                 <Text
                   className={`text-xs font-bold uppercase tracking-wider ${
@@ -290,8 +204,6 @@ const AttendanceCalendar = forwardRef<
                           key={`${displayYear}-${displayMonth}-w${weekIndex}-d${dayIndex}-${day?.fullDate || "empty"}`}
                           day={day}
                           isDarkColorScheme={isDarkColorScheme}
-                          onPress={() => handleDayPress(day)}
-                          isSelected={selectedDay?.fullDate === day?.fullDate}
                         />
                       ))}
                   </View>
@@ -300,16 +212,6 @@ const AttendanceCalendar = forwardRef<
             </View>
           )}
         </View>
-
-        {/* Detail Card - shows when a day is tapped */}
-        {detailDay && (
-          <DetailCard
-            key={`detail-${detailDay.fullDate}-${displayYear}-${displayMonth}`}
-            day={detailDay}
-            isDarkColorScheme={isDarkColorScheme}
-            onClose={() => setDetailDay(null)}
-          />
-        )}
       </ScrollView>
     );
   },

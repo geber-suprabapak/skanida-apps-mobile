@@ -99,7 +99,11 @@ export default function Riwayat() {
             await Promise.all([
               attendanceCache.invalidate(user.id, currentYear, currentMonth),
               selectedYear !== currentYear || selectedMonth !== currentMonth
-                ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
+                ? attendanceCache.invalidate(
+                    user.id,
+                    selectedYear,
+                    selectedMonth,
+                  )
                 : Promise.resolve(),
             ]);
 
@@ -187,25 +191,28 @@ export default function Riwayat() {
     try {
       const year = selectedDate.getFullYear();
       const month = selectedDate.getMonth();
-      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
       const lastDay = new Date(year, month + 1, 0).getDate();
-      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
       // Fetch absences for the selected month
       const { data: absences } = await supabase
-        .from('absences')
-        .select('status, created_at, date')
-        .eq('user_id', user.id)
-        .gte('date', startDate)
-        .lte('date', endDate);
+        .from("absences")
+        .select("status, created_at, date")
+        .eq("user_id", user.id)
+        .gte("date", startDate)
+        .lte("date", endDate);
 
       // Fetch leaves for the selected month
       const { data: leaves } = await supabase
-        .from('perizinan')
-        .select('kategori_izin, tanggal')
-        .eq('user_id', user.id)
-        .gte('tanggal', `${startDate}T00:00:00.000Z`)
-        .lt('tanggal', `${year}-${String(month + 2).padStart(2, '0')}-01T00:00:00.000Z`);
+        .from("perizinan")
+        .select("kategori_izin, tanggal")
+        .eq("user_id", user.id)
+        .gte("tanggal", `${startDate}T00:00:00.000Z`)
+        .lt(
+          "tanggal",
+          `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`,
+        );
 
       // Calculate statistics
       let hadirCount = 0;
@@ -223,9 +230,9 @@ export default function Riwayat() {
 
       // Count hadir, tidak hadir, terlambat
       Object.entries(absencesByDate).forEach(([date, records]) => {
-        const hasAlpha = records.some((r) => r.status === 'Alpha');
-        const hasTerlambat = records.some((r) => r.status === 'Terlambat');
-        
+        const hasAlpha = records.some((r) => r.status === "Alpha");
+        const hasTerlambat = records.some((r) => r.status === "Terlambat");
+
         if (hasAlpha) {
           // Alpha is counted as not present, but not displayed in cards now
         } else if (hasTerlambat) {
@@ -247,7 +254,7 @@ export default function Riwayat() {
         izin: izinCount,
       });
     } catch (error) {
-      console.error('Error fetching monthly stats:', error);
+      console.error("Error fetching monthly stats:", error);
     }
   }, [user, selectedDate]);
 

@@ -1,22 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { timeSync } from "./timeSync";
+import { AttendanceRecord } from "~/components/ui/attendance-calendar/types";
 
 interface CacheItem<T> {
   data: T;
   timestamp: number;
   expiry: number;
-}
-
-interface AttendanceRecord {
-  id: string;
-  date: string;
-  status: "present" | "absent" | "leave" | "sick";
-  checkInTime?: string;
-  checkOutTime?: string;
-  leaveType?: string;
-  description?: string;
-  photo_url?: string;
-  approval_status?: "pending" | "approved" | "rejected";
 }
 
 export class AttendanceCache {

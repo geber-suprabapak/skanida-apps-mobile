@@ -1,13 +1,14 @@
 export interface AttendanceRecord {
   id: string;
   date: string;
-  status: "present" | "absent" | "leave" | "sick";
+  status: "present" | "absent" | "leave" | "sick" | "late";
   checkInTime?: string;
   checkOutTime?: string;
   leaveType?: string;
   description?: string;
   photo_url?: string;
   approval_status?: "pending" | "approved" | "rejected";
+  isLate?: boolean;
 }
 
 export interface CalendarDay {
@@ -27,17 +28,4 @@ export interface AttendanceCalendarProps {
 
 export interface AttendanceCalendarRef {
   refetch: (forceRefresh?: boolean) => Promise<void>;
-}
-
-export interface CalendarDayComponentProps {
-  day: CalendarDay;
-  isDarkColorScheme: boolean;
-  onPress: () => void;
-  isSelected: boolean;
-}
-
-export interface DetailCardProps {
-  day: CalendarDay | null;
-  isDarkColorScheme: boolean;
-  onClose?: () => void;
 }
