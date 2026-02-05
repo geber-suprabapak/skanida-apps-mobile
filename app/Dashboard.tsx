@@ -917,7 +917,7 @@ export default function Dashboard() {
                     <LinearGradient
                       colors={
                         derivedActionType === "home"
-                          ? ["#f59e0b", "#d97706", "#b45309"]
+                          ? ["#f59e0b", "#f59e0b"]
                           : ["#3b82f6", "#2563eb", "#1d4ed8"]
                       }
                       start={{ x: 0, y: 0 }}
