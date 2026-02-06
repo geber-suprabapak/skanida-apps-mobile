@@ -1,7 +1,9 @@
+export type AttendanceStatus = "present" | "absent" | "leave" | "sick" | "late";
+
 export interface AttendanceRecord {
   id: string;
   date: string;
-  status: "present" | "absent" | "leave" | "sick" | "late";
+  status: AttendanceStatus;
   checkInTime?: string;
   checkOutTime?: string;
   leaveType?: string;
@@ -19,6 +21,8 @@ export interface CalendarDay {
   isFuture: boolean;
   attendance?: AttendanceRecord;
 }
+
+export type AttendanceMap = Record<string, AttendanceRecord>;
 
 export interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;

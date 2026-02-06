@@ -38,24 +38,17 @@ const AttendanceCalendar = forwardRef<
     ref,
   ) => {
     const user = useAuthStore((state) => state.user);
-
-    // Date picker state
     const [pickerDate, setPickerDate] = useState(new Date());
-
-    // Use props if provided, otherwise use internal date picker
+    const isUsingPicker = propYear === undefined && propMonth === undefined;
     const displayYear =
       propYear !== undefined ? propYear : pickerDate.getFullYear();
     const displayMonth =
       propMonth !== undefined ? propMonth : pickerDate.getMonth();
-
-    // Fetch monthly attendance data with optimized caching
     const monthlyAttendance = useOptimizedMonthlyAttendance(
       user?.id || "",
       displayYear,
       displayMonth,
     );
-
-    // Expose refetch method via ref
     useImperativeHandle(
       ref,
       () => ({
@@ -68,27 +61,16 @@ const AttendanceCalendar = forwardRef<
       }),
       [user?.id, monthlyAttendance],
     );
-
-    // Generate calendar days
     const calendarDays = useMemo(() => {
-      try {
-        const days = getMonthDays(displayYear, displayMonth);
-        return days.map((day) => ({
-          ...day,
-          attendance: monthlyAttendance.data?.[day.fullDate],
-        }));
-      } catch {
-        return [];
-      }
+      const days = getMonthDays(displayYear, displayMonth);
+      return days.map((day) => ({
+        ...day,
+        attendance: monthlyAttendance.data?.[day.fullDate],
+      }));
     }, [displayYear, displayMonth, monthlyAttendance.data]);
-
-    // Effects
     useEffect(() => {
       if (user?.id && typeof monthlyAttendance.refetch === "function") {
-        // Fetch current month data
         monthlyAttendance.refetch(false);
-
-        // Prefetch adjacent months after a short delay
         const prefetchTimer = setTimeout(() => {
           if (typeof monthlyAttendance.prefetchAdjacent === "function") {
             monthlyAttendance.prefetchAdjacent();
@@ -98,50 +80,18 @@ const AttendanceCalendar = forwardRef<
         return () => clearTimeout(prefetchTimer);
       }
     }, [displayYear, displayMonth, user?.id, monthlyAttendance]);
-
-    // Handle manual refresh
     const handleRefresh = useCallback(() => {
       if (user?.id && typeof monthlyAttendance.refetch === "function") {
-        monthlyAttendance.refetch(true); // Force refresh
+        monthlyAttendance.refetch(true);
       }
     }, [user?.id, monthlyAttendance]);
-
-    // Calculate monthly stats
-    const stats = useMemo(() => {
-      const initialStats = {
-        present: 0,
-        leave: 0,
-        sick: 0,
-        absent: 0,
-      };
-
-      if (!calendarDays.length) return initialStats;
-
-      return calendarDays.reduce((acc, day) => {
-        // Only count current month days that are not in the future
-        if (!day.isCurrentMonth || day.isFuture) return acc;
-
-        if (day.attendance?.status === "present") acc.present++;
-        else if (day.attendance?.status === "leave") acc.leave++;
-        else if (day.attendance?.status === "sick") acc.sick++;
-        // TODO: This counts all past days without records as absent, including
-        // weekends and holidays. Consider implementing weekend/holiday filtering
-        // or fetching expected school days from the backend.
-        else if (!day.attendance) acc.absent++;
-
-        return acc;
-      }, initialStats);
-    }, [calendarDays]);
-
-    // Date picker handlers (if not using props)
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);
     }, []);
 
     return (
       <ScrollView className="flex-1 px-4">
-        {/* Month/Year Selector - only show if no props provided */}
-        {propYear === undefined && propMonth === undefined && (
+        {isUsingPicker && (
           <View
             className={`mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"} rounded-lg p-4`}
           >
@@ -178,13 +128,11 @@ const AttendanceCalendar = forwardRef<
           </View>
         )}
 
-        {/* Calendar Card */}
         <View
           className={`rounded-3xl p-5 border border-border shadow-sm ${
             isDarkColorScheme ? "bg-card" : "bg-white"
           }`}
         >
-          {/* Day names header */}
           <View className="flex-row mb-4">
             {DAY_NAMES.map((dayName) => (
               <View key={dayName} className="flex-1 items-center">
@@ -203,7 +151,6 @@ const AttendanceCalendar = forwardRef<
             ))}
           </View>
 
-          {/* Calendar days */}
           {monthlyAttendance.loading ? (
             <View className="items-center justify-center py-20">
               <ActivityIndicator size="large" color="#3b82f6" />

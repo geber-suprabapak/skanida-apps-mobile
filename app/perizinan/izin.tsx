@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {

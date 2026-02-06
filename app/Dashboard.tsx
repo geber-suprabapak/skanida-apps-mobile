@@ -779,9 +779,7 @@ export default function Dashboard() {
             </Text>
 
             {/* Profile & Time Card */}
-            <View
-              className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]"
-            >
+            <View className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]">
               <TouchableOpacity
                 onPress={navigateToEditProfile}
                 activeOpacity={0.8}
@@ -909,7 +907,6 @@ export default function Dashboard() {
                       </Text>
                     </View>
                   ) : (
-
                     <View
                       className={`py-5 items-center justify-center rounded-2xl shadow-sm ${
                         derivedActionType === "home"

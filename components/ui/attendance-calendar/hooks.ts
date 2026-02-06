@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "~/utils/supabase";
 import { attendanceCache } from "~/utils/attendanceCache";
-import { AttendanceRecord } from "~/components/ui/attendance-calendar/types";
+import { AttendanceMap } from "~/components/ui/attendance-calendar/types";
 import { processAttendanceData } from "~/components/ui/attendance-calendar/utils";
 
 const __DEV__ = process.env.NODE_ENV === "development";
@@ -11,7 +11,7 @@ export const useOptimizedMonthlyAttendance = (
   year: number,
   month: number,
 ) => {
-  const [data, setData] = useState<Record<string, AttendanceRecord>>({});
+  const [data, setData] = useState<AttendanceMap>({});
   const [loading, setLoading] = useState(false);
   const [cacheLoading, setCacheLoading] = useState(false);
   const lastFetchRef = useRef<{
@@ -21,18 +21,34 @@ export const useOptimizedMonthlyAttendance = (
   } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const getMonthRange = useCallback((rangeYear: number, rangeMonth: number) => {
+    const startDate = `${rangeYear}-${String(rangeMonth + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(rangeYear, rangeMonth + 1, 0).getDate();
+    const endDate = `${rangeYear}-${String(rangeMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const nextMonthStart =
+      rangeMonth === 11
+        ? `${rangeYear + 1}-01-01`
+        : `${rangeYear}-${String(rangeMonth + 2).padStart(2, "0")}-01`;
+    return { startDate, endDate, nextMonthStart };
+  }, []);
+
+  const toUtcStart = useCallback(
+    (dateString: string) => `${dateString}T00:00:00.000Z`,
+    [],
+  );
+
   const fetchFromCache = useCallback(async () => {
     if (!userId) return null;
 
     setCacheLoading(true);
     try {
       const cachedData = await attendanceCache.get(userId, year, month);
-      setCacheLoading(false);
       return cachedData;
     } catch (error) {
       if (__DEV__) console.error("Error fetching from cache:", error);
-      setCacheLoading(false);
       return null;
+    } finally {
+      setCacheLoading(false);
     }
   }, [userId, year, month]);
 
@@ -40,12 +56,9 @@ export const useOptimizedMonthlyAttendance = (
     async (signal?: AbortSignal) => {
       if (!userId) return {};
 
-      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const { startDate, endDate, nextMonthStart } = getMonthRange(year, month);
 
       try {
-        // Fetch attendance and leave records in parallel
         const [attendanceResult, leaveResult] = await Promise.all([
           supabase
             .from("absences")
@@ -59,11 +72,8 @@ export const useOptimizedMonthlyAttendance = (
               "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
             )
             .eq("user_id", userId)
-            .gte("tanggal", `${startDate}T00:00:00.000Z`)
-            .lt(
-              "tanggal",
-              `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`,
-            ),
+            .gte("tanggal", toUtcStart(startDate))
+            .lt("tanggal", toUtcStart(nextMonthStart)),
         ]);
 
         if (signal?.aborted) return {};
@@ -71,13 +81,11 @@ export const useOptimizedMonthlyAttendance = (
         if (attendanceResult.error) throw attendanceResult.error;
         if (leaveResult.error) throw leaveResult.error;
 
-        // Use shared processing function
         const processedData = processAttendanceData(
           attendanceResult.data,
           leaveResult.data,
         );
 
-        // Cache the results
         await attendanceCache.set(userId, year, month, processedData);
 
         return processedData;
@@ -87,14 +95,13 @@ export const useOptimizedMonthlyAttendance = (
         throw error;
       }
     },
-    [userId, year, month],
+    [userId, year, month, getMonthRange, toUtcStart],
   );
 
   const fetchData = useCallback(
     async (forceRefresh: boolean = false) => {
       if (!userId) return;
 
-      // Avoid duplicate requests for the same month unless force refresh
       const currentRequest = { userId, year, month };
       if (
         !forceRefresh &&
@@ -108,24 +115,21 @@ export const useOptimizedMonthlyAttendance = (
 
       lastFetchRef.current = currentRequest;
 
-      // Cancel any existing request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
 
-      // Create new abort controller
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
+      const hasExistingData = Object.keys(data).length > 0;
 
       try {
         setLoading(true);
 
-        // Skip cache check if force refresh is requested
         if (!forceRefresh) {
           const cachedData = await fetchFromCache();
           if (cachedData) {
             setData(cachedData);
-            setLoading(false);
             return;
           }
         }
@@ -139,8 +143,7 @@ export const useOptimizedMonthlyAttendance = (
       } catch (error) {
         if (!signal?.aborted) {
           if (__DEV__) console.error("Error in fetchData:", error);
-          // Fallback to cache if server fails and we don't have data yet
-          if (Object.keys(data).length === 0) {
+          if (!hasExistingData) {
             const cachedData = await fetchFromCache();
             if (cachedData) {
               setData(cachedData);
@@ -175,15 +178,14 @@ export const useOptimizedMonthlyAttendance = (
 
     for (const { year: adjYear, month: adjMonth } of adjacentMonths) {
       try {
-        // Check if already cached
         const cached = await attendanceCache.get(userId, adjYear, adjMonth);
         if (cached) continue;
 
-        const startDate = `${adjYear}-${String(adjMonth + 1).padStart(2, "0")}-01`;
-        const lastDay = new Date(adjYear, adjMonth + 1, 0).getDate();
-        const endDate = `${adjYear}-${String(adjMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+        const { startDate, endDate, nextMonthStart } = getMonthRange(
+          adjYear,
+          adjMonth,
+        );
 
-        // Prefetch in background (no loading state)
         const [attendanceResult, leaveResult] = await Promise.all([
           supabase
             .from("absences")
@@ -197,23 +199,20 @@ export const useOptimizedMonthlyAttendance = (
               "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
             )
             .eq("user_id", userId)
-            .gte("tanggal", startDate)
-            .lte("tanggal", endDate),
+            .gte("tanggal", toUtcStart(startDate))
+            .lt("tanggal", toUtcStart(nextMonthStart)),
         ]);
 
         if (!attendanceResult.error && !leaveResult.error) {
-          // Use shared processing function
           const processedData = processAttendanceData(
             attendanceResult.data,
             leaveResult.data,
           );
           await attendanceCache.set(userId, adjYear, adjMonth, processedData);
         }
-      } catch {
-        // Prefetch failures are not critical, continue silently
-      }
+      } catch {}
     }
-  }, [userId, year, month]);
+  }, [userId, year, month, getMonthRange, toUtcStart]);
 
   return {
     data,

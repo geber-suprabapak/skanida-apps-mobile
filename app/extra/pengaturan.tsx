@@ -431,9 +431,7 @@ function Pengaturan() {
             activeOpacity={0.9}
             className="overflow-hidden rounded-2xl"
           >
-            <View
-              className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
-            >
+            <View className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600">
               <Icon as={LogOut} className="size-5 text-white mr-3" />
               <Text className="font-bold text-white text-base">
                 Keluar dari Akun

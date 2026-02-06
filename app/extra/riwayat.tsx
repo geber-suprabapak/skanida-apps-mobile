@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { Text } from "~/components/ui/text";
 import { StatusBar } from "expo-status-bar";
