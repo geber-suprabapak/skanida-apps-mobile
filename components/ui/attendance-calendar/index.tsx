@@ -106,6 +106,33 @@ const AttendanceCalendar = forwardRef<
       }
     }, [user?.id, monthlyAttendance]);
 
+    // Calculate monthly stats
+    const stats = useMemo(() => {
+      const initialStats = {
+        present: 0,
+        leave: 0,
+        sick: 0,
+        absent: 0,
+      };
+
+      if (!calendarDays.length) return initialStats;
+
+      return calendarDays.reduce((acc, day) => {
+        // Only count current month days that are not in the future
+        if (!day.isCurrentMonth || day.isFuture) return acc;
+
+        if (day.attendance?.status === "present") acc.present++;
+        else if (day.attendance?.status === "leave") acc.leave++;
+        else if (day.attendance?.status === "sick") acc.sick++;
+        // TODO: This counts all past days without records as absent, including
+        // weekends and holidays. Consider implementing weekend/holiday filtering
+        // or fetching expected school days from the backend.
+        else if (!day.attendance) acc.absent++;
+
+        return acc;
+      }, initialStats);
+    }, [calendarDays]);
+
     // Date picker handlers (if not using props)
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);

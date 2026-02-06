@@ -104,4 +104,36 @@ export const CalendarDayComponent = memo(
   },
 );
 
-CalendarDayComponent.displayName = "CalendarDayComponent";
+    switch (day.attendance.status) {
+      case "present":
+        return `${baseText} text-emerald-600 dark:text-emerald-400`;
+      case "leave":
+        return `${baseText} text-blue-600 dark:text-blue-400`;
+      case "sick":
+        return `${baseText} text-rose-600 dark:text-rose-400`;
+      default:
+        return `${baseText} text-rose-600 dark:text-rose-400`;
+    }
+  };
+
+  const handlePress = () => {
+    if (!day?.isCurrentMonth || day.isFuture) return;
+    onPress?.();
+  };
+
+  return (
+    <TouchableOpacity
+      className={getStatusClasses()}
+      onPress={handlePress}
+      disabled={!day.isCurrentMonth || day.isFuture}
+      activeOpacity={0.7}
+    >
+      <Text className={getTextClasses()}>{day.date}</Text>
+
+      {/* Today Indicator (Small Dot below text) */}
+      {day.isToday && !day.attendance && (
+        <View className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-500" />
+      )}
+    </TouchableOpacity>
+  );
+};

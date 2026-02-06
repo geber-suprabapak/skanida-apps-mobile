@@ -132,9 +132,6 @@ const CategoryCard: React.FC<{
 }> = ({ value, isSelected, onPress, disabled }) => {
   const isSakit = value === "sakit";
   const activeColor = isSakit ? "text-red-500" : "text-blue-500";
-  const activeBg = isSakit
-    ? "bg-red-50 dark:bg-red-900/20"
-    : "bg-blue-50 dark:bg-blue-900/20";
   const iconBg = isSakit
     ? "bg-red-100 dark:bg-red-900/40"
     : "bg-blue-100 dark:bg-blue-900/40";
@@ -241,10 +238,10 @@ const AlertBanner: React.FC<{
   message: string;
 }> = ({ type, title, message }) => {
   const colors = {
-    warning: "bg-orange-50 text-orange-700 border-orange-200",
-    error: "bg-red-50 text-red-700 border-red-200",
-    success: "bg-green-50 text-green-700 border-green-200",
-    info: "bg-blue-50 text-blue-700 border-blue-200",
+    warning: "bg-orange-50 border-orange-200",
+    error: "bg-red-50 border-red-200",
+    success: "bg-green-50 border-green-200",
+    info: "bg-blue-50 border-blue-200",
   };
 
   const iconColors = {
@@ -252,6 +249,13 @@ const AlertBanner: React.FC<{
     error: "text-red-500",
     success: "text-green-500",
     info: "text-blue-500",
+  };
+
+  const textColors = {
+    warning: "text-orange-700",
+    error: "text-red-700",
+    success: "text-green-700",
+    info: "text-blue-700",
   };
 
   return (
@@ -263,10 +267,10 @@ const AlertBanner: React.FC<{
         className={cn("size-5 mt-0.5", iconColors[type])}
       />
       <View className="flex-1">
-        <Text className="font-bold text-sm mb-0.5" style={{ color: "inherit" }}>
+        <Text className={cn("font-bold text-sm mb-0.5", textColors[type])}>
           {title}
         </Text>
-        <Text className="text-xs opacity-90" style={{ color: "inherit" }}>
+        <Text className={cn("text-xs opacity-90", textColors[type])}>
           {message}
         </Text>
       </View>
@@ -541,13 +545,9 @@ export default function PerizinanScreen() {
         },
       );
     } else {
-      Alert.alert(
-        "Upload Foto",
-        "Pilih sumber foto",
-        // @ts-ignore
-        options,
-        { cancelable: true },
-      );
+      Alert.alert("Upload Foto", "Pilih sumber foto", options as any, {
+        cancelable: true,
+      });
     }
   }, [pickFromCamera, pickFromLibrary]);
 
