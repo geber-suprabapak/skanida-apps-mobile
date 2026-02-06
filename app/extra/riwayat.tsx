@@ -304,7 +304,7 @@ export default function Riwayat() {
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen
         options={{
-           headerShown: false,
+          headerShown: false,
         }}
       />
       <StatusBar style="dark" />

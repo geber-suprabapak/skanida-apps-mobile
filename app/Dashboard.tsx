@@ -747,7 +747,7 @@ export default function Dashboard() {
             {/* Top Bar - Logo & Actions */}
             <View className="flex-row items-center justify-between mb-8">
               <View className="flex-row items-center gap-3">
-                <View className="w-12 h-12 rounded-xl border-2 border-transparent dark:border-white dark:bg-white items-center justify-center overflow-hidden">
+                <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
                   <Image
                     source={require("../assets/skanidatransparan.png")}
                     className="w-10 h-10"
