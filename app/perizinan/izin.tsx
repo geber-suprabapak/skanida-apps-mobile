@@ -79,7 +79,7 @@ const CATEGORY_LABELS: Record<PermitCategory, string> = {
 };
 
 const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
-  sakit: "Kesehatan tubuh",
+  sakit: "Kesehatan",
   pergi: "Urusan Pribadi",
 };
 
