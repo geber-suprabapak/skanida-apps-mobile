@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { StatusBar } from "expo-status-bar";
+import axios, { isAxiosError } from "axios";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -36,10 +37,15 @@ import {
   Lock,
   Key,
   CreditCard,
+  CheckCircle,
+  AlertCircle,
+  Scan,
+  Loader2,
 } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 
 // --- Utility Functions ---
 
@@ -99,6 +105,15 @@ interface UserProfile {
   avatar_url?: string;
 }
 
+// Enrollment status types
+type EnrollmentStatus = "loading" | "enrolled" | "not_enrolled" | "error";
+
+interface EnrollmentStatusResponse {
+  is_enrolled: boolean;
+  embedding_count: number;
+  user_id: string;
+}
+
 export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -130,6 +145,11 @@ export default function ManageAccount() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showAllPasswords, setShowAllPasswords] = useState(false);
+
+  // --- Enrollment State ---
+  const [enrollmentStatus, setEnrollmentStatus] =
+    useState<EnrollmentStatus>("loading");
+  const [enrollmentError, setEnrollmentError] = useState<string>("");
 
   // --- Fetch Profile Data ---
   useEffect(() => {
@@ -183,6 +203,56 @@ export default function ManageAccount() {
 
     fetchProfileData();
   }, [user]);
+
+  // --- Check Face Enrollment Status ---
+  const checkEnrollmentStatus = async () => {
+    try {
+      setEnrollmentStatus("loading");
+
+      await ensureSupabaseInitialized();
+
+      const faceApiBaseUrl = await ensureFaceApiConfigured();
+      const enrollStatusUrl = `${faceApiBaseUrl}/v1/enroll/status`;
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setEnrollmentStatus("error");
+        setEnrollmentError("Sesi tidak valid");
+        return;
+      }
+
+      const response = await axios.get<EnrollmentStatusResponse>(
+        enrollStatusUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: "application/json",
+          },
+        },
+      );
+
+      const data = response.data;
+      setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
+    } catch (error) {
+      console.error("Error checking enrollment status:", error);
+      if (isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 404) {
+          setEnrollmentStatus("not_enrolled");
+          return;
+        }
+      }
+      setEnrollmentStatus("error");
+      setEnrollmentError("Gagal terhubung ke server");
+    }
+  };
+
+  useEffect(() => {
+    checkEnrollmentStatus();
+  }, []);
 
   // --- Avatar Logic ---
   const pickImageFromGallery = async () => {
@@ -624,6 +694,101 @@ export default function ManageAccount() {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* Divider */}
+        <View className="h-2 bg-muted/20 my-2" />
+
+        {/* --- SECTION: FACE ENROLLMENT --- */}
+        <View className="px-5 mt-6">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
+            Verifikasi Wajah
+          </Text>
+
+          <Card className="p-5 mb-2 bg-card border-border shadow-sm rounded-2xl">
+            {enrollmentStatus === "loading" && (
+              <View className="flex-row items-center py-2">
+                <ActivityIndicator size="small" color="#3b82f6" />
+                <Text className="text-muted-foreground ml-3">
+                  Memeriksa status enrollment...
+                </Text>
+              </View>
+            )}
+
+            {enrollmentStatus === "enrolled" && (
+              <View className="flex-row items-center py-2">
+                <View className="w-10 h-10 rounded-full bg-green-500/20 items-center justify-center">
+                  <Icon as={CheckCircle} className="size-6 text-green-600" />
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text className="text-foreground font-medium">
+                    Wajah Sudah Terdaftar
+                  </Text>
+                  <Text className="text-xs text-muted-foreground">
+                    Data wajah Anda tersimpan untuk verifikasi absensi
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {enrollmentStatus === "not_enrolled" && (
+              <View>
+                <View className="flex-row items-center py-2 mb-3">
+                  <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
+                    <Icon as={AlertCircle} className="size-6 text-amber-600" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-foreground font-medium">
+                      Wajah Belum Terdaftar
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">
+                      Daftarkan wajah untuk mengaktifkan fitur absensi
+                    </Text>
+                  </View>
+                </View>
+                <Button
+                  variant="default"
+                  size="default"
+                  onPress={() => router.push("./enroll")}
+                  className="w-full bg-blue-600"
+                >
+                  <Icon as={Scan} className="size-5 text-white mr-2" />
+                  <Text className="text-white font-semibold">
+                    Daftar Sekarang
+                  </Text>
+                </Button>
+              </View>
+            )}
+
+            {enrollmentStatus === "error" && (
+              <View>
+                <View className="flex-row items-center py-2 mb-3">
+                  <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                    <Icon as={AlertCircle} className="size-6 text-red-600" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-foreground font-medium">
+                      Gagal Memeriksa Status
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">
+                      {enrollmentError || "Terjadi kesalahan"}
+                    </Text>
+                  </View>
+                </View>
+                <Button
+                  variant="outline"
+                  size="default"
+                  onPress={checkEnrollmentStatus}
+                  className="w-full border-border"
+                >
+                  <Icon as={Loader2} className="size-5 text-foreground mr-2" />
+                  <Text className="text-foreground font-semibold">
+                    Coba Lagi
+                  </Text>
+                </Button>
+              </View>
+            )}
+          </Card>
         </View>
 
         {/* Divider */}
