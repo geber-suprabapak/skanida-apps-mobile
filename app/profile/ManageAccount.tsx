@@ -46,6 +46,7 @@ import {
 import useAuthStore from "~/store/authStore";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
+import { extractAvatarPath, getAvatarSignedUrl } from "~/utils/avatar";
 
 // --- Utility Functions ---
 
@@ -124,6 +125,7 @@ export default function ManageAccount() {
   const [absenceNumber, setAbsenceNumber] = useState("");
   const [className, setClassName] = useState("");
   const [nis, setNis] = useState("");
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -135,7 +137,7 @@ export default function ManageAccount() {
     absenceNumber: "",
     className: "",
     nis: "",
-    avatarUrl: null as string | null,
+    avatarPath: null as string | null,
   });
 
   // --- Password State ---
@@ -186,14 +188,21 @@ export default function ManageAccount() {
         setAbsenceNumber(profileAbsence);
         setClassName(profileClass);
         setNis(profileNis);
-        setAvatarUrl(profileAvatar);
+        const normalizedAvatarPath = profileAvatar
+          ? (extractAvatarPath(profileAvatar) ?? profileAvatar)
+          : null;
+        const resolvedAvatarUrl =
+          await getAvatarSignedUrl(normalizedAvatarPath);
+
+        setAvatarPath(normalizedAvatarPath);
+        setAvatarUrl(resolvedAvatarUrl);
 
         setInitialData({
           name: profileName,
           absenceNumber: profileAbsence,
           className: profileClass,
           nis: profileNis,
-          avatarUrl: profileAvatar,
+          avatarPath: normalizedAvatarPath,
         });
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -328,25 +337,21 @@ export default function ManageAccount() {
 
       if (storageError) throw storageError;
 
-      const { data: urlData } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(fileNameInBucket, 60 * 60 * 24 * 7); // 7 days
-
-      const newAvatarUrl = urlData?.signedUrl;
+      const newAvatarUrl = await getAvatarSignedUrl(fileNameInBucket);
 
       if (!newAvatarUrl) throw new Error("Gagal mendapatkan URL avatar.");
 
       // 2. Auto-Save to Database
       // Update Auth Metadata
       const { error: authError } = await supabase.auth.updateUser({
-        data: { avatar_url: newAvatarUrl },
+        data: { avatar_url: fileNameInBucket },
       });
       if (authError) throw authError;
 
       // Update Profile Table
       const { error: profileError } = await supabase
         .from("user_profiles")
-        .update({ avatar_url: newAvatarUrl })
+        .update({ avatar_url: fileNameInBucket })
         .eq("user_id", user.id);
 
       if (profileError) {
@@ -355,7 +360,7 @@ export default function ManageAccount() {
         await supabase.from("user_profiles").upsert(
           {
             user_id: user.id,
-            avatar_url: newAvatarUrl,
+            avatar_url: fileNameInBucket,
             full_name: name || user.email, // Minimal required fields
           },
           { onConflict: "user_id" },
@@ -363,6 +368,7 @@ export default function ManageAccount() {
       }
 
       // 3. Update Local State
+      setAvatarPath(fileNameInBucket);
       setAvatarUrl(newAvatarUrl);
       await clearProfileCache();
 
@@ -383,7 +389,7 @@ export default function ManageAccount() {
   };
 
   const handleRemoveAvatar = async () => {
-    if (!avatarUrl) {
+    if (!avatarPath) {
       Alert.alert("Info", "Tidak ada foto untuk dihapus.");
       return;
     }
@@ -408,6 +414,7 @@ export default function ManageAccount() {
                 .update({ avatar_url: null })
                 .eq("user_id", user?.id);
 
+              setAvatarPath(null);
               setAvatarUrl(null);
               await clearProfileCache();
 
@@ -469,7 +476,19 @@ export default function ManageAccount() {
 
       if (updateError) throw updateError;
 
-      Alert.alert("Sukses", "Password berhasil diubah.");
+      Alert.alert(
+        "Sukses",
+        "Password berhasil diubah. Demi keamanan, Anda akan logout dan diminta login kembali.",
+        [
+          {
+            text: "OK",
+            onPress: async () => {
+              await supabase.auth.signOut();
+              router.replace("/auth/Login");
+            },
+          },
+        ],
+      );
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -489,7 +508,7 @@ export default function ManageAccount() {
         absenceNumber !== initialData.absenceNumber ||
         className !== initialData.className ||
         nis !== initialData.nis ||
-        avatarUrl !== initialData.avatarUrl;
+        avatarPath !== initialData.avatarPath;
 
       if (hasChanges) {
         Alert.alert(
@@ -516,7 +535,7 @@ export default function ManageAccount() {
       onBackPress,
     );
     return () => backHandler.remove();
-  }, [name, absenceNumber, className, nis, avatarUrl, initialData, router]);
+  }, [name, absenceNumber, className, nis, avatarPath, initialData, router]);
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">

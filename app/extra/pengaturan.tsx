@@ -22,6 +22,7 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+import { getAvatarSignedUrl } from "~/utils/avatar";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
@@ -57,9 +58,10 @@ function Pengaturan() {
   const [profileFullName, setProfileFullName] = useState(
     initialProfileData.name,
   );
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(
+  const [profileAvatarValue, setProfileAvatarValue] = useState<string | null>(
     initialProfileData.avatar,
   );
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
@@ -79,11 +81,32 @@ function Pengaturan() {
     return () => backHandler.remove();
   }, [router]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    if (!profileAvatarValue) {
+      setProfileAvatarUrl(null);
+      return;
+    }
+
+    getAvatarSignedUrl(profileAvatarValue)
+      .then((resolvedUrl) => {
+        if (isActive) setProfileAvatarUrl(resolvedUrl);
+      })
+      .catch(() => {
+        if (isActive) setProfileAvatarUrl(profileAvatarValue);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [profileAvatarValue]);
+
   // Simplified profile data fetching that always gets fresh data from server
   const fetchProfileDataAndUpdateState = useCallback(async () => {
     if (!user) {
       setProfileFullName("Pengguna Skanida");
-      setProfileAvatarUrl(null);
+      setProfileAvatarValue(null);
       return;
     }
 
@@ -93,7 +116,7 @@ function Pengaturan() {
         user.user_metadata?.name || user.email || "Pengguna Skanida";
       const initialAvatar = user.user_metadata?.avatar_url || null;
       setProfileFullName(initialName);
-      setProfileAvatarUrl(initialAvatar);
+      setProfileAvatarValue(initialAvatar);
 
       // Always fetch fresh data from database
       const { data: userProfile, error: profileError } = await supabase
@@ -120,7 +143,7 @@ function Pengaturan() {
           userProfile.avatar_url || user.user_metadata?.avatar_url || null;
 
         setProfileFullName(updatedName);
-        setProfileAvatarUrl(updatedAvatar);
+        setProfileAvatarValue(updatedAvatar);
       }
     } catch (err) {
       console.error("Pengaturan: Unexpected error fetching profile:", err);
@@ -133,7 +156,7 @@ function Pengaturan() {
       fetchProfileDataAndUpdateState();
     } else if (!user) {
       setProfileFullName("Pengguna Skanida");
-      setProfileAvatarUrl(null);
+      setProfileAvatarValue(null);
     }
   }, [user, isFocused, fetchProfileDataAndUpdateState]);
 

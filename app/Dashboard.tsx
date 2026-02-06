@@ -32,6 +32,7 @@ import { attendanceCache } from "~/utils/attendanceCache";
 import { Icon } from "~/components/ui/icon";
 import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
+import { getAvatarSignedUrl } from "~/utils/avatar";
 import {
   Clock,
   Bug,
@@ -118,6 +119,7 @@ export default function Dashboard() {
   const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
     hasCheckedOut: false,
@@ -191,6 +193,30 @@ export default function Dashboard() {
       });
     }
   }, [isFocused]);
+
+  const rawAvatarValue =
+    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!rawAvatarValue) {
+      setAvatarUrl(null);
+      return;
+    }
+
+    getAvatarSignedUrl(rawAvatarValue)
+      .then((resolvedUrl) => {
+        if (isActive) setAvatarUrl(resolvedUrl);
+      })
+      .catch(() => {
+        if (isActive) setAvatarUrl(rawAvatarValue);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [rawAvatarValue]);
 
   // Fetch profile data from Supabase
   const fetchProfileData = useCallback(async () => {
@@ -531,8 +557,6 @@ export default function Dashboard() {
     : "Pengguna";
 
   // Get user's avatar URL prioritizing profile data and falling back to metadata
-  const avatarUrl =
-    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
   const hasCustomAvatar = Boolean(avatarUrl);
 
   const greeting = useMemo(() => {
