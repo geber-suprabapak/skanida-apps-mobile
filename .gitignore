@@ -34,6 +34,4 @@ certs/private-key.pem
 certs/public-key.pem
 
 .serena
-
-# npm lock file (using pnpm)
-package-lock.json
+google-services.json

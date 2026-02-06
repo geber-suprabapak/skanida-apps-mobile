@@ -67,6 +67,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-font",
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/icon.png",
+        color: "#3B82F6",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
@@ -90,10 +97,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    // NOTE: Using .dev suffix for development builds. This will install as a
-    // separate app alongside production builds. Update to production package
-    // name (com.hfzrk.skanidaappsmobile) for release builds.
-    package: "com.hfzrk.skanidaappsmobile.dev",
+    package: "com.hfzrk.skanidaappsmobile",
+    googleServicesFile: "./certs/google-services.json",
     permissions: [
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",

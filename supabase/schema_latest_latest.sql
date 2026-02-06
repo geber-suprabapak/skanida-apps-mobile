@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     class_name TEXT,
     gender TEXT,
     role TEXT,
+    notification_token TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     CONSTRAINT fk_user_profiles_user_id FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -241,6 +242,7 @@ COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pendin
 COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries';
 COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location in meters';
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
+COMMENT ON COLUMN user_profiles.notification_token IS 'Expo push notification token for the user device';
 
 -- ============================================================================
 -- Row Level Security (RLS) Policies
@@ -273,6 +275,13 @@ BEGIN
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='user_profiles_update_own'
   ) THEN
     CREATE POLICY user_profiles_update_own ON user_profiles FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+  
+  -- service_role full access (for face recognition system)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='service_role_full_access_user_profiles'
+  ) THEN
+    CREATE POLICY service_role_full_access_user_profiles ON user_profiles FOR ALL TO service_role USING (true) WITH CHECK (true);
   END IF;
 END $$;
 
@@ -317,6 +326,22 @@ BEGIN
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='perizinan' AND policyname='perizinan_update_own'
   ) THEN
     CREATE POLICY perizinan_update_own ON perizinan FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- biodata_siswa policies: service_role full access, authenticated can read
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='biodata_siswa' AND policyname='service_role_full_access_biodata_siswa'
+  ) THEN
+    CREATE POLICY service_role_full_access_biodata_siswa ON biodata_siswa FOR ALL TO service_role USING (true) WITH CHECK (true);
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='biodata_siswa' AND policyname='authenticated_read_biodata_siswa'
+  ) THEN
+    CREATE POLICY authenticated_read_biodata_siswa ON biodata_siswa FOR SELECT TO authenticated USING (true);
   END IF;
 END $$;
 
@@ -584,15 +609,19 @@ END $$;
 -- Grants and Permissions
 -- ============================================================================
 
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT USAGE ON SCHEMA storage TO anon, authenticated;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE location TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE jadwal_absensi TO anon, authenticated;
+GRANT SELECT ON TABLE biodata_siswa TO service_role, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO anon, authenticated;
+
+-- Grant usage on sequences for service_role (face recognition system)
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role, authenticated;
 
 -- Default privileges for future tables
 DO $$
@@ -680,6 +709,34 @@ $$;
 
 -- Grant execute permission to anon role (for pre-login activation check)
 GRANT EXECUTE ON FUNCTION get_biodata_siswa(TEXT) TO anon;
+
+-- Function to get student info by user_id (for face recognition system)
+CREATE OR REPLACE FUNCTION get_student_by_user_id(p_user_id UUID)
+RETURNS TABLE (
+    nis TEXT,
+    nama TEXT,
+    kelas TEXT,
+    absen INT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        up.nis,
+        bs.nama,
+        bs.kelas,
+        bs.absen
+    FROM user_profiles up
+    INNER JOIN biodata_siswa bs ON up.nis = bs.nis::TEXT
+    WHERE up.user_id = p_user_id
+    LIMIT 1;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_student_by_user_id(UUID) TO service_role, authenticated;
+COMMENT ON FUNCTION get_student_by_user_id(UUID) IS 'Lookup student info by user_id for face recognition system';
 
 -- Function to check nearest location and validate user distance
 CREATE OR REPLACE FUNCTION check_nearest_location(
