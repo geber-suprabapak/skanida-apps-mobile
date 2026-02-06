@@ -37,7 +37,6 @@ import {
   Pencil,
 } from "lucide-react-native";
 import * as Updates from "expo-updates";
-import { LinearGradient } from "expo-linear-gradient";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -279,9 +278,8 @@ function Pengaturan() {
                   </View>
                 ) : (
                   <View className="relative">
-                    <LinearGradient
-                      colors={["#6366f1", "#4f46e5"]}
-                      className="w-18 h-18 rounded-2xl items-center justify-center"
+                    <View
+                      className="w-18 h-18 rounded-2xl items-center justify-center bg-indigo-500"
                       style={{ width: 72, height: 72 }}
                     >
                       <Text className="text-white text-2xl font-bold">
@@ -289,7 +287,7 @@ function Pengaturan() {
                           ?.charAt(0)
                           .toUpperCase() || "U"}
                       </Text>
-                    </LinearGradient>
+                    </View>
                     <TouchableOpacity
                       onPress={() => router.push("/profile/ManageAccount")}
                       activeOpacity={0.8}
@@ -433,17 +431,14 @@ function Pengaturan() {
             activeOpacity={0.9}
             className="overflow-hidden rounded-2xl"
           >
-            <LinearGradient
-              colors={["#ef4444", "#dc2626", "#b91c1c"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              className="py-4 flex-row items-center justify-center rounded-2xl"
+            <View
+              className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
             >
               <Icon as={LogOut} className="size-5 text-white mr-3" />
               <Text className="font-bold text-white text-base">
                 Keluar dari Akun
               </Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         </View>
 

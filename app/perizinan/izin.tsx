@@ -79,7 +79,7 @@ const CATEGORY_LABELS: Record<PermitCategory, string> = {
 };
 
 const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
-  sakit: "Kesehatan Tubuh",
+  sakit: "Kesehatan",
   pergi: "Urusan Pribadi",
 };
 
@@ -794,7 +794,7 @@ export default function PerizinanScreen() {
               ref={descriptionInputRef}
               editable={!isDisabled}
               className="min-h-[120px] text-base text-foreground leading-6"
-              placeholder="Tuliskan alasan pengajuan Anda secara detail..."
+              placeholder="Tuliskan alasan pengajuan izin"
               placeholderTextColor="#9ca3af"
               multiline
               value={formData.description}

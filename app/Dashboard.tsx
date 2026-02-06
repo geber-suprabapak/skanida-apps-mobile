@@ -16,7 +16,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import * as Location from "expo-location";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 
 import * as Sentry from "@sentry/react-native";
@@ -780,12 +779,8 @@ export default function Dashboard() {
             </Text>
 
             {/* Profile & Time Card */}
-            <LinearGradient
-              colors={["#3b82f6", "#1d4ed8"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ borderRadius: 35 }}
-              className="p-5 flex-row items-center shadow-lg shadow-blue-900/20"
+            <View
+              className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]"
             >
               <TouchableOpacity
                 onPress={navigateToEditProfile}
@@ -818,7 +813,7 @@ export default function Dashboard() {
                   {format(currentTime, "HH:mm:ss", { locale: id })}
                 </Text>
               </View>
-            </LinearGradient>
+            </View>
           </View>
 
           {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
@@ -914,22 +909,20 @@ export default function Dashboard() {
                       </Text>
                     </View>
                   ) : (
-                    <LinearGradient
-                      colors={
+
+                    <View
+                      className={`py-5 items-center justify-center rounded-2xl shadow-sm ${
                         derivedActionType === "home"
-                          ? ["#f59e0b", "#d97706", "#b45309"]
-                          : ["#3b82f6", "#2563eb", "#1d4ed8"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      className="py-5 items-center justify-center rounded-2xl shadow-sm"
+                          ? "bg-amber-500"
+                          : "bg-blue-600"
+                      }`}
                     >
                       <Text className="font-bold text-white text-base uppercase tracking-wider">
                         {derivedActionType === "home"
                           ? "PRESENSI PULANG"
                           : "PRESENSI MASUK"}
                       </Text>
-                    </LinearGradient>
+                    </View>
                   )}
                 </TouchableOpacity>
 
