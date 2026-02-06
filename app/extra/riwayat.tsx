@@ -18,10 +18,9 @@ import AttendanceCalendar, {
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, RefreshCw, Calendar } from "lucide-react-native";
-import { attendanceCache } from "~/utils/attendanceCache";
+
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import { timeSync } from "~/utils/timeSync";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -83,35 +82,11 @@ export default function Riwayat() {
     useCallback(() => {
       if (user?.id) {
         const autoRefresh = async () => {
-          try {
-            // Clear cache for current and selected months for fresh data
-            const currentDate = new Date();
-            const selectedYear = selectedDate.getFullYear();
-            const selectedMonth = selectedDate.getMonth();
-            const currentYear = currentDate.getFullYear();
-            const currentMonth = currentDate.getMonth();
-
-            // Clear cache for both current and selected months
-            await Promise.all([
-              attendanceCache.invalidate(user.id, currentYear, currentMonth),
-              selectedYear !== currentYear || selectedMonth !== currentMonth
-                ? attendanceCache.invalidate(
-                    user.id,
-                    selectedYear,
-                    selectedMonth,
-                  )
-                : Promise.resolve(),
-            ]);
-
-            // Trigger calendar refresh
-            if (calendarRef.current) {
-              await calendarRef.current.refetch(true);
-            }
-
-            console.log("📅 Auto-refreshed riwayat data on focus");
-          } catch (error) {
-            console.error("Error auto-refreshing riwayat:", error);
+          // Trigger calendar refresh with fresh data
+          if (calendarRef.current) {
+            await calendarRef.current.refetch(true);
           }
+          console.log("📅 Auto-refreshed riwayat data on focus");
         };
 
         autoRefresh();
@@ -147,38 +122,6 @@ export default function Riwayat() {
     );
     return () => subscription.remove();
   }, [router]);
-
-  // Cache management functions
-  const showCacheInfo = async () => {
-    try {
-      const stats = await attendanceCache.getCacheStats();
-      Alert.alert(
-        "📊 Cache Statistics",
-        `Total cached items: ${stats.totalItems}\nCache size: ${stats.totalSize}\nOldest: ${stats.oldestEntry || "N/A"}\nNewest: ${stats.newestEntry || "N/A"}`,
-        [
-          { text: "Clear Cache", style: "destructive", onPress: clearCache },
-          { text: "Close", style: "cancel" },
-        ],
-      );
-    } catch {
-      Alert.alert("Error", "Failed to get cache statistics");
-    }
-  };
-
-  const clearCache = async () => {
-    try {
-      if (user?.id) {
-        await attendanceCache.invalidateUser(user.id);
-        Alert.alert("✅ Success", "Cache cleared successfully");
-        // Force refresh the calendar after clearing cache
-        if (calendarRef.current) {
-          await calendarRef.current.refetch(true);
-        }
-      }
-    } catch {
-      Alert.alert("❌ Error", "Failed to clear cache");
-    }
-  };
 
   // Fetch monthly statistics
   const fetchMonthlyStats = useCallback(async () => {
@@ -260,20 +203,11 @@ export default function Riwayat() {
 
     setIsRefreshing(true);
     try {
-      if (user?.id) {
-        // Clear cache for selected month first for instant feedback
-        const selectedYear = selectedDate.getFullYear();
-        const selectedMonth = selectedDate.getMonth();
-
-        await attendanceCache.invalidate(user.id, selectedYear, selectedMonth);
-
-        // Trigger calendar refetch with force refresh
-        if (calendarRef.current) {
-          await calendarRef.current.refetch(true);
-        }
-
-        console.log("🔄 Manual refresh completed");
+      // Trigger calendar refetch with force refresh
+      if (calendarRef.current) {
+        await calendarRef.current.refetch(true);
       }
+      console.log("🔄 Manual refresh completed");
     } catch (error) {
       console.error("Error force refreshing:", error);
       Alert.alert("Error", "Failed to refresh data. Please try again.");
@@ -282,22 +216,9 @@ export default function Riwayat() {
     }
   };
 
-  // Optimized date change handler
-  const handleDateChange = async (date: Date) => {
+  // Handle date change
+  const handleDateChange = (date: Date) => {
     setSelectedDate(date);
-
-    // Pre-clear cache for the new month to ensure fresh data
-    if (user?.id) {
-      try {
-        await attendanceCache.invalidate(
-          user.id,
-          date.getFullYear(),
-          date.getMonth(),
-        );
-      } catch (error) {
-        console.error("Error clearing cache for new date:", error);
-      }
-    }
   };
 
   return (

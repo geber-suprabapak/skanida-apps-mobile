@@ -71,13 +71,6 @@ const AttendanceCalendar = forwardRef<
     useEffect(() => {
       if (user?.id && typeof monthlyAttendance.refetch === "function") {
         monthlyAttendance.refetch(false);
-        const prefetchTimer = setTimeout(() => {
-          if (typeof monthlyAttendance.prefetchAdjacent === "function") {
-            monthlyAttendance.prefetchAdjacent();
-          }
-        }, 1000);
-
-        return () => clearTimeout(prefetchTimer);
       }
     }, [displayYear, displayMonth, user?.id, monthlyAttendance]);
     const handleRefresh = useCallback(() => {

@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "~/utils/supabase";
-import { attendanceCache } from "~/utils/attendanceCache";
 import { AttendanceMap } from "~/components/ui/attendance-calendar/types";
 import { processAttendanceData } from "~/components/ui/attendance-calendar/utils";
 
@@ -13,7 +12,6 @@ export const useOptimizedMonthlyAttendance = (
 ) => {
   const [data, setData] = useState<AttendanceMap>({});
   const [loading, setLoading] = useState(false);
-  const [cacheLoading, setCacheLoading] = useState(false);
   const lastFetchRef = useRef<{
     userId: string;
     year: number;
@@ -36,21 +34,6 @@ export const useOptimizedMonthlyAttendance = (
     (dateString: string) => `${dateString}T00:00:00.000Z`,
     [],
   );
-
-  const fetchFromCache = useCallback(async () => {
-    if (!userId) return null;
-
-    setCacheLoading(true);
-    try {
-      const cachedData = await attendanceCache.get(userId, year, month);
-      return cachedData;
-    } catch (error) {
-      if (__DEV__) console.error("Error fetching from cache:", error);
-      return null;
-    } finally {
-      setCacheLoading(false);
-    }
-  }, [userId, year, month]);
 
   const fetchFromServer = useCallback(
     async (signal?: AbortSignal) => {
@@ -86,8 +69,6 @@ export const useOptimizedMonthlyAttendance = (
           leaveResult.data,
         );
 
-        await attendanceCache.set(userId, year, month, processedData);
-
         return processedData;
       } catch (error) {
         if (signal?.aborted) return {};
@@ -121,20 +102,11 @@ export const useOptimizedMonthlyAttendance = (
 
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
-      const hasExistingData = Object.keys(data).length > 0;
 
       try {
         setLoading(true);
 
-        if (!forceRefresh) {
-          const cachedData = await fetchFromCache();
-          if (cachedData) {
-            setData(cachedData);
-            return;
-          }
-        }
-
-        // Fetch from server
+        // Always fetch fresh from server (no caching)
         const serverData = await fetchFromServer(signal);
 
         if (!signal.aborted) {
@@ -143,14 +115,7 @@ export const useOptimizedMonthlyAttendance = (
       } catch (error) {
         if (!signal?.aborted) {
           if (__DEV__) console.error("Error in fetchData:", error);
-          if (!hasExistingData) {
-            const cachedData = await fetchFromCache();
-            if (cachedData) {
-              setData(cachedData);
-            } else {
-              setData({});
-            }
-          }
+          setData({});
         }
       } finally {
         if (!signal?.aborted) {
@@ -158,66 +123,12 @@ export const useOptimizedMonthlyAttendance = (
         }
       }
     },
-    [userId, year, month, fetchFromCache, fetchFromServer, data],
+    [userId, year, month, fetchFromServer],
   );
-
-  // Prefetch adjacent months
-  const prefetchAdjacentMonths = useCallback(async () => {
-    if (!userId) return;
-
-    const adjacentMonths = [
-      {
-        year: month === 0 ? year - 1 : year,
-        month: month === 0 ? 11 : month - 1,
-      },
-      {
-        year: month === 11 ? year + 1 : year,
-        month: month === 11 ? 0 : month + 1,
-      },
-    ];
-
-    for (const { year: adjYear, month: adjMonth } of adjacentMonths) {
-      try {
-        const cached = await attendanceCache.get(userId, adjYear, adjMonth);
-        if (cached) continue;
-
-        const { startDate, endDate, nextMonthStart } = getMonthRange(
-          adjYear,
-          adjMonth,
-        );
-
-        const [attendanceResult, leaveResult] = await Promise.all([
-          supabase
-            .from("absences")
-            .select("id, date, status, photo_url, created_at")
-            .eq("user_id", userId)
-            .gte("date", startDate)
-            .lte("date", endDate),
-          supabase
-            .from("perizinan")
-            .select(
-              "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
-            )
-            .eq("user_id", userId)
-            .gte("tanggal", toUtcStart(startDate))
-            .lt("tanggal", toUtcStart(nextMonthStart)),
-        ]);
-
-        if (!attendanceResult.error && !leaveResult.error) {
-          const processedData = processAttendanceData(
-            attendanceResult.data,
-            leaveResult.data,
-          );
-          await attendanceCache.set(userId, adjYear, adjMonth, processedData);
-        }
-      } catch {}
-    }
-  }, [userId, year, month, getMonthRange, toUtcStart]);
 
   return {
     data,
-    loading: loading || cacheLoading,
+    loading,
     refetch: fetchData,
-    prefetchAdjacent: prefetchAdjacentMonths,
   };
 };
