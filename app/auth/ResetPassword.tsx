@@ -81,7 +81,7 @@ export default function ResetPassword() {
             opened = true;
             break;
           }
-        } catch (err) {
+        } catch {
           // Continue to next scheme
           continue;
         }

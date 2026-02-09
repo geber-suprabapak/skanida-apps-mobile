@@ -17,7 +17,6 @@ import { StatusBar } from "expo-status-bar";
 import { colorScheme } from "nativewind";
 import Constants from "expo-constants";
 
-import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -29,7 +28,6 @@ import {
   ChevronLeft,
   CircleFadingArrowUp,
   LogOut,
-  ChevronRight,
   Moon,
   Sun,
   Shield,

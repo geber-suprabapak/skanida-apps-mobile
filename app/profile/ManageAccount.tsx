@@ -96,7 +96,7 @@ const base64ToUint8Array = (base64: string): Uint8Array => {
 
 // --- Interfaces ---
 
-interface UserProfile {
+interface _UserProfile {
   id: string;
   full_name?: string;
   email?: string;
@@ -424,7 +424,7 @@ export default function ManageAccount() {
               if (userData?.user) setUser(userData.user);
 
               Alert.alert("Sukses", "Foto profil telah dihapus.");
-            } catch (error: any) {
+            } catch {
               Alert.alert("Error", "Gagal menghapus foto profil.");
             } finally {
               setUploadingAvatar(false);

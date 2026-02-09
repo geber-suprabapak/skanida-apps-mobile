@@ -38,16 +38,11 @@ import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
 import {
-  Clock,
   Bug,
   History,
   ClipboardPenLine,
   Settings,
   UserRound,
-  WifiOff,
-  Wifi,
-  MapPin,
-  Calendar,
 } from "lucide-react-native";
 import Constants from "expo-constants";
 import LogoImage from "~/assets/skanidatransparan.png";
@@ -117,9 +112,10 @@ type DayKey = (typeof DAY_KEY_MAP)[number];
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
-  const syncStatus = useTimeSyncStore((state) => state.status);
-  const syncSource = useTimeSyncStore((state) => state.syncSource);
-  const driftDetected = useTimeSyncStore((state) => state.driftDetected);
+  // Retrieve time sync state from store (values used for future debugging/monitoring)
+  const _syncStatus = useTimeSyncStore((state) => state.status);
+  const _syncSource = useTimeSyncStore((state) => state.syncSource);
+  const _driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
   const theme = useThemeStore((state) => state.theme);
   const params = useLocalSearchParams();

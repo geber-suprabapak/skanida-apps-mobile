@@ -106,7 +106,7 @@ const getImageContentType = (uri: string): string => {
   }
 };
 
-const formatFileSize = (bytes: number): string => {
+const _formatFileSize = (bytes: number): string => {
   if (bytes === 0) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB"];

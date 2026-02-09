@@ -53,7 +53,7 @@ export default function Riwayat() {
 
         autoRefresh();
       }
-    }, [user?.id, selectedDate]),
+    }, [user?.id]),
   );
 
   // Fetch monthly stats when date changes
@@ -61,6 +61,7 @@ export default function Riwayat() {
     if (user?.id) {
       fetchMonthlyStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, selectedDate]);
 
   // Handle back button
@@ -157,8 +158,8 @@ export default function Riwayat() {
     }
   }, [user, selectedDate]);
 
-  // Force refresh function for manual data refresh
-  const forceRefresh = async () => {
+  // Force refresh function for manual data refresh (exported for potential future use)
+  const _forceRefresh = async () => {
     if (isRefreshing) return; // Prevent double-refresh
 
     setIsRefreshing(true);
