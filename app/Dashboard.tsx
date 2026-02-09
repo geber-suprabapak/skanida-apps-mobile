@@ -29,7 +29,6 @@ import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
-import useTimeSyncStore from "~/store/timeSyncStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
@@ -112,10 +111,6 @@ type DayKey = (typeof DAY_KEY_MAP)[number];
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
-  // Retrieve time sync state from store (values used for future debugging/monitoring)
-  const _syncStatus = useTimeSyncStore((state) => state.status);
-  const _syncSource = useTimeSyncStore((state) => state.syncSource);
-  const _driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
   const theme = useThemeStore((state) => state.theme);
   const params = useLocalSearchParams();

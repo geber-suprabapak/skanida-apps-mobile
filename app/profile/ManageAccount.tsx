@@ -96,16 +96,6 @@ const base64ToUint8Array = (base64: string): Uint8Array => {
 
 // --- Interfaces ---
 
-interface _UserProfile {
-  id: string;
-  full_name?: string;
-  email?: string;
-  absence_number?: string;
-  class_name?: string;
-  nis?: string;
-  avatar_url?: string;
-}
-
 // Enrollment status types
 type EnrollmentStatus = "loading" | "enrolled" | "not_enrolled" | "error";
 
@@ -449,6 +439,10 @@ export default function ManageAccount() {
       Alert.alert("Error", "Password baru minimal 6 karakter.");
       return;
     }
+    if (currentPassword === newPassword) {
+      Alert.alert("Error", "Password baru harus berbeda dari password lama.");
+      return;
+    }
 
     setPasswordLoading(true);
     try {
@@ -459,8 +453,25 @@ export default function ManageAccount() {
       if (!session?.user?.email) {
         throw new Error("Sesi tidak valid.");
       }
+      const { error: reAuthError } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: currentPassword,
+      });
 
-      // Update Password (Supabase will invalidate current session)
+      if (reAuthError) {
+        // Provide user-friendly error message for incorrect password
+        if (
+          reAuthError.message.toLowerCase().includes("invalid") ||
+          reAuthError.message.toLowerCase().includes("incorrect") ||
+          reAuthError.message.toLowerCase().includes("wrong")
+        ) {
+          throw new Error("Password lama yang Anda masukkan salah.");
+        }
+        throw new Error(
+          reAuthError.message || "Gagal memverifikasi password lama.",
+        );
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });

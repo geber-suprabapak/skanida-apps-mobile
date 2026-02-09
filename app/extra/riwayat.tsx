@@ -3,7 +3,6 @@ import {
   View,
   TouchableOpacity,
   BackHandler,
-  Alert,
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,7 +30,6 @@ export default function Riwayat() {
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const calendarRef = useRef<AttendanceCalendarRef>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [monthlyStats, setMonthlyStats] = useState({
     hadir: 0,
     terlambat: 0,
@@ -157,25 +155,6 @@ export default function Riwayat() {
       console.error("Error fetching monthly stats:", error);
     }
   }, [user, selectedDate]);
-
-  // Force refresh function for manual data refresh (exported for potential future use)
-  const _forceRefresh = async () => {
-    if (isRefreshing) return; // Prevent double-refresh
-
-    setIsRefreshing(true);
-    try {
-      // Trigger calendar refetch with force refresh
-      if (calendarRef.current) {
-        await calendarRef.current.refetch(true);
-      }
-      console.log("🔄 Manual refresh completed");
-    } catch (error) {
-      console.error("Error force refreshing:", error);
-      Alert.alert("Error", "Failed to refresh data. Please try again.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   // Handle date change
   const handleDateChange = (date: Date) => {
