@@ -1,6 +1,6 @@
 import { useIsFocused } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
-import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { colorScheme } from "nativewind";
 import Constants from "expo-constants";
-
+import * as Updates from "expo-updates";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -36,7 +36,6 @@ import {
   Bell,
   BellOff,
 } from "lucide-react-native";
-import * as Updates from "expo-updates";
 import {
   getNotificationPermissionStatus,
   registerAndSaveNotificationToken,
@@ -116,9 +115,9 @@ function Pengaturan() {
     if (!error && data) {
       setProfileName(
         data.full_name ||
-        user.user_metadata?.name ||
-        user.email ||
-        "Pengguna Skanida",
+          user.user_metadata?.name ||
+          user.email ||
+          "Pengguna Skanida",
       );
       setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
     }

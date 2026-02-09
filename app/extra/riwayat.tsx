@@ -37,19 +37,10 @@ export default function Riwayat() {
     izin: 0,
   });
 
-  // Auto-refresh when screen becomes focused
   useFocusEffect(
     useCallback(() => {
-      if (user?.id) {
-        const autoRefresh = async () => {
-          // Trigger calendar refresh with fresh data
-          if (calendarRef.current) {
-            await calendarRef.current.refetch(true);
-          }
-          console.log("📅 Auto-refreshed riwayat data on focus");
-        };
-
-        autoRefresh();
+      if (user?.id && calendarRef.current) {
+        calendarRef.current.refetch(true);
       }
     }, [user?.id]),
   );
@@ -62,21 +53,14 @@ export default function Riwayat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, selectedDate]);
 
-  // Handle back button
   useEffect(() => {
     const onBackPress = () => {
-      try {
-        if (router.canGoBack()) {
-          router.back();
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error("Error in back press handler:", error);
-        return false;
+      if (router.canGoBack()) {
+        router.back();
+        return true;
       }
+      return false;
     };
-
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       onBackPress,
@@ -84,7 +68,6 @@ export default function Riwayat() {
     return () => subscription.remove();
   }, [router]);
 
-  // Fetch monthly statistics
   const fetchMonthlyStats = useCallback(async () => {
     if (!user) return;
 
@@ -95,55 +78,43 @@ export default function Riwayat() {
       const lastDay = new Date(year, month + 1, 0).getDate();
       const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-      // Fetch absences for the selected month
       const { data: absences } = await supabase
         .from("absences")
-        .select("status, created_at, date")
+        .select("status, date")
         .eq("user_id", user.id)
         .gte("date", startDate)
         .lte("date", endDate);
 
-      // Fetch leaves for the selected month
       const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
       const { data: leaves } = await supabase
         .from("perizinan")
-        .select("kategori_izin, tanggal")
+        .select("kategori_izin")
         .eq("user_id", user.id)
         .gte("tanggal", `${startDate}T00:00:00.000Z`)
         .lt("tanggal", nextMonthStart.toISOString());
 
-      // Calculate statistics
       let hadirCount = 0;
       let terlambatCount = 0;
-      let sakitCount = 0;
 
-      // Group absences by date
       const absencesByDate: Record<string, any[]> = {};
       absences?.forEach((record) => {
-        if (!absencesByDate[record.date]) {
-          absencesByDate[record.date] = [];
-        }
+        if (!absencesByDate[record.date]) absencesByDate[record.date] = [];
         absencesByDate[record.date].push(record);
       });
 
-      // Count hadir, tidak hadir, terlambat
-      Object.entries(absencesByDate).forEach(([date, records]) => {
+      Object.values(absencesByDate).forEach((records) => {
         const hasAlpha = records.some((r) => r.status === "Alpha");
         const hasTerlambat = records.some((r) => r.status === "Terlambat");
-
-        if (hasAlpha) {
-          // Alpha is counted as not present, but not displayed in cards now
-        } else if (hasTerlambat) {
-          terlambatCount++;
-        } else {
-          hadirCount++;
+        if (!hasAlpha) {
+          if (hasTerlambat) terlambatCount++;
+          else hadirCount++;
         }
       });
 
-      sakitCount =
-        leaves?.filter((leave) => leave.kategori_izin === "sakit").length || 0;
+      const sakitCount =
+        leaves?.filter((l) => l.kategori_izin === "sakit").length || 0;
       const izinCount =
-        leaves?.filter((leave) => leave.kategori_izin !== "sakit").length || 0;
+        leaves?.filter((l) => l.kategori_izin !== "sakit").length || 0;
 
       setMonthlyStats({
         hadir: hadirCount,
@@ -151,9 +122,7 @@ export default function Riwayat() {
         sakit: sakitCount,
         izin: izinCount,
       });
-    } catch (error) {
-      console.error("Error fetching monthly stats:", error);
-    }
+    } catch {}
   }, [user, selectedDate]);
 
   // Handle date change
@@ -173,15 +142,7 @@ export default function Riwayat() {
       {/* Simple Header */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
-          onPress={() => {
-            try {
-              if (router.canGoBack()) {
-                router.back();
-              }
-            } catch (error) {
-              console.error("Error navigating back:", error);
-            }
-          }}
+          onPress={() => router.canGoBack() && router.back()}
           className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
           <Icon

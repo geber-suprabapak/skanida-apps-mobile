@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
@@ -37,10 +36,6 @@ import {
   CheckCircle2,
 } from "lucide-react-native";
 
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
-
 type PermitCategory = "sakit" | "pergi";
 
 interface ImageData {
@@ -58,11 +53,6 @@ interface UIState {
   uploading: boolean;
   checking: boolean;
 }
-
-// ============================================================================
-// CONSTANTS & CONFIGURATION
-// ============================================================================
-
 const IMAGE_QUALITY = 0.8;
 const IMAGE_FORMAT = "jpeg";
 const STORAGE_BUCKET = "perizinan";
@@ -79,40 +69,16 @@ const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
   sakit: "Kesehatan",
   pergi: "Urusan Pribadi",
 };
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
 const generateFileName = (
   userId: string,
   extension: string = IMAGE_FORMAT,
-): string => {
-  const fileName = `${userId}/${Date.now()}.${extension}`;
-  return fileName;
-};
+): string => `${userId}/${Date.now()}.${extension}`;
 
 const getImageContentType = (uri: string): string => {
-  const extension = uri.split(".").pop()?.toLowerCase();
-
-  switch (extension) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    default:
-      return "image/jpeg";
-  }
+  const ext = uri.split(".").pop()?.toLowerCase();
+  return ext === "png" ? "image/png" : "image/jpeg";
 };
 
-// ============================================================================
-// INTERNAL UI SUBCOMPONENTS
-// ============================================================================
-
-/**
- * CategoryCard - Individual category option
- */
 const CategoryCard: React.FC<{
   value: PermitCategory;
   isSelected: boolean;
@@ -169,9 +135,6 @@ const CategoryCard: React.FC<{
   );
 };
 
-/**
- * UploadArea - Dashed upload container
- */
 const UploadArea: React.FC<{
   onPress: () => void;
   disabled: boolean;
@@ -194,9 +157,6 @@ const UploadArea: React.FC<{
   </TouchableOpacity>
 );
 
-/**
- * ImagePreview - Shows selected image
- */
 const ImagePreview: React.FC<{
   imageData: ImageData;
   onRemove: () => void;
@@ -218,9 +178,6 @@ const ImagePreview: React.FC<{
   </View>
 );
 
-/**
- * AlertBanner - Reusable alert component
- */
 const AlertBanner: React.FC<{
   type: "warning" | "error" | "success" | "info";
   title: string;
@@ -266,10 +223,6 @@ const AlertBanner: React.FC<{
     </View>
   );
 };
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 
 export default function PerizinanScreen() {
   const router = useRouter();

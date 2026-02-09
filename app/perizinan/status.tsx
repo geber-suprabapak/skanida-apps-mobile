@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
@@ -27,10 +26,6 @@ import {
 } from "lucide-react-native";
 import { cn } from "~/lib/utils";
 
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
-
 interface PerizinanRecord {
   id: string;
   kategori_izin: "sakit" | "pergi" | "izin" | "cuti";
@@ -41,10 +36,6 @@ interface PerizinanRecord {
   rejection_reason?: string | null;
   rejected_at?: string | null;
 }
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
 
 const CATEGORY_CONFIG: Record<
   string,
@@ -79,10 +70,6 @@ const STATUS_CONFIG = {
     icon: XCircle,
   },
 };
-
-// ============================================================================
-// HELPER COMPONENTS
-// ============================================================================
 
 function StatusBadge({ status }: { status: string | null }) {
   const config =
@@ -258,10 +245,6 @@ function TopStatusCard({
     </View>
   );
 }
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 
 export default function StatusPerizinanScreen() {
   const router = useRouter();
