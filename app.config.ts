@@ -102,6 +102,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: [
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",
+      "android.permission.POST_NOTIFICATIONS",
     ],
   },
   extra: {

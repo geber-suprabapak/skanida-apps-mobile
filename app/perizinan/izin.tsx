@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
@@ -11,27 +12,29 @@ import {
   ScrollView,
   BackHandler,
   TextInput,
+  Platform,
+  ActionSheetIOS,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { StatusBar } from "expo-status-bar";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
+import { cn } from "~/lib/utils";
 import {
   ChevronLeft,
-  ClipboardPenLine,
   FileText,
   Camera,
   AlertCircle,
   Trash2,
-  Image as ImageIcon,
+  Send,
+  HeartPulse,
+  Briefcase,
+  CloudUpload,
+  CheckCircle2,
 } from "lucide-react-native";
-
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
 
 type PermitCategory = "sakit" | "pergi";
 
@@ -50,11 +53,6 @@ interface UIState {
   uploading: boolean;
   checking: boolean;
 }
-
-// ============================================================================
-// CONSTANTS & CONFIGURATION
-// ============================================================================
-
 const IMAGE_QUALITY = 0.8;
 const IMAGE_FORMAT = "jpeg";
 const STORAGE_BUCKET = "perizinan";
@@ -68,271 +66,168 @@ const CATEGORY_LABELS: Record<PermitCategory, string> = {
 };
 
 const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
-  sakit: "Kondisi kesehatan",
-  pergi: "Keperluan pribadi",
+  sakit: "Kesehatan",
+  pergi: "Urusan Pribadi",
 };
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
 const generateFileName = (
   userId: string,
   extension: string = IMAGE_FORMAT,
-): string => {
-  const fileName = `${userId}/${Date.now()}.${extension}`;
-  return fileName;
-};
+): string => `${userId}/${Date.now()}.${extension}`;
 
 const getImageContentType = (uri: string): string => {
-  const extension = uri.split(".").pop()?.toLowerCase();
-
-  switch (extension) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    default:
-      return "image/jpeg";
-  }
+  const ext = uri.split(".").pop()?.toLowerCase();
+  return ext === "png" ? "image/png" : "image/jpeg";
 };
 
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
-
-// ============================================================================
-// INTERNAL UI SUBCOMPONENTS
-// ============================================================================
-
-/**
- * SectionHeader - Icon + title + subtitle
- */
-const SectionHeader: React.FC<{
-  icon: any;
-  title: string;
-  subtitle: string;
-}> = ({ icon, title, subtitle }) => (
-  <CardHeader className="pb-3">
-    <View className="flex-row items-center">
-      <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-        <Icon as={icon} className="size-5 text-blue-600 dark:text-blue-400" />
-      </View>
-      <View>
-        <CardTitle>
-          <Text variant="h4" className="font-bold text-foreground">
-            {title}
-          </Text>
-        </CardTitle>
-        <Text variant="small" className="text-muted-foreground mt-1">
-          {subtitle}
-        </Text>
-      </View>
-    </View>
-  </CardHeader>
-);
-
-/**
- * CategoryButton - Individual category option
- */
-const CategoryButton: React.FC<{
+const CategoryCard: React.FC<{
   value: PermitCategory;
   isSelected: boolean;
   onPress: () => void;
   disabled: boolean;
-}> = ({ value, isSelected, onPress, disabled }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    disabled={disabled}
-    className={`flex-1 p-4 rounded-xl border-2 transition-all ${
-      isSelected
-        ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950"
-        : "border-border bg-card"
-    } ${disabled ? "opacity-50" : ""}`}
-    activeOpacity={0.7}
-  >
-    <View className="items-center">
-      <View className="mb-3 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
+}> = ({ value, isSelected, onPress, disabled }) => {
+  const isSakit = value === "sakit";
+  const activeColor = isSakit ? "text-red-500" : "text-blue-500";
+  const iconBg = isSakit
+    ? "bg-red-100 dark:bg-red-900/40"
+    : "bg-blue-100 dark:bg-blue-900/40";
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      className={cn(
+        "flex-1 p-4 rounded-3xl bg-card border-2 relative",
+        isSelected
+          ? isSakit
+            ? "border-red-100"
+            : "border-blue-100"
+          : "border-transparent",
+        "shadow-sm",
+        disabled && "opacity-50",
+      )}
+      activeOpacity={0.8}
+    >
+      {isSelected && (
+        <View className="absolute top-3 right-3">
+          <Icon as={CheckCircle2} className={cn("size-5", activeColor)} />
+        </View>
+      )}
+
+      <View
+        className={cn(
+          "w-12 h-12 rounded-2xl items-center justify-center mb-3",
+          iconBg,
+        )}
+      >
         <Icon
-          as={value === "sakit" ? AlertCircle : ClipboardPenLine}
-          className="size-5 text-blue-600 dark:text-blue-400"
+          as={isSakit ? HeartPulse : Briefcase}
+          className={cn("size-6", activeColor)}
         />
       </View>
-      <Text
-        variant="small"
-        className="font-semibold text-center text-foreground"
-      >
+
+      <Text className="font-bold text-lg text-foreground mb-1">
         {CATEGORY_LABELS[value]}
       </Text>
-      <Text
-        variant="small"
-        className="text-xs text-center mt-1 text-muted-foreground"
-      >
+      <Text className="text-xs text-muted-foreground">
         {CATEGORY_DESCRIPTIONS[value]}
       </Text>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
 
-/**
- * ImageUploadButton - Camera or Gallery button
- */
-const ImageUploadButton: React.FC<{
-  type: "camera" | "gallery";
+const UploadArea: React.FC<{
   onPress: () => void;
   disabled: boolean;
-}> = ({ type, onPress, disabled }) => (
+}> = ({ onPress, disabled }) => (
   <TouchableOpacity
     onPress={onPress}
     disabled={disabled}
-    className={`flex-1 p-4 rounded-xl border-2 border-dashed border-border ${
-      disabled ? "opacity-50" : ""
-    }`}
-    activeOpacity={0.7}
+    activeOpacity={0.8}
+    className="w-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-3xl p-8 items-center justify-center bg-gray-50/50 dark:bg-gray-900/20"
   >
-    <View className="items-center">
-      <View className="mb-3 p-2 rounded-full bg-blue-100 dark:bg-blue-900">
-        <Icon
-          as={type === "camera" ? Camera : ImageIcon}
-          className="size-5 text-blue-600 dark:text-blue-400"
-        />
-      </View>
-      <Text variant="small" className="font-medium text-center text-foreground">
-        {type === "camera" ? "Ambil Foto" : "Pilih File"}
-      </Text>
-      <Text
-        variant="small"
-        className="text-xs text-center mt-1 text-muted-foreground"
-      >
-        {type === "camera" ? "Kamera" : "Galeri"}
-      </Text>
+    <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+      <Icon as={CloudUpload} className="size-8 text-gray-400" />
     </View>
+    <Text className="font-bold text-foreground text-base mb-1">
+      Ambil atau Pilih Foto
+    </Text>
+    <Text className="text-xs text-muted-foreground">
+      Format: JPG, PNG • Max 10MB
+    </Text>
   </TouchableOpacity>
 );
 
-/**
- * ImagePreviewCard - Preview with file info and controls
- */
-const ImagePreviewCard: React.FC<{
+const ImagePreview: React.FC<{
   imageData: ImageData;
   onRemove: () => void;
-  onReplace: () => void;
-}> = ({ imageData, onRemove, onReplace }) => (
-  <View className="space-y-4">
-    <View className="relative rounded-xl overflow-hidden">
-      <Image
-        source={{ uri: imageData.uri }}
-        className="w-full h-48"
-        resizeMode="cover"
-      />
-      <View className="absolute inset-0 bg-black/10" />
+}> = ({ imageData, onRemove }) => (
+  <View className="relative w-full h-56 rounded-3xl overflow-hidden bg-gray-100">
+    <Image
+      source={{ uri: imageData.uri }}
+      className="w-full h-full"
+      resizeMode="cover"
+    />
+    <View className="absolute top-0 left-0 right-0 p-4 flex-row justify-end items-start bg-black/20">
       <TouchableOpacity
         onPress={onRemove}
-        className="absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm bg-black/20 dark:bg-white/20 active:bg-black/40"
-        activeOpacity={0.7}
+        className="w-8 h-8 rounded-full bg-red-500 items-center justify-center shadow-sm"
       >
-        <Icon as={Trash2} className="size-5 text-white" />
+        <Icon as={Trash2} className="size-4 text-white" />
       </TouchableOpacity>
     </View>
-
-    <View className="bg-muted/50 p-3 rounded-lg">
-      <View className="flex-row items-center justify-between mb-2">
-        <Text variant="small" className="font-medium text-foreground">
-          ✓ Foto berhasil dipilih
-        </Text>
-        <View className="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900">
-          <Text className="text-xs font-medium text-green-700 dark:text-green-300">
-            Valid
-          </Text>
-        </View>
-      </View>
-      <Text variant="small" className="text-xs text-muted-foreground">
-        Ukuran: {formatFileSize(imageData.fileSize)}
-      </Text>
-    </View>
-
-    <TouchableOpacity
-      onPress={onReplace}
-      className="w-full py-2 px-4 rounded-lg bg-blue-100 dark:bg-blue-900 active:bg-blue-200"
-      activeOpacity={0.7}
-    >
-      <Text className="text-sm font-medium text-center text-blue-700 dark:text-blue-300">
-        Ganti Foto
-      </Text>
-    </TouchableOpacity>
   </View>
 );
 
-/**
- * AlertBanner - Reusable alert component
- */
 const AlertBanner: React.FC<{
   type: "warning" | "error" | "success" | "info";
   title: string;
   message: string;
 }> = ({ type, title, message }) => {
   const colors = {
-    warning: {
-      bg: "bg-yellow-50 dark:bg-yellow-950",
-      border: "border-yellow-500",
-    },
-    error: { bg: "bg-red-50 dark:bg-red-950", border: "border-red-500" },
-    success: {
-      bg: "bg-green-50 dark:bg-green-950",
-      border: "border-green-500",
-    },
-    info: { bg: "bg-blue-50 dark:bg-blue-950", border: "border-blue-500" },
-  };
-
-  const iconBgColors = {
-    warning: "bg-yellow-100 dark:bg-yellow-900",
-    error: "bg-red-100 dark:bg-red-900",
-    success: "bg-green-100 dark:bg-green-900",
-    info: "bg-blue-100 dark:bg-blue-900",
+    warning: "bg-orange-50 border-orange-200",
+    error: "bg-red-50 border-red-200",
+    success: "bg-green-50 border-green-200",
+    info: "bg-blue-50 border-blue-200",
   };
 
   const iconColors = {
-    warning: "text-yellow-600 dark:text-yellow-400",
-    error: "text-red-600 dark:text-red-400",
-    success: "text-green-600 dark:text-green-400",
-    info: "text-blue-600 dark:text-blue-400",
+    warning: "text-orange-500",
+    error: "text-red-500",
+    success: "text-green-500",
+    info: "text-blue-500",
+  };
+
+  const textColors = {
+    warning: "text-orange-700",
+    error: "text-red-700",
+    success: "text-green-700",
+    info: "text-blue-700",
   };
 
   return (
-    <Card
-      className={`mb-4 shadow-sm border-2 ${colors[type].bg} ${colors[type].border}`}
+    <View
+      className={cn("p-4 rounded-2xl border mb-4 flex-row gap-3", colors[type])}
     >
-      <CardContent className="p-4">
-        <View className="flex-row items-start">
-          <View className={`mr-3 p-2 rounded-lg ${iconBgColors[type]}`}>
-            <Icon as={AlertCircle} className={`size-5 ${iconColors[type]}`} />
-          </View>
-          <View className="flex-1">
-            <Text variant="p" className="font-bold text-foreground">
-              {title}
-            </Text>
-            <Text variant="small" className="mt-1 text-foreground">
-              {message}
-            </Text>
-          </View>
-        </View>
-      </CardContent>
-    </Card>
+      <Icon
+        as={AlertCircle}
+        className={cn("size-5 mt-0.5", iconColors[type])}
+      />
+      <View className="flex-1">
+        <Text className={cn("font-bold text-sm mb-0.5", textColors[type])}>
+          {title}
+        </Text>
+        <Text className={cn("text-xs opacity-90", textColors[type])}>
+          {message}
+        </Text>
+      </View>
+    </View>
   );
 };
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const theme = useThemeStore((state) => state.theme);
 
   // ---- State Management ----
   const [formData, setFormData] = useState<FormData>({
@@ -347,6 +242,9 @@ export default function PerizinanScreen() {
   });
 
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [blockingReason, setBlockingReason] = useState<string | undefined>(
+    undefined,
+  );
 
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
@@ -372,7 +270,9 @@ export default function PerizinanScreen() {
   // ---- Handler Functions (defined before effects) ----
 
   const checkTodayIzin = useCallback(
-    async (userId: string): Promise<boolean> => {
+    async (
+      userId: string,
+    ): Promise<{ canSubmit: boolean; reason?: string }> => {
       try {
         const now = new Date();
         const localDate = format(now, "yyyy-MM-dd");
@@ -383,19 +283,50 @@ export default function PerizinanScreen() {
 
         const { data, error } = await supabase
           .from("perizinan")
-          .select("id, tanggal, kategori_izin")
+          .select("id, tanggal, kategori_izin, approval_status")
           .eq("user_id", userId)
           .gte("tanggal", startOfDayUTC)
           .lte("tanggal", endOfDayUTC);
 
         if (error) {
-          return false;
+          return { canSubmit: true }; // Allow on error (fail open)
         }
 
-        const hasSubmittedToday = data && data.length > 0;
-        return hasSubmittedToday;
+        if (!data || data.length === 0) {
+          return { canSubmit: true };
+        }
+
+        // Check if there's any pending or approved perizinan
+        const hasPending = data.some((p) => p.approval_status === "pending");
+        const hasApproved = data.some((p) => p.approval_status === "approved");
+
+        if (hasPending) {
+          return {
+            canSubmit: false,
+            reason:
+              "Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.",
+          };
+        }
+
+        if (hasApproved) {
+          return {
+            canSubmit: false,
+            reason:
+              "Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.",
+          };
+        }
+
+        // All are rejected, check count limit (max 3)
+        if (data.length >= 3) {
+          return {
+            canSubmit: false,
+            reason: "Batas maksimal 3 pengajuan per hari telah tercapai.",
+          };
+        }
+
+        return { canSubmit: true };
       } catch {
-        return false;
+        return { canSubmit: true }; // Allow on error (fail open)
       }
     },
     [],
@@ -412,8 +343,9 @@ export default function PerizinanScreen() {
       }
 
       try {
-        const hasSubmitted = await checkTodayIzin(user.id);
-        setHasSubmittedToday(hasSubmitted);
+        const result = await checkTodayIzin(user.id);
+        setHasSubmittedToday(!result.canSubmit);
+        setBlockingReason(result.reason);
       } catch {
         setHasSubmittedToday(false);
       } finally {
@@ -432,8 +364,9 @@ export default function PerizinanScreen() {
 
         try {
           setUIState((prev) => ({ ...prev, checking: true }));
-          const hasSubmitted = await checkTodayIzin(user.id);
-          setHasSubmittedToday(hasSubmitted);
+          const result = await checkTodayIzin(user.id);
+          setHasSubmittedToday(!result.canSubmit);
+          setBlockingReason(result.reason);
         } catch {
           setHasSubmittedToday(false);
         } finally {
@@ -574,6 +507,31 @@ export default function PerizinanScreen() {
     }
   }, [requestLibraryPermission, handleImageResult]);
 
+  const showImageSourceOptions = useCallback(() => {
+    const options = [
+      { text: "Ambil Foto (Kamera)", onPress: pickFromCamera },
+      { text: "Pilih dari Galeri", onPress: pickFromLibrary },
+      { text: "Batal", style: "cancel", onPress: () => {} },
+    ];
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Batal", "Ambil Foto", "Pilih dari Galeri"],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) pickFromCamera();
+          else if (buttonIndex === 2) pickFromLibrary();
+        },
+      );
+    } else {
+      Alert.alert("Upload Foto", "Pilih sumber foto", options as any, {
+        cancelable: true,
+      });
+    }
+  }, [pickFromCamera, pickFromLibrary]);
+
   const uploadImageToStorage = useCallback(
     async (imageData: ImageData, userId: string): Promise<string> => {
       const contentType = getImageContentType(imageData.uri);
@@ -642,9 +600,9 @@ export default function PerizinanScreen() {
     }): Promise<void> => {
       // Final check before insert
       const finalCheck = await checkTodayIzin(permitData.userId);
-      if (finalCheck) {
+      if (!finalCheck.canSubmit) {
         throw new Error(
-          "Izin sudah diajukan hari ini. Hanya satu pengajuan per hari yang diperbolehkan.",
+          finalCheck.reason || "Tidak dapat mengajukan perizinan saat ini.",
         );
       }
 
@@ -687,12 +645,11 @@ export default function PerizinanScreen() {
       return;
     }
 
-    // Check if user has already submitted izin today
-    const hasSubmittedToday = await checkTodayIzin(user.id);
-    if (hasSubmittedToday) {
+    const result = await checkTodayIzin(user.id);
+    if (!result.canSubmit) {
       Alert.alert(
-        "Izin Sudah Diajukan Hari Ini",
-        "Anda sudah mengajukan izin untuk hari ini. Sistem hanya memperbolehkan satu pengajuan izin per hari.\n\nJika perlu mengubah atau menambah informasi, silakan hubungi admin sekolah.",
+        "Tidak Dapat Mengajukan",
+        result.reason || "Tidak dapat mengajukan perizinan saat ini.",
       );
       return;
     }
@@ -713,28 +670,26 @@ export default function PerizinanScreen() {
       });
 
       setHasSubmittedToday(true);
-      Alert.alert("Success", "Izin berhasil dikirim");
-      router.back();
+      Alert.alert("Berhasil", "Pengajuan izin berhasil dikirim", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     } catch (error: any) {
       const errorMessage = error.message || "Unknown error";
+      if (errorMessage.includes("Gagal membaca file")) return;
 
-      if (errorMessage.includes("Gagal membaca file gambar")) {
-        // Alert already shown in uploadImageToStorage
-        return;
-      }
-
+      const lower = errorMessage.toLowerCase();
       if (
-        errorMessage.includes("network") ||
-        errorMessage.includes("connection") ||
-        errorMessage.toLowerCase().includes("timeout") ||
-        errorMessage.includes("internet")
+        lower.includes("network") ||
+        lower.includes("connection") ||
+        lower.includes("timeout") ||
+        lower.includes("internet")
       ) {
         Alert.alert(
           "Koneksi Bermasalah",
-          "Gagal mengirim izin karena masalah koneksi internet. Mohon periksa koneksi Anda dan coba lagi.",
+          "Gagal mengirim izin karena masalah koneksi. Mohon periksa koneksi Anda dan coba lagi.",
         );
       } else {
-        Alert.alert("Error", `Gagal mengirim izin: ${errorMessage}`);
+        Alert.alert("Gagal Mengirim", errorMessage);
       }
     } finally {
       setUIState((prev) => ({ ...prev, uploading: false }));
@@ -754,241 +709,185 @@ export default function PerizinanScreen() {
   const isDisabled = hasSubmittedToday || uiState.checking || uiState.uploading;
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-      <SafeAreaView className="flex-1 bg-background">
-        {/* Header */}
-        <View className="flex-row items-center p-4 border-b border-border bg-background">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="mr-3"
-            activeOpacity={0.7}
-          >
-            <Icon as={ChevronLeft} className="size-6" />
-          </TouchableOpacity>
-          <View className="flex-1">
-            <Text variant="large">Pengajuan Izin</Text>
+    <SafeAreaView className="flex-1 bg-white dark:bg-background">
+      <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+
+      {/* Simple Header */}
+      <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+        >
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
+        </TouchableOpacity>
+
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Pengajuan Izin
+        </Text>
+
+        <View className="w-10" />
+      </View>
+
+      {/* Content */}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Warnings */}
+        {hasSubmittedToday && !uiState.checking && (
+          <AlertBanner
+            type="warning"
+            title="Tidak Dapat Mengajukan"
+            message={
+              blockingReason ||
+              "Anda tidak dapat mengajukan perizinan saat ini."
+            }
+          />
+        )}
+
+        {/* Category Selection */}
+        <View className="mb-8">
+          <View className="flex-row items-center gap-2 mb-4">
+            <Icon as={Briefcase} className="size-5 text-blue-600" />
+            <Text className="font-bold text-lg text-foreground">
+              Pilih Kategori Izin
+            </Text>
+          </View>
+
+          <View className="flex-row gap-4">
+            {(["sakit", "pergi"] as const).map((catValue) => (
+              <CategoryCard
+                key={catValue}
+                value={catValue}
+                isSelected={formData.category === catValue}
+                onPress={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    category: catValue,
+                  }))
+                }
+                disabled={isDisabled}
+              />
+            ))}
           </View>
         </View>
 
-        <ScrollView
-          className="flex-1 bg-background"
-          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Already Submitted Today Warning */}
-          {hasSubmittedToday && !uiState.checking && (
-            <AlertBanner
-              type="warning"
-              title="Izin Sudah Diajukan Hari Ini"
-              message="Anda sudah mengajukan izin untuk hari ini. Hanya satu pengajuan izin yang diperbolehkan per hari."
-            />
-          )}
-
-          {/* Loading Check */}
-          {uiState.checking && (
-            <AlertBanner
-              type="info"
-              title="Memeriksa Status"
-              message="Memeriksa status pengajuan hari ini..."
-            />
-          )}
-
-          {/* Category Selection Card */}
-          <Card
-            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
-          >
-            <SectionHeader
-              icon={ClipboardPenLine}
-              title="Kategori Izin"
-              subtitle="Pilih jenis izin yang sesuai"
-            />
-            <CardContent>
-              <View className="flex-row gap-3">
-                {(["sakit", "pergi"] as const).map((catValue) => (
-                  <CategoryButton
-                    key={catValue}
-                    value={catValue}
-                    isSelected={formData.category === catValue}
-                    onPress={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        category: catValue,
-                      }))
-                    }
-                    disabled={isDisabled}
-                  />
-                ))}
-              </View>
-            </CardContent>
-          </Card>
-
-          {/* Description Card */}
-          <Card
-            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
-          >
-            <SectionHeader
-              icon={FileText}
-              title="Deskripsi"
-              subtitle="Jelaskan alasan pengajuan izin Anda"
-            />
-            <CardContent>
-              <View className="rounded-xl border-2 border-border overflow-hidden bg-card">
-                <TextInput
-                  ref={descriptionInputRef}
-                  editable={!isDisabled}
-                  className="min-h-[100px] max-h-[160px] text-base border-0 p-3 text-foreground bg-transparent"
-                  placeholder="Contoh: Sakit demam dan perlu istirahat di rumah..."
-                  multiline
-                  value={formData.description}
-                  onChangeText={(text) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: text.slice(0, MAX_DESCRIPTION_LENGTH),
-                    }))
-                  }
-                  textAlignVertical="top"
-                  numberOfLines={5}
-                  maxLength={MAX_DESCRIPTION_LENGTH}
-                  scrollEnabled={true}
-                  autoCorrect={false}
-                  blurOnSubmit={false}
-                  returnKeyType="default"
-                  style={{
-                    textAlignVertical: "top",
-                    lineHeight: 22,
-                    minHeight: 100,
-                    maxHeight: 160,
-                  }}
-                />
-              </View>
-            </CardContent>
-          </Card>
-
-          {/* Photo Upload Card */}
-          <Card
-            className={`mb-4 shadow-sm bg-card ${isDisabled ? "opacity-60" : ""}`}
-          >
-            <CardHeader className="pb-3">
-              <View className="flex-row items-center">
-                <View className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                  <Icon
-                    as={Camera}
-                    className="size-5 text-blue-600 dark:text-blue-400"
-                  />
-                </View>
-                <View className="flex-1">
-                  <CardTitle>
-                    <Text variant="h4" className="font-bold text-foreground">
-                      Lampiran Foto *
-                    </Text>
-                  </CardTitle>
-                  <Text variant="small" className="text-muted-foreground mt-1">
-                    Wajib - Tambahkan bukti pendukung
-                  </Text>
-                </View>
-                {formData.image && (
-                  <View className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900">
-                    <Text className="text-xs font-medium text-green-700 dark:text-green-300">
-                      ✓ Foto dipilih
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </CardHeader>
-            <CardContent>
-              {!formData.image ? (
-                <View className="space-y-3">
-                  <View className="flex-row gap-3">
-                    <ImageUploadButton
-                      type="camera"
-                      onPress={pickFromCamera}
-                      disabled={isDisabled}
-                    />
-                    <ImageUploadButton
-                      type="gallery"
-                      onPress={pickFromLibrary}
-                      disabled={isDisabled}
-                    />
-                  </View>
-                  <Text className="text-xs text-center text-muted-foreground">
-                    Format: JPG, PNG • Maksimal 10MB • Wajib dilampirkan
-                  </Text>
-                </View>
-              ) : (
-                <ImagePreviewCard
-                  imageData={formData.image}
-                  onRemove={() =>
-                    setFormData((prev) => ({ ...prev, image: null }))
-                  }
-                  onReplace={() => {
-                    setFormData((prev) => ({ ...prev, image: null }));
-                    setTimeout(() => pickFromCamera(), 100);
-                  }}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Submit Button */}
-          <View className="mt-6">
-            <TouchableOpacity
-              disabled={!canSubmit}
-              onPress={uploadPermit}
-              className={`w-full py-3 rounded-xl items-center justify-center ${
-                canSubmit
-                  ? "bg-blue-600 dark:bg-blue-700 active:bg-blue-700"
-                  : "bg-gray-400 dark:bg-gray-600"
-              }`}
-              activeOpacity={0.7}
-            >
-              {uiState.uploading ? (
-                <>
-                  <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mb-2" />
-                  <Text variant="p" className="font-semibold text-white">
-                    Mengirim...
-                  </Text>
-                </>
-              ) : hasSubmittedToday ? (
-                <Text variant="p" className="font-semibold text-white">
-                  Sudah Diajukan Hari Ini
-                </Text>
-              ) : uiState.checking ? (
-                <>
-                  <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mb-2" />
-                  <Text variant="p" className="font-semibold text-white">
-                    Memeriksa...
-                  </Text>
-                </>
-              ) : (
-                <Text variant="p" className="font-semibold text-white">
-                  Kirim Pengajuan Izin
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Validation Messages */}
-            {!isFormValid && !hasSubmittedToday && (
-              <View className="mt-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
-                <Text className="text-xs text-yellow-700 dark:text-yellow-300">
-                  {!validation.category && "• Pilih kategori izin"}
-                  {validation.category &&
-                    !validation.description &&
-                    "• Deskripsi belum memenuhi syarat"}
-                  {validation.category &&
-                    validation.description &&
-                    !validation.image &&
-                    "• Foto bukti belum dilampirkan"}
-                </Text>
-              </View>
-            )}
+        {/* Description */}
+        <View className="mb-8">
+          <View className="flex-row items-center gap-2 mb-4">
+            <Icon as={FileText} className="size-5 text-blue-600" />
+            <Text className="font-bold text-lg text-foreground">
+              Detail Keterangan
+            </Text>
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </>
+
+          <View className="bg-gray-50 dark:bg-gray-900/50 rounded-3xl p-4 border border-gray-200 dark:border-gray-800">
+            <TextInput
+              ref={descriptionInputRef}
+              editable={!isDisabled}
+              className="min-h-[120px] text-base text-foreground leading-6"
+              placeholder="Tuliskan alasan pengajuan izin"
+              placeholderTextColor="#9ca3af"
+              multiline
+              value={formData.description}
+              onChangeText={(text) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: text.slice(0, MAX_DESCRIPTION_LENGTH),
+                }))
+              }
+              textAlignVertical="top"
+              maxLength={MAX_DESCRIPTION_LENGTH}
+            />
+
+            <View className="flex-row justify-between items-center mt-4">
+              <View className="flex-row items-center gap-1.5">
+                <Icon as={AlertCircle} className="size-3.5 text-gray-400" />
+                <Text className="text-xs text-gray-400 font-medium">
+                  MIN. 10 KARAKTER
+                </Text>
+              </View>
+              <View className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-800">
+                <Text className="text-xs font-bold text-gray-500">
+                  {formData.description.length}/{MAX_DESCRIPTION_LENGTH}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Attachment */}
+        <View className="mb-10">
+          <View className="flex-row justify-between items-center mb-4">
+            <View className="flex-row items-center gap-2">
+              <Icon as={Camera} className="size-5 text-blue-600" />
+              <Text className="font-bold text-lg text-foreground">
+                Bukti Lampiran
+              </Text>
+            </View>
+            <View className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
+              <Text className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                WAJIB
+              </Text>
+            </View>
+          </View>
+
+          {!formData.image ? (
+            <UploadArea
+              onPress={showImageSourceOptions}
+              disabled={isDisabled}
+            />
+          ) : (
+            <ImagePreview
+              imageData={formData.image}
+              onRemove={() => setFormData((prev) => ({ ...prev, image: null }))}
+            />
+          )}
+        </View>
+
+        {/* Submit Button */}
+        <TouchableOpacity
+          onPress={uploadPermit}
+          disabled={!canSubmit}
+          activeOpacity={0.9}
+          className={cn(
+            "w-full py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-blue-500/30",
+            canSubmit
+              ? "bg-blue-600"
+              : "bg-gray-200 dark:bg-gray-800 shadow-none",
+          )}
+        >
+          {uiState.uploading ? (
+            <>
+              <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full mr-3 animate-spin" />
+              <Text className="text-white font-bold text-lg">Mengirim...</Text>
+            </>
+          ) : (
+            <>
+              <Icon
+                as={Send}
+                className={cn(
+                  "size-5 mr-2",
+                  canSubmit ? "text-white" : "text-gray-400",
+                )}
+              />
+              <Text
+                className={cn(
+                  "font-bold text-lg",
+                  canSubmit ? "text-white" : "text-gray-400",
+                )}
+              >
+                Kirim Pengajuan
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

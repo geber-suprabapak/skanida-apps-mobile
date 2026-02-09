@@ -1,13 +1,16 @@
+export type AttendanceStatus = "present" | "absent" | "leave" | "sick" | "late";
+
 export interface AttendanceRecord {
   id: string;
   date: string;
-  status: "present" | "absent" | "leave" | "sick";
+  status: AttendanceStatus;
   checkInTime?: string;
   checkOutTime?: string;
   leaveType?: string;
   description?: string;
   photo_url?: string;
   approval_status?: "pending" | "approved" | "rejected";
+  isLate?: boolean;
 }
 
 export interface CalendarDay {
@@ -19,6 +22,8 @@ export interface CalendarDay {
   attendance?: AttendanceRecord;
 }
 
+export type AttendanceMap = Record<string, AttendanceRecord>;
+
 export interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;
   currentYear?: number;
@@ -27,17 +32,4 @@ export interface AttendanceCalendarProps {
 
 export interface AttendanceCalendarRef {
   refetch: (forceRefresh?: boolean) => Promise<void>;
-}
-
-export interface CalendarDayComponentProps {
-  day: CalendarDay;
-  isDarkColorScheme: boolean;
-  onPress: () => void;
-  isSelected: boolean;
-}
-
-export interface DetailCardProps {
-  day: CalendarDay | null;
-  isDarkColorScheme: boolean;
-  onClose?: () => void;
 }

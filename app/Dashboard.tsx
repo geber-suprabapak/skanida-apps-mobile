@@ -10,10 +10,16 @@ import {
   BackHandler,
   Alert,
   RefreshControl,
+  Animated,
+  Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  useSafeAreaInsets,
+  SafeAreaView,
+} from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import * as Location from "expo-location";
+import { StatusBar } from "expo-status-bar";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -21,29 +27,24 @@ import * as Sentry from "@sentry/react-native";
 import { Avatar } from "~/components/ui/avatar";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
-import useTimeSyncStore from "~/store/timeSyncStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { attendanceCache } from "~/utils/attendanceCache";
+
 import { Icon } from "~/components/ui/icon";
 import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
+import { getAvatarSignedUrl } from "~/utils/avatar";
 import {
-  Clock,
   Bug,
-  CheckCircle,
-  AlertCircle,
-  UserCheck,
   History,
   ClipboardPenLine,
   Settings,
   UserRound,
-  WifiOff,
-  Wifi,
 } from "lucide-react-native";
 import Constants from "expo-constants";
+import LogoImage from "~/assets/skanidatransparan.png";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -108,14 +109,14 @@ const DAY_KEY_MAP = [
 type DayKey = (typeof DAY_KEY_MAP)[number];
 
 export default function Dashboard() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
-  const syncStatus = useTimeSyncStore((state) => state.status);
-  const syncSource = useTimeSyncStore((state) => state.syncSource);
-  const driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
+  const theme = useThemeStore((state) => state.theme);
   const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
     hasCheckedOut: false,
@@ -189,6 +190,30 @@ export default function Dashboard() {
       });
     }
   }, [isFocused]);
+
+  const rawAvatarValue =
+    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!rawAvatarValue) {
+      setAvatarUrl(null);
+      return;
+    }
+
+    getAvatarSignedUrl(rawAvatarValue)
+      .then((resolvedUrl) => {
+        if (isActive) setAvatarUrl(resolvedUrl);
+      })
+      .catch(() => {
+        if (isActive) setAvatarUrl(rawAvatarValue);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [rawAvatarValue]);
 
   // Fetch profile data from Supabase
   const fetchProfileData = useCallback(async () => {
@@ -529,28 +554,27 @@ export default function Dashboard() {
     : "Pengguna";
 
   // Get user's avatar URL prioritizing profile data and falling back to metadata
-  const avatarUrl =
-    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
   const hasCustomAvatar = Boolean(avatarUrl);
+
+  const greeting = useMemo(() => {
+    const hours = currentTime.getHours();
+    if (hours >= 3 && hours < 11) {
+      return "Selamat Pagi";
+    } else if (hours >= 11 && hours < 15) {
+      return "Selamat Siang";
+    } else if (hours >= 15 && hours < 18) {
+      return "Selamat Sore";
+    } else {
+      return "Selamat Malam";
+    }
+  }, [currentTime]);
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
-  const navigateToHistory = async () => {
-    try {
-      // Force refresh current month cache before navigating
-      if (user?.id) {
-        await attendanceCache.forceRefreshCurrentMonth(user.id);
-      }
-      router.push("/extra/riwayat");
-    } catch (error) {
-      console.error("Error preparing riwayat navigation:", error);
-      // Still navigate even if cache refresh fails
-      router.push("/extra/riwayat");
-    }
-  };
+  const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
-  const navigateToEditProfile = () => router.push("/profile/EditProfile");
+  const navigateToPerizinan = () => router.push("/perizinan/status"); // Navigate to status page first
+  const navigateToEditProfile = () => router.push("/profile/ManageAccount");
 
   // Prevent back navigation
   useEffect(() => {
@@ -578,45 +602,6 @@ export default function Dashboard() {
 
     return () => backHandler.remove();
   }, []);
-
-  // Get status badge color and text
-  const getStatusBadge = () => {
-    switch (attendanceStatus.todayStatus) {
-      case "present":
-        if (attendanceStatus.checkInStatus === "Terlambat") {
-          return {
-            color: "bg-orange-500",
-            text: "Terlambat",
-            textColor: "text-white",
-          };
-        }
-        return {
-          color: "bg-green-500",
-          text: "Hadir",
-          textColor: "text-white",
-        };
-      case "leave":
-        return {
-          color: "bg-yellow-500",
-          text: "Izin",
-          textColor: "text-white",
-        };
-      case "absent":
-        return {
-          color: "bg-red-500",
-          text: "Tidak Hadir",
-          textColor: "text-white",
-        };
-      default:
-        return {
-          color: "bg-gray-500",
-          text: "Pending",
-          textColor: "text-white",
-        };
-    }
-  };
-
-  const statusBadge = getStatusBadge();
 
   const derivedActionType =
     attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
@@ -657,37 +642,6 @@ export default function Dashboard() {
     },
     [currentTime],
   );
-
-  const presentScheduleText = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = normalizeTimeString(attendanceSchedule.mulai_masuk);
-    if (!start) return null;
-
-    const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
-    const windowText = end ? `${start} - ${end}` : start;
-
-    let result = `Waktu presensi masuk: ${windowText}`;
-    if (attendanceSchedule.kompensasi_waktu) {
-      result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
-    } else {
-      result += ".";
-    }
-
-    return result;
-  }, [attendanceSchedule]);
-
-  const pulangScheduleText = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = normalizeTimeString(attendanceSchedule.mulai_pulang);
-    if (!start) return null;
-
-    const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
-    const windowText = end ? `${start} - ${end}` : start;
-
-    return `Waktu presensi pulang: ${windowText} WIB.`;
-  }, [attendanceSchedule]);
 
   const presentScheduleWindow = useMemo(() => {
     if (!attendanceSchedule) return null;
@@ -739,31 +693,6 @@ export default function Dashboard() {
     return true;
   }, [currentTime, pulangScheduleWindow]);
 
-  const primaryActionMessage = useMemo(() => {
-    if (derivedActionType === "home") {
-      if (pulangScheduleText) {
-        return pulangScheduleText;
-      }
-
-      return validationStatus.message;
-    }
-
-    if (derivedActionType === "present") {
-      if (presentScheduleText) {
-        return presentScheduleText;
-      }
-
-      return validationStatus.message;
-    }
-
-    return validationStatus.message;
-  }, [
-    derivedActionType,
-    presentScheduleText,
-    pulangScheduleText,
-    validationStatus.message,
-  ]);
-
   const scheduleAllowsAction = useMemo(() => {
     if (derivedActionType === "home") {
       return isWithinPulangWindow;
@@ -779,305 +708,296 @@ export default function Dashboard() {
   const isPrimaryActionDisabled =
     refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
 
+  // Animated pulse for the main action button
+  const pulseAnim = useMemo(() => new Animated.Value(1), []);
+
+  useEffect(() => {
+    if (!isPrimaryActionDisabled) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.02,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [isPrimaryActionDisabled, pulseAnim]);
+
   return (
     <>
       <Stack.Screen
         options={{
           headerShown: false,
-          gestureEnabled: false, // Disable swipe back on iOS
+          gestureEnabled: false,
         }}
       />
-      {/* Apply dynamic background based on theme */}
-      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        {/* Main container with theme-based background */}
-        <ScrollView
-          className="flex-1 bg-background"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          {/* --- Header Section --- */}
-          <View className="px-6 pt-4 pb-6 bg-background">
-            <View className="flex-row items-center justify-between mb-4">
-              <TouchableOpacity
-                className="flex-row items-center flex-1"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.85}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                {hasCustomAvatar ? (
-                  <Avatar
-                    size="md"
-                    fallback={displayName.charAt(0).toUpperCase() || "?"}
-                    className="mr-3"
-                    source={avatarUrl ?? undefined}
-                  />
-                ) : (
-                  <View className="mr-3">
-                    <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
-                      <Icon
-                        as={UserRound}
-                        className="size-6 text-blue-500 dark:text-blue-400"
-                      />
-                    </View>
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 bg-background">
+          <ScrollView
+            className="flex-1 bg-background"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 32 }}
+          >
+            {/* === HEADER SECTION - Modern Clean Style === */}
+            <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
+              {/* Top Bar - Logo & Actions */}
+              <View className="flex-row items-center justify-between mb-8">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
+                    <Image
+                      source={LogoImage}
+                      className="w-10 h-10"
+                      resizeMode="contain"
+                    />
                   </View>
-                )}
-                <View className="flex-1">
-                  <Text variant="large" className="text-foreground">
-                    {displayName}
-                  </Text>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
+                  <Text className="text-2xl font-bold text-stone-700 dark:text-white tracking-tight">
+                    SKANIDA APPS
                   </Text>
                 </View>
-              </TouchableOpacity>
 
-              {/* Waktu Sekarang - In header row */}
-              <View className="flex-row items-center mr-3">
-                <View
-                  className={`px-3 py-2 rounded-lg ${
-                    syncStatus === "synced"
-                      ? "bg-gray-200 dark:bg-gray-800"
-                      : syncStatus === "syncing"
-                        ? "bg-blue-100 dark:bg-blue-900/30"
-                        : "bg-yellow-100 dark:bg-yellow-900/30"
-                  }`}
-                >
-                  <View className="flex-row items-center">
-                    {syncStatus === "synced" ? (
-                      <Icon as={Wifi} className="size-4 text-green-600" />
-                    ) : syncStatus === "syncing" ? (
-                      <Icon as={Clock} className="size-4 text-blue-600" />
-                    ) : (
-                      <Icon as={WifiOff} className="size-4 text-yellow-700" />
-                    )}
-                    <Text
-                      variant="small"
-                      className={`ml-1 font-medium ${
-                        syncStatus === "synced"
-                          ? "text-foreground"
-                          : syncStatus === "syncing"
-                            ? "text-blue-700 dark:text-blue-500"
-                            : "text-yellow-700 dark:text-yellow-500"
-                      }`}
-                    >
-                      Waktu{" "}
-                      {driftDetected && (
-                        <Text variant="small" className="text-red-600">
-                          (drift)
-                        </Text>
-                      )}
-                    </Text>
-                  </View>
-                  <Text
-                    variant="default"
-                    className="font-bold text-center mt-1 text-foreground"
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={navigateToSettings}
+                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
                   >
+                    <Icon as={Settings} className="size-5 text-foreground/70" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Sentry.showFeedbackWidget()}
+                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                  >
+                    <Icon as={Bug} className="size-5 text-foreground/70" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Greeting Text */}
+              <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
+                {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
+              </Text>
+
+              {/* Profile & Time Card */}
+              <View className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]">
+                <TouchableOpacity
+                  onPress={navigateToEditProfile}
+                  activeOpacity={0.8}
+                  className="mr-5 relative"
+                >
+                  {hasCustomAvatar ? (
+                    <Avatar
+                      size="lg"
+                      fallback={displayName.charAt(0).toUpperCase() || "?"}
+                      className="border-2 border-white/30 w-20 h-20"
+                      source={avatarUrl ?? undefined}
+                    />
+                  ) : (
+                    <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center border border-white/30">
+                      <Icon as={UserRound} className="size-10 text-white" />
+                    </View>
+                  )}
+                  {/* Active Indicator */}
+                  <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
+                </TouchableOpacity>
+
+                <View className="flex-1 justify-center">
+                  <Text className="text-blue-100 text-xs font-medium mb-1">
+                    {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                  </Text>
+
+                  {/* Clock Display */}
+                  <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
                     {format(currentTime, "HH:mm:ss", { locale: id })}
                   </Text>
-                  {syncSource !== "local" && (
-                    <Text
-                      variant="small"
-                      className="text-xs text-center text-muted-foreground"
-                    >
-                      {syncSource === "server" ? "Server" : "NTP"}
-                    </Text>
-                  )}
                 </View>
               </View>
-
-              <TouchableOpacity
-                onPress={() => {
-                  Sentry.showFeedbackWidget();
-                }}
-                className="p-2 rounded-full"
-              >
-                <Icon as={Bug} className="size-5 text-foreground" />
-              </TouchableOpacity>
             </View>
-          </View>
 
-          {/* --- Today's Status Card --- */}
-          <View className="px-6 mb-4">
-            <Card className="p-4 bg-card border-border">
-              <View className="flex-row items-center justify-between">
-                <Text variant="h4" className="text-foreground">
-                  Status Hari Ini
-                </Text>
-                <Badge
-                  className={`${statusBadge.color} ${statusBadge.textColor}`}
-                >
-                  <Text variant="default">{statusBadge.text}</Text>
-                </Badge>
-              </View>
-
-              <View className="space-y-3">
-                {/* Check In Status */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    {attendanceStatus.hasCheckedIn ? (
-                      <Icon
-                        as={CheckCircle}
-                        className="size-5 text-green-600"
-                      />
-                    ) : (
-                      <Icon as={AlertCircle} className="size-5 text-red-600" />
-                    )}
-                    <Text variant="default" className="ml-2 text-foreground">
-                      Presensi Masuk
+            {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
+            <View className="px-6 mt-4">
+              <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
+                {/* Two Column Time Display */}
+                <View className="flex-row">
+                  {/* MASUK Column */}
+                  <View className="flex-1 items-center py-7 px-4">
+                    <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
+                      MASUK
                     </Text>
+                    <Text className="text-foreground font-bold text-4xl tracking-tight">
+                      {attendanceStatus.checkInTime
+                        ? format(
+                            new Date(attendanceStatus.checkInTime),
+                            "HH:mm",
+                          )
+                        : "--:--"}
+                    </Text>
+                    {attendanceStatus.hasCheckedIn && (
+                      <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+                        <View
+                          className={`w-2 h-2 rounded-full mr-1.5 ${
+                            attendanceStatus.checkInStatus === "Terlambat"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                        />
+                        <Text
+                          className={`text-xs font-semibold ${
+                            attendanceStatus.checkInStatus === "Terlambat"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
+                          {attendanceStatus.checkInStatus}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {attendanceStatus.checkInTime
-                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum presensi"}
-                  </Text>
-                </View>
 
-                {/* Check Out Status */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
+                  {/* Vertical Divider */}
+                  <View className="w-px bg-border/50 self-stretch my-5" />
+
+                  {/* PULANG Column */}
+                  <View className="flex-1 items-center py-7 px-4">
+                    <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
+                      PULANG
+                    </Text>
+                    <Text className="text-foreground font-bold text-4xl tracking-tight">
+                      {attendanceStatus.checkOutTime
+                        ? format(
+                            new Date(attendanceStatus.checkOutTime),
+                            "HH:mm",
+                          )
+                        : "--:--"}
+                    </Text>
                     {attendanceStatus.hasCheckedOut ? (
-                      <Icon
-                        as={CheckCircle}
-                        className="size-5 text-green-600"
-                      />
-                    ) : (
-                      <Icon as={AlertCircle} className="size-5 text-red-600" />
-                    )}
-                    <Text variant="default" className="ml-2 text-foreground">
-                      Presensi Pulang
-                    </Text>
+                      <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+                        <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
+                        <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                          Selesai
+                        </Text>
+                      </View>
+                    ) : attendanceStatus.hasCheckedIn &&
+                      attendanceSchedule?.mulai_pulang ? (
+                      <View className="mt-3 items-center">
+                        <Text className="text-xs text-muted-foreground">
+                          Jadwal: {attendanceSchedule.mulai_pulang?.slice(0, 5)}
+                          {attendanceSchedule.selesai_pulang
+                            ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}`
+                            : ""}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {attendanceStatus.checkOutTime
-                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum presensi"}
-                  </Text>
                 </View>
 
-                {/* Work Hours */}
-                {attendanceStatus.totalWorkHours && (
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                      <Icon as={Clock} className="size-5 text-blue-500" />
-                      <Text variant="default" className="ml-2 text-foreground">
-                        Total Jam Di Sekolah
+                {/* Horizontal Divider */}
+                <View className="h-px bg-border/50 mx-5" />
+
+                {/* PRESENSI Button */}
+                <View className="p-5">
+                  <TouchableOpacity
+                    onPress={navigateToCheckIn}
+                    disabled={isPrimaryActionDisabled}
+                    activeOpacity={0.9}
+                    className="overflow-hidden rounded-2xl"
+                  >
+                    {isPrimaryActionDisabled ? (
+                      <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
+                        <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
+                          {attendanceStatus.hasCheckedOut
+                            ? "SELESAI"
+                            : refreshing
+                              ? "MEMUAT..."
+                              : "PRESENSI"}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View
+                        className={`py-5 items-center justify-center rounded-2xl shadow-sm ${
+                          derivedActionType === "home"
+                            ? "bg-amber-500"
+                            : "bg-blue-600"
+                        }`}
+                      >
+                        <Text className="font-bold text-white text-base uppercase tracking-wider">
+                          {derivedActionType === "home"
+                            ? "PRESENSI PULANG"
+                            : "PRESENSI MASUK"}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Total Hours (if both checked) */}
+                  {attendanceStatus.totalWorkHours && (
+                    <View className="mt-3 items-center">
+                      <Text className="text-muted-foreground text-xs">
+                        Total waktu kerja:{" "}
+                        <Text className="font-bold text-foreground">
+                          {attendanceStatus.totalWorkHours}
+                        </Text>
                       </Text>
                     </View>
-                    <Text
-                      variant="small"
-                      className="font-medium text-foreground"
-                    >
-                      {attendanceStatus.totalWorkHours}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          </View>
-
-          {/* --- Quick Actions (Moved up from Statistics location) --- */}
-          <View className="px-6 mb-6">
-            <Text variant="h3" className="mb-4 text-foreground">
-              Halo, {displayName || "User"}
-            </Text>
-
-            {/* Large Square Primary Action - Attendance (Centered) */}
-            <View className="items-center mb-4">
-              <TouchableOpacity
-                onPress={navigateToCheckIn}
-                className="w-48"
-                activeOpacity={0.8}
-                disabled={isPrimaryActionDisabled}
-              >
-                <Card
-                  className={`aspect-square ${
-                    isPrimaryActionDisabled
-                      ? "bg-gray-400 dark:bg-gray-600"
-                      : "bg-blue-600 dark:bg-blue-700"
-                  }`}
-                >
-                  <View className="flex-1 items-center justify-center p-4">
-                    <Icon as={UserCheck} className="size-8 text-white" />
-                    <Text
-                      variant="small"
-                      className={`mt-3 px-3 text-center text-xs leading-snug ${
-                        isPrimaryActionDisabled
-                          ? "text-gray-200 dark:text-gray-300"
-                          : "text-white/90"
-                      }`}
-                    >
-                      {primaryActionMessage}
-                    </Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
+                  )}
+                </View>
+              </Card>
             </View>
 
-            {/* Secondary Actions Grid */}
-            <View className="flex-row gap-4">
+            {/* === NAVIGATION BUTTONS (Split) === */}
+            <View className="flex-row mx-6 mt-10 mb-10 gap-3">
+              {/* Riwayat Button */}
               <TouchableOpacity
                 onPress={navigateToHistory}
-                className="flex-1"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
               >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon as={History} className="size-6 text-blue-600" />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Riwayat
-                  </Text>
-                </Card>
+                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                  <Icon as={History} className="size-5 text-white" />
+                </View>
+                <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                  Riwayat
+                </Text>
               </TouchableOpacity>
 
+              {/* Perizinan Button */}
               <TouchableOpacity
                 onPress={navigateToPerizinan}
-                className="flex-1"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
               >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon
-                    as={ClipboardPenLine}
-                    className="size-6 text-blue-600"
-                  />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Perizinan
-                  </Text>
-                </Card>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={navigateToSettings}
-                className="flex-1"
-                activeOpacity={0.8}
-              >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon as={Settings} className="size-6 text-blue-600" />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Setelan
-                  </Text>
-                </Card>
+                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                  <Icon as={ClipboardPenLine} className="size-5 text-white" />
+                </View>
+                <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                  Perizinan
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
 
-        {/* --- Footer Section --- */}
-        <View className="items-center px-6 py-3 border-t border-border bg-background">
-          <Text variant="small" className="font-bold text-foreground">
-            {Constants.expoConfig?.version}
-          </Text>
+          {/* === FLOATING VERSION INFO (Moved Here) === */}
+          <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
+            <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30 shadow-sm">
+              <Text
+                variant="small"
+                className="text-secondary-foreground font-medium text-xs"
+              >
+                Skanida v{Constants.expoConfig?.version}
+              </Text>
+            </View>
+          </View>
         </View>
       </SafeAreaView>
 
