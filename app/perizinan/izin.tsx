@@ -345,7 +345,7 @@ export default function PerizinanScreen() {
           return false;
         }
 
-        const hasSubmittedToday = data && data.length > 0;
+        const hasSubmittedToday = data && data.length >= 3;
         return hasSubmittedToday;
       } catch {
         return false;
@@ -531,7 +531,7 @@ export default function PerizinanScreen() {
     const options = [
       { text: "Ambil Foto (Kamera)", onPress: pickFromCamera },
       { text: "Pilih dari Galeri", onPress: pickFromLibrary },
-      { text: "Batal", style: "cancel", onPress: () => {} },
+      { text: "Batal", style: "cancel", onPress: () => { } },
     ];
 
     if (Platform.OS === "ios") {
@@ -622,7 +622,7 @@ export default function PerizinanScreen() {
       const finalCheck = await checkTodayIzin(permitData.userId);
       if (finalCheck) {
         throw new Error(
-          "Izin sudah diajukan hari ini. Hanya satu pengajuan per hari yang diperbolehkan.",
+          "Batas maksimal pengajuan izin hari ini telah tercapai. Maksimal 2 pengajuan per hari.",
         );
       }
 
@@ -668,8 +668,8 @@ export default function PerizinanScreen() {
     const hasSubmittedToday = await checkTodayIzin(user.id);
     if (hasSubmittedToday) {
       Alert.alert(
-        "Izin Sudah Diajukan Hari Ini",
-        "Anda sudah mengajukan izin untuk hari ini. Sistem hanya memperbolehkan satu pengajuan izin per hari.",
+        "Batas Maksimal Tercapai",
+        "Anda sudah mengajukan 3 izin hari ini. Silahkan Hubungi Admin untuk pengajuan izin.",
       );
       return;
     }
@@ -750,7 +750,7 @@ export default function PerizinanScreen() {
           <AlertBanner
             type="warning"
             title="Sudah Mengajukan"
-            message="Anda sudah mengirim izin hari ini."
+            message="Anda sudah mengirim 3 izin hari ini."
           />
         )}
 

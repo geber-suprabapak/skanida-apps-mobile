@@ -222,8 +222,39 @@ CREATE TRIGGER set_perizinan_tanggal_utc_date_trigger
 -- Backfill existing records (safe to run multiple times)
 UPDATE perizinan SET tanggal_utc_date = (tanggal AT TIME ZONE 'UTC')::DATE WHERE tanggal_utc_date IS NULL;
 
--- Create unique constraint to enforce one perizinan per user per day
-CREATE UNIQUE INDEX IF NOT EXISTS perizinan_user_day_unique ON perizinan(user_id, tanggal_utc_date);
+-- Drop old unique constraint if exists (migration from 1 to 2 perizinan/day)
+DROP INDEX IF EXISTS perizinan_user_day_unique;
+
+-- Function to validate max 2 perizinan per user per day
+CREATE OR REPLACE FUNCTION validate_perizinan_daily_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+    existing_count INTEGER;
+BEGIN
+    -- Count existing perizinan for this user on this date
+    SELECT COUNT(*)
+    INTO existing_count
+    FROM perizinan
+    WHERE user_id = NEW.user_id
+      AND tanggal_utc_date = NEW.tanggal_utc_date
+      AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::UUID);
+    
+    -- Reject if already at limit (2 perizinan)
+    IF existing_count >= 3 THEN
+        RAISE EXCEPTION 'Maksimal 3 perizinan per hari. Anda sudah mengajukan % perizinan hari ini.', existing_count
+            USING ERRCODE = '23505'; -- unique_violation error code for consistency
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to enforce daily limit before insert/update
+DROP TRIGGER IF EXISTS enforce_perizinan_daily_limit ON perizinan;
+CREATE TRIGGER enforce_perizinan_daily_limit
+    BEFORE INSERT OR UPDATE OF tanggal, tanggal_utc_date ON perizinan
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_perizinan_daily_limit();
 
 -- ============================================================================
 -- Comments for documentation
@@ -239,7 +270,7 @@ COMMENT ON TABLE jadwal_absensi IS 'Schedule configuration for attendance time w
 COMMENT ON COLUMN absences.status IS 'Attendance status: Hadir (present), Terlambat (late), Pulang (check-out), Alpha (absent without notice)';
 COMMENT ON COLUMN perizinan.kategori_izin IS 'Permission category: sakit (sick), pergi (other leave)';
 COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pending, approved, rejected';
-COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries';
+COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries and daily limit validation (max 2 perizinan/user/day)';
 COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location in meters';
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
 COMMENT ON COLUMN user_profiles.notification_token IS 'Expo push notification token for the user device';
