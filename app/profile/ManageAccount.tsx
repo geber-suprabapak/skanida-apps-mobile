@@ -44,6 +44,7 @@ import {
 } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { extractAvatarPath, getAvatarSignedUrl } from "~/utils/avatar";
@@ -118,6 +119,7 @@ export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
+  const theme = useThemeStore((state) => state.theme);
 
   // --- Profile State ---
   const [name, setName] = useState("");
@@ -450,26 +452,15 @@ export default function ManageAccount() {
 
     setPasswordLoading(true);
     try {
-      // 1. Re-authenticate
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const userEmail = session?.user.email;
 
-      if (!userEmail) throw new Error("Sesi tidak valid.");
-
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        Alert.alert("Gagal", "Password lama salah.");
-        setPasswordLoading(false);
-        return;
+      if (!session?.user?.email) {
+        throw new Error("Sesi tidak valid.");
       }
 
-      // 2. Update Password
+      // Update Password (Supabase will invalidate current session)
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -539,7 +530,7 @@ export default function ManageAccount() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style="dark" />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Simple Header */}

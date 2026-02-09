@@ -32,7 +32,6 @@ import {
   ChevronRight,
   Moon,
   Sun,
-  Settings,
   Shield,
   Smartphone,
   Pencil,
@@ -247,7 +246,7 @@ function Pengaturan() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style="dark" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       <Stack.Screen
         options={{
           headerShown: false,

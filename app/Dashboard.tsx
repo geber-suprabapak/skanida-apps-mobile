@@ -13,7 +13,7 @@ import {
   Animated,
   Image,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
@@ -27,6 +27,7 @@ import { Card } from "~/components/ui/card";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import useTimeSyncStore from "~/store/timeSyncStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 
 import { Icon } from "~/components/ui/icon";
@@ -46,6 +47,7 @@ import {
   Calendar,
 } from "lucide-react-native";
 import Constants from "expo-constants";
+import LogoImage from "~/assets/skanidatransparan.png";
 
 // Define interface for user profile data
 interface UserProfile {
@@ -116,6 +118,7 @@ export default function Dashboard() {
   const syncSource = useTimeSyncStore((state) => state.syncSource);
   const driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
+  const theme = useThemeStore((state) => state.theme);
   const params = useLocalSearchParams();
   const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
@@ -743,17 +746,17 @@ export default function Dashboard() {
           gestureEnabled: false,
         }}
       />
-      <StatusBar style="dark" />
-      <View className="flex-1 bg-background">
-        <ScrollView
-          className="flex-1 bg-background"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
-        >
-          {/* === HEADER SECTION - Edge-to-Edge Modern Style === */}
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 bg-background">
+          <ScrollView
+            className="flex-1 bg-background"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 32 }}
+          >
           {/* === HEADER SECTION - Modern Clean Style === */}
           <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
             {/* Top Bar - Logo & Actions */}
@@ -761,7 +764,7 @@ export default function Dashboard() {
               <View className="flex-row items-center gap-3">
                 <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
                   <Image
-                    source={require("../assets/skanidatransparan.png")}
+                    source={LogoImage}
                     className="w-10 h-10"
                     resizeMode="contain"
                   />
@@ -982,20 +985,21 @@ export default function Dashboard() {
               </Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+          </ScrollView>
 
-        {/* === FLOATING VERSION INFO (Moved Here) === */}
-        <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
-          <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30 shadow-sm">
-            <Text
-              variant="small"
-              className="text-secondary-foreground font-medium text-xs"
-            >
-              Skanida v{Constants.expoConfig?.version}
-            </Text>
+          {/* === FLOATING VERSION INFO (Moved Here) === */}
+          <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
+            <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30 shadow-sm">
+              <Text
+                variant="small"
+                className="text-secondary-foreground font-medium text-xs"
+              >
+                Skanida v{Constants.expoConfig?.version}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
+      </SafeAreaView>
 
       {/* Success Popup */}
       {successData && (

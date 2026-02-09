@@ -18,26 +18,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
 import { cn } from "~/lib/utils";
 import {
   ChevronLeft,
-  ClipboardPenLine,
   FileText,
   Camera,
   AlertCircle,
   Trash2,
-  Image as ImageIcon,
   Send,
   HeartPulse,
   Briefcase,
-  CheckCircle,
   CloudUpload,
-  Clock,
   CheckCircle2,
 } from "lucide-react-native";
 
@@ -286,6 +282,7 @@ const AlertBanner: React.FC<{
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const theme = useThemeStore((state) => state.theme);
 
   // ---- State Management ----
   const [formData, setFormData] = useState<FormData>({
@@ -729,7 +726,20 @@ export default function PerizinanScreen() {
       const errorMessage = error.message || "Unknown error";
       if (errorMessage.includes("Gagal membaca file")) return;
 
-      Alert.alert("Gagal Mengirim", errorMessage);
+      const lower = errorMessage.toLowerCase();
+      if (
+        lower.includes("network") ||
+        lower.includes("connection") ||
+        lower.includes("timeout") ||
+        lower.includes("internet")
+      ) {
+        Alert.alert(
+          "Koneksi Bermasalah",
+          "Gagal mengirim izin karena masalah koneksi. Mohon periksa koneksi Anda dan coba lagi.",
+        );
+      } else {
+        Alert.alert("Gagal Mengirim", errorMessage);
+      }
     } finally {
       setUIState((prev) => ({ ...prev, uploading: false }));
     }
@@ -750,7 +760,7 @@ export default function PerizinanScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="dark" />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
 
       {/* Simple Header */}
       <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">

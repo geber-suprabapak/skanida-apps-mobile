@@ -17,48 +17,10 @@ import AttendanceCalendar, {
 } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { Icon } from "~/components/ui/icon";
-import { ChevronLeft, RefreshCw, Calendar } from "lucide-react-native";
+import { ChevronLeft, Calendar } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  cancelAnimation,
-  Easing,
-} from "react-native-reanimated";
-
-const SpinningIcon = ({ spinning }: { spinning: boolean }) => {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    if (spinning) {
-      // start infinite linear rotation
-      progress.value = 0;
-      progress.value = withRepeat(
-        withTiming(1, { duration: 900, easing: Easing.linear }),
-        -1,
-        false,
-      );
-    } else {
-      // stop and gently reset to 0
-      cancelAnimation(progress);
-      progress.value = withTiming(0, { duration: 150 });
-    }
-  }, [spinning, progress]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${progress.value * 360}deg` }],
-  }));
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <Icon as={RefreshCw} className="size-5 text-white" />
-    </Animated.View>
-  );
-};
 
 export default function Riwayat() {
   const router = useRouter();
@@ -143,15 +105,13 @@ export default function Riwayat() {
         .lte("date", endDate);
 
       // Fetch leaves for the selected month
+      const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
       const { data: leaves } = await supabase
         .from("perizinan")
         .select("kategori_izin, tanggal")
         .eq("user_id", user.id)
         .gte("tanggal", `${startDate}T00:00:00.000Z`)
-        .lt(
-          "tanggal",
-          `${year}-${String(month + 2).padStart(2, "0")}-01T00:00:00.000Z`,
-        );
+        .lt("tanggal", nextMonthStart.toISOString());
 
       // Calculate statistics
       let hadirCount = 0;
@@ -228,7 +188,7 @@ export default function Riwayat() {
           headerShown: false,
         }}
       />
-      <StatusBar style="dark" />
+      <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 
       {/* Simple Header */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
