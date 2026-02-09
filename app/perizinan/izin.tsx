@@ -297,7 +297,9 @@ export default function PerizinanScreen() {
   });
 
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
-  const [blockingReason, setBlockingReason] = useState<string | undefined>(undefined);
+  const [blockingReason, setBlockingReason] = useState<string | undefined>(
+    undefined,
+  );
 
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
@@ -323,7 +325,9 @@ export default function PerizinanScreen() {
   // ---- Handler Functions (defined before effects) ----
 
   const checkTodayIzin = useCallback(
-    async (userId: string): Promise<{ canSubmit: boolean; reason?: string }> => {
+    async (
+      userId: string,
+    ): Promise<{ canSubmit: boolean; reason?: string }> => {
       try {
         const now = new Date();
         const localDate = format(now, "yyyy-MM-dd");
@@ -354,14 +358,16 @@ export default function PerizinanScreen() {
         if (hasPending) {
           return {
             canSubmit: false,
-            reason: "Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.",
+            reason:
+              "Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.",
           };
         }
 
         if (hasApproved) {
           return {
             canSubmit: false,
-            reason: "Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.",
+            reason:
+              "Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.",
           };
         }
 
@@ -560,7 +566,7 @@ export default function PerizinanScreen() {
     const options = [
       { text: "Ambil Foto (Kamera)", onPress: pickFromCamera },
       { text: "Pilih dari Galeri", onPress: pickFromLibrary },
-      { text: "Batal", style: "cancel", onPress: () => { } },
+      { text: "Batal", style: "cancel", onPress: () => {} },
     ];
 
     if (Platform.OS === "ios") {
@@ -792,7 +798,10 @@ export default function PerizinanScreen() {
           <AlertBanner
             type="warning"
             title="Tidak Dapat Mengajukan"
-            message={blockingReason || "Anda tidak dapat mengajukan perizinan saat ini."}
+            message={
+              blockingReason ||
+              "Anda tidak dapat mengajukan perizinan saat ini."
+            }
           />
         )}
 

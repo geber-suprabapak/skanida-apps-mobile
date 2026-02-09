@@ -13,7 +13,10 @@ import {
   Animated,
   Image,
 } from "react-native";
-import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import {
+  useSafeAreaInsets,
+  SafeAreaView,
+} from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
@@ -757,234 +760,240 @@ export default function Dashboard() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 32 }}
           >
-          {/* === HEADER SECTION - Modern Clean Style === */}
-          <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
-            {/* Top Bar - Logo & Actions */}
-            <View className="flex-row items-center justify-between mb-8">
-              <View className="flex-row items-center gap-3">
-                <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
-                  <Image
-                    source={LogoImage}
-                    className="w-10 h-10"
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text className="text-2xl font-bold text-stone-700 dark:text-white tracking-tight">
-                  SKANIDA APPS
-                </Text>
-              </View>
-
-              <View className="flex-row items-center gap-2">
-                <TouchableOpacity
-                  onPress={navigateToSettings}
-                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
-                >
-                  <Icon as={Settings} className="size-5 text-foreground/70" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => Sentry.showFeedbackWidget()}
-                  className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
-                >
-                  <Icon as={Bug} className="size-5 text-foreground/70" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Greeting Text */}
-            <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
-              {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
-            </Text>
-
-            {/* Profile & Time Card */}
-            <View className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]">
-              <TouchableOpacity
-                onPress={navigateToEditProfile}
-                activeOpacity={0.8}
-                className="mr-5 relative"
-              >
-                {hasCustomAvatar ? (
-                  <Avatar
-                    size="lg"
-                    fallback={displayName.charAt(0).toUpperCase() || "?"}
-                    className="border-2 border-white/30 w-20 h-20"
-                    source={avatarUrl ?? undefined}
-                  />
-                ) : (
-                  <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center border border-white/30">
-                    <Icon as={UserRound} className="size-10 text-white" />
+            {/* === HEADER SECTION - Modern Clean Style === */}
+            <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
+              {/* Top Bar - Logo & Actions */}
+              <View className="flex-row items-center justify-between mb-8">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
+                    <Image
+                      source={LogoImage}
+                      className="w-10 h-10"
+                      resizeMode="contain"
+                    />
                   </View>
-                )}
-                {/* Active Indicator */}
-                <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
-              </TouchableOpacity>
+                  <Text className="text-2xl font-bold text-stone-700 dark:text-white tracking-tight">
+                    SKANIDA APPS
+                  </Text>
+                </View>
 
-              <View className="flex-1 justify-center">
-                <Text className="text-blue-100 text-xs font-medium mb-1">
-                  {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
-                </Text>
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={navigateToSettings}
+                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                  >
+                    <Icon as={Settings} className="size-5 text-foreground/70" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Sentry.showFeedbackWidget()}
+                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                  >
+                    <Icon as={Bug} className="size-5 text-foreground/70" />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-                {/* Clock Display */}
-                <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
-                  {format(currentTime, "HH:mm:ss", { locale: id })}
-                </Text>
+              {/* Greeting Text */}
+              <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
+                {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
+              </Text>
+
+              {/* Profile & Time Card */}
+              <View className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]">
+                <TouchableOpacity
+                  onPress={navigateToEditProfile}
+                  activeOpacity={0.8}
+                  className="mr-5 relative"
+                >
+                  {hasCustomAvatar ? (
+                    <Avatar
+                      size="lg"
+                      fallback={displayName.charAt(0).toUpperCase() || "?"}
+                      className="border-2 border-white/30 w-20 h-20"
+                      source={avatarUrl ?? undefined}
+                    />
+                  ) : (
+                    <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center border border-white/30">
+                      <Icon as={UserRound} className="size-10 text-white" />
+                    </View>
+                  )}
+                  {/* Active Indicator */}
+                  <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
+                </TouchableOpacity>
+
+                <View className="flex-1 justify-center">
+                  <Text className="text-blue-100 text-xs font-medium mb-1">
+                    {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                  </Text>
+
+                  {/* Clock Display */}
+                  <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
+                    {format(currentTime, "HH:mm:ss", { locale: id })}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
-          <View className="px-6 mt-4">
-            <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
-              {/* Two Column Time Display */}
-              <View className="flex-row">
-                {/* MASUK Column */}
-                <View className="flex-1 items-center py-7 px-4">
-                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
-                    MASUK
-                  </Text>
-                  <Text className="text-foreground font-bold text-4xl tracking-tight">
-                    {attendanceStatus.checkInTime
-                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "--:--"}
-                  </Text>
-                  {attendanceStatus.hasCheckedIn && (
-                    <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+            {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
+            <View className="px-6 mt-4">
+              <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
+                {/* Two Column Time Display */}
+                <View className="flex-row">
+                  {/* MASUK Column */}
+                  <View className="flex-1 items-center py-7 px-4">
+                    <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
+                      MASUK
+                    </Text>
+                    <Text className="text-foreground font-bold text-4xl tracking-tight">
+                      {attendanceStatus.checkInTime
+                        ? format(
+                            new Date(attendanceStatus.checkInTime),
+                            "HH:mm",
+                          )
+                        : "--:--"}
+                    </Text>
+                    {attendanceStatus.hasCheckedIn && (
+                      <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+                        <View
+                          className={`w-2 h-2 rounded-full mr-1.5 ${
+                            attendanceStatus.checkInStatus === "Terlambat"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                        />
+                        <Text
+                          className={`text-xs font-semibold ${
+                            attendanceStatus.checkInStatus === "Terlambat"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
+                          {attendanceStatus.checkInStatus}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Vertical Divider */}
+                  <View className="w-px bg-border/50 self-stretch my-5" />
+
+                  {/* PULANG Column */}
+                  <View className="flex-1 items-center py-7 px-4">
+                    <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
+                      PULANG
+                    </Text>
+                    <Text className="text-foreground font-bold text-4xl tracking-tight">
+                      {attendanceStatus.checkOutTime
+                        ? format(
+                            new Date(attendanceStatus.checkOutTime),
+                            "HH:mm",
+                          )
+                        : "--:--"}
+                    </Text>
+                    {attendanceStatus.hasCheckedOut ? (
+                      <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+                        <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
+                        <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                          Selesai
+                        </Text>
+                      </View>
+                    ) : attendanceStatus.hasCheckedIn &&
+                      attendanceSchedule?.mulai_pulang ? (
+                      <View className="mt-3 items-center">
+                        <Text className="text-xs text-muted-foreground">
+                          Jadwal: {attendanceSchedule.mulai_pulang?.slice(0, 5)}
+                          {attendanceSchedule.selesai_pulang
+                            ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}`
+                            : ""}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* Horizontal Divider */}
+                <View className="h-px bg-border/50 mx-5" />
+
+                {/* PRESENSI Button */}
+                <View className="p-5">
+                  <TouchableOpacity
+                    onPress={navigateToCheckIn}
+                    disabled={isPrimaryActionDisabled}
+                    activeOpacity={0.9}
+                    className="overflow-hidden rounded-2xl"
+                  >
+                    {isPrimaryActionDisabled ? (
+                      <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
+                        <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
+                          {attendanceStatus.hasCheckedOut
+                            ? "SELESAI"
+                            : refreshing
+                              ? "MEMUAT..."
+                              : "PRESENSI"}
+                        </Text>
+                      </View>
+                    ) : (
                       <View
-                        className={`w-2 h-2 rounded-full mr-1.5 ${
-                          attendanceStatus.checkInStatus === "Terlambat"
+                        className={`py-5 items-center justify-center rounded-2xl shadow-sm ${
+                          derivedActionType === "home"
                             ? "bg-amber-500"
-                            : "bg-emerald-500"
-                        }`}
-                      />
-                      <Text
-                        className={`text-xs font-semibold ${
-                          attendanceStatus.checkInStatus === "Terlambat"
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-emerald-600 dark:text-emerald-400"
+                            : "bg-blue-600"
                         }`}
                       >
-                        {attendanceStatus.checkInStatus}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                        <Text className="font-bold text-white text-base uppercase tracking-wider">
+                          {derivedActionType === "home"
+                            ? "PRESENSI PULANG"
+                            : "PRESENSI MASUK"}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
-                {/* Vertical Divider */}
-                <View className="w-px bg-border/50 self-stretch my-5" />
-
-                {/* PULANG Column */}
-                <View className="flex-1 items-center py-7 px-4">
-                  <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
-                    PULANG
-                  </Text>
-                  <Text className="text-foreground font-bold text-4xl tracking-tight">
-                    {attendanceStatus.checkOutTime
-                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "--:--"}
-                  </Text>
-                  {attendanceStatus.hasCheckedOut ? (
-                    <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
-                      <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
-                      <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                        Selesai
-                      </Text>
-                    </View>
-                  ) : attendanceStatus.hasCheckedIn &&
-                    attendanceSchedule?.mulai_pulang ? (
+                  {/* Total Hours (if both checked) */}
+                  {attendanceStatus.totalWorkHours && (
                     <View className="mt-3 items-center">
-                      <Text className="text-xs text-muted-foreground">
-                        Jadwal: {attendanceSchedule.mulai_pulang?.slice(0, 5)}
-                        {attendanceSchedule.selesai_pulang
-                          ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}`
-                          : ""}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-
-              {/* Horizontal Divider */}
-              <View className="h-px bg-border/50 mx-5" />
-
-              {/* PRESENSI Button */}
-              <View className="p-5">
-                <TouchableOpacity
-                  onPress={navigateToCheckIn}
-                  disabled={isPrimaryActionDisabled}
-                  activeOpacity={0.9}
-                  className="overflow-hidden rounded-2xl"
-                >
-                  {isPrimaryActionDisabled ? (
-                    <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
-                      <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
-                        {attendanceStatus.hasCheckedOut
-                          ? "SELESAI"
-                          : refreshing
-                            ? "MEMUAT..."
-                            : "PRESENSI"}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View
-                      className={`py-5 items-center justify-center rounded-2xl shadow-sm ${
-                        derivedActionType === "home"
-                          ? "bg-amber-500"
-                          : "bg-blue-600"
-                      }`}
-                    >
-                      <Text className="font-bold text-white text-base uppercase tracking-wider">
-                        {derivedActionType === "home"
-                          ? "PRESENSI PULANG"
-                          : "PRESENSI MASUK"}
+                      <Text className="text-muted-foreground text-xs">
+                        Total waktu kerja:{" "}
+                        <Text className="font-bold text-foreground">
+                          {attendanceStatus.totalWorkHours}
+                        </Text>
                       </Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </View>
+              </Card>
+            </View>
 
-                {/* Total Hours (if both checked) */}
-                {attendanceStatus.totalWorkHours && (
-                  <View className="mt-3 items-center">
-                    <Text className="text-muted-foreground text-xs">
-                      Total waktu kerja:{" "}
-                      <Text className="font-bold text-foreground">
-                        {attendanceStatus.totalWorkHours}
-                      </Text>
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          </View>
+            {/* === NAVIGATION BUTTONS (Split) === */}
+            <View className="flex-row mx-6 mt-10 mb-10 gap-3">
+              {/* Riwayat Button */}
+              <TouchableOpacity
+                onPress={navigateToHistory}
+                activeOpacity={0.7}
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
+              >
+                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                  <Icon as={History} className="size-5 text-white" />
+                </View>
+                <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                  Riwayat
+                </Text>
+              </TouchableOpacity>
 
-          {/* === NAVIGATION BUTTONS (Split) === */}
-          <View className="flex-row mx-6 mt-10 mb-10 gap-3">
-            {/* Riwayat Button */}
-            <TouchableOpacity
-              onPress={navigateToHistory}
-              activeOpacity={0.7}
-              className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
-            >
-              <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
-                <Icon as={History} className="size-5 text-white" />
-              </View>
-              <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
-                Riwayat
-              </Text>
-            </TouchableOpacity>
-
-            {/* Perizinan Button */}
-            <TouchableOpacity
-              onPress={navigateToPerizinan}
-              activeOpacity={0.7}
-              className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
-            >
-              <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
-                <Icon as={ClipboardPenLine} className="size-5 text-white" />
-              </View>
-              <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
-                Perizinan
-              </Text>
-            </TouchableOpacity>
-          </View>
+              {/* Perizinan Button */}
+              <TouchableOpacity
+                onPress={navigateToPerizinan}
+                activeOpacity={0.7}
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
+              >
+                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                  <Icon as={ClipboardPenLine} className="size-5 text-white" />
+                </View>
+                <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                  Perizinan
+                </Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
 
           {/* === FLOATING VERSION INFO (Moved Here) === */}
