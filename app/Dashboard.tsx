@@ -576,7 +576,7 @@ export default function Dashboard() {
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
   const navigateToHistory = () => router.push("/extra/riwayat");
   const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
+  const navigateToPerizinan = () => router.push("/perizinan/status"); // Navigate to status page first
   const navigateToEditProfile = () => router.push("/profile/ManageAccount");
 
   // Prevent back navigation

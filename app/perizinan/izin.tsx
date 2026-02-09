@@ -345,7 +345,7 @@ export default function PerizinanScreen() {
           return false;
         }
 
-        const hasSubmittedToday = data && data.length > 0;
+        const hasSubmittedToday = data && data.length > 2;
         return hasSubmittedToday;
       } catch {
         return false;
