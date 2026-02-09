@@ -3,6 +3,7 @@ import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import { format } from "date-fns";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -120,6 +121,44 @@ export default function AbsenceReport() {
     return location;
   }, []);
 
+  const checkTodayPermit = useCallback(
+    async (userId: string): Promise<boolean> => {
+      try {
+        const now = new Date();
+        const localDate = format(now, "yyyy-MM-dd");
+        const startOfDay = new Date(`${localDate}T00:00:00`);
+        const endOfDay = new Date(`${localDate}T23:59:59.999`);
+        const startOfDayUTC = startOfDay.toISOString();
+        const endOfDayUTC = endOfDay.toISOString();
+
+        const { data, error } = await supabase
+          .from("perizinan")
+          .select("id, approval_status")
+          .eq("user_id", userId)
+          .gte("tanggal", startOfDayUTC)
+          .lte("tanggal", endOfDayUTC);
+
+        if (error) {
+          return false;
+        }
+
+        // User memiliki izin aktif jika ada izin pending atau approved
+        return (
+          data &&
+          data.length > 0 &&
+          data.some(
+            (record) =>
+              record.approval_status === "pending" ||
+              record.approval_status === "approved",
+          )
+        );
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
   const fetchAttendanceStatus = useCallback(async () => {
     if (!user) {
       setErrorMessage("Sesi pengguna tidak valid, silakan login ulang.");
@@ -132,6 +171,14 @@ export default function AbsenceReport() {
     setStatus(null);
 
     try {
+      // Check if user has active permit today
+      const hasActivePermit = await checkTodayPermit(user.id);
+      if (hasActivePermit) {
+        throw new Error(
+          "Anda sudah mengajukan izin untuk hari ini. Tidak dapat melakukan absensi jika sudah ada izin aktif (pending/approved).",
+        );
+      }
+
       const location = await getCurrentLocation();
 
       const { data, error } = await supabase.rpc(
@@ -161,7 +208,7 @@ export default function AbsenceReport() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, getCurrentLocation, navigateToCamera]);
+  }, [user, getCurrentLocation, checkTodayPermit, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {
@@ -237,26 +284,23 @@ export default function AbsenceReport() {
   const locationName = status?.details?.location_name;
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-background">
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950">
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
+      {/* Header Kustom */}
+      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+          className="p-2 -ml-2 mr-1"
         >
           <Icon
             as={ChevronLeft}
             className="size-6 text-gray-900 dark:text-gray-100"
           />
         </TouchableOpacity>
-
-        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+        <Text variant="h3" className="text-gray-900 dark:text-gray-100">
           Lapor Absensi
         </Text>
-
-        <View className="w-10" />
       </View>
 
       {/* Konten Utama */}
