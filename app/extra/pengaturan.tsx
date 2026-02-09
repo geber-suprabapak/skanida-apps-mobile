@@ -116,9 +116,9 @@ function Pengaturan() {
     if (!error && data) {
       setProfileName(
         data.full_name ||
-        user.user_metadata?.name ||
-        user.email ||
-        "Pengguna Skanida",
+          user.user_metadata?.name ||
+          user.email ||
+          "Pengguna Skanida",
       );
       setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
     }
@@ -153,10 +153,15 @@ function Pengaturan() {
         text: "Ya, Keluar",
         style: "destructive",
         onPress: async () => {
-          await supabase.auth.signOut();
-          await AsyncStorage.clear();
-          setUser(null);
-          router.replace("/auth/AuthSelector");
+          try {
+            await supabase.auth.signOut();
+            await AsyncStorage.clear();
+            setUser(null);
+            router.replace("/auth/AuthSelector");
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("Error", "Gagal melakukan logout. Silakan coba lagi.");
+          }
         },
       },
     ]);
