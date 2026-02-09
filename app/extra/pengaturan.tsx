@@ -116,9 +116,9 @@ function Pengaturan() {
     if (!error && data) {
       setProfileName(
         data.full_name ||
-          user.user_metadata?.name ||
-          user.email ||
-          "Pengguna Skanida",
+        user.user_metadata?.name ||
+        user.email ||
+        "Pengguna Skanida",
       );
       setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
     }
@@ -211,7 +211,20 @@ function Pengaturan() {
     if (!user?.id) return;
 
     if (notifEnabled) {
-      if (await clearNotificationToken(user.id)) setNotifEnabled(false);
+      setNotifLoading(true);
+      try {
+        const success = await clearNotificationToken(user.id);
+        if (success) {
+          setNotifEnabled(false);
+        } else {
+          Alert.alert(
+            "Error",
+            "Gagal menonaktifkan notifikasi. Silakan coba lagi.",
+          );
+        }
+      } finally {
+        setNotifLoading(false);
+      }
       return;
     }
 
