@@ -316,14 +316,22 @@ export default function StatusPerizinanScreen() {
     fetchRecords();
   };
 
-  const latestRecord = records[0];
+  // Get today's date string for filtering
+  const todayStr = useMemo(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  }, []);
+
+  // Filter records for today only
+  const todayRecords = useMemo(() => {
+    return records.filter((r) => r.tanggal.startsWith(todayStr));
+  }, [records, todayStr]);
+
+  // Latest record for TODAY (for TopStatusCard)
+  const todayLatestRecord = todayRecords[0] || null;
 
   // Count today's submissions
-  const todayCount = useMemo(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    return records.filter((r) => r.tanggal.startsWith(todayStr)).length;
-  }, [records]);
+  const todayCount = todayRecords.length;
 
   const MAX_DAILY_SUBMISSIONS = 3;
   const canSubmitMore = todayCount < MAX_DAILY_SUBMISSIONS;
@@ -381,10 +389,10 @@ export default function StatusPerizinanScreen() {
           }
           contentContainerStyle={{ paddingBottom: 100 }}
         >
-          {/* Top Card (Latest Status) */}
-          {latestRecord && (
+          {/* Top Card (Today's Latest Status) */}
+          {todayLatestRecord && (
             <TopStatusCard
-              item={latestRecord}
+              item={todayLatestRecord}
               userName={userProfile?.full_name || "Siswa"}
             />
           )}
