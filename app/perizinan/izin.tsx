@@ -300,6 +300,7 @@ export default function PerizinanScreen() {
   });
 
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [blockingReason, setBlockingReason] = useState<string | undefined>(undefined);
 
   // Ref for description TextInput
   const descriptionInputRef = useRef<TextInput>(null);
@@ -325,7 +326,7 @@ export default function PerizinanScreen() {
   // ---- Handler Functions (defined before effects) ----
 
   const checkTodayIzin = useCallback(
-    async (userId: string): Promise<boolean> => {
+    async (userId: string): Promise<{ canSubmit: boolean; reason?: string }> => {
       try {
         const now = new Date();
         const localDate = format(now, "yyyy-MM-dd");
@@ -336,19 +337,48 @@ export default function PerizinanScreen() {
 
         const { data, error } = await supabase
           .from("perizinan")
-          .select("id, tanggal, kategori_izin")
+          .select("id, tanggal, kategori_izin, approval_status")
           .eq("user_id", userId)
           .gte("tanggal", startOfDayUTC)
           .lte("tanggal", endOfDayUTC);
 
         if (error) {
-          return false;
+          return { canSubmit: true }; // Allow on error (fail open)
         }
 
-        const hasSubmittedToday = data && data.length >= 3;
-        return hasSubmittedToday;
+        if (!data || data.length === 0) {
+          return { canSubmit: true };
+        }
+
+        // Check if there's any pending or approved perizinan
+        const hasPending = data.some((p) => p.approval_status === "pending");
+        const hasApproved = data.some((p) => p.approval_status === "approved");
+
+        if (hasPending) {
+          return {
+            canSubmit: false,
+            reason: "Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.",
+          };
+        }
+
+        if (hasApproved) {
+          return {
+            canSubmit: false,
+            reason: "Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.",
+          };
+        }
+
+        // All are rejected, check count limit (max 3)
+        if (data.length >= 3) {
+          return {
+            canSubmit: false,
+            reason: "Batas maksimal 3 pengajuan per hari telah tercapai.",
+          };
+        }
+
+        return { canSubmit: true };
       } catch {
-        return false;
+        return { canSubmit: true }; // Allow on error (fail open)
       }
     },
     [],
@@ -365,8 +395,9 @@ export default function PerizinanScreen() {
       }
 
       try {
-        const hasSubmitted = await checkTodayIzin(user.id);
-        setHasSubmittedToday(hasSubmitted);
+        const result = await checkTodayIzin(user.id);
+        setHasSubmittedToday(!result.canSubmit);
+        setBlockingReason(result.reason);
       } catch {
         setHasSubmittedToday(false);
       } finally {
@@ -385,8 +416,9 @@ export default function PerizinanScreen() {
 
         try {
           setUIState((prev) => ({ ...prev, checking: true }));
-          const hasSubmitted = await checkTodayIzin(user.id);
-          setHasSubmittedToday(hasSubmitted);
+          const result = await checkTodayIzin(user.id);
+          setHasSubmittedToday(!result.canSubmit);
+          setBlockingReason(result.reason);
         } catch {
           setHasSubmittedToday(false);
         } finally {
@@ -620,9 +652,9 @@ export default function PerizinanScreen() {
     }): Promise<void> => {
       // Final check before insert
       const finalCheck = await checkTodayIzin(permitData.userId);
-      if (finalCheck) {
+      if (!finalCheck.canSubmit) {
         throw new Error(
-          "Batas maksimal pengajuan izin hari ini telah tercapai. Maksimal 2 pengajuan per hari.",
+          finalCheck.reason || "Tidak dapat mengajukan perizinan saat ini.",
         );
       }
 
@@ -665,11 +697,11 @@ export default function PerizinanScreen() {
       return;
     }
 
-    const hasSubmittedToday = await checkTodayIzin(user.id);
-    if (hasSubmittedToday) {
+    const result = await checkTodayIzin(user.id);
+    if (!result.canSubmit) {
       Alert.alert(
-        "Batas Maksimal Tercapai",
-        "Anda sudah mengajukan 3 izin hari ini. Silahkan Hubungi Admin untuk pengajuan izin.",
+        "Tidak Dapat Mengajukan",
+        result.reason || "Tidak dapat mengajukan perizinan saat ini.",
       );
       return;
     }
@@ -749,8 +781,8 @@ export default function PerizinanScreen() {
         {hasSubmittedToday && !uiState.checking && (
           <AlertBanner
             type="warning"
-            title="Sudah Mengajukan"
-            message="Anda sudah mengirim 3 izin hari ini."
+            title="Tidak Dapat Mengajukan"
+            message={blockingReason || "Anda tidak dapat mengajukan perizinan saat ini."}
           />
         )}
 

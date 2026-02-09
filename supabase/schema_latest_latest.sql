@@ -225,24 +225,41 @@ UPDATE perizinan SET tanggal_utc_date = (tanggal AT TIME ZONE 'UTC')::DATE WHERE
 -- Drop old unique constraint if exists (migration from 1 to 2 perizinan/day)
 DROP INDEX IF EXISTS perizinan_user_day_unique;
 
--- Function to validate max 2 perizinan per user per day
+-- Function to validate perizinan based on approval_status and daily limit
 CREATE OR REPLACE FUNCTION validate_perizinan_daily_limit()
 RETURNS TRIGGER AS $$
 DECLARE
     existing_count INTEGER;
+    has_pending BOOLEAN;
+    has_approved BOOLEAN;
 BEGIN
-    -- Count existing perizinan for this user on this date
-    SELECT COUNT(*)
-    INTO existing_count
+    -- Check for pending or approved perizinan on the same day
+    SELECT 
+        COUNT(*) FILTER (WHERE approval_status = 'pending') > 0,
+        COUNT(*) FILTER (WHERE approval_status = 'approved') > 0,
+        COUNT(*)
+    INTO has_pending, has_approved, existing_count
     FROM perizinan
     WHERE user_id = NEW.user_id
       AND tanggal_utc_date = NEW.tanggal_utc_date
       AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::UUID);
     
-    -- Reject if already at limit (2 perizinan)
+    -- Block if there's any pending perizinan
+    IF has_pending THEN
+        RAISE EXCEPTION 'Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.'
+            USING ERRCODE = '23505';
+    END IF;
+    
+    -- Block if there's any approved perizinan
+    IF has_approved THEN
+        RAISE EXCEPTION 'Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.'
+            USING ERRCODE = '23505';
+    END IF;
+    
+    -- All are rejected, check count limit (max 3)
     IF existing_count >= 3 THEN
-        RAISE EXCEPTION 'Maksimal 3 perizinan per hari. Anda sudah mengajukan % perizinan hari ini.', existing_count
-            USING ERRCODE = '23505'; -- unique_violation error code for consistency
+        RAISE EXCEPTION 'Batas maksimal 3 pengajuan per hari telah tercapai.'
+            USING ERRCODE = '23505';
     END IF;
     
     RETURN NEW;
@@ -270,7 +287,7 @@ COMMENT ON TABLE jadwal_absensi IS 'Schedule configuration for attendance time w
 COMMENT ON COLUMN absences.status IS 'Attendance status: Hadir (present), Terlambat (late), Pulang (check-out), Alpha (absent without notice)';
 COMMENT ON COLUMN perizinan.kategori_izin IS 'Permission category: sakit (sick), pergi (other leave)';
 COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pending, approved, rejected';
-COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries and daily limit validation (max 2 perizinan/user/day)';
+COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries and daily limit validation. Blocks new submissions if any pending/approved exists; allows max 3 if all rejected.';
 COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location in meters';
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
 COMMENT ON COLUMN user_profiles.notification_token IS 'Expo push notification token for the user device';
