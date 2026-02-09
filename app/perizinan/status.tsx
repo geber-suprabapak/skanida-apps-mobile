@@ -105,18 +105,12 @@ function StatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function PermissionCard({
-  item,
-  onResubmit,
-}: {
-  item: PerizinanRecord;
-  onResubmit?: () => void;
-}) {
+function PermissionCard({ item }: { item: PerizinanRecord }) {
   const category =
     CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
   const date = parseISO(item.tanggal);
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
-  const createdDate = format(parseISO(item.created_at), "d MMM yyyy", {
+  const createdDateTime = format(parseISO(item.created_at), "d MMM yyyy, HH:mm", {
     locale: idLocale,
   });
 
@@ -148,7 +142,7 @@ function PermissionCard({
 
       <View className="flex-row justify-between items-center pt-3 border-t border-border">
         <Text className="text-xs text-muted-foreground">
-          Diajukan: {createdDate}
+          Diajukan: {createdDateTime}
         </Text>
         <Text className="text-xs font-medium text-foreground">{duration}</Text>
       </View>
@@ -170,18 +164,6 @@ function PermissionCard({
             </Text>
           )}
         </View>
-      )}
-
-      {/* Tombol Kirim Ulang untuk izin yang ditolak */}
-      {isRejected && onResubmit && (
-        <TouchableOpacity
-          onPress={onResubmit}
-          className="mt-3 bg-blue-500 py-2 px-4 rounded-lg flex-row items-center justify-center"
-          activeOpacity={0.7}
-        >
-          <Icon as={Plus} className="text-white size-4 mr-1" />
-          <Text className="text-white font-semibold text-sm">Kirim Ulang</Text>
-        </TouchableOpacity>
       )}
     </View>
   );
@@ -346,54 +328,48 @@ export default function StatusPerizinanScreen() {
   const MAX_DAILY_SUBMISSIONS = 3;
   const canSubmitMore = todayCount < MAX_DAILY_SUBMISSIONS;
 
-  // Handler untuk kirim ulang izin yang ditolak
-  const handleResubmit = useCallback(() => {
-    router.push("/perizinan/izin");
-  }, [router]);
+
 
   // ---- Render ----
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-background">
-        {/* Header */}
-        <View className="px-5 py-4 bg-background">
-          <View className="flex-row items-center mb-4">
-            <TouchableOpacity
-              onPress={() => router.push("/Dashboard")}
-              className="mr-3 p-2 rounded-lg active:bg-secondary"
-              activeOpacity={0.7}
-            >
-              <Icon as={ChevronLeft} className="size-6 text-foreground" />
-            </TouchableOpacity>
-            <View className="flex-1">
-              <Text className="text-2xl font-bold text-foreground">
-                Perizinan
-              </Text>
-              <Text className="text-muted-foreground text-sm">
-                Kelola izin dan permohonan Anda.
-              </Text>
-            </View>
-            {/* Today's Count Badge */}
-            <View
+        {/* Header - Consistent with other pages */}
+        <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+          >
+            <Icon
+              as={ChevronLeft}
+              className="size-6 text-gray-900 dark:text-gray-100"
+            />
+          </TouchableOpacity>
+
+          <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            Status Perizinan
+          </Text>
+
+          {/* Today's Count Badge */}
+          <View
+            className={cn(
+              "px-3 py-1.5 rounded-full min-w-[40px] items-center",
+              canSubmitMore
+                ? "bg-blue-100 dark:bg-blue-900/30"
+                : "bg-red-100 dark:bg-red-900/30",
+            )}
+          >
+            <Text
               className={cn(
-                "px-3 py-1.5 rounded-full",
+                "text-xs font-bold",
                 canSubmitMore
-                  ? "bg-blue-100 dark:bg-blue-900/30"
-                  : "bg-red-100 dark:bg-red-900/30",
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-red-600 dark:text-red-400",
               )}
             >
-              <Text
-                className={cn(
-                  "text-xs font-bold",
-                  canSubmitMore
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-red-600 dark:text-red-400",
-                )}
-              >
-                {todayCount}/{MAX_DAILY_SUBMISSIONS}
-              </Text>
-            </View>
+              {todayCount}/{MAX_DAILY_SUBMISSIONS}
+            </Text>
           </View>
         </View>
 
@@ -420,15 +396,7 @@ export default function StatusPerizinanScreen() {
             </View>
           ) : records.length > 0 ? (
             records.map((item) => (
-              <PermissionCard
-                key={item.id}
-                item={item}
-                onResubmit={
-                  item.approval_status === "rejected"
-                    ? handleResubmit
-                    : undefined
-                }
-              />
+              <PermissionCard key={item.id} item={item} />
             ))
           ) : (
             <View className="items-center py-10">
