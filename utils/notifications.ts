@@ -1,11 +1,21 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { Platform, Alert } from "react-native";
+import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "~/utils/supabase";
 import * as Sentry from "@sentry/react-native";
 
-export const NOTIFICATION_CHANNEL_ID = "skanida-default";
+type PermissionResult = {
+  success: boolean;
+  permissionDenied: boolean;
+  canAskAgain: boolean;
+};
+
+const FAIL_RESULT: PermissionResult = {
+  success: false,
+  permissionDenied: false,
+  canAskAgain: true,
+};
 
 export function setupNotificationHandler() {
   Notifications.setNotificationHandler({
@@ -20,50 +30,107 @@ export function setupNotificationHandler() {
 
 export async function setupNotificationChannel() {
   if (Platform.OS !== "android") return null;
-
-  return Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
+  return Notifications.setNotificationChannelAsync("skanida-default", {
     name: "Notifikasi Skanida",
     importance: Notifications.AndroidImportance.DEFAULT,
   });
 }
 
-export async function registerAndSaveNotificationToken(userId: string) {
+export async function getNotificationPermissionStatus() {
+  const s = await Notifications.getPermissionsAsync();
+  return { status: s.status, canAskAgain: s.canAskAgain, isGranted: s.granted };
+}
+
+export async function openNotificationSettings() {
+  Platform.OS === "android"
+    ? await Linking.openSettings()
+    : await Linking.openURL("app-settings:");
+}
+
+export async function clearNotificationToken(userId: string) {
   try {
-    if (!Device.isDevice) {
-      // Expo push notifications only work on a physical device
-      return;
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({ notification_token: null })
+      .eq("user_id", userId);
+    if (error) {
+      Sentry.captureException(new Error(`Clear token error: ${error.message}`));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    Sentry.captureException(err);
+    return false;
+  }
+}
+
+export async function registerAndSaveNotificationToken(
+  userId: string,
+  showAlertOnDenied = true,
+): Promise<PermissionResult> {
+  try {
+    if (!Device.isDevice) return FAIL_RESULT;
+
+    // Android < 13: permission auto-granted
+    if (Platform.OS === "android" && Number(Platform.Version) < 33) {
+      return await saveTokenToDatabase(userId);
     }
 
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    const { status } =
-      existing === "granted"
-        ? { status: existing }
-        : await Notifications.requestPermissionsAsync();
+    const { status: existing, canAskAgain } =
+      await Notifications.getPermissionsAsync();
 
+    if (existing === "granted") {
+      return await saveTokenToDatabase(userId);
+    }
+
+    // Permanently denied
+    if (!canAskAgain) {
+      if (showAlertOnDenied) {
+        Alert.alert(
+          "Izin Notifikasi Diperlukan",
+          "Aktifkan izin notifikasi di pengaturan perangkat.",
+          [
+            { text: "Batal", style: "cancel" },
+            { text: "Buka Pengaturan", onPress: openNotificationSettings },
+          ],
+        );
+      }
+      return { success: false, permissionDenied: true, canAskAgain: false };
+    }
+
+    // Request permission
+    const { status } = await Notifications.requestPermissionsAsync();
     if (status !== "granted") {
-      console.log("[Notifications] Permission denied");
-      Alert.alert(
-        "Izin Notifikasi",
-        "Aktifkan izin notifikasi di pengaturan perangkat Anda untuk menerima pembaruan penting.",
-      );
-      return;
+      if (showAlertOnDenied) {
+        Alert.alert(
+          "Izin Notifikasi",
+          "Aktifkan notifikasi untuk menerima pembaruan penting.",
+        );
+      }
+      return { success: false, permissionDenied: true, canAskAgain: true };
     }
 
+    return await saveTokenToDatabase(userId);
+  } catch (err) {
+    Sentry.captureException(err);
+    return FAIL_RESULT;
+  }
+}
+
+async function saveTokenToDatabase(userId: string): Promise<PermissionResult> {
+  try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
-      Sentry.captureException(
-        new Error("[Notifications] Missing EAS projectId"),
-      );
-      return;
+      Sentry.captureException(new Error("Missing EAS projectId"));
+      return FAIL_RESULT;
     }
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
-
     if (!token) {
-      Sentry.captureException(new Error("[Notifications] Token undefined"));
-      return;
+      Sentry.captureException(new Error("Token undefined"));
+      return FAIL_RESULT;
     }
 
     const { error } = await supabase
@@ -72,13 +139,13 @@ export async function registerAndSaveNotificationToken(userId: string) {
       .eq("user_id", userId);
 
     if (error) {
-      Sentry.captureException(
-        new Error(`[Notifications] Save error: ${error.message}`),
-      );
-    } else {
-      console.log("[Notifications] Token saved successfully");
+      Sentry.captureException(new Error(`Save error: ${error.message}`));
+      return FAIL_RESULT;
     }
+
+    return { success: true, permissionDenied: false, canAskAgain: true };
   } catch (err) {
     Sentry.captureException(err);
+    return FAIL_RESULT;
   }
 }

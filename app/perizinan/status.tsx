@@ -110,9 +110,13 @@ function PermissionCard({ item }: { item: PerizinanRecord }) {
     CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
   const date = parseISO(item.tanggal);
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
-  const createdDateTime = format(parseISO(item.created_at), "d MMM yyyy, HH:mm", {
-    locale: idLocale,
-  });
+  const createdDateTime = format(
+    parseISO(item.created_at),
+    "d MMM yyyy, HH:mm",
+    {
+      locale: idLocale,
+    },
+  );
 
   const duration = "1 Hari";
   const isRejected = item.approval_status === "rejected";
@@ -336,8 +340,6 @@ export default function StatusPerizinanScreen() {
   const MAX_DAILY_SUBMISSIONS = 3;
   const canSubmitMore = todayCount < MAX_DAILY_SUBMISSIONS;
 
-
-
   // ---- Render ----
   return (
     <>
@@ -403,9 +405,7 @@ export default function StatusPerizinanScreen() {
               <Text className="text-muted-foreground">Memuat data...</Text>
             </View>
           ) : records.length > 0 ? (
-            records.map((item) => (
-              <PermissionCard key={item.id} item={item} />
-            ))
+            records.map((item) => <PermissionCard key={item.id} item={item} />)
           ) : (
             <View className="items-center py-10">
               <Text className="text-muted-foreground">
