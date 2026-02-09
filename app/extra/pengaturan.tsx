@@ -33,8 +33,16 @@ import {
   Shield,
   Smartphone,
   Pencil,
+  Bell,
+  BellOff,
 } from "lucide-react-native";
 import * as Updates from "expo-updates";
+import {
+  getNotificationPermissionStatus,
+  registerAndSaveNotificationToken,
+  clearNotificationToken,
+  openNotificationSettings,
+} from "~/utils/notifications";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -43,8 +51,7 @@ function Pengaturan() {
   const isFocused = useIsFocused();
   const { theme, setTheme } = useThemeStore();
 
-  // Memoize initial profile data to avoid recalculations
-  const initialProfileData = useMemo(
+  const initialProfile = useMemo(
     () => ({
       name: user?.user_metadata?.name || user?.email || "Pengguna Skanida",
       avatar: user?.user_metadata?.avatar_url || null,
@@ -52,146 +59,110 @@ function Pengaturan() {
     [user?.user_metadata?.name, user?.email, user?.user_metadata?.avatar_url],
   );
 
-  const [profileFullName, setProfileFullName] = useState(
-    initialProfileData.name,
+  const [profileName, setProfileName] = useState(initialProfile.name);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(
+    initialProfile.avatar,
   );
-  const [profileAvatarValue, setProfileAvatarValue] = useState<string | null>(
-    initialProfileData.avatar,
-  );
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifCanAsk, setNotifCanAsk] = useState(true);
+  const [notifLoading, setNotifLoading] = useState(true);
 
-  // Handle hardware back button
+  // Hardware back button
   useEffect(() => {
-    const backAction = () => {
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
       router.back();
-      return true; // Prevent default behavior
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
-
-    return () => backHandler.remove();
+      return true;
+    });
+    return () => handler.remove();
   }, [router]);
 
+  // Avatar URL resolution
   useEffect(() => {
-    let isActive = true;
-
-    if (!profileAvatarValue) {
-      setProfileAvatarUrl(null);
+    if (!profileAvatar) {
+      setAvatarUrl(null);
       return;
     }
-
-    getAvatarSignedUrl(profileAvatarValue)
-      .then((resolvedUrl) => {
-        if (isActive) setProfileAvatarUrl(resolvedUrl);
-      })
-      .catch(() => {
-        if (isActive) setProfileAvatarUrl(profileAvatarValue);
-      });
-
+    let active = true;
+    getAvatarSignedUrl(profileAvatar)
+      .then((url) => active && setAvatarUrl(url))
+      .catch(() => active && setAvatarUrl(profileAvatar));
     return () => {
-      isActive = false;
+      active = false;
     };
-  }, [profileAvatarValue]);
+  }, [profileAvatar]);
 
-  // Simplified profile data fetching that always gets fresh data from server
-  const fetchProfileDataAndUpdateState = useCallback(async () => {
+  // Fetch profile data
+  const fetchProfile = useCallback(async () => {
     if (!user) {
-      setProfileFullName("Pengguna Skanida");
-      setProfileAvatarValue(null);
+      setProfileName("Pengguna Skanida");
+      setProfileAvatar(null);
       return;
     }
+    setProfileName(
+      user.user_metadata?.name || user.email || "Pengguna Skanida",
+    );
+    setProfileAvatar(user.user_metadata?.avatar_url || null);
 
-    try {
-      // Set initial data from user metadata while fetching
-      const initialName =
-        user.user_metadata?.name || user.email || "Pengguna Skanida";
-      const initialAvatar = user.user_metadata?.avatar_url || null;
-      setProfileFullName(initialName);
-      setProfileAvatarValue(initialAvatar);
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .select("full_name, avatar_url")
+      .eq("user_id", user.id)
+      .single();
 
-      // Always fetch fresh data from database
-      const { data: userProfile, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("full_name, avatar_url")
-        .eq("user_id", user?.id)
-        .single();
-
-      if (profileError && profileError.code !== "PGRST116") {
-        console.error(
-          "Pengaturan: Error fetching from user_profiles:",
-          profileError.message,
-        );
-      } else if (userProfile) {
-        console.log("Pengaturan: Profile data found in database:", userProfile);
-
-        // Always update with latest data from server
-        const updatedName =
-          userProfile.full_name ||
-          user.user_metadata?.name ||
-          user.email ||
-          "Pengguna Skanida";
-        const updatedAvatar =
-          userProfile.avatar_url || user.user_metadata?.avatar_url || null;
-
-        setProfileFullName(updatedName);
-        setProfileAvatarValue(updatedAvatar);
-      }
-    } catch (err) {
-      console.error("Pengaturan: Unexpected error fetching profile:", err);
+    if (!error && data) {
+      setProfileName(
+        data.full_name ||
+        user.user_metadata?.name ||
+        user.email ||
+        "Pengguna Skanida",
+      );
+      setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
     }
   }, [user]);
 
-  // Fetch fresh data whenever the screen is focused
   useEffect(() => {
-    if (isFocused) {
-      fetchProfileDataAndUpdateState();
-    } else if (!user) {
-      setProfileFullName("Pengguna Skanida");
-      setProfileAvatarValue(null);
-    }
-  }, [user, isFocused, fetchProfileDataAndUpdateState]);
+    if (isFocused) fetchProfile();
+  }, [isFocused, fetchProfile]);
 
-  // Corrected logout handler
-  const handleLogout = useCallback(async () => {
-    Alert.alert(
-      "Logout",
-      "Apakah Anda yakin ingin keluar?",
-      [
-        {
-          text: "Batal",
-          style: "cancel",
+  // Theme sync
+  useEffect(() => setIsDarkMode(theme === "dark"), [theme]);
+
+  // Notification status check
+  useEffect(() => {
+    if (!isFocused) return;
+    (async () => {
+      setNotifLoading(true);
+      try {
+        const s = await getNotificationPermissionStatus();
+        setNotifEnabled(s.isGranted);
+        setNotifCanAsk(s.canAskAgain);
+      } finally {
+        setNotifLoading(false);
+      }
+    })();
+  }, [isFocused]);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert("Logout", "Apakah Anda yakin ingin keluar?", [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Ya, Keluar",
+        style: "destructive",
+        onPress: async () => {
+          await supabase.auth.signOut();
+          await AsyncStorage.clear();
+          setUser(null);
+          router.replace("/auth/AuthSelector");
         },
-        {
-          text: "Ya, Keluar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await supabase.auth.signOut();
-              await AsyncStorage.clear();
-              setUser(null);
-              router.replace("/auth/AuthSelector");
-            } catch (error) {
-              console.error("Logout error:", error);
-              Alert.alert(
-                "Error",
-                "Gagal melakukan logout. Silakan coba lagi.",
-              );
-            }
-          },
-        },
-      ],
-      { cancelable: true },
-    );
+      },
+    ]);
   }, [setUser, router]);
 
-  // Optimized copy ID handler with useCallback
-  const handleCopyId = useCallback(async () => {
+  const handleCopyId = useCallback(() => {
     if (user?.id) {
       Clipboard.setString(user.id);
       setCopiedId(true);
@@ -199,34 +170,28 @@ function Pengaturan() {
     }
   }, [user?.id]);
 
-  // Toggle theme handler
   const toggleTheme = useCallback(() => {
-    const newTheme = isDarkMode ? "light" : "dark";
+    const next = isDarkMode ? "light" : "dark";
     setIsDarkMode(!isDarkMode);
-    setTheme(newTheme);
-    colorScheme.set(newTheme);
+    setTheme(next);
+    colorScheme.set(next);
   }, [isDarkMode, setTheme]);
 
-  // Check update handler
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
     try {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
-        Alert.alert(
-          "Update Tersedia",
-          "Update baru tersedia. Unduh dan restart aplikasi?",
-          [
-            { text: "Batal", style: "cancel" },
-            {
-              text: "Update",
-              onPress: async () => {
-                await Updates.fetchUpdateAsync();
-                await Updates.reloadAsync();
-              },
+        Alert.alert("Update Tersedia", "Unduh dan restart aplikasi?", [
+          { text: "Batal", style: "cancel" },
+          {
+            text: "Update",
+            onPress: async () => {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
             },
-          ],
-        );
+          },
+        ]);
       } else {
         Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
       }
@@ -237,21 +202,62 @@ function Pengaturan() {
     }
   }, []);
 
-  // Effect to sync theme state with store
-  useEffect(() => {
-    setIsDarkMode(theme === "dark");
-  }, [theme]);
+  const handleNotifToggle = useCallback(async () => {
+    if (!user?.id) return;
+
+    if (notifEnabled) {
+      if (await clearNotificationToken(user.id)) setNotifEnabled(false);
+      return;
+    }
+
+    if (!notifCanAsk) {
+      openNotificationSettings();
+      return;
+    }
+
+    setNotifLoading(true);
+    try {
+      const r = await registerAndSaveNotificationToken(user.id, false);
+      setNotifEnabled(r.success);
+      setNotifCanAsk(r.canAskAgain);
+      if (r.permissionDenied && !r.canAskAgain) {
+        Alert.alert(
+          "Izin Notifikasi",
+          "Izin ditolak permanen. Buka pengaturan perangkat.",
+          [
+            { text: "Batal", style: "cancel" },
+            { text: "Buka Pengaturan", onPress: openNotificationSettings },
+          ],
+        );
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  }, [user?.id, notifEnabled, notifCanAsk]);
+
+  const getNotifSubtitle = () => {
+    if (notifLoading) return "Memuat...";
+    if (notifEnabled) return "Notifikasi aktif";
+    if (!notifCanAsk) return "Tap untuk buka Pengaturan HP";
+    return "Notifikasi nonaktif";
+  };
+
+  const EditButton = ({ onPress }: { onPress: () => void }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
+    >
+      <Icon as={Pencil} className="size-4 text-white" />
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Simple Header */}
+      {/* Header */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
           onPress={() => router.back()}
@@ -262,11 +268,9 @@ function Pengaturan() {
             className="size-6 text-gray-900 dark:text-gray-100"
           />
         </TouchableOpacity>
-
         <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Pengaturan
         </Text>
-
         <View className="w-10" />
       </View>
 
@@ -278,95 +282,69 @@ function Pengaturan() {
         {/* Profile Card */}
         <View className="px-5 mt-4">
           <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
-            <View className="p-5">
-              <View className="flex-row items-center">
-                {/* Avatar */}
-                {profileAvatarUrl ? (
-                  <View className="relative">
-                    <Image
-                      source={{ uri: profileAvatarUrl }}
-                      className="w-18 h-18 rounded-2xl"
-                      style={{ width: 72, height: 72 }}
-                    />
-                    <TouchableOpacity
-                      onPress={() => router.push("/profile/ManageAccount")}
-                      activeOpacity={0.8}
-                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
-                    >
-                      <Icon as={Pencil} className="size-4 text-white" />
-                    </TouchableOpacity>
-                  </View>
+            <View className="p-5 flex-row items-center">
+              <View className="relative">
+                {avatarUrl ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={{ width: 72, height: 72 }}
+                    className="rounded-2xl"
+                  />
                 ) : (
-                  <View className="relative">
-                    <View
-                      className="w-18 h-18 rounded-2xl items-center justify-center bg-indigo-500"
-                      style={{ width: 72, height: 72 }}
-                    >
-                      <Text className="text-white text-2xl font-bold">
-                        {(profileFullName || user?.email)
-                          ?.charAt(0)
-                          .toUpperCase() || "U"}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => router.push("/profile/ManageAccount")}
-                      activeOpacity={0.8}
-                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
-                    >
-                      <Icon as={Pencil} className="size-4 text-white" />
-                    </TouchableOpacity>
+                  <View
+                    className="rounded-2xl items-center justify-center bg-indigo-500"
+                    style={{ width: 72, height: 72 }}
+                  >
+                    <Text className="text-white text-2xl font-bold">
+                      {(profileName || user?.email)?.charAt(0).toUpperCase() ||
+                        "U"}
+                    </Text>
                   </View>
                 )}
+                <EditButton
+                  onPress={() => router.push("/profile/ManageAccount")}
+                />
+              </View>
 
-                {/* User Info */}
-                <View className="flex-1 ml-4">
-                  <Text className="text-foreground font-bold text-lg">
-                    {profileFullName ||
-                      user?.email?.split("@")[0] ||
-                      "Pengguna"}
-                  </Text>
-                  <Text className="text-muted-foreground text-sm mt-0.5">
-                    {user?.email || "Tidak ada email"}
-                  </Text>
-
-                  {/* Copy ID Button */}
-                  <TouchableOpacity
-                    onPress={handleCopyId}
-                    className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${
-                      copiedId ? "bg-green-500/10" : "bg-muted"
-                    }`}
-                    activeOpacity={0.7}
+              <View className="flex-1 ml-4">
+                <Text className="text-foreground font-bold text-lg">
+                  {profileName || user?.email?.split("@")[0] || "Pengguna"}
+                </Text>
+                <Text className="text-muted-foreground text-sm mt-0.5">
+                  {user?.email || "Tidak ada email"}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleCopyId}
+                  className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${copiedId ? "bg-green-500/10" : "bg-muted"}`}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    as={Shield}
+                    className={`size-3 mr-1.5 ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
+                  />
+                  <Text
+                    className={`text-xs font-medium ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
                   >
-                    <Icon
-                      as={copiedId ? Shield : Shield}
-                      className={`size-3 mr-1.5 ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
-                    />
-                    <Text
-                      className={`text-xs font-medium ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
-                    >
-                      {copiedId
-                        ? "ID Tersalin!"
-                        : `${user?.id?.substring(0, 8) || "Unknown"}...`}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                    {copiedId
+                      ? "ID Tersalin!"
+                      : `${user?.id?.substring(0, 8) || "Unknown"}...`}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Card>
         </View>
 
-        {/* Preferences Section */}
+        {/* Preferences */}
         <View className="px-5 mt-5">
           <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
             Preferensi
           </Text>
           <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
-            {/* Dark Mode Toggle */}
+            {/* Dark Mode */}
             <View className="flex-row items-center p-4 border-b border-border/50">
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${
-                  isDarkMode ? "bg-purple-500/10" : "bg-yellow-500/10"
-                }`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${isDarkMode ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
               >
                 <Icon
                   as={isDarkMode ? Moon : Sun}
@@ -388,6 +366,42 @@ function Pengaturan() {
                 thumbColor="#ffffff"
               />
             </View>
+
+            {/* Notification */}
+            <TouchableOpacity
+              className="flex-row items-center p-4 border-b border-border/50"
+              onPress={handleNotifToggle}
+              disabled={notifLoading}
+              activeOpacity={0.7}
+            >
+              <View
+                className={`w-11 h-11 rounded-xl items-center justify-center ${notifEnabled ? "bg-blue-500/10" : "bg-gray-500/10"}`}
+              >
+                <Icon
+                  as={notifEnabled ? Bell : BellOff}
+                  className={`size-5 ${notifEnabled ? "text-blue-500" : "text-gray-500"}`}
+                />
+              </View>
+              <View className="flex-1 ml-4">
+                <Text className="text-foreground font-semibold">
+                  Notifikasi
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  {getNotifSubtitle()}
+                </Text>
+              </View>
+              {notifLoading ? (
+                <View className="w-5 h-5 border-2 border-t-transparent border-primary rounded-full" />
+              ) : (
+                <Switch
+                  value={notifEnabled}
+                  onValueChange={handleNotifToggle}
+                  trackColor={{ false: "#e5e7eb", true: "#3b82f6" }}
+                  thumbColor="#ffffff"
+                  disabled={notifLoading}
+                />
+              )}
+            </TouchableOpacity>
 
             {/* Check Update */}
             <TouchableOpacity
@@ -417,7 +431,7 @@ function Pengaturan() {
           </Card>
         </View>
 
-        {/* App Info Section */}
+        {/* App Info */}
         <View className="px-5 mt-5">
           <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
             Tentang
@@ -435,28 +449,21 @@ function Pengaturan() {
                   Skanida v{Constants.expoConfig?.version}
                 </Text>
               </View>
-              <View className="px-3 py-1.5 rounded-xl bg-indigo-500/10">
-                <Text className="text-xs font-bold text-indigo-500">
-                  Terbaru
-                </Text>
-              </View>
             </View>
           </Card>
         </View>
 
-        {/* Logout Button */}
+        {/* Logout */}
         <View className="px-5 mt-6">
           <TouchableOpacity
             onPress={handleLogout}
             activeOpacity={0.9}
-            className="overflow-hidden rounded-2xl"
+            className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
           >
-            <View className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600">
-              <Icon as={LogOut} className="size-5 text-white mr-3" />
-              <Text className="font-bold text-white text-base">
-                Keluar dari Akun
-              </Text>
-            </View>
+            <Icon as={LogOut} className="size-5 text-white mr-3" />
+            <Text className="font-bold text-white text-base">
+              Keluar dari Akun
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -474,5 +481,4 @@ function Pengaturan() {
   );
 }
 
-// Export the memoized component for better performance
 export default memo(Pengaturan);
