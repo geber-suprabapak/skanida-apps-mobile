@@ -152,10 +152,15 @@ function Pengaturan() {
         text: "Ya, Keluar",
         style: "destructive",
         onPress: async () => {
-          await supabase.auth.signOut();
-          await AsyncStorage.clear();
-          setUser(null);
-          router.replace("/auth/AuthSelector");
+          try {
+            await supabase.auth.signOut();
+            await AsyncStorage.clear();
+            setUser(null);
+            router.replace("/auth/AuthSelector");
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("Error", "Gagal melakukan logout. Silakan coba lagi.");
+          }
         },
       },
     ]);
@@ -205,7 +210,20 @@ function Pengaturan() {
     if (!user?.id) return;
 
     if (notifEnabled) {
-      if (await clearNotificationToken(user.id)) setNotifEnabled(false);
+      setNotifLoading(true);
+      try {
+        const success = await clearNotificationToken(user.id);
+        if (success) {
+          setNotifEnabled(false);
+        } else {
+          Alert.alert(
+            "Error",
+            "Gagal menonaktifkan notifikasi. Silakan coba lagi.",
+          );
+        }
+      } finally {
+        setNotifLoading(false);
+      }
       return;
     }
 
