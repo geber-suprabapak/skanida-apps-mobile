@@ -57,7 +57,7 @@ const clearProfileCache = async () => {
   try {
     await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
   } catch (error) {
-    console.log("Failed to clear profile cache:", error);
+    if (__DEV__) console.log("Failed to clear profile cache:", error);
   }
 };
 
@@ -374,7 +374,7 @@ export default function ManageAccount() {
       if (__DEV__) console.error("Upload error:", error);
       Alert.alert(
         "Gagal Upload",
-        error.message || "Terjadi kesalahan saat mengunggah foto.",
+        "Terjadi kesalahan saat mengunggah foto.",
       );
     } finally {
       setUploadingAvatar(false);
@@ -500,7 +500,7 @@ export default function ManageAccount() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Gagal mengubah password.");
+      Alert.alert("Error", "Gagal mengubah password.");
     } finally {
       setPasswordLoading(false);
     }

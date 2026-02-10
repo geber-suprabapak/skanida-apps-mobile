@@ -41,7 +41,9 @@ const useAuthStore = create<AuthState>((set, get) => ({
           get().fetchUserProfile(user.id),
           registerAndSaveNotificationToken(user.id),
         ]);
-      })();
+      })().catch((error) => {
+        Sentry.captureException(error);
+      });
     } else {
       set({ userProfile: null });
     }
@@ -68,7 +70,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
         // If we get an error that is NOT a "resource not found" error, something is wrong.
         if (error && status !== 406) {
-          console.error("Error fetching user profile:", error.message);
+          if (__DEV__) console.error("Error fetching user profile:", error.message);
           Sentry.captureException(error);
           set({ userProfile: null }); // Clear profile on definitive error
           return;
@@ -77,13 +79,14 @@ const useAuthStore = create<AuthState>((set, get) => ({
         // If we are here, it means data is null (profile not found yet).
         // We will wait and retry, unless it's the last attempt.
         if (i < maxRetries - 1) {
-          console.log(
-            `Profile not found, attempt ${i + 1}. Retrying in ${delay}ms...`,
-          );
+          if (__DEV__)
+            console.log(
+              `Profile not found, attempt ${i + 1}. Retrying in ${delay}ms...`,
+            );
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       } catch (error) {
-        console.error("An unexpected error occurred fetching profile:", error);
+        if (__DEV__) console.error("An unexpected error occurred fetching profile:", error);
         Sentry.captureException(error);
         set({ userProfile: null }); // Clear profile on unexpected error
         return;
@@ -94,7 +97,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
     const fetchFailureError = new Error(
       `Failed to fetch user profile for ${userId} after ${maxRetries} attempts.`,
     );
-    console.error(fetchFailureError.message);
+    if (__DEV__) console.error(fetchFailureError.message);
     Sentry.captureException(fetchFailureError);
     set({ userProfile: null });
   },

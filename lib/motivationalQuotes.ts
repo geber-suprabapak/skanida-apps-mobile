@@ -121,7 +121,7 @@ export const fetchRandomQuote = async (): Promise<MotivationalQuote> => {
       author: author || "Anonim",
     };
   } catch (error) {
-    console.warn("Failed to fetch motivational quote, using fallback", error);
+    if (__DEV__) console.warn("Failed to fetch motivational quote, using fallback", error);
     return getFallbackQuote();
   } finally {
     clearTimeout(timeoutId);

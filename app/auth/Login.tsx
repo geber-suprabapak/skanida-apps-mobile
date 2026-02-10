@@ -76,7 +76,7 @@ export default function Login() {
             "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
           );
         } else {
-          Alert.alert("Login Gagal", error.message); // Changed to Alert.alert
+          Alert.alert("Login Gagal", "Email atau password salah. Silakan coba lagi.");
         }
         return;
       }
@@ -91,10 +91,11 @@ export default function Login() {
           try {
             await supabase.auth.signOut();
           } catch (signOutErr) {
-            console.warn(
-              "Gagal sign out setelah deteksi role tidak valid",
-              signOutErr,
-            );
+            if (__DEV__)
+              console.warn(
+                "Gagal sign out setelah deteksi role tidak valid",
+                signOutErr,
+              );
           }
           alert("Admin tidak bisa masuk.");
           return; // Jangan lanjutkan login
@@ -104,7 +105,7 @@ export default function Login() {
         router.replace("/Dashboard");
       }
     } catch (error) {
-      console.error("Login error:", error);
+      if (__DEV__) console.error("Login error:", error);
     } finally {
       setLoading(false);
     }

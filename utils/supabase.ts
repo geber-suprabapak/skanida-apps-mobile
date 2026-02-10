@@ -17,24 +17,29 @@ export async function ensureSupabaseInitialized(): Promise<SupabaseClient> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const cfg = await getSupabaseConfig();
-    if (!cfg?.url || !cfg?.anonKey) {
-      throw new Error(
-        "Supabase configuration missing. Please set URL and anon key.",
-      );
+    try {
+      const cfg = await getSupabaseConfig();
+      if (!cfg?.url || !cfg?.anonKey) {
+        throw new Error(
+          "Supabase configuration missing. Please set URL and anon key.",
+        );
+      }
+
+      const client = createClient(cfg.url, cfg.anonKey, {
+        auth: {
+          storage: secureStorageAdapter,
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: false,
+        },
+      });
+
+      supabaseInstance = client;
+      return client;
+    } catch (error) {
+      initPromise = null;
+      throw error;
     }
-
-    const client = createClient(cfg.url, cfg.anonKey, {
-      auth: {
-        storage: secureStorageAdapter,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    });
-
-    supabaseInstance = client;
-    return client;
   })();
 
   return initPromise;
