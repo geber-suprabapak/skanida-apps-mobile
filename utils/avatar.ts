@@ -1,7 +1,7 @@
 import { supabase } from "~/utils/supabase";
 
 const AVATAR_BUCKET = "avatars";
-const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7;
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24;
 const SIGNED_URL_SEGMENT = "/storage/v1/object/sign/avatars/";
 const PUBLIC_URL_SEGMENT = "/storage/v1/object/public/avatars/";
 

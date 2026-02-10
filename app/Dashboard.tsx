@@ -249,27 +249,33 @@ export default function Dashboard() {
 
       if (error) {
         if (error.code === "PGRST116") {
-          console.log("Dashboard: No profile data found for user:", user?.id);
+          if (__DEV__)
+            console.log("Dashboard: No profile data found for user:", user?.id);
           setProfileData(null);
         } else {
-          console.error(
-            "Dashboard: Error fetching profile data:",
-            error.message,
-          );
+          if (__DEV__) {
+            console.error(
+              "Dashboard: Error fetching profile data:",
+              error.message,
+            );
+          }
           setProfileData(null);
         }
       } else if (data) {
-        console.log("Dashboard: Profile data found:", data);
+        if (__DEV__) console.log("Dashboard: Profile data found:", data);
         setProfileData(data as UserProfile);
       } else {
-        console.log("Dashboard: No profile data found for user:", user?.id);
+        if (__DEV__)
+          console.log("Dashboard: No profile data found for user:", user?.id);
         setProfileData(null);
       }
     } catch (err: any) {
-      console.error(
-        "Dashboard: Exception during user_profiles data fetch:",
-        err.message,
-      );
+      if (__DEV__) {
+        console.error(
+          "Dashboard: Exception during user_profiles data fetch:",
+          err.message,
+        );
+      }
       setProfileData(null);
     }
   }, [user]);
@@ -375,7 +381,7 @@ export default function Dashboard() {
         todayStatus,
       });
     } catch (error) {
-      console.error("Error fetching attendance data:", error);
+      if (__DEV__) console.error("Error fetching attendance data:", error);
     }
   }, [user]);
 
@@ -437,7 +443,7 @@ export default function Dashboard() {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error during live validation:", error);
+      if (__DEV__) console.error("Error during live validation:", error);
       setValidationStatus({
         canCheckIn: false,
         actionType: "none",
@@ -449,7 +455,8 @@ export default function Dashboard() {
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
     if (user) {
-      console.log("Dashboard: Fetching initial data for user:", user?.id);
+      if (__DEV__)
+        console.log("Dashboard: Fetching initial data for user:", user?.id);
       fetchProfileData();
       fetchAttendanceData();
     }
@@ -494,10 +501,11 @@ export default function Dashboard() {
 
       if (error) {
         if (error.code !== "PGRST116") {
-          console.error(
-            "Dashboard: Error fetching attendance schedule:",
-            error.message,
-          );
+          if (__DEV__)
+            console.error(
+              "Dashboard: Error fetching attendance schedule:",
+              error.message,
+            );
         }
         setAttendanceSchedule(null);
         return;
@@ -509,10 +517,11 @@ export default function Dashboard() {
         setAttendanceSchedule(null);
       }
     } catch (scheduleError: any) {
-      console.error(
-        "Dashboard: Exception during attendance schedule fetch:",
-        scheduleError.message,
-      );
+      if (__DEV__)
+        console.error(
+          "Dashboard: Exception during attendance schedule fetch:",
+          scheduleError.message,
+        );
       setAttendanceSchedule(null);
     }
   }, []);

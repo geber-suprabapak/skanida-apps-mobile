@@ -8,8 +8,8 @@ import {
   Platform,
   BackHandler,
   Alert,
-  Linking,
 } from "react-native";
+import * as Linking from "expo-linking";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { supabase } from "~/utils/supabase";
@@ -96,7 +96,7 @@ export default function ResetPassword() {
         );
       }
     } catch (err) {
-      console.error("Error opening email app:", err);
+      if (__DEV__) console.error("Error opening email app:", err);
       Alert.alert(
         "Buka Email Manual",
         "Tidak dapat membuka aplikasi email secara otomatis. Silakan buka aplikasi email Anda secara manual.",
@@ -121,18 +121,13 @@ export default function ResetPassword() {
       setLoading(true);
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://lupa.hysilens.my.id",
+        redirectTo: Linking.createURL("/auth/reset-callback"),
       });
 
       if (error) {
-        console.error("Reset password error:", error.message);
-        setErrorMessage(
-          error.message || "Terjadi kesalahan. Silakan coba lagi nanti.",
-        );
-        Alert.alert(
-          "Gagal",
-          error.message || "Terjadi kesalahan, coba lagi nanti.",
-        );
+        if (__DEV__) console.error("Reset password error:", error.message);
+        setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
+        Alert.alert("Gagal", "Terjadi kesalahan, coba lagi nanti.");
         return;
       }
 
@@ -161,7 +156,7 @@ export default function ResetPassword() {
         { cancelable: false },
       );
     } catch (err) {
-      console.error("Reset password exception:", err);
+      if (__DEV__) console.error("Reset password exception:", err);
       setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
       Alert.alert("Gagal", "Terjadi kesalahan. Silakan coba lagi nanti.");
     } finally {

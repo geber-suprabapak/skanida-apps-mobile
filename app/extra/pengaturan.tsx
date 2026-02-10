@@ -7,10 +7,10 @@ import {
   ScrollView,
   Alert,
   Image,
-  Clipboard,
   BackHandler,
   Switch,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
@@ -158,7 +158,7 @@ function Pengaturan() {
             setUser(null);
             router.replace("/auth/AuthSelector");
           } catch (error) {
-            console.error("Logout error:", error);
+            if (__DEV__) console.error("Logout error:", error);
             Alert.alert("Error", "Gagal melakukan logout. Silakan coba lagi.");
           }
         },
@@ -166,9 +166,9 @@ function Pengaturan() {
     ]);
   }, [setUser, router]);
 
-  const handleCopyId = useCallback(() => {
+  const handleCopyId = useCallback(async () => {
     if (user?.id) {
-      Clipboard.setString(user.id);
+      await Clipboard.setStringAsync(user.id);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
@@ -200,7 +200,7 @@ function Pengaturan() {
         Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
       }
     } catch (error) {
-      Alert.alert("Error", `Gagal cek update: ${error}`);
+      Alert.alert("Gagal", "Gagal memeriksa pembaruan.");
     } finally {
       setIsCheckingUpdate(false);
     }

@@ -29,7 +29,7 @@ export default function Index() {
         } = sessionResponse;
 
         if (error) {
-          setLoadingMessage(`Error: ${error.message}`);
+          setLoadingMessage("Terjadi kesalahan saat memeriksa sesi.");
         }
 
         if (session?.user) {
@@ -41,9 +41,7 @@ export default function Index() {
         }
       } catch (err) {
         if (err instanceof Error) {
-          setLoadingMessage(
-            `Error occurred while checking session: ${err.message}`,
-          );
+          setLoadingMessage("Terjadi kesalahan saat memeriksa sesi.");
         } else {
           setLoadingMessage("Error occurred while checking session (unknown)");
         }

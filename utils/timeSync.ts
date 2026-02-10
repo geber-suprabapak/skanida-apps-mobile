@@ -96,9 +96,9 @@ class TimeSync {
       this.setupBackgroundSync();
 
       this.isInitialized = true;
-      console.log("✅ TimeSync initialized");
+      if (__DEV__) console.log("TimeSync initialized");
     } catch (error) {
-      console.error("TimeSync initialization failed:", error);
+      if (__DEV__) console.error("TimeSync initialization failed:", error);
       useTimeSyncStore.getState().setStatus("failed");
     }
   }
@@ -126,17 +126,18 @@ class TimeSync {
             lastSyncTime: data.timestamp,
           });
 
-          console.log("📦 Loaded persisted offset:", {
-            offset: data.offset,
-            age: `${Math.round(age / 1000)}s`,
-            source: data.source,
-          });
+          if (__DEV__)
+            console.log("Loaded persisted offset:", {
+              offset: data.offset,
+              age: `${Math.round(age / 1000)}s`,
+              source: data.source,
+            });
         } else {
-          console.log("⏰ Persisted offset too old, will sync fresh");
+          if (__DEV__) console.log("Persisted offset too old, will sync fresh");
         }
       }
     } catch (error) {
-      console.error("Failed to load persisted offset:", error);
+      if (__DEV__) console.error("Failed to load persisted offset:", error);
     }
   }
 
@@ -155,9 +156,9 @@ class TimeSync {
       };
 
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
-      console.log("💾 Persisted offset to storage");
+      if (__DEV__) console.log("Persisted offset to storage");
     } catch (error) {
-      console.error("Failed to persist offset:", error);
+      if (__DEV__) console.error("Failed to persist offset:", error);
     }
   }
 
@@ -168,7 +169,7 @@ class TimeSync {
     // Background sync timer
     this.backgroundSyncTimer = setInterval(() => {
       this.syncWithServer().catch((error) => {
-        console.error("Background sync failed:", error);
+        if (__DEV__) console.error("Background sync failed:", error);
       });
     }, this.BACKGROUND_SYNC_INTERVAL);
 
@@ -178,7 +179,7 @@ class TimeSync {
       this.handleAppStateChange.bind(this),
     );
 
-    console.log("🔄 Background sync enabled");
+    if (__DEV__) console.log("Background sync enabled");
   }
 
   /**
@@ -186,9 +187,9 @@ class TimeSync {
    */
   private handleAppStateChange(nextAppState: AppStateStatus): void {
     if (nextAppState === "active") {
-      console.log("📱 App became active, syncing time...");
+      if (__DEV__) console.log("App became active, syncing time...");
       this.syncWithServer().catch((error) => {
-        console.error("App resume sync failed:", error);
+        if (__DEV__) console.error("App resume sync failed:", error);
       });
     }
   }
@@ -224,11 +225,12 @@ class TimeSync {
     const hasDrift = drift > this.DRIFT_THRESHOLD;
 
     if (hasDrift) {
-      console.warn("⚠️ Time drift detected:", {
-        oldOffset: this.timeOffset,
-        newOffset,
-        drift: `${drift}ms`,
-      });
+      if (__DEV__)
+        console.warn("Time drift detected:", {
+          oldOffset: this.timeOffset,
+          newOffset,
+          drift: `${drift}ms`,
+        });
 
       useTimeSyncStore.getState().setDriftDetected(true);
     } else {
@@ -251,7 +253,7 @@ class TimeSync {
         return true;
       } catch (error) {
         // If waiting sync failed, allow retry
-        console.error("Previous time sync attempt failed:", error);
+        if (__DEV__) console.error("Previous time sync attempt failed:", error);
         this.syncPromise = null;
       }
     }
@@ -266,7 +268,7 @@ class TimeSync {
       await this.syncPromise;
       return true;
     } catch (error) {
-      console.error("Time sync failed:", error);
+      if (__DEV__) console.error("Time sync failed:", error);
       useTimeSyncStore.getState().setStatus("failed");
       useTimeSyncStore
         .getState()
@@ -286,7 +288,11 @@ class TimeSync {
         await this._syncWithServerEdgeFunction();
         return;
       } catch (serverError) {
-        console.warn("Server sync failed, trying NTP fallback...", serverError);
+        if (__DEV__)
+          console.warn(
+            "Server sync failed, trying NTP fallback...",
+            serverError,
+          );
       }
 
       // Fallback to NTP
@@ -294,11 +300,11 @@ class TimeSync {
         await this._syncWithNTP();
         return;
       } catch (ntpError) {
-        console.warn("NTP sync failed", ntpError);
+        if (__DEV__) console.warn("NTP sync failed", ntpError);
       }
 
       // If both fail, use local time (offset = 0)
-      console.warn("All sync methods failed, using local time");
+      if (__DEV__) console.warn("All sync methods failed, using local time");
       this.timeOffset = 0;
       this.lastSyncTime = Date.now();
 
@@ -311,7 +317,7 @@ class TimeSync {
 
       await this.persistOffset(0, "local");
     } catch (error) {
-      console.error("Sync process failed:", error);
+      if (__DEV__) console.error("Sync process failed:", error);
       throw error;
     }
   }
@@ -370,12 +376,13 @@ class TimeSync {
     // Persist
     await this.persistOffset(newOffset, "server");
 
-    console.log("✅ Server sync successful", {
-      offset: newOffset,
-      roundTripTime,
-      serverTime: data.serverTime,
-      localTime: new Date(responseTime).toISOString(),
-    });
+    if (__DEV__)
+      console.log("Server sync successful", {
+        offset: newOffset,
+        roundTripTime,
+        serverTime: data.serverTime,
+        localTime: new Date(responseTime).toISOString(),
+      });
   }
 
   /**
@@ -431,11 +438,12 @@ class TimeSync {
     // Persist
     await this.persistOffset(newOffset, "ntp");
 
-    console.log("✅ NTP sync successful", {
-      offset: newOffset,
-      roundTripTime,
-      ntpTime: data.datetime,
-    });
+    if (__DEV__)
+      console.log("NTP sync successful", {
+        offset: newOffset,
+        roundTripTime,
+        ntpTime: data.datetime,
+      });
   }
 
   /**
@@ -460,7 +468,7 @@ class TimeSync {
       this.appStateSubscription = null;
     }
 
-    console.log("🧹 TimeSync cleanup complete");
+    if (__DEV__) console.log("TimeSync cleanup complete");
   }
 }
 

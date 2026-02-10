@@ -289,7 +289,7 @@ export default function PerizinanScreen() {
           .lte("tanggal", endOfDayUTC);
 
         if (error) {
-          return { canSubmit: true }; // Allow on error (fail open)
+          return { canSubmit: false, reason: "Gagal memverifikasi status" };
         }
 
         if (!data || data.length === 0) {
@@ -326,7 +326,7 @@ export default function PerizinanScreen() {
 
         return { canSubmit: true };
       } catch {
-        return { canSubmit: true }; // Allow on error (fail open)
+        return { canSubmit: false, reason: "Gagal memverifikasi status" };
       }
     },
     [],
@@ -430,7 +430,7 @@ export default function PerizinanScreen() {
           return info.size;
         }
       } catch (error: any) {
-        console.error("Error getting file info:", error);
+        if (__DEV__) console.error("Error getting file info:", error);
         throw new Error(
           `Tidak dapat mengakses file gambar: ${error.message || "File tidak dapat dibaca"}. Silakan pilih gambar lain.`,
         );

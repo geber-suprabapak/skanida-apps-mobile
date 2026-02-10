@@ -460,12 +460,6 @@ const FaceEnrollment = () => {
         data: { session },
       } = await supabase.auth.getSession();
 
-      // Debug: print full token in dev
-      if (typeof __DEV__ !== "undefined" && __DEV__) {
-        const t = session?.access_token;
-        console.debug("[DEBUG] enroll upload full token:", t ?? "NO_TOKEN");
-      }
-
       if (!session) {
         throw new Error("Sesi tidak valid. Silakan login ulang.");
       }
