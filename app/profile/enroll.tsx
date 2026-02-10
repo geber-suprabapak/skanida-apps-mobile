@@ -432,7 +432,7 @@ const FaceEnrollment = () => {
   const handleRetryCapture = useCallback(() => {
     // Clean up temporary files
     capturedImages.forEach((img) => {
-      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
+      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => { });
     });
     setCapturedImages([]);
     setStep("capture");
@@ -460,12 +460,6 @@ const FaceEnrollment = () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
-      // Debug: print full token in dev
-      if (typeof __DEV__ !== "undefined" && __DEV__) {
-        const t = session?.access_token;
-        console.debug("[DEBUG] enroll upload full token:", t ?? "NO_TOKEN");
-      }
 
       if (!session) {
         throw new Error("Sesi tidak valid. Silakan login ulang.");
@@ -535,7 +529,7 @@ const FaceEnrollment = () => {
       uploadController.current = null;
       // Clean up temporary files
       capturedImages.forEach((img) => {
-        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => { });
       });
     }
   }, [capturedImages]);
@@ -577,7 +571,7 @@ const FaceEnrollment = () => {
               // Clean up temporary files
               capturedImages.forEach((img) => {
                 FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(
-                  () => {},
+                  () => { },
                 );
               });
               router.back();
