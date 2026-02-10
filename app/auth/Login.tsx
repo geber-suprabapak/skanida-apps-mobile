@@ -76,7 +76,10 @@ export default function Login() {
             "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
           );
         } else {
-          Alert.alert("Login Gagal", "Email atau password salah. Silakan coba lagi.");
+          Alert.alert(
+            "Login Gagal",
+            "Email atau password salah. Silakan coba lagi.",
+          );
         }
         return;
       }

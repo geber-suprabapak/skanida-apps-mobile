@@ -372,10 +372,7 @@ export default function ManageAccount() {
       Alert.alert("Sukses", "Foto profil berhasil diperbarui.");
     } catch (error: any) {
       if (__DEV__) console.error("Upload error:", error);
-      Alert.alert(
-        "Gagal Upload",
-        "Terjadi kesalahan saat mengunggah foto.",
-      );
+      Alert.alert("Gagal Upload", "Terjadi kesalahan saat mengunggah foto.");
     } finally {
       setUploadingAvatar(false);
     }

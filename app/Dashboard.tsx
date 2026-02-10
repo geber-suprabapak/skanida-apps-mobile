@@ -228,7 +228,8 @@ export default function Dashboard() {
 
       if (error) {
         if (error.code === "PGRST116") {
-          if (__DEV__) console.log("Dashboard: No profile data found for user:", user?.id);
+          if (__DEV__)
+            console.log("Dashboard: No profile data found for user:", user?.id);
           setProfileData(null);
         } else {
           if (__DEV__) {
@@ -243,7 +244,8 @@ export default function Dashboard() {
         if (__DEV__) console.log("Dashboard: Profile data found:", data);
         setProfileData(data as UserProfile);
       } else {
-        if (__DEV__) console.log("Dashboard: No profile data found for user:", user?.id);
+        if (__DEV__)
+          console.log("Dashboard: No profile data found for user:", user?.id);
         setProfileData(null);
       }
     } catch (err: any) {
@@ -431,7 +433,8 @@ export default function Dashboard() {
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
     if (user) {
-      if (__DEV__) console.log("Dashboard: Fetching initial data for user:", user?.id);
+      if (__DEV__)
+        console.log("Dashboard: Fetching initial data for user:", user?.id);
       fetchProfileData();
       fetchAttendanceData();
     }

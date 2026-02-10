@@ -284,7 +284,11 @@ class TimeSync {
         await this._syncWithServerEdgeFunction();
         return;
       } catch (serverError) {
-        if (__DEV__) console.warn("Server sync failed, trying NTP fallback...", serverError);
+        if (__DEV__)
+          console.warn(
+            "Server sync failed, trying NTP fallback...",
+            serverError,
+          );
       }
 
       // Fallback to NTP

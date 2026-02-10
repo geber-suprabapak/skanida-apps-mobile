@@ -70,7 +70,8 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
         // If we get an error that is NOT a "resource not found" error, something is wrong.
         if (error && status !== 406) {
-          if (__DEV__) console.error("Error fetching user profile:", error.message);
+          if (__DEV__)
+            console.error("Error fetching user profile:", error.message);
           Sentry.captureException(error);
           set({ userProfile: null }); // Clear profile on definitive error
           return;
@@ -86,7 +87,11 @@ const useAuthStore = create<AuthState>((set, get) => ({
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       } catch (error) {
-        if (__DEV__) console.error("An unexpected error occurred fetching profile:", error);
+        if (__DEV__)
+          console.error(
+            "An unexpected error occurred fetching profile:",
+            error,
+          );
         Sentry.captureException(error);
         set({ userProfile: null }); // Clear profile on unexpected error
         return;
