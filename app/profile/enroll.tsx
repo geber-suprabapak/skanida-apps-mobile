@@ -14,7 +14,6 @@ import {
   BackHandler,
   StyleSheet,
 } from "react-native";
-import axios, { isAxiosError } from "axios";
 import { Text } from "~/components/ui/text";
 import Animated, {
   useAnimatedStyle,
@@ -491,41 +490,38 @@ const FaceEnrollment = () => {
 
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
 
-      const response = await axios.post<EnrollmentSuccessResponse>(
-        enrollApiUrl,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "multipart/form-data",
-          },
-          signal: controller.signal,
+      const response = await fetch(enrollApiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
-      );
+        body: formData,
+        signal: controller.signal,
+      });
 
-      const successData = response.data;
-      setSuccessResponse(successData);
-      setStep("success");
-    } catch (error) {
-      if (isAxiosError(error)) {
-        if (error.code === "ERR_CANCELED") {
-          return;
-        }
-
-        const axiosData = error.response?.data as
-          | EnrollmentErrorResponse
-          | undefined;
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({}) as EnrollmentErrorResponse);
         let errorMsg =
-          axiosData?.message || error.message || "Gagal mendaftarkan wajah";
+          errorData?.message || `Gagal mendaftarkan wajah (${response.status})`;
 
-        if (axiosData?.detail && Array.isArray(axiosData.detail)) {
-          errorMsg = axiosData.detail.map((d) => d.msg).join(", ");
-        } else if (axiosData?.detail && typeof axiosData.detail === "string") {
-          errorMsg = axiosData.detail;
+        if (errorData?.detail && Array.isArray(errorData.detail)) {
+          errorMsg = errorData.detail.map((d: any) => d.msg).join(", ");
+        } else if (errorData?.detail && typeof errorData.detail === "string") {
+          errorMsg = errorData.detail;
         }
 
         setErrorMessage(errorMsg);
         setStep("error");
+        return;
+      }
+
+      const successData: EnrollmentSuccessResponse = await response.json();
+      setSuccessResponse(successData);
+      setStep("success");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
         return;
       }
 
@@ -748,7 +744,6 @@ const FaceEnrollment = () => {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={step === "capture"}
-        video={true}
         photo
         onInitialized={handleCameraReady}
       />

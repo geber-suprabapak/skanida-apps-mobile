@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   TouchableOpacity,
@@ -19,7 +25,7 @@ import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Calendar } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
+import { AttendanceMap } from "~/components/ui/attendance-calendar/types";
 
 export default function Riwayat() {
   const router = useRouter();
@@ -45,14 +51,6 @@ export default function Riwayat() {
     }, [user?.id]),
   );
 
-  // Fetch monthly stats when date changes
-  useEffect(() => {
-    if (user?.id) {
-      fetchMonthlyStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, selectedDate]);
-
   useEffect(() => {
     const onBackPress = () => {
       if (router.canGoBack()) {
@@ -68,62 +66,43 @@ export default function Riwayat() {
     return () => subscription.remove();
   }, [router]);
 
-  const fetchMonthlyStats = useCallback(async () => {
-    if (!user) return;
+  // PERF-H06: Derive stats from calendar data instead of separate fetch
+  const handleCalendarDataLoaded = useCallback((data: AttendanceMap) => {
+    let hadirCount = 0;
+    let terlambatCount = 0;
+    let sakitCount = 0;
+    let izinCount = 0;
 
-    try {
-      const year = selectedDate.getFullYear();
-      const month = selectedDate.getMonth();
-      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    // Group by date for deduplication
+    const byDate: Record<string, (typeof data)[string][]> = {};
+    Object.values(data).forEach((record) => {
+      if (!byDate[record.date]) byDate[record.date] = [];
+      byDate[record.date].push(record);
+    });
 
-      const { data: absences } = await supabase
-        .from("absences")
-        .select("status, date")
-        .eq("user_id", user.id)
-        .gte("date", startDate)
-        .lte("date", endDate);
+    Object.values(byDate).forEach((records) => {
+      const firstRecord = records[0];
+      if (firstRecord.status === "sick") {
+        sakitCount++;
+      } else if (firstRecord.status === "leave") {
+        izinCount++;
+      } else if (firstRecord.isLate || firstRecord.status === "late") {
+        terlambatCount++;
+      } else if (firstRecord.status === "present") {
+        hadirCount++;
+      }
+    });
 
-      const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
-      const { data: leaves } = await supabase
-        .from("perizinan")
-        .select("kategori_izin")
-        .eq("user_id", user.id)
-        .gte("tanggal", `${startDate}T00:00:00.000Z`)
-        .lt("tanggal", nextMonthStart.toISOString());
+    setMonthlyStats({
+      hadir: hadirCount,
+      terlambat: terlambatCount,
+      sakit: sakitCount,
+      izin: izinCount,
+    });
+  }, []);
 
-      let hadirCount = 0;
-      let terlambatCount = 0;
-
-      const absencesByDate: Record<string, any[]> = {};
-      absences?.forEach((record) => {
-        if (!absencesByDate[record.date]) absencesByDate[record.date] = [];
-        absencesByDate[record.date].push(record);
-      });
-
-      Object.values(absencesByDate).forEach((records) => {
-        const hasAlpha = records.some((r) => r.status === "Alpha");
-        const hasTerlambat = records.some((r) => r.status === "Terlambat");
-        if (!hasAlpha) {
-          if (hasTerlambat) terlambatCount++;
-          else hadirCount++;
-        }
-      });
-
-      const sakitCount =
-        leaves?.filter((l) => l.kategori_izin === "sakit").length || 0;
-      const izinCount =
-        leaves?.filter((l) => l.kategori_izin !== "sakit").length || 0;
-
-      setMonthlyStats({
-        hadir: hadirCount,
-        terlambat: terlambatCount,
-        sakit: sakitCount,
-        izin: izinCount,
-      });
-    } catch {}
-  }, [user, selectedDate]);
+  // PERF-M10: Memoize maximumDate to avoid new Date() on every render
+  const maximumDate = useMemo(() => new Date(), []);
 
   // Handle date change
   const handleDateChange = (date: Date) => {
@@ -173,7 +152,7 @@ export default function Riwayat() {
             selectedDate={selectedDate}
             onDateChange={handleDateChange}
             minimumDate={new Date(2020, 0, 1)}
-            maximumDate={new Date()}
+            maximumDate={maximumDate}
             isDarkColorScheme={isDarkColorScheme}
           />
         </View>
@@ -231,6 +210,7 @@ export default function Riwayat() {
           currentYear={selectedDate.getFullYear()}
           currentMonth={selectedDate.getMonth()}
           isDarkColorScheme={isDarkColorScheme}
+          onDataLoaded={handleCalendarDataLoaded}
         />
       </View>
     </SafeAreaView>

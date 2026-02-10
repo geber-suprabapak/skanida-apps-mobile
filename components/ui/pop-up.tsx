@@ -3,9 +3,9 @@ import {
   View,
   Modal,
   Animated,
-  Dimensions,
   TouchableOpacity,
   Easing,
+  useWindowDimensions,
 } from "react-native";
 import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
@@ -17,8 +17,6 @@ import {
 } from "~/lib/motivationalQuotes";
 import { timeSync } from "~/utils/timeSync";
 import { cn } from "~/lib/utils";
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface ConfettiPiece {
   id: number;
@@ -61,6 +59,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
+  // PERF-L01: Use hook instead of module-scope Dimensions.get
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const backdropColor =
     colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)";
   const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(

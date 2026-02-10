@@ -34,7 +34,12 @@ const AttendanceCalendar = forwardRef<
   AttendanceCalendarProps
 >(
   (
-    { isDarkColorScheme, currentYear: propYear, currentMonth: propMonth },
+    {
+      isDarkColorScheme,
+      currentYear: propYear,
+      currentMonth: propMonth,
+      onDataLoaded,
+    },
     ref,
   ) => {
     const user = useAuthStore((state) => state.user);
@@ -85,6 +90,14 @@ const AttendanceCalendar = forwardRef<
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);
     }, []);
+    // PERF-H06: Notify parent when attendance data is loaded
+    useEffect(() => {
+      if (onDataLoaded && monthlyAttendance.data) {
+        onDataLoaded(monthlyAttendance.data);
+      }
+    }, [monthlyAttendance.data, onDataLoaded]);
+    // PERF-M10: Memoize maximumDate to avoid new Date() on every render
+    const maximumDate = useMemo(() => new Date(), []);
 
     return (
       <ScrollView className="flex-1 px-4">
@@ -120,7 +133,7 @@ const AttendanceCalendar = forwardRef<
               onDateChange={handleDateChange}
               isDarkColorScheme={isDarkColorScheme}
               minimumDate={new Date(2020, 0, 1)}
-              maximumDate={new Date()}
+              maximumDate={maximumDate}
             />
           </View>
         )}
