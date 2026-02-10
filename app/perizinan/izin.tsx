@@ -430,7 +430,7 @@ export default function PerizinanScreen() {
           return info.size;
         }
       } catch (error: any) {
-        console.error("Error getting file info:", error);
+        if (__DEV__) console.error("Error getting file info:", error);
         throw new Error(
           `Tidak dapat mengakses file gambar: ${error.message || "File tidak dapat dibaca"}. Silakan pilih gambar lain.`,
         );

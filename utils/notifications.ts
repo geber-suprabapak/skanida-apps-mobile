@@ -49,6 +49,9 @@ export async function openNotificationSettings() {
 
 export async function clearNotificationToken(userId: string) {
   try {
+    // Invalidate on Expo push server
+    await Notifications.unregisterForNotificationsAsync();
+
     const { error } = await supabase
       .from("user_profiles")
       .update({ notification_token: null })

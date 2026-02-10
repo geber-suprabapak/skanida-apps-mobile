@@ -269,7 +269,7 @@ export default function StatusPerizinanScreen() {
       if (error) throw error;
       setRecords(data || []);
     } catch (error) {
-      console.error("Error fetching records:", error);
+      if (__DEV__) console.error("Error fetching records:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);

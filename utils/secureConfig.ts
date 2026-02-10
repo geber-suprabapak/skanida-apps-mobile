@@ -76,6 +76,11 @@ export async function getSupabaseConfig(): Promise<SupabaseConfig | null> {
       setInSecureStore(KEY_URL, urlAsync),
       setInSecureStore(KEY_ANON, anonAsync),
     ]);
+    // Cleanup insecure storage
+    await Promise.all([
+      AsyncStorage.removeItem(KEY_URL),
+      AsyncStorage.removeItem(KEY_ANON),
+    ]);
     return { url: urlAsync, anonKey: anonAsync, source: "async" };
   }
 
@@ -112,6 +117,8 @@ export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
   if (urlAsync) {
     // Self-heal: migrate to SecureStore
     await setInSecureStore(KEY_FACE_API_URL, urlAsync);
+    // Cleanup insecure storage
+    await AsyncStorage.removeItem(KEY_FACE_API_URL);
     return { url: urlAsync, source: "async" };
   }
 

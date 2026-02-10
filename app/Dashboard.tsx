@@ -231,10 +231,12 @@ export default function Dashboard() {
           console.log("Dashboard: No profile data found for user:", user?.id);
           setProfileData(null);
         } else {
-          console.error(
-            "Dashboard: Error fetching profile data:",
-            error.message,
-          );
+          if (__DEV__) {
+            console.error(
+              "Dashboard: Error fetching profile data:",
+              error.message,
+            );
+          }
           setProfileData(null);
         }
       } else if (data) {
@@ -245,10 +247,12 @@ export default function Dashboard() {
         setProfileData(null);
       }
     } catch (err: any) {
-      console.error(
-        "Dashboard: Exception during user_profiles data fetch:",
-        err.message,
-      );
+      if (__DEV__) {
+        console.error(
+          "Dashboard: Exception during user_profiles data fetch:",
+          err.message,
+        );
+      }
       setProfileData(null);
     }
   }, [user]);
@@ -354,7 +358,7 @@ export default function Dashboard() {
         todayStatus,
       });
     } catch (error) {
-      console.error("Error fetching attendance data:", error);
+      if (__DEV__) console.error("Error fetching attendance data:", error);
     }
   }, [user]);
 
@@ -415,7 +419,7 @@ export default function Dashboard() {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error during live validation:", error);
+      if (__DEV__) console.error("Error during live validation:", error);
       setValidationStatus({
         canCheckIn: false,
         actionType: "none",

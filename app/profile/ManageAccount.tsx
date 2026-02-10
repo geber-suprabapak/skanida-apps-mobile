@@ -197,7 +197,7 @@ export default function ManageAccount() {
           avatarPath: normalizedAvatarPath,
         });
       } catch (error) {
-        console.error("Error fetching profile:", error);
+        if (__DEV__) console.error("Error fetching profile:", error);
       }
     };
 
@@ -237,7 +237,7 @@ export default function ManageAccount() {
       const data = response.data;
       setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
     } catch (error) {
-      console.error("Error checking enrollment status:", error);
+      if (__DEV__) console.error("Error checking enrollment status:", error);
       if (isAxiosError(error)) {
         const status = error.response?.status;
         if (status === 404) {
@@ -275,7 +275,7 @@ export default function ManageAccount() {
         await uploadAvatar(result.assets[0].uri);
       }
     } catch (error) {
-      console.error("Error picking image:", error);
+      if (__DEV__) console.error("Error picking image:", error);
     } finally {
       setIsAvatarOptionsVisible(false);
     }
@@ -299,7 +299,7 @@ export default function ManageAccount() {
         await uploadAvatar(result.assets[0].uri);
       }
     } catch (error) {
-      console.error("Error capturing image:", error);
+      if (__DEV__) console.error("Error capturing image:", error);
     } finally {
       setIsAvatarOptionsVisible(false);
     }
@@ -348,7 +348,8 @@ export default function ManageAccount() {
 
       if (profileError) {
         // If update fails (e.g. row doesn't exist), try upsert
-        console.log("Update failed, trying upsert for avatar...");
+        if (__DEV__)
+          console.error("Update failed, trying upsert for avatar...");
         await supabase.from("user_profiles").upsert(
           {
             user_id: user.id,
@@ -370,7 +371,7 @@ export default function ManageAccount() {
 
       Alert.alert("Sukses", "Foto profil berhasil diperbarui.");
     } catch (error: any) {
-      console.error("Upload error:", error);
+      if (__DEV__) console.error("Upload error:", error);
       Alert.alert(
         "Gagal Upload",
         error.message || "Terjadi kesalahan saat mengunggah foto.",

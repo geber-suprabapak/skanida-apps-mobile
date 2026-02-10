@@ -49,7 +49,7 @@ export default Sentry.wrap(function RootLayout() {
 
   useEffect(() => {
     timeSync.initialize().catch((error) => {
-      console.error("TimeSync initialization failed:", error);
+      if (__DEV__) console.error("TimeSync initialization failed:", error);
     });
 
     return () => {
@@ -60,7 +60,7 @@ export default Sentry.wrap(function RootLayout() {
   useEffect(() => {
     setupNotificationHandler();
     setupNotificationChannel().catch((error) => {
-      console.error("Notification channel setup failed:", error);
+      if (__DEV__) console.error("Notification channel setup failed:", error);
     });
   }, []);
 

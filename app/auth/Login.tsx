@@ -6,6 +6,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -68,13 +69,14 @@ export default function Login() {
       });
 
       if (error) {
-        console.error("Supabase login error:", error.message); // Keep console log for debugging
+        if (__DEV__) console.log("Login error:", error.message); // Wrapped console.error
         if (error.message === "Email not confirmed") {
-          alert(
+          Alert.alert(
+            "Login Gagal",
             "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
           );
         } else {
-          alert("Login gagal. Periksa kembali email dan password Anda.");
+          Alert.alert("Login Gagal", error.message); // Changed to Alert.alert
         }
         return;
       }

@@ -32,6 +32,7 @@
     "expo-blob": "^0.1.6",
     "expo-build-properties": "~0.14.8",
     "expo-camera": "~16.1.11",
+    "expo-clipboard": "^8.0.8",
     "expo-constants": "~17.1.7",
     "expo-dev-client": "~5.2.4",
     "expo-device": "^8.0.10",

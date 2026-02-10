@@ -183,7 +183,7 @@ export default function Activate() {
       });
 
       if (error) {
-        console.error("Supabase signup error:", error.message);
+        if (__DEV__) console.error("Supabase signup error:", error.message);
         if (error.message.includes("already registered")) {
           Alert.alert("Error", "Email sudah terdaftar");
         } else {
@@ -201,7 +201,7 @@ export default function Activate() {
         [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
       );
     } catch (error) {
-      console.error("Activation error:", error);
+      if (__DEV__) console.error("Activation error:", error);
       Alert.alert("Error", "Terjadi kesalahan tak terduga saat aktivasi");
     } finally {
       setLoading(false);
