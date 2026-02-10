@@ -30,12 +30,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
-    [
-      "expo-camera",
-      {
-        cameraPermission: "Allow $(PRODUCT_NAME) to access your camera",
-      },
-    ],
     "expo-web-browser",
     [
       "@sentry/react-native/expo",
