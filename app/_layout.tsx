@@ -34,9 +34,7 @@ Sentry.init({
   spotlight: __DEV__,
 });
 
-export {
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export default Sentry.wrap(function RootLayout() {
   const { theme } = useThemeStore();

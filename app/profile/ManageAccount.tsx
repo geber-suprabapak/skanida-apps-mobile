@@ -435,8 +435,12 @@ export default function ManageAccount() {
       Alert.alert("Error", "Konfirmasi password baru tidak cocok.");
       return;
     }
-    if (newPassword.length < 6) {
-      Alert.alert("Error", "Password baru minimal 6 karakter.");
+    const passwordRegex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      Alert.alert(
+        "Error",
+        "Password harus minimal 8 karakter dan mengandung huruf besar, huruf kecil, serta angka.",
+      );
       return;
     }
     if (currentPassword === newPassword) {
