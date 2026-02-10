@@ -662,13 +662,13 @@ END $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO anon, authenticated, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE location TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE jadwal_absensi TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE location TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE jadwal_absensi TO authenticated;
 GRANT SELECT ON TABLE biodata_siswa TO service_role, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO authenticated;
 
 -- Grant usage on sequences for service_role (face recognition system)
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role, authenticated;
@@ -678,7 +678,7 @@ DO $$
 BEGIN
   BEGIN
     ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 END$$;
@@ -952,6 +952,10 @@ DECLARE
     v_mulai_pulang TIME;
     v_selesai_pulang TIME;
 BEGIN
+    IF p_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Unauthorized: user_id mismatch';
+    END IF;
+
     -- Get current time and date in Asia/Jakarta timezone (WIB)
     v_current_time := (NOW() AT TIME ZONE 'Asia/Jakarta')::TIME;
     v_current_date := (NOW() AT TIME ZONE 'Asia/Jakarta')::DATE;
@@ -1139,6 +1143,10 @@ DECLARE
   v_has_checked_out BOOLEAN := FALSE;
   v_response public.attendance_action_response;
 BEGIN
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: user_id mismatch';
+  END IF;
+
   -- LANGKAH 1 & 2: Tetap sama
   v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
   v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
@@ -1272,6 +1280,10 @@ DECLARE
   v_result JSONB;
   v_current_day_indonesian TEXT;
 BEGIN
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: user_id mismatch';
+  END IF;
+
   v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
   v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
 
