@@ -303,11 +303,12 @@ export default function StatusPerizinanScreen() {
     fetchRecords();
   };
 
-  // Get today's date string for filtering
+  // PERF-L05: Recompute on each fetch (was empty deps, stale after midnight)
   const todayStr = useMemo(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records]);
 
   // Filter records for today only
   const todayRecords = useMemo(() => {

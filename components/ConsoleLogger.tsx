@@ -26,7 +26,11 @@ const ConsoleLogger: React.FC = () => {
 
     console.log = (...args) => {
       const message = args.map((arg) => formatArg(arg)).join(" ");
-      setLogs((prev) => [...prev, message]);
+      // PERF-H08: Cap at 100 entries to prevent unbounded memory growth
+      setLogs((prev) => {
+        const next = [...prev, message];
+        return next.length > 100 ? next.slice(-100) : next;
+      });
       originalLog(...args); // Tetap log ke console asli
     };
 

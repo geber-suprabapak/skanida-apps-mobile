@@ -4,6 +4,8 @@ import React, {
   createContext,
   useContext,
   useState,
+  useMemo,
+  useCallback,
 } from "react";
 import { Alert, BackHandler } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
@@ -20,8 +22,8 @@ interface ConnectionContextType {
 }
 
 const ConnectionContext = createContext<ConnectionContextType>({
-  isConnected: false,
-  isInternetReachable: false,
+  isConnected: true, // PERF-C04: Default to true (optimistic) so app renders immediately
+  isInternetReachable: true,
   connectionType: "unknown",
 });
 
@@ -32,21 +34,20 @@ export default function ConnectionChecker({
 }: ConnectionCheckerProps) {
   const isShowingAlert = useRef(false);
   const isMounted = useRef(false);
-  const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
   const [forceOffline, setForceOffline] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionContextType>(
     {
-      isConnected: false,
-      isInternetReachable: false,
+      isConnected: true, // PERF-C04: Optimistic default
+      isInternetReachable: true,
       connectionType: "unknown",
     },
   );
 
-  const toggleForceOffline = () => {
+  const toggleForceOffline = useCallback(() => {
     if (__DEV__) {
       setForceOffline((prev) => !prev);
     }
-  };
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
@@ -78,8 +79,6 @@ export default function ConnectionChecker({
                   setTimeout(() => {
                     if (isMounted.current) showOfflineAlert();
                   }, 300);
-                } else {
-                  setIsInitialCheckDone(true);
                 }
               });
             },
@@ -96,90 +95,69 @@ export default function ConnectionChecker({
       );
     };
 
-    // Initial connection check with multiple attempts
-    const checkInitialConnection = async () => {
-      try {
-        const state = await NetInfo.fetch();
+    // Initial connection check (non-blocking)
+    NetInfo.fetch().then((state) => {
+      if (!isMounted.current) return;
 
-        const isConnected =
-          state.isConnected === true &&
-          (state.isInternetReachable === true ||
-            state.isInternetReachable === null) &&
-          !forceOffline;
-        const connectionType = state.type || "unknown";
+      const isConnected =
+        state.isConnected === true &&
+        (state.isInternetReachable === true ||
+          state.isInternetReachable === null) &&
+        !forceOffline;
 
-        // Update connection state
-        setConnectionState({
-          isConnected: !!state.isConnected && !forceOffline,
-          isInternetReachable: !!state.isInternetReachable,
-          connectionType,
-        });
+      setConnectionState({
+        isConnected: !!state.isConnected && !forceOffline,
+        isInternetReachable: !!state.isInternetReachable,
+        connectionType: state.type || "unknown",
+      });
 
-        // Show alert if offline on initial load
-        if (!isConnected) {
-          // Show alert immediately on app start if no internet
-          setTimeout(() => {
-            if (isMounted.current) {
-              showOfflineAlert();
-            }
-          }, 1000); // Reduced delay for faster response
-        } else {
-          setIsInitialCheckDone(true);
-        }
-      } catch {
-        // If we can't check connection, assume offline and show alert
+      if (!isConnected) {
         setTimeout(() => {
           if (isMounted.current) showOfflineAlert();
         }, 1000);
       }
-    };
+    });
 
-    checkInitialConnection();
-
-    // Subscribe to network state updates
+    // PERF-H09: Subscribe once, don't re-subscribe on state changes
     const unsubscribe = NetInfo.addEventListener((state) => {
-      // Compute connection status
       const isConnectedComputed =
         state.isConnected === true &&
         (state.isInternetReachable === true ||
           state.isInternetReachable === null) &&
         !forceOffline;
-      const connectionType = state.type || "unknown";
 
-      // Update connection state
       setConnectionState({
         isConnected: isConnectedComputed,
         isInternetReachable: !!state.isInternetReachable,
-        connectionType,
+        connectionType: state.type || "unknown",
       });
 
-      // Handle offline/online transitions
       if (!isConnectedComputed) {
         if (isMounted.current && !isShowingAlert.current) {
           showOfflineAlert();
         }
       } else {
-        // Reset alert flag
         isShowingAlert.current = false;
-        if (!isInitialCheckDone) {
-          setIsInitialCheckDone(true);
-        }
       }
     });
 
-    // Cleanup subscription on unmount
     return () => {
       isMounted.current = false;
       isShowingAlert.current = false;
       unsubscribe();
     };
-  }, [isInitialCheckDone, forceOffline]);
+  }, [forceOffline]); // PERF-H09: Only re-subscribe when forceOffline changes
 
+  // PERF-M03: Memoize context value to prevent unnecessary consumer re-renders
+  const contextValue = useMemo(
+    () => ({ ...connectionState, toggleForceOffline }),
+    [connectionState, toggleForceOffline],
+  );
+
+  // PERF-C04: Always render children (non-blocking). Show alert overlay if offline.
   return (
-    <ConnectionContext.Provider
-      value={{ ...connectionState, toggleForceOffline }}
-    >
-      {isInitialCheckDone ? children : null}
+    <ConnectionContext.Provider value={contextValue}>
+      {children}
     </ConnectionContext.Provider>
   );
 }

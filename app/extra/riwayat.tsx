@@ -231,7 +231,6 @@ export default function Riwayat() {
           currentYear={selectedDate.getFullYear()}
           currentMonth={selectedDate.getMonth()}
           isDarkColorScheme={isDarkColorScheme}
-          key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
         />
       </View>
     </SafeAreaView>

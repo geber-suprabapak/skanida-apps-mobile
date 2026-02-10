@@ -22,14 +22,16 @@ Sentry.init({
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
   sendDefaultPii: true,
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
+  // PERF-C02: Reduce sample rates in production to avoid 10-30% CPU overhead
+  tracesSampleRate: __DEV__ ? 1.0 : 0.05, // 5% in production
+  profilesSampleRate: __DEV__ ? 1.0 : 0.01, // 1% in production
+
+  // Configure Session Replay - disable session replay in production for performance
+  replaysSessionSampleRate: __DEV__ ? 0.1 : 0,
+  replaysOnErrorSampleRate: __DEV__ ? 1 : 0.1, // 10% error replay in production
   integrations: [
-    Sentry.mobileReplayIntegration(),
+    ...(__DEV__ ? [Sentry.mobileReplayIntegration()] : []),
     Sentry.feedbackIntegration(),
   ],
 

@@ -2,7 +2,7 @@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -108,13 +108,37 @@ const DAY_KEY_MAP = [
 
 type DayKey = (typeof DAY_KEY_MAP)[number];
 
+// PERF-C01: Isolated clock component - only this re-renders every second
+const DashboardClock = React.memo(function DashboardClock() {
+  const [time, setTime] = useState(timeSync.getSyncedTime());
+
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setTime(timeSync.getSyncedTime());
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, []);
+
+  return (
+    <>
+      <Text className="text-blue-100 text-xs font-medium mb-1">
+        {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
+      </Text>
+      <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
+        {format(time, "HH:mm:ss", { locale: id })}
+      </Text>
+    </>
+  );
+});
+
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const theme = useThemeStore((state) => state.theme);
   const params = useLocalSearchParams();
-  const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
+  // PERF-C01: Use 60-second interval for schedule-related computations instead of 1s
+  const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
@@ -168,15 +192,12 @@ export default function Dashboard() {
     }
   }, [params, router]);
 
-  // Sync time with server on mount and set up interval for updating time
+  // PERF-C01: Update schedule time every 60 seconds (not 1s)
+  // Schedule windows only change a few times per day, no need for 1s precision
   useEffect(() => {
-    // Initial sync handled by _layout.tsx
-    // Update current time every second
-    // Date object automatically displays in device timezone (WIB)
     const timerId = setInterval(() => {
-      setCurrentTime(timeSync.getSyncedTime());
-    }, 1000);
-
+      setScheduleTime(timeSync.getSyncedTime());
+    }, 60000); // 60 seconds
     return () => clearInterval(timerId);
   }, []);
 
@@ -185,7 +206,7 @@ export default function Dashboard() {
     if (isFocused) {
       timeSync.syncWithServer().then((success) => {
         if (success) {
-          setCurrentTime(timeSync.getSyncedTime());
+          setScheduleTime(timeSync.getSyncedTime());
         }
       });
     }
@@ -385,8 +406,9 @@ export default function Dashboard() {
         }
       }
 
+      // PERF-H01: Use Balanced accuracy instead of High to reduce battery drain
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.Balanced,
       });
       if (!location) {
         setValidationStatus({
@@ -433,17 +455,17 @@ export default function Dashboard() {
     }
   }, [user, fetchProfileData, fetchAttendanceData]);
 
-  // Polling for live validation status every 15 seconds when screen is focused
+  // PERF-H01: Reduced from 15s to 60s polling to save ~5-10% battery/hour
   useEffect(() => {
     if (!isFocused || !user?.id) return;
 
     // Initial check when screen becomes focused
     checkLiveValidationStatus();
 
-    // Set up interval for polling every 15 seconds
+    // Set up interval for polling every 60 seconds
     const validationInterval = setInterval(() => {
       checkLiveValidationStatus();
-    }, 15000); // 15 seconds
+    }, 60000); // 60 seconds (was 15s)
 
     // Cleanup interval on unmount or when focus changes
     return () => clearInterval(validationInterval);
@@ -495,10 +517,11 @@ export default function Dashboard() {
     }
   }, []);
 
+  // PERF-C01: Now uses scheduleTime (60s interval) instead of currentTime (1s interval)
   const currentDayKey = useMemo<DayKey>(() => {
-    const dayKey = DAY_KEY_MAP[currentTime.getDay()];
+    const dayKey = DAY_KEY_MAP[scheduleTime.getDay()];
     return dayKey ?? "senin";
-  }, [currentTime]);
+  }, [scheduleTime]);
 
   useEffect(() => {
     fetchAttendanceSchedule(currentDayKey);
@@ -527,7 +550,7 @@ export default function Dashboard() {
       checkLiveValidationStatus(), // Refresh validation status, location, and time
       timeSync.forceSyncWithServer().then((success) => {
         if (success) {
-          setCurrentTime(timeSync.getSyncedTime());
+          setScheduleTime(timeSync.getSyncedTime());
         }
       }),
       fetchAttendanceSchedule(currentDayKey),
@@ -556,8 +579,9 @@ export default function Dashboard() {
   // Get user's avatar URL prioritizing profile data and falling back to metadata
   const hasCustomAvatar = Boolean(avatarUrl);
 
+  // PERF-C01: Now uses scheduleTime (60s interval) - greeting only changes 3-4x/day
   const greeting = useMemo(() => {
-    const hours = currentTime.getHours();
+    const hours = scheduleTime.getHours();
     if (hours >= 3 && hours < 11) {
       return "Selamat Pagi";
     } else if (hours >= 11 && hours < 15) {
@@ -567,7 +591,7 @@ export default function Dashboard() {
     } else {
       return "Selamat Malam";
     }
-  }, [currentTime]);
+  }, [scheduleTime]);
 
   // --- Navigation Handlers ---
   const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
@@ -623,6 +647,7 @@ export default function Dashboard() {
     return trimmed;
   };
 
+  // PERF-C01: Now uses scheduleTime (60s interval) instead of currentTime
   const getDateForToday = useCallback(
     (time: string | null | undefined): Date | null => {
       const normalized = normalizeTimeString(time);
@@ -636,11 +661,11 @@ export default function Dashboard() {
         return null;
       }
 
-      const base = new Date(currentTime);
+      const base = new Date(scheduleTime);
       base.setHours(hours, minutes, 0, 0);
       return base;
     },
-    [currentTime],
+    [scheduleTime],
   );
 
   const presentScheduleWindow = useMemo(() => {
@@ -665,33 +690,34 @@ export default function Dashboard() {
     return { start, end } as const;
   }, [attendanceSchedule, getDateForToday]);
 
+  // PERF-C01: Now uses scheduleTime (60s interval) - schedule windows change ~2x/day
   const isWithinPresentWindow = useMemo(() => {
     if (!presentScheduleWindow) return true;
 
-    if (currentTime < presentScheduleWindow.start) {
+    if (scheduleTime < presentScheduleWindow.start) {
       return false;
     }
 
-    if (presentScheduleWindow.end && currentTime > presentScheduleWindow.end) {
+    if (presentScheduleWindow.end && scheduleTime > presentScheduleWindow.end) {
       return false;
     }
 
     return true;
-  }, [currentTime, presentScheduleWindow]);
+  }, [scheduleTime, presentScheduleWindow]);
 
   const isWithinPulangWindow = useMemo(() => {
     if (!pulangScheduleWindow) return true;
 
-    if (currentTime < pulangScheduleWindow.start) {
+    if (scheduleTime < pulangScheduleWindow.start) {
       return false;
     }
 
-    if (pulangScheduleWindow.end && currentTime > pulangScheduleWindow.end) {
+    if (pulangScheduleWindow.end && scheduleTime > pulangScheduleWindow.end) {
       return false;
     }
 
     return true;
-  }, [currentTime, pulangScheduleWindow]);
+  }, [scheduleTime, pulangScheduleWindow]);
 
   const scheduleAllowsAction = useMemo(() => {
     if (derivedActionType === "home") {
@@ -813,14 +839,8 @@ export default function Dashboard() {
                 </TouchableOpacity>
 
                 <View className="flex-1 justify-center">
-                  <Text className="text-blue-100 text-xs font-medium mb-1">
-                    {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
-                  </Text>
-
-                  {/* Clock Display */}
-                  <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
-                    {format(currentTime, "HH:mm:ss", { locale: id })}
-                  </Text>
+                  {/* PERF-C01: Clock is isolated - only DashboardClock re-renders every second */}
+                  <DashboardClock />
                 </View>
               </View>
             </View>

@@ -20,6 +20,10 @@ export interface UserProfile {
   notification_token: string | null;
 }
 
+// PERF-L06: Only select columns that are actually used
+const USER_PROFILE_COLUMNS =
+  "id, user_id, full_name, email, nis, class_name, absence_number, avatar_url, role, gender, notification_token";
+
 interface AuthState {
   user: User | null;
   userProfile: UserProfile | null;
@@ -28,19 +32,40 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+// PERF-H04: Track active fetch so it can be cancelled on logout/user change
+let activeFetchController: AbortController | null = null;
+
 const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   userProfile: null,
 
   // Action to set the user and fetch the profile
   setUser: (user) => {
+    // PERF-H04: Cancel any in-flight profile fetch before starting a new one
+    if (activeFetchController) {
+      activeFetchController.abort();
+      activeFetchController = null;
+    }
+
     set({ user });
     if (user?.id) {
+      const controller = new AbortController();
+      activeFetchController = controller;
+
       (async () => {
-        await Promise.all([
-          get().fetchUserProfile(user.id),
-          registerAndSaveNotificationToken(user.id),
-        ]);
+        try {
+          await Promise.all([
+            get().fetchUserProfile(user.id),
+            registerAndSaveNotificationToken(user.id),
+          ]);
+        } catch {
+          // Silently handle abort errors
+        } finally {
+          // Clear controller reference if it's still ours
+          if (activeFetchController === controller) {
+            activeFetchController = null;
+          }
+        }
       })();
     } else {
       set({ userProfile: null });
@@ -53,12 +78,22 @@ const useAuthStore = create<AuthState>((set, get) => ({
     const delay = 500; // 500ms delay between retries
 
     for (let i = 0; i < maxRetries; i++) {
+      // PERF-H04: Check if fetch was cancelled between retries
+      if (activeFetchController?.signal.aborted) {
+        return;
+      }
+
       try {
         const { data, error, status } = await supabase
           .from("user_profiles")
-          .select(`*`)
+          .select(USER_PROFILE_COLUMNS)
           .eq("user_id", userId)
           .single();
+
+        // PERF-H04: Check if cancelled after network response
+        if (activeFetchController?.signal.aborted) {
+          return;
+        }
 
         // If data is found, profile exists. Set it and exit the loop.
         if (data) {
@@ -101,6 +136,11 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
   // Action to sign out and clear the state
   logout: async () => {
+    // PERF-H04: Cancel any in-flight profile fetch on logout
+    if (activeFetchController) {
+      activeFetchController.abort();
+      activeFetchController = null;
+    }
     await supabase.auth.signOut();
     set({ user: null, userProfile: null });
   },
