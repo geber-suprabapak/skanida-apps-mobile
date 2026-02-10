@@ -289,7 +289,7 @@ export default function PerizinanScreen() {
           .lte("tanggal", endOfDayUTC);
 
         if (error) {
-          return { canSubmit: true }; // Allow on error (fail open)
+          return { canSubmit: false, reason: "Gagal memverifikasi status" };
         }
 
         if (!data || data.length === 0) {
@@ -326,7 +326,7 @@ export default function PerizinanScreen() {
 
         return { canSubmit: true };
       } catch {
-        return { canSubmit: true }; // Allow on error (fail open)
+        return { canSubmit: false, reason: "Gagal memverifikasi status" };
       }
     },
     [],
