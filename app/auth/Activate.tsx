@@ -87,7 +87,7 @@ export default function Activate() {
       });
 
       if (error) {
-        Alert.alert("Error", `Terjadi kesalahan: ${error.message}`);
+        Alert.alert("Error", "Terjadi kesalahan saat memproses data.");
         return;
       }
 
@@ -187,7 +187,7 @@ export default function Activate() {
         if (error.message.includes("already registered")) {
           Alert.alert("Error", "Email sudah terdaftar");
         } else {
-          Alert.alert("Error", `Gagal membuat akun: ${error.message}`);
+          Alert.alert("Error", "Gagal membuat akun. Silakan coba lagi.");
         }
         setLoading(false); // Pastikan loading berhenti jika ada error
         return;

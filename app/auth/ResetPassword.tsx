@@ -126,13 +126,8 @@ export default function ResetPassword() {
 
       if (error) {
         console.error("Reset password error:", error.message);
-        setErrorMessage(
-          error.message || "Terjadi kesalahan. Silakan coba lagi nanti.",
-        );
-        Alert.alert(
-          "Gagal",
-          error.message || "Terjadi kesalahan, coba lagi nanti.",
-        );
+        setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
+        Alert.alert("Gagal", "Terjadi kesalahan, coba lagi nanti.");
         return;
       }
 

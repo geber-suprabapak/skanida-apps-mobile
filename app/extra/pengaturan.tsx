@@ -200,7 +200,7 @@ function Pengaturan() {
         Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
       }
     } catch (error) {
-      Alert.alert("Error", `Gagal cek update: ${error}`);
+      Alert.alert("Gagal", "Gagal memeriksa pembaruan.");
     } finally {
       setIsCheckingUpdate(false);
     }
