@@ -432,7 +432,7 @@ const FaceEnrollment = () => {
   const handleRetryCapture = useCallback(() => {
     // Clean up temporary files
     capturedImages.forEach((img) => {
-      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => { });
+      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
     });
     setCapturedImages([]);
     setStep("capture");
@@ -491,6 +491,7 @@ const FaceEnrollment = () => {
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "multipart/form-data",
           },
           signal: controller.signal,
         },
@@ -526,7 +527,7 @@ const FaceEnrollment = () => {
       uploadController.current = null;
       // Clean up temporary files
       capturedImages.forEach((img) => {
-        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
       });
     }
   }, [capturedImages]);
@@ -568,7 +569,7 @@ const FaceEnrollment = () => {
               // Clean up temporary files
               capturedImages.forEach((img) => {
                 FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(
-                  () => { },
+                  () => {},
                 );
               });
               router.back();
