@@ -8,8 +8,8 @@ import {
   Platform,
   BackHandler,
   Alert,
+  Linking,
 } from "react-native";
-import * as Linking from "expo-linking";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { supabase } from "~/utils/supabase";
@@ -121,7 +121,7 @@ export default function ResetPassword() {
       setLoading(true);
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: Linking.createURL("/auth/reset-callback"),
+        redirectTo: process.env.EXPO_PUBLIC_AUTH_CALLBACK_URL,
       });
 
       if (error) {

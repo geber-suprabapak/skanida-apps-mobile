@@ -83,9 +83,6 @@ importers:
       expo-linear-gradient:
         specifier: ^14.1.5
         version: 14.1.5(expo@53.0.23(@babel/core@7.28.5)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
-      expo-linking:
-        specifier: ~7.1.7
-        version: 7.1.7(expo@53.0.23(@babel/core@7.28.5)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
       expo-location:
         specifier: ~18.1.6
         version: 18.1.6(expo@53.0.23(@babel/core@7.28.5)(@expo/metro-runtime@5.0.5(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.5(@babel/core@7.28.5)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))
