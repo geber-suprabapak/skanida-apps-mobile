@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
+import axios, { isAxiosError } from "axios";
 import { StatusBar } from "expo-status-bar";
 
 import { Button } from "~/components/ui/button";
@@ -41,7 +42,6 @@ import {
   Scan,
   Loader2,
 } from "lucide-react-native";
-
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
@@ -223,30 +223,26 @@ export default function ManageAccount() {
         return;
       }
 
-      const response = await fetch(enrollStatusUrl, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          Accept: "application/json",
+      const response = await axios.get<EnrollmentStatusResponse>(
+        enrollStatusUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: "application/json",
+          },
         },
-      });
+      );
 
       const data = response.data;
       setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
     } catch (error) {
       if (__DEV__) console.error("Error checking enrollment status:", error);
       if (isAxiosError(error)) {
-        const status = error.response?.status;
-        if (status === 404) {
+        if (error.response?.status === 404) {
           setEnrollmentStatus("not_enrolled");
           return;
         }
-        throw new Error(`HTTP ${response.status}`);
       }
-
-      const data: EnrollmentStatusResponse = await response.json();
-      setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
-    } catch (error) {
-      console.error("Error checking enrollment status:", error);
       setEnrollmentStatus("error");
       setEnrollmentError("Gagal terhubung ke server");
     }

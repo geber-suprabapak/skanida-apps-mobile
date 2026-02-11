@@ -24,6 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
+import axios, { isAxiosError } from "axios";
 
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
@@ -431,7 +432,7 @@ const FaceEnrollment = () => {
   const handleRetryCapture = useCallback(() => {
     // Clean up temporary files
     capturedImages.forEach((img) => {
-      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
+      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => { });
     });
     setCapturedImages([]);
     setStep("capture");
@@ -484,21 +485,29 @@ const FaceEnrollment = () => {
 
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
 
-      const response = await fetch(enrollApiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
+      const response = await axios.post<EnrollmentSuccessResponse>(
+        enrollApiUrl,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          signal: controller.signal,
         },
-        body: formData,
-        signal: controller.signal,
-      });
+      );
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({}) as EnrollmentErrorResponse);
+      setSuccessResponse(response.data);
+      setStep("success");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      if (isAxiosError(error) && error.response) {
+        const errorData = error.response.data as EnrollmentErrorResponse;
         let errorMsg =
-          errorData?.message || `Gagal mendaftarkan wajah (${response.status})`;
+          errorData?.message ||
+          `Gagal mendaftarkan wajah (${error.response.status})`;
 
         if (errorData?.detail && Array.isArray(errorData.detail)) {
           errorMsg = errorData.detail.map((d: any) => d.msg).join(", ");
@@ -511,21 +520,13 @@ const FaceEnrollment = () => {
         return;
       }
 
-      const successData: EnrollmentSuccessResponse = await response.json();
-      setSuccessResponse(successData);
-      setStep("success");
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
-      }
-
       setErrorMessage(getReadableError(error, "Gagal mendaftarkan wajah."));
       setStep("error");
     } finally {
       uploadController.current = null;
       // Clean up temporary files
       capturedImages.forEach((img) => {
-        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => { });
       });
     }
   }, [capturedImages]);
@@ -567,7 +568,7 @@ const FaceEnrollment = () => {
               // Clean up temporary files
               capturedImages.forEach((img) => {
                 FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(
-                  () => {},
+                  () => { },
                 );
               });
               router.back();
