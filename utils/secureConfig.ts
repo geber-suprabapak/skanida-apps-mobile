@@ -16,9 +16,6 @@ const KEY_URL = "sb.url";
 const KEY_ANON = "sb.anon";
 const KEY_FACE_API_URL = "face.api.url";
 
-// Default Face API URL (hardcoded fallback)
-const DEFAULT_FACE_API_URL = "https://api-staging.hysilens.my.id";
-
 async function getFromSecureStore(key: string) {
   try {
     const available = await SecureStore.isAvailableAsync();
@@ -79,6 +76,11 @@ export async function getSupabaseConfig(): Promise<SupabaseConfig | null> {
       setInSecureStore(KEY_URL, urlAsync),
       setInSecureStore(KEY_ANON, anonAsync),
     ]);
+    // Cleanup insecure storage
+    await Promise.all([
+      AsyncStorage.removeItem(KEY_URL),
+      AsyncStorage.removeItem(KEY_ANON),
+    ]);
     return { url: urlAsync, anonKey: anonAsync, source: "async" };
   }
 
@@ -115,6 +117,8 @@ export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
   if (urlAsync) {
     // Self-heal: migrate to SecureStore
     await setInSecureStore(KEY_FACE_API_URL, urlAsync);
+    // Cleanup insecure storage
+    await AsyncStorage.removeItem(KEY_FACE_API_URL);
     return { url: urlAsync, source: "async" };
   }
 
@@ -127,15 +131,6 @@ export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
       setInAsyncStorage(KEY_FACE_API_URL, envUrl),
     ]);
     return { url: envUrl, source: "env" };
-  }
-
-  // 4) Default hardcoded fallback
-  if (DEFAULT_FACE_API_URL) {
-    await Promise.all([
-      setInSecureStore(KEY_FACE_API_URL, DEFAULT_FACE_API_URL),
-      setInAsyncStorage(KEY_FACE_API_URL, DEFAULT_FACE_API_URL),
-    ]);
-    return { url: DEFAULT_FACE_API_URL, source: "default" };
   }
 
   return null;

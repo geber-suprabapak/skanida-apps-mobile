@@ -5,6 +5,17 @@ import { processAttendanceData } from "~/components/ui/attendance-calendar/utils
 
 const __DEV__ = process.env.NODE_ENV === "development";
 
+// PERF-M09: In-memory cache for previously fetched calendar months
+const MONTH_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const monthCache = new Map<
+  string,
+  { data: AttendanceMap; expiresAt: number }
+>();
+
+function getCacheKey(userId: string, year: number, month: number): string {
+  return `${userId}-${year}-${month}`;
+}
+
 export const useOptimizedMonthlyAttendance = (
   userId: string,
   year: number,
@@ -84,14 +95,35 @@ export const useOptimizedMonthlyAttendance = (
       if (!userId) return;
 
       const currentRequest = { userId, year, month };
-      if (
-        !forceRefresh &&
-        lastFetchRef.current &&
-        lastFetchRef.current.userId === currentRequest.userId &&
-        lastFetchRef.current.year === currentRequest.year &&
-        lastFetchRef.current.month === currentRequest.month
-      ) {
-        return;
+      const cacheKey = getCacheKey(userId, year, month);
+
+      // PERF-M09: Check in-memory cache first (skip on force refresh)
+      if (!forceRefresh) {
+        const cached = monthCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+          // Still need to check if this is a duplicate of last fetch
+          if (
+            lastFetchRef.current &&
+            lastFetchRef.current.userId === currentRequest.userId &&
+            lastFetchRef.current.year === currentRequest.year &&
+            lastFetchRef.current.month === currentRequest.month
+          ) {
+            return;
+          }
+          lastFetchRef.current = currentRequest;
+          setData(cached.data);
+          return;
+        }
+
+        // Non-cached duplicate check
+        if (
+          lastFetchRef.current &&
+          lastFetchRef.current.userId === currentRequest.userId &&
+          lastFetchRef.current.year === currentRequest.year &&
+          lastFetchRef.current.month === currentRequest.month
+        ) {
+          return;
+        }
       }
 
       lastFetchRef.current = currentRequest;
@@ -106,11 +138,15 @@ export const useOptimizedMonthlyAttendance = (
       try {
         setLoading(true);
 
-        // Always fetch fresh from server (no caching)
         const serverData = await fetchFromServer(signal);
 
         if (!signal.aborted) {
           setData(serverData);
+          // PERF-M09: Cache the result
+          monthCache.set(cacheKey, {
+            data: serverData,
+            expiresAt: Date.now() + MONTH_CACHE_TTL_MS,
+          });
         }
       } catch (error) {
         if (!signal?.aborted) {

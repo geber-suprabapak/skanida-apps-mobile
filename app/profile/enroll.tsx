@@ -14,7 +14,6 @@ import {
   BackHandler,
   StyleSheet,
 } from "react-native";
-import axios, { isAxiosError } from "axios";
 import { Text } from "~/components/ui/text";
 import Animated, {
   useAnimatedStyle,
@@ -25,6 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
+import axios, { isAxiosError, isCancel } from "axios";
 
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
@@ -461,12 +461,6 @@ const FaceEnrollment = () => {
         data: { session },
       } = await supabase.auth.getSession();
 
-      // Debug: print full token in dev
-      if (typeof __DEV__ !== "undefined" && __DEV__) {
-        const t = session?.access_token;
-        console.debug("[DEBUG] enroll upload full token:", t ?? "NO_TOKEN");
-      }
-
       if (!session) {
         throw new Error("Sesi tidak valid. Silakan login ulang.");
       }
@@ -503,25 +497,23 @@ const FaceEnrollment = () => {
         },
       );
 
-      const successData = response.data;
-      setSuccessResponse(successData);
+      setSuccessResponse(response.data);
       setStep("success");
     } catch (error) {
-      if (isAxiosError(error)) {
-        if (error.code === "ERR_CANCELED") {
-          return;
-        }
+      if (isCancel(error)) {
+        return;
+      }
 
-        const axiosData = error.response?.data as
-          | EnrollmentErrorResponse
-          | undefined;
+      if (isAxiosError(error) && error.response) {
+        const errorData = error.response.data as EnrollmentErrorResponse;
         let errorMsg =
-          axiosData?.message || error.message || "Gagal mendaftarkan wajah";
+          errorData?.message ||
+          `Gagal mendaftarkan wajah (${error.response.status})`;
 
-        if (axiosData?.detail && Array.isArray(axiosData.detail)) {
-          errorMsg = axiosData.detail.map((d) => d.msg).join(", ");
-        } else if (axiosData?.detail && typeof axiosData.detail === "string") {
-          errorMsg = axiosData.detail;
+        if (errorData?.detail && Array.isArray(errorData.detail)) {
+          errorMsg = errorData.detail.map((d: any) => d.msg).join(", ");
+        } else if (errorData?.detail && typeof errorData.detail === "string") {
+          errorMsg = errorData.detail;
         }
 
         setErrorMessage(errorMsg);
@@ -748,7 +740,6 @@ const FaceEnrollment = () => {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={step === "capture"}
-        video={true}
         photo
         onInitialized={handleCameraReady}
       />

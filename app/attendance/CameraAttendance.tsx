@@ -362,6 +362,12 @@ const CameraAttendance = () => {
             accuracy: Location.Accuracy.High,
           });
 
+          if (latestLocation.mocked) {
+            throw new Error(
+              "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.",
+            );
+          }
+
           resolvedLocation = {
             latitude: latestLocation.coords.latitude,
             longitude: latestLocation.coords.longitude,
@@ -627,7 +633,6 @@ const CameraAttendance = () => {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={!isProcessing}
-        video={true}
         photo
         enableZoomGesture
         onInitialized={handleCameraReady}

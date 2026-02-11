@@ -3,7 +3,7 @@ import { useCallback, useState, useMemo } from "react";
 import {
   View,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   BackHandler,
   RefreshControl,
 } from "react-native";
@@ -24,7 +24,7 @@ import {
   FileText,
   Stethoscope,
 } from "lucide-react-native";
-import { cn } from "~/lib/utils";
+import { cn, formatDateWIB } from "~/lib/utils";
 
 interface PerizinanRecord {
   id: string;
@@ -269,7 +269,7 @@ export default function StatusPerizinanScreen() {
       if (error) throw error;
       setRecords(data || []);
     } catch (error) {
-      console.error("Error fetching records:", error);
+      if (__DEV__) console.error("Error fetching records:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -303,11 +303,7 @@ export default function StatusPerizinanScreen() {
     fetchRecords();
   };
 
-  // Get today's date string for filtering
-  const todayStr = useMemo(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  }, []);
+  const todayStr = formatDateWIB(new Date());
 
   // Filter records for today only
   const todayRecords = useMemo(() => {
@@ -366,37 +362,38 @@ export default function StatusPerizinanScreen() {
           </View>
         </View>
 
-        <ScrollView
+        <FlatList
           className="flex-1 px-5"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
           contentContainerStyle={{ paddingBottom: 100 }}
-        >
-          {/* Top Card (Today's Latest Status) */}
-          {todayLatestRecord && (
-            <TopStatusCard
-              item={todayLatestRecord}
-              userName={userProfile?.full_name || "Siswa"}
-            />
-          )}
-
-          {/* List */}
-          {loading && !refreshing ? (
-            <View className="items-center py-10">
-              <Text className="text-muted-foreground">Memuat data...</Text>
-            </View>
-          ) : records.length > 0 ? (
-            records.map((item) => <PermissionCard key={item.id} item={item} />)
-          ) : (
-            <View className="items-center py-10">
-              <Text className="text-muted-foreground">
-                Tidak ada data perizinan.
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+          data={records}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PermissionCard item={item} />}
+          ListHeaderComponent={
+            todayLatestRecord ? (
+              <TopStatusCard
+                item={todayLatestRecord}
+                userName={userProfile?.full_name || "Siswa"}
+              />
+            ) : null
+          }
+          ListEmptyComponent={
+            loading && !refreshing ? (
+              <View className="items-center py-10">
+                <Text className="text-muted-foreground">Memuat data...</Text>
+              </View>
+            ) : (
+              <View className="items-center py-10">
+                <Text className="text-muted-foreground">
+                  Tidak ada data perizinan.
+                </Text>
+              </View>
+            )
+          }
+        />
 
         {/* FAB */}
         <View className="absolute bottom-6 left-5 right-5">

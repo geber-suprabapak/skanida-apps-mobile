@@ -9,6 +9,8 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS plpgsql;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 CREATE EXTENSION IF NOT EXISTS cube; -- Required by earthdistance
 CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE; -- Automatically installs cube if not present
 
@@ -660,13 +662,13 @@ END $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO anon, authenticated, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE location TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE jadwal_absensi TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE location TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE jadwal_absensi TO authenticated;
 GRANT SELECT ON TABLE biodata_siswa TO service_role, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO authenticated;
 
 -- Grant usage on sequences for service_role (face recognition system)
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role, authenticated;
@@ -676,7 +678,7 @@ DO $$
 BEGIN
   BEGIN
     ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 END$$;
@@ -754,6 +756,70 @@ BEGIN
   WHERE bs.nis = p_nis::BIGINT;
 END;
 $$;
+
+-- Function to create user profile from biodata (called by account creation scripts)
+CREATE OR REPLACE FUNCTION create_user_profile_from_biodata(p_user_id UUID, p_nis TEXT, p_email TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    v_nis_bigint BIGINT;
+    v_result JSON;
+BEGIN
+    -- Convert NIS to bigint
+    v_nis_bigint := p_nis::BIGINT;
+    
+    -- Insert user profile by joining with biodata_siswa
+    INSERT INTO user_profiles (user_id, full_name, email, nis, class_name, absence_number, gender, role)
+    SELECT
+        p_user_id,
+        bs.nama,
+        p_email,
+        bs.nis::TEXT,
+        bs.kelas,
+        bs.absen::TEXT,
+        bs.kelamin,
+        'siswa' -- Default role
+    FROM biodata_siswa AS bs
+    WHERE bs.nis = v_nis_bigint
+    ON CONFLICT (user_id) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        email = EXCLUDED.email,
+        nis = EXCLUDED.nis,
+        class_name = EXCLUDED.class_name,
+        absence_number = EXCLUDED.absence_number,
+        gender = EXCLUDED.gender,
+        updated_at = NOW();
+    
+    -- Mark biodata as activated
+    UPDATE biodata_siswa
+    SET activated = true
+    WHERE nis = v_nis_bigint;
+    
+    -- Return success with profile data
+    SELECT json_build_object(
+        'success', true,
+        'user_id', p_user_id,
+        'nis', p_nis,
+        'message', 'Profile created successfully'
+    ) INTO v_result;
+    
+    RETURN v_result;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Return error details
+        SELECT json_build_object(
+            'success', false,
+            'error', SQLERRM,
+            'detail', SQLSTATE
+        ) INTO v_result;
+        RETURN v_result;
+END;
+$$;
+
+COMMENT ON FUNCTION create_user_profile_from_biodata(UUID, TEXT, TEXT) IS 'Creates user profile from biodata_siswa data. Uses SECURITY DEFINER to bypass RLS policies safely. Called by account creation scripts.';
 
 -- Grant execute permission to anon role (for pre-login activation check)
 GRANT EXECUTE ON FUNCTION get_biodata_siswa(TEXT) TO anon;
@@ -886,6 +952,10 @@ DECLARE
     v_mulai_pulang TIME;
     v_selesai_pulang TIME;
 BEGIN
+    IF p_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Unauthorized: user_id mismatch';
+    END IF;
+
     -- Get current time and date in Asia/Jakarta timezone (WIB)
     v_current_time := (NOW() AT TIME ZONE 'Asia/Jakarta')::TIME;
     v_current_date := (NOW() AT TIME ZONE 'Asia/Jakarta')::DATE;
@@ -1073,6 +1143,10 @@ DECLARE
   v_has_checked_out BOOLEAN := FALSE;
   v_response public.attendance_action_response;
 BEGIN
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: user_id mismatch';
+  END IF;
+
   -- LANGKAH 1 & 2: Tetap sama
   v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
   v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
@@ -1206,6 +1280,10 @@ DECLARE
   v_result JSONB;
   v_current_day_indonesian TEXT;
 BEGIN
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: user_id mismatch';
+  END IF;
+
   v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
   v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
 

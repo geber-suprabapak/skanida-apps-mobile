@@ -34,7 +34,12 @@ const AttendanceCalendar = forwardRef<
   AttendanceCalendarProps
 >(
   (
-    { isDarkColorScheme, currentYear: propYear, currentMonth: propMonth },
+    {
+      isDarkColorScheme,
+      currentYear: propYear,
+      currentMonth: propMonth,
+      onDataLoaded,
+    },
     ref,
   ) => {
     const user = useAuthStore((state) => state.user);
@@ -49,17 +54,19 @@ const AttendanceCalendar = forwardRef<
       displayYear,
       displayMonth,
     );
+    // PERF-C05: Extract stable refetch reference to avoid useEffect firing every render
+    const refetch = monthlyAttendance.refetch;
     useImperativeHandle(
       ref,
       () => ({
         refetch: (forceRefresh: boolean = false) => {
-          if (user?.id && typeof monthlyAttendance.refetch === "function") {
-            return monthlyAttendance.refetch(forceRefresh);
+          if (user?.id && typeof refetch === "function") {
+            return refetch(forceRefresh);
           }
           return Promise.resolve();
         },
       }),
-      [user?.id, monthlyAttendance],
+      [user?.id, refetch],
     );
     const calendarDays = useMemo(() => {
       const days = getMonthDays(displayYear, displayMonth);
@@ -68,19 +75,29 @@ const AttendanceCalendar = forwardRef<
         attendance: monthlyAttendance.data?.[day.fullDate],
       }));
     }, [displayYear, displayMonth, monthlyAttendance.data]);
+    // PERF-C05: Use stable refetch reference, remove monthlyAttendance from deps
     useEffect(() => {
-      if (user?.id && typeof monthlyAttendance.refetch === "function") {
-        monthlyAttendance.refetch(false);
+      if (user?.id && typeof refetch === "function") {
+        refetch(false);
       }
-    }, [displayYear, displayMonth, user?.id, monthlyAttendance]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [displayYear, displayMonth, user?.id]);
     const handleRefresh = useCallback(() => {
-      if (user?.id && typeof monthlyAttendance.refetch === "function") {
-        monthlyAttendance.refetch(true);
+      if (user?.id && typeof refetch === "function") {
+        refetch(true);
       }
-    }, [user?.id, monthlyAttendance]);
+    }, [user?.id, refetch]);
     const handleDateChange = useCallback((date: Date) => {
       setPickerDate(date);
     }, []);
+    // PERF-H06: Notify parent when attendance data is loaded
+    useEffect(() => {
+      if (onDataLoaded && monthlyAttendance.data) {
+        onDataLoaded(monthlyAttendance.data);
+      }
+    }, [monthlyAttendance.data, onDataLoaded]);
+    // PERF-M10: Memoize maximumDate to avoid new Date() on every render
+    const maximumDate = useMemo(() => new Date(), []);
 
     return (
       <ScrollView className="flex-1 px-4">
@@ -116,7 +133,7 @@ const AttendanceCalendar = forwardRef<
               onDateChange={handleDateChange}
               isDarkColorScheme={isDarkColorScheme}
               minimumDate={new Date(2020, 0, 1)}
-              maximumDate={new Date()}
+              maximumDate={maximumDate}
             />
           </View>
         )}
