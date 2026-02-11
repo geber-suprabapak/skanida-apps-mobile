@@ -24,7 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
-import axios, { isAxiosError } from "axios";
+import axios, { isAxiosError, isCancel } from "axios";
 
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
@@ -500,7 +500,7 @@ const FaceEnrollment = () => {
       setSuccessResponse(response.data);
       setStep("success");
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
+      if (isCancel(error)) {
         return;
       }
 
