@@ -81,6 +81,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
           .from("user_profiles")
           .select(USER_PROFILE_COLUMNS)
           .eq("user_id", userId)
+          .abortSignal(activeFetchController!.signal)
           .single();
 
         // PERF-H04: Check if cancelled after network response
