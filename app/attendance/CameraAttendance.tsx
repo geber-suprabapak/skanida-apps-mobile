@@ -633,7 +633,6 @@ const CameraAttendance = () => {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={!isProcessing}
-        video={true}
         photo
         enableZoomGesture
         onInitialized={handleCameraReady}

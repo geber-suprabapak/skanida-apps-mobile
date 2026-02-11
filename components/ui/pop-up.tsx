@@ -3,23 +3,20 @@ import {
   View,
   Modal,
   Animated,
-  Dimensions,
   TouchableOpacity,
   Easing,
+  useWindowDimensions,
 } from "react-native";
 import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
 import { CheckCircle } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import {
-  fetchRandomQuote,
   getFallbackQuote,
   type MotivationalQuote,
 } from "~/lib/motivationalQuotes";
 import { timeSync } from "~/utils/timeSync";
 import { cn } from "~/lib/utils";
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface ConfettiPiece {
   id: number;
@@ -62,6 +59,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
+  // PERF-L01: Use hook instead of module-scope Dimensions.get
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const backdropColor =
     colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)";
   const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(
@@ -82,7 +81,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
 
   // Initialize confetti pieces
   const initializeConfetti = () => {
-    confettiPieces.current = Array.from({ length: 30 }, (_, index) => ({
+    // PERF-M01: Reduced from 30 to 15 pieces to halve animation overhead
+    confettiPieces.current = Array.from({ length: 15 }, (_, index) => ({
       id: index,
       x: new Animated.Value(Math.random() * screenWidth),
       y: new Animated.Value(-50),
@@ -234,34 +234,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     });
   };
 
+  // PERF-M02: Use local quotes directly, avoid 5s external API call
   useEffect(() => {
-    let isActive = true;
-
-    const loadQuote = async () => {
-      try {
-        const remoteQuote = await fetchRandomQuote();
-
-        if (isActive && remoteQuote?.quote?.trim()) {
-          setMotivationalQuote(remoteQuote);
-        } else if (isActive) {
-          setMotivationalQuote(getFallbackQuote());
-        }
-      } catch {
-        if (isActive) {
-          setMotivationalQuote(getFallbackQuote());
-        }
-        // Error handled by setting fallback quote; do not re-throw.
-      }
-    };
-
     if (visible) {
-      loadQuote();
+      setMotivationalQuote(getFallbackQuote());
       showAnimation();
     }
-
-    return () => {
-      isActive = false;
-    };
   }, [visible, showAnimation]);
 
   const getSuccessMessage = () => {

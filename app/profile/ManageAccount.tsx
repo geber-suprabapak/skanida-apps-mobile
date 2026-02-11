@@ -15,8 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { StatusBar } from "expo-status-bar";
 import axios, { isAxiosError } from "axios";
+import { StatusBar } from "expo-status-bar";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -42,7 +42,6 @@ import {
   Scan,
   Loader2,
 } from "lucide-react-native";
-
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
@@ -239,8 +238,7 @@ export default function ManageAccount() {
     } catch (error) {
       if (__DEV__) console.error("Error checking enrollment status:", error);
       if (isAxiosError(error)) {
-        const status = error.response?.status;
-        if (status === 404) {
+        if (error.response?.status === 404) {
           setEnrollmentStatus("not_enrolled");
           return;
         }

@@ -28,6 +28,8 @@ export interface AttendanceCalendarProps {
   isDarkColorScheme: boolean;
   currentYear?: number;
   currentMonth?: number;
+  /** PERF-H06: Callback to share loaded data with parent, avoiding duplicate fetches */
+  onDataLoaded?: (data: AttendanceMap) => void;
 }
 
 export interface AttendanceCalendarRef {

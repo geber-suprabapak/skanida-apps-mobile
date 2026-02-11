@@ -30,12 +30,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
-    [
-      "expo-camera",
-      {
-        cameraPermission: "Allow $(PRODUCT_NAME) to access your camera",
-      },
-    ],
     "expo-web-browser",
     [
       "@sentry/react-native/expo",
@@ -87,7 +81,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     resizeMode: "contain",
     backgroundColor: "#ffffff",
   },
-  assetBundlePatterns: ["**/*"],
+  // PERF-M06: Only bundle essential assets (was "**/*" which bundles everything)
+  assetBundlePatterns: ["assets/images/*", "assets/fonts/*", "assets/*.png"],
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.hfzrk.skanidaappsmobile",

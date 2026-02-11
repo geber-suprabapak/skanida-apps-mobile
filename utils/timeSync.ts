@@ -74,9 +74,7 @@ class TimeSync {
   private appStateSubscription: any = null;
   private isInitialized: boolean = false;
 
-  constructor() {
-    this.setupBackgroundSync();
-  }
+  // PERF-C03: Background timers are started in initialize(), not at import time.
 
   /**
    * Initialize time sync with persisted data
@@ -93,6 +91,9 @@ class TimeSync {
 
       // Perform initial sync
       await this.syncWithServer();
+
+      // PERF-C03: Only start background sync AFTER initialization
+      this.setupBackgroundSync();
 
       this.isInitialized = true;
       if (__DEV__) console.log("TimeSync initialized");
@@ -118,9 +119,12 @@ class TimeSync {
           this.timeOffset = data.offset;
           this.lastSyncTime = data.timestamp;
 
-          useTimeSyncStore.getState().setOffset(data.offset);
-          useTimeSyncStore.getState().setSyncSource(data.source);
-          useTimeSyncStore.getState().setLastSyncTime(data.timestamp);
+          // PERF-H03: Batch store update (was 3 separate calls = 3 re-renders)
+          useTimeSyncStore.setState({
+            offset: data.offset,
+            syncSource: data.source,
+            lastSyncTime: data.timestamp,
+          });
 
           if (__DEV__)
             console.log("Loaded persisted offset:", {
@@ -304,9 +308,12 @@ class TimeSync {
       this.timeOffset = 0;
       this.lastSyncTime = Date.now();
 
-      useTimeSyncStore.getState().setOffset(0);
-      useTimeSyncStore.getState().setSyncSource("local");
-      useTimeSyncStore.getState().setStatus("failed");
+      // PERF-H03: Batch store update (was 3 separate calls)
+      useTimeSyncStore.setState({
+        offset: 0,
+        syncSource: "local",
+        status: "failed",
+      });
 
       await this.persistOffset(0, "local");
     } catch (error) {
@@ -357,11 +364,14 @@ class TimeSync {
     this.lastSyncTime = Date.now();
 
     // Update store
-    useTimeSyncStore.getState().setOffset(newOffset);
-    useTimeSyncStore.getState().setSyncSource("server");
-    useTimeSyncStore.getState().setStatus("synced");
-    useTimeSyncStore.getState().setLastSyncTime(Date.now());
-    useTimeSyncStore.getState().setError(null);
+    // PERF-H03: Batch store update (was 5 separate calls = 5 re-renders)
+    useTimeSyncStore.setState({
+      offset: newOffset,
+      syncSource: "server",
+      status: "synced",
+      lastSyncTime: Date.now(),
+      error: null,
+    });
 
     // Persist
     await this.persistOffset(newOffset, "server");
@@ -416,11 +426,14 @@ class TimeSync {
     this.lastSyncTime = Date.now();
 
     // Update store
-    useTimeSyncStore.getState().setOffset(newOffset);
-    useTimeSyncStore.getState().setSyncSource("ntp");
-    useTimeSyncStore.getState().setStatus("synced");
-    useTimeSyncStore.getState().setLastSyncTime(Date.now());
-    useTimeSyncStore.getState().setError(null);
+    // PERF-H03: Batch store update (was 5 separate calls = 5 re-renders)
+    useTimeSyncStore.setState({
+      offset: newOffset,
+      syncSource: "ntp",
+      status: "synced",
+      lastSyncTime: Date.now(),
+      error: null,
+    });
 
     // Persist
     await this.persistOffset(newOffset, "ntp");
