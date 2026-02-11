@@ -24,7 +24,7 @@ import {
   FileText,
   Stethoscope,
 } from "lucide-react-native";
-import { cn } from "~/lib/utils";
+import { cn, formatDateWIB } from "~/lib/utils";
 
 interface PerizinanRecord {
   id: string;
@@ -303,12 +303,7 @@ export default function StatusPerizinanScreen() {
     fetchRecords();
   };
 
-  // PERF-L05: Recompute on each fetch (was empty deps, stale after midnight)
-  const todayStr = useMemo(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [records]);
+  const todayStr = formatDateWIB(new Date());
 
   // Filter records for today only
   const todayRecords = useMemo(() => {
