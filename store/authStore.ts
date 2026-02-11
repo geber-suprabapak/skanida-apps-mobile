@@ -28,7 +28,7 @@ interface AuthState {
   user: User | null;
   userProfile: UserProfile | null;
   setUser: (user: User | null) => void;
-  fetchUserProfile: (userId: string) => Promise<void>;
+  fetchUserProfile: (userId: string, signal: AbortSignal) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -54,7 +54,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
       (async () => {
         await Promise.all([
-          get().fetchUserProfile(user.id),
+          get().fetchUserProfile(user.id, controller.signal),
           registerAndSaveNotificationToken(user.id),
         ]);
       })().catch((error) => {
@@ -66,18 +66,13 @@ const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Action to fetch user profile from the database with retry logic
-  fetchUserProfile: async (userId: string) => {
+  fetchUserProfile: async (userId: string, signal: AbortSignal) => {
     const maxRetries = 5;
     const delay = 500; // 500ms delay between retries
 
-    const controller = activeFetchController;
-    if (!controller) {
-      return;
-    }
-
     for (let i = 0; i < maxRetries; i++) {
       // PERF-H04: Check if fetch was cancelled between retries
-      if (controller.signal.aborted) {
+      if (signal.aborted) {
         return;
       }
 
@@ -86,11 +81,11 @@ const useAuthStore = create<AuthState>((set, get) => ({
           .from("user_profiles")
           .select(USER_PROFILE_COLUMNS)
           .eq("user_id", userId)
-          .abortSignal(controller.signal)
+          .abortSignal(signal)
           .single();
 
         // PERF-H04: Check if cancelled after network response
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           return;
         }
 
