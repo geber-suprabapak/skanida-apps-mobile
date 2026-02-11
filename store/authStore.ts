@@ -70,9 +70,14 @@ const useAuthStore = create<AuthState>((set, get) => ({
     const maxRetries = 5;
     const delay = 500; // 500ms delay between retries
 
+    const controller = activeFetchController;
+    if (!controller) {
+      return;
+    }
+
     for (let i = 0; i < maxRetries; i++) {
       // PERF-H04: Check if fetch was cancelled between retries
-      if (activeFetchController?.signal.aborted) {
+      if (controller.signal.aborted) {
         return;
       }
 
@@ -81,11 +86,11 @@ const useAuthStore = create<AuthState>((set, get) => ({
           .from("user_profiles")
           .select(USER_PROFILE_COLUMNS)
           .eq("user_id", userId)
-          .abortSignal(activeFetchController!.signal)
+          .abortSignal(controller.signal)
           .single();
 
         // PERF-H04: Check if cancelled after network response
-        if (activeFetchController?.signal.aborted) {
+        if (controller.signal.aborted) {
           return;
         }
 
