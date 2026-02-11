@@ -5,6 +5,7 @@
   },
   "build": {
     "development": {
+      "pnpm": "10.19.0",
       "developmentClient": true,
       "distribution": "internal",
       "android": {
@@ -12,10 +13,12 @@
       }
     },
     "preview": {
+      "pnpm": "10.19.0",
       "distribution": "internal",
       "env": { "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact" }
     },
     "production": {
+      "pnpm": "10.19.0",
       "autoIncrement": false,
       "channel": "production",
       "android": {
