@@ -236,13 +236,13 @@ export default function ManageAccount() {
       const data = response.data;
       setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
     } catch (error) {
-      if (__DEV__) console.error("Error checking enrollment status:", error);
       if (isAxiosError(error)) {
         if (error.response?.status === 404) {
           setEnrollmentStatus("not_enrolled");
           return;
         }
       }
+      if (__DEV__) console.error("Error checking enrollment status:", error);
       setEnrollmentStatus("error");
       setEnrollmentError("Gagal terhubung ke server");
     }
