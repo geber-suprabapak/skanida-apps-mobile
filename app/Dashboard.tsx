@@ -474,7 +474,7 @@ export default function Dashboard() {
               </Text>
 
               {/* Profile + Clock Hero Card */}
-              <View className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]">
+              <View className="p-5 flex-row items-center bg-blue-600 rounded-[35px]">
                 <TouchableOpacity
                   onPress={navigateToEditProfile}
                   activeOpacity={0.8}
@@ -502,7 +502,7 @@ export default function Dashboard() {
 
             {/* Attendance Status Card */}
             <View className="px-6 mt-4">
-              <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
+              <Card className="p-0 overflow-hidden bg-card border border-border/50 rounded-3xl">
                 <View className="flex-row">
                   {/* Masuk Column */}
                   <View className="flex-1 items-center py-7 px-4">
@@ -599,7 +599,7 @@ export default function Dashboard() {
                       </View>
                     ) : (
                       <View
-                        className={`py-5 items-center justify-center rounded-2xl shadow-sm ${
+                        className={`py-5 items-center justify-center rounded-2xl ${
                           derivedActionType === "home"
                             ? "bg-amber-500"
                             : "bg-blue-600"
@@ -633,7 +633,7 @@ export default function Dashboard() {
               <TouchableOpacity
                 onPress={navigateToHistory}
                 activeOpacity={0.7}
-                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full border border-white/10"
               >
                 <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
                   <Icon as={History} className="size-5 text-white" />
@@ -646,7 +646,7 @@ export default function Dashboard() {
               <TouchableOpacity
                 onPress={navigateToPerizinan}
                 activeOpacity={0.7}
-                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full shadow-md border border-white/10"
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full border border-white/10"
               >
                 <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
                   <Icon as={ClipboardPenLine} className="size-5 text-white" />
@@ -660,7 +660,7 @@ export default function Dashboard() {
 
           {/* Floating Version */}
           <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
-            <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30 shadow-sm">
+            <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30">
               <Text
                 variant="small"
                 className="text-secondary-foreground font-medium text-xs"
