@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -20,19 +20,25 @@ import { StatusBar } from "expo-status-bar";
 import * as Sentry from "@sentry/react-native";
 
 import { Avatar } from "~/components/ui/avatar";
+import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+import { fetchEnrollmentStatus } from "~/utils/enrollment";
+import type { EnrollmentStatus } from "~/utils/enrollment";
 import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
 import {
+  AlertCircle,
   Bug,
   History,
   ClipboardPenLine,
+  Loader2,
+  Scan,
   Settings,
   UserRound,
 } from "lucide-react-native";
@@ -127,6 +133,9 @@ export default function Dashboard() {
     useState<AttendanceSchedule | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [enrollmentStatus, setEnrollmentStatus] =
+    useState<EnrollmentStatus>("loading");
+  const [enrollmentError, setEnrollmentError] = useState("");
 
   // 60-second interval for schedule computations
   useEffect(() => {
@@ -263,6 +272,14 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Face enrollment check
+  const checkEnrollmentStatus = useCallback(async () => {
+    setEnrollmentStatus("loading");
+    const result = await fetchEnrollmentStatus();
+    setEnrollmentStatus(result.status);
+    if (result.error) setEnrollmentError(result.error);
+  }, []);
+
   // Lifecycle
   const initializeDashboard = useCallback(async () => {
     try {
@@ -271,15 +288,29 @@ export default function Dashboard() {
         fetchProfileData(),
         fetchAttendanceData(),
         fetchAttendanceSchedule(),
+        checkEnrollmentStatus(),
       ]);
     } finally {
       setIsInitializing(false);
     }
-  }, [fetchProfileData, fetchAttendanceData, fetchAttendanceSchedule]);
+  }, [
+    fetchProfileData,
+    fetchAttendanceData,
+    fetchAttendanceSchedule,
+    checkEnrollmentStatus,
+  ]);
 
   useEffect(() => {
     initializeDashboard();
   }, [initializeDashboard]);
+
+  // Re-check enrollment whenever Dashboard comes back into focus
+  // (e.g. after returning from the enroll screen via back navigation)
+  useFocusEffect(
+    useCallback(() => {
+      checkEnrollmentStatus();
+    }, [checkEnrollmentStatus]),
+  );
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -323,9 +354,15 @@ export default function Dashboard() {
         if (ok) setScheduleTime(timeSync.getSyncedTime());
       }),
       fetchAttendanceSchedule(),
+      checkEnrollmentStatus(),
     ]);
     setRefreshing(false);
-  }, [fetchProfileData, fetchAttendanceData, fetchAttendanceSchedule]);
+  }, [
+    fetchProfileData,
+    fetchAttendanceData,
+    fetchAttendanceSchedule,
+    checkEnrollmentStatus,
+  ]);
 
   // Computed values
   const rawName =
@@ -389,6 +426,7 @@ export default function Dashboard() {
         refreshing ||
         isInitializing ||
         !allows ||
+        enrollmentStatus !== "enrolled" ||
         attendanceStatus.hasCheckedOut,
     };
   }, [
@@ -397,12 +435,17 @@ export default function Dashboard() {
     derivedActionType,
     refreshing,
     isInitializing,
+    enrollmentStatus,
     attendanceStatus.hasCheckedOut,
   ]);
 
   // Navigation
   const navigateToCheckIn = useCallback(
     () => router.push("/attendance/AbsenceReport"),
+    [router],
+  );
+  const navigateToEnroll = useCallback(
+    () => router.push("/profile/enroll"),
     [router],
   );
   const navigateToHistory = useCallback(
@@ -499,6 +542,78 @@ export default function Dashboard() {
                 </View>
               </View>
             </View>
+
+            {/* Enrollment Banner */}
+            {enrollmentStatus === "not_enrolled" && (
+              <View className="px-6 mt-4">
+                <Card className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-3xl">
+                  <View className="flex-row items-center mb-3">
+                    <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
+                      <Icon
+                        as={AlertCircle}
+                        className="size-6 text-amber-600 dark:text-amber-400"
+                      />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-foreground font-bold text-base">
+                        Wajah Belum Terdaftar
+                      </Text>
+                      <Text className="text-xs text-muted-foreground">
+                        Daftarkan wajah Anda untuk menggunakan fitur absensi
+                      </Text>
+                    </View>
+                  </View>
+                  <Button
+                    variant="default"
+                    size="default"
+                    onPress={navigateToEnroll}
+                    className="w-full bg-amber-500 active:bg-amber-600"
+                  >
+                    <Icon as={Scan} className="size-5 text-white mr-2" />
+                    <Text className="text-white font-semibold">
+                      Daftar Sekarang
+                    </Text>
+                  </Button>
+                </Card>
+              </View>
+            )}
+
+            {enrollmentStatus === "error" && (
+              <View className="px-6 mt-4">
+                <Card className="p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl">
+                  <View className="flex-row items-center mb-3">
+                    <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                      <Icon
+                        as={AlertCircle}
+                        className="size-6 text-red-600 dark:text-red-400"
+                      />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-foreground font-bold text-base">
+                        Gagal Memeriksa Status Wajah
+                      </Text>
+                      <Text className="text-xs text-muted-foreground">
+                        {enrollmentError || "Terjadi kesalahan"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onPress={checkEnrollmentStatus}
+                    className="w-full border-border"
+                  >
+                    <Icon
+                      as={Loader2}
+                      className="size-5 text-foreground mr-2"
+                    />
+                    <Text className="text-foreground font-semibold">
+                      Coba Lagi
+                    </Text>
+                  </Button>
+                </Card>
+              </View>
+            )}
 
             {/* Attendance Status Card */}
             <View className="px-6 mt-4">
