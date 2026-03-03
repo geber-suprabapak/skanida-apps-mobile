@@ -12,8 +12,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 
 import { Text } from "~/components/ui/text";
 import { StatusBar } from "expo-status-bar";

@@ -1,5 +1,4 @@
-import { useIsFocused } from "@react-navigation/native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
@@ -47,7 +46,6 @@ function Pengaturan() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const isFocused = useIsFocused();
   const { theme, setTheme } = useThemeStore();
 
   const initialProfile = useMemo(
@@ -123,27 +121,38 @@ function Pengaturan() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (isFocused) fetchProfile();
-  }, [isFocused, fetchProfile]);
-
   // Theme sync
   useEffect(() => setIsDarkMode(theme === "dark"), [theme]);
 
-  // Notification status check
-  useEffect(() => {
-    if (!isFocused) return;
-    (async () => {
-      setNotifLoading(true);
-      try {
-        const s = await getNotificationPermissionStatus();
-        setNotifEnabled(s.isGranted);
-        setNotifCanAsk(s.canAskAgain);
-      } finally {
-        setNotifLoading(false);
-      }
-    })();
-  }, [isFocused]);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const refreshFocusedData = async () => {
+        await fetchProfile();
+
+        if (!isActive) return;
+        setNotifLoading(true);
+
+        try {
+          const s = await getNotificationPermissionStatus();
+          if (!isActive) return;
+          setNotifEnabled(s.isGranted);
+          setNotifCanAsk(s.canAskAgain);
+        } finally {
+          if (isActive) {
+            setNotifLoading(false);
+          }
+        }
+      };
+
+      refreshFocusedData();
+
+      return () => {
+        isActive = false;
+      };
+    }, [fetchProfile]),
+  );
 
   const handleLogout = useCallback(() => {
     Alert.alert("Logout", "Apakah Anda yakin ingin keluar?", [

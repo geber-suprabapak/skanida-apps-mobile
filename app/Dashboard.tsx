@@ -1,7 +1,6 @@
-// app/Dashboard.tsx
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -10,28 +9,23 @@ import {
   BackHandler,
   Alert,
   RefreshControl,
-  Animated,
   Image,
+  AppState,
 } from "react-native";
 import {
-  useSafeAreaInsets,
   SafeAreaView,
+  useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-
 import * as Sentry from "@sentry/react-native";
 
-// Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
-import AttendanceSuccessPopup from "~/components/ui/pop-up";
+import { Icon } from "~/components/ui/icon";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-
-import { Icon } from "~/components/ui/icon";
 import { formatDateWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
@@ -45,16 +39,13 @@ import {
 import Constants from "expo-constants";
 import LogoImage from "~/assets/skanidatransparan.png";
 
-// Define interface for user profile data
+// Types
 interface UserProfile {
   id: string;
   full_name?: string;
   avatar_url?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
-// Define interface for attendance data
 interface AttendanceStatus {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
@@ -70,7 +61,6 @@ interface AttendanceSchedule {
   selesai_masuk: string | null;
   mulai_pulang: string | null;
   selesai_pulang: string | null;
-  kompensasi_waktu?: number | null;
 }
 
 const DAY_KEY_MAP = [
@@ -83,17 +73,27 @@ const DAY_KEY_MAP = [
   "sabtu",
 ] as const;
 
-type DayKey = (typeof DAY_KEY_MAP)[number];
+const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
+  !!url && /^https?:\/\//.test(url);
 
-// PERF-C01: Isolated clock component - only this re-renders every second
+const calculateWorkHours = (checkIn: string, checkOut: string): string => {
+  try {
+    const diffMs = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    const hours = Math.floor(diffMs / 3600000);
+    const minutes = Math.floor((diffMs % 3600000) / 60000);
+    return `${hours}j ${minutes}m`;
+  } catch {
+    return "0j 0m";
+  }
+};
+
+// Isolated clock — only this re-renders every second
 const DashboardClock = React.memo(function DashboardClock() {
   const [time, setTime] = useState(timeSync.getSyncedTime());
 
   useEffect(() => {
-    const timerId = setInterval(() => {
-      setTime(timeSync.getSyncedTime());
-    }, 1000);
-    return () => clearInterval(timerId);
+    const id = setInterval(() => setTime(timeSync.getSyncedTime()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   return (
@@ -101,20 +101,20 @@ const DashboardClock = React.memo(function DashboardClock() {
       <Text className="text-blue-100 text-xs font-medium mb-1">
         {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
       </Text>
-      <Text className="text-white text-4xl font-bold tracking-tighter leading-tight shadow-sm">
-        {format(time, "HH:mm:ss", { locale: id })}
+      <Text className="text-white text-4xl font-bold tracking-tighter leading-tight">
+        {format(time, "HH:mm:ss")}
       </Text>
     </>
   );
 });
 
 export default function Dashboard() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
-  const router = useRouter();
   const theme = useThemeStore((state) => state.theme);
-  const params = useLocalSearchParams();
-  // PERF-C01: Use 60-second interval for schedule-related computations instead of 1s
+
+  // State
   const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -123,142 +123,65 @@ export default function Dashboard() {
     hasCheckedOut: false,
     todayStatus: "pending",
   });
-  const [refreshing, setRefreshing] = useState(false);
   const [attendanceSchedule, setAttendanceSchedule] =
     useState<AttendanceSchedule | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const isFocused = useIsFocused(); // Add isFocused hook
 
-  // Success popup state
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [successData, setSuccessData] = useState<{
-    attendanceType: "check_in" | "check_out";
-    time: string;
-    processingTime?: number;
-  } | null>(null);
-
-  // Handle success popup from navigation params
+  // 60-second interval for schedule computations
   useEffect(() => {
-    if (
-      params.showSuccessPopup === "true" &&
-      params.attendanceType &&
-      params.successTime
-    ) {
-      setSuccessData({
-        attendanceType: params.attendanceType as "check_in" | "check_out",
-        time: params.successTime as string,
-        processingTime: params.processingTime
-          ? parseInt(params.processingTime as string)
-          : undefined,
-      });
-      setShowSuccessPopup(true);
-
-      // Clear params to prevent popup from showing again
-      router.setParams({
-        showSuccessPopup: undefined,
-        attendanceType: undefined,
-        successTime: undefined,
-        processingTime: undefined,
-      });
-    }
-  }, [params, router]);
-
-  // PERF-C01: Update schedule time every 60 seconds (not 1s)
-  // Schedule windows only change a few times per day, no need for 1s precision
-  useEffect(() => {
-    const timerId = setInterval(() => {
-      setScheduleTime(timeSync.getSyncedTime());
-    }, 60000); // 60 seconds
-    return () => clearInterval(timerId);
+    const t = setInterval(
+      () => setScheduleTime(timeSync.getSyncedTime()),
+      60000,
+    );
+    return () => clearInterval(t);
   }, []);
 
-  // Re-sync when screen is focused
-  useEffect(() => {
-    if (isFocused) {
-      timeSync.syncWithServer().then((success) => {
-        if (success) {
-          setScheduleTime(timeSync.getSyncedTime());
-        }
-      });
-    }
-  }, [isFocused]);
-
+  // Avatar pipeline
   const rawAvatarValue =
     profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
 
   useEffect(() => {
-    let isActive = true;
-
-    if (!rawAvatarValue) {
+    let active = true;
+    if (!rawAvatarValue || typeof rawAvatarValue !== "string") {
       setAvatarUrl(null);
       return;
     }
-
     getAvatarSignedUrl(rawAvatarValue)
-      .then((resolvedUrl) => {
-        if (isActive) setAvatarUrl(resolvedUrl);
+      .then((url) => {
+        if (active && isValidRemoteImageUrl(url)) setAvatarUrl(url!.trim());
+        else if (active) setAvatarUrl(null);
       })
       .catch(() => {
-        if (isActive) setAvatarUrl(rawAvatarValue);
+        if (active) setAvatarUrl(null);
       });
-
     return () => {
-      isActive = false;
+      active = false;
     };
   }, [rawAvatarValue]);
 
-  // Fetch profile data from Supabase
+  // Data fetching
   const fetchProfileData = useCallback(async () => {
     if (!user) return;
-
     try {
       const { data, error } = await supabase
         .from("user_profiles")
         .select("full_name, avatar_url")
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .single();
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          if (__DEV__)
-            console.log("Dashboard: No profile data found for user:", user?.id);
-          setProfileData(null);
-        } else {
-          if (__DEV__) {
-            console.error(
-              "Dashboard: Error fetching profile data:",
-              error.message,
-            );
-          }
-          setProfileData(null);
-        }
-      } else if (data) {
-        if (__DEV__) console.log("Dashboard: Profile data found:", data);
-        setProfileData(data as UserProfile);
-      } else {
-        if (__DEV__)
-          console.log("Dashboard: No profile data found for user:", user?.id);
-        setProfileData(null);
-      }
-    } catch (err: any) {
-      if (__DEV__) {
-        console.error(
-          "Dashboard: Exception during user_profiles data fetch:",
-          err.message,
-        );
-      }
+      if (error) throw error;
+      if (data) setProfileData(data as UserProfile);
+    } catch (error) {
+      Sentry.captureException(error);
       setProfileData(null);
     }
   }, [user]);
 
-  // Fetch attendance data for today
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
-
     try {
       const today = formatDateWIB(timeSync.getSyncedTime());
 
-      // Fetch today's attendance
       const { data: todayAttendance } = await supabase
         .from("absences")
         .select("status, created_at")
@@ -266,10 +189,9 @@ export default function Dashboard() {
         .eq("date", today)
         .order("created_at", { ascending: true });
 
-      // Fetch leave requests for today
       const { data: leaveRequests } = await supabase
         .from("perizinan")
-        .select("approval_status, kategori_izin, status")
+        .select("approval_status, kategori_izin")
         .eq("user_id", user.id)
         .gte("tanggal", `${today}T00:00:00.000Z`)
         .lt("tanggal", `${today}T23:59:59.999Z`);
@@ -279,62 +201,29 @@ export default function Dashboard() {
       let checkInTime = "";
       let checkOutTime = "";
       let checkInStatus: "Hadir" | "Terlambat" | undefined;
-      let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
+      let todayStatus: AttendanceStatus["todayStatus"] = "pending";
 
-      // Check for leave requests first (they take priority)
       if (leaveRequests && leaveRequests.length > 0) {
-        // Check if there's any leave request for today (any submitted request counts)
-        const hasLeaveRequest = leaveRequests.length > 0;
-        if (hasLeaveRequest) {
-          todayStatus = "leave";
-        }
-      }
-
-      // Only check attendance if no leave request exists
-      if (
-        todayStatus !== "leave" &&
-        todayAttendance &&
-        todayAttendance.length > 0
-      ) {
-        const hasAlphaRecord = todayAttendance.some(
-          (record) => record.status === "Alpha",
-        );
-
-        if (hasAlphaRecord) {
+        todayStatus = "leave";
+      } else if (todayAttendance && todayAttendance.length > 0) {
+        if (todayAttendance.some((r) => r.status === "Alpha")) {
           todayStatus = "absent";
         } else {
-          const checkInRecord = todayAttendance.find(
-            (record) =>
-              record.status === "Hadir" || record.status === "Terlambat",
+          const inRec = todayAttendance.find(
+            (r) => r.status === "Hadir" || r.status === "Terlambat",
           );
-          const checkOutRecord = todayAttendance.find(
-            (record) => record.status === "Pulang",
-          );
-
-          if (checkInRecord) {
+          const outRec = todayAttendance.find((r) => r.status === "Pulang");
+          if (inRec) {
             hasCheckedIn = true;
-            checkInTime = checkInRecord.created_at;
-            checkInStatus = checkInRecord.status as "Hadir" | "Terlambat";
-          }
-
-          if (checkOutRecord) {
-            hasCheckedOut = true;
-            checkOutTime = checkOutRecord.created_at;
-          }
-
-          if (hasCheckedIn) {
+            checkInTime = inRec.created_at;
+            checkInStatus = inRec.status as "Hadir" | "Terlambat";
             todayStatus = "present";
           }
+          if (outRec) {
+            hasCheckedOut = true;
+            checkOutTime = outRec.created_at;
+          }
         }
-      }
-
-      // If no attendance and no leave request, mark as absent
-      if (
-        todayStatus === "pending" &&
-        !todayAttendance?.length &&
-        !leaveRequests?.length
-      ) {
-        todayStatus = "absent";
       }
 
       const totalWorkHours =
@@ -352,155 +241,61 @@ export default function Dashboard() {
         todayStatus,
       });
     } catch (error) {
-      if (__DEV__) console.error("Error fetching attendance data:", error);
+      Sentry.captureException(error);
     }
   }, [user]);
 
-  // Fetch profile and attendance data when component mounts or user changes
-  useEffect(() => {
-    if (user) {
-      if (__DEV__)
-        console.log("Dashboard: Fetching initial data for user:", user?.id);
-      setIsInitializing(true);
-      Promise.all([fetchProfileData(), fetchAttendanceData()]).then(() => {
-        setIsInitializing(false);
-      });
-    }
-  }, [user, fetchProfileData, fetchAttendanceData]);
-
-  // Handle success popup close
-  const handleSuccessPopupClose = useCallback(() => {
-    setShowSuccessPopup(false);
-    setSuccessData(null);
-    // Refresh attendance data after successful attendance
-    if (isFocused) {
-      fetchAttendanceData();
-    }
-  }, [isFocused, fetchAttendanceData]);
-
-  const fetchAttendanceSchedule = useCallback(async (dayKey: DayKey) => {
+  const fetchAttendanceSchedule = useCallback(async () => {
     try {
+      const dayKey = DAY_KEY_MAP[new Date().getDay()];
       const { data, error } = await supabase
         .from("jadwal_absensi")
-        .select(
-          "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
-        )
+        .select("mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang")
         .eq("hari", dayKey)
         .eq("is_active", true)
         .maybeSingle();
 
-      if (error) {
-        if (error.code !== "PGRST116") {
-          if (__DEV__)
-            console.error(
-              "Dashboard: Error fetching attendance schedule:",
-              error.message,
-            );
-        }
-        setAttendanceSchedule(null);
-        return;
-      }
-
-      if (data) {
-        setAttendanceSchedule(data as AttendanceSchedule);
-      } else {
-        setAttendanceSchedule(null);
-      }
-    } catch (scheduleError: any) {
-      if (__DEV__)
-        console.error(
-          "Dashboard: Exception during attendance schedule fetch:",
-          scheduleError.message,
-        );
+      if (error) throw error;
+      setAttendanceSchedule(data as AttendanceSchedule | null);
+    } catch (error) {
+      Sentry.captureException(error);
       setAttendanceSchedule(null);
     }
   }, []);
 
-  // PERF-C01: Now uses scheduleTime (60s interval) instead of currentTime (1s interval)
-  const currentDayKey = useMemo<DayKey>(() => {
-    const dayKey = DAY_KEY_MAP[scheduleTime.getDay()];
-    return dayKey ?? "senin";
-  }, [scheduleTime]);
-
-  useEffect(() => {
-    fetchAttendanceSchedule(currentDayKey);
-  }, [currentDayKey, fetchAttendanceSchedule]);
-
-  // Helper function to calculate work hours
-  const calculateWorkHours = (checkIn: string, checkOut: string): string => {
+  // Lifecycle
+  const initializeDashboard = useCallback(async () => {
     try {
-      const checkInTime = new Date(checkIn);
-      const checkOutTime = new Date(checkOut);
-      const diffMs = checkOutTime.getTime() - checkInTime.getTime();
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      return `${hours}j ${minutes}m`;
-    } catch {
-      return "0j 0m";
+      setIsInitializing(true);
+      await Promise.all([
+        fetchProfileData(),
+        fetchAttendanceData(),
+        fetchAttendanceSchedule(),
+      ]);
+    } finally {
+      setIsInitializing(false);
     }
-  };
+  }, [fetchProfileData, fetchAttendanceData, fetchAttendanceSchedule]);
 
-  // Refresh function
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([
-      fetchProfileData(),
-      fetchAttendanceData(),
-      timeSync.forceSyncWithServer().then((success) => {
-        if (success) {
-          setScheduleTime(timeSync.getSyncedTime());
-        }
-      }),
-      fetchAttendanceSchedule(currentDayKey),
-    ]);
-    setRefreshing(false);
-  }, [
-    fetchProfileData,
-    fetchAttendanceData,
-    fetchAttendanceSchedule,
-    currentDayKey,
-  ]);
-
-  // Get user's display name prioritizing profile data, then falling back to metadata
-  // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const rawName =
-    profileData?.full_name ??
-    user?.user_metadata?.full_name ??
-    user?.user_metadata?.name ??
-    "";
-
-  const displayName = rawName
-    ? rawName.split(" ").slice(0, 2).join(" ")
-    : "Pengguna";
-
-  // Get user's avatar URL prioritizing profile data and falling back to metadata
-  const hasCustomAvatar = Boolean(avatarUrl);
-
-  // PERF-C01: Now uses scheduleTime (60s interval) - greeting only changes 3-4x/day
-  const greeting = useMemo(() => {
-    const hours = scheduleTime.getHours();
-    if (hours >= 3 && hours < 11) {
-      return "Selamat Pagi";
-    } else if (hours >= 11 && hours < 15) {
-      return "Selamat Siang";
-    } else if (hours >= 15 && hours < 18) {
-      return "Selamat Sore";
-    } else {
-      return "Selamat Malam";
-    }
-  }, [scheduleTime]);
-
-  // --- Navigation Handlers ---
-  const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
-  const navigateToHistory = () => router.push("/extra/riwayat");
-  const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToPerizinan = () => router.push("/perizinan/status"); // Navigate to status page first
-  const navigateToEditProfile = () => router.push("/profile/ManageAccount");
-
-  // Prevent back navigation
   useEffect(() => {
-    const backAction = () => {
-      // For Dashboard, show exit confirmation instead of navigating back
+    initializeDashboard();
+  }, [initializeDashboard]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        timeSync.syncWithServer().then((ok) => {
+          if (ok) setScheduleTime(timeSync.getSyncedTime());
+        });
+        fetchAttendanceData();
+      }
+    });
+    return () => sub.remove();
+  }, [fetchAttendanceData]);
+
+  // Back button
+  useEffect(() => {
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
       Alert.alert(
         "Keluar Aplikasi",
         "Apakah Anda yakin ingin keluar dari aplikasi?",
@@ -513,159 +308,124 @@ export default function Dashboard() {
           },
         ],
       );
-      return true; // Prevent default behavior
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
-
-    return () => backHandler.remove();
+      return true;
+    });
+    return () => handler.remove();
   }, []);
+
+  // Refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchProfileData(),
+      fetchAttendanceData(),
+      timeSync.forceSyncWithServer().then((ok) => {
+        if (ok) setScheduleTime(timeSync.getSyncedTime());
+      }),
+      fetchAttendanceSchedule(),
+    ]);
+    setRefreshing(false);
+  }, [fetchProfileData, fetchAttendanceData, fetchAttendanceSchedule]);
+
+  // Computed values
+  const rawName =
+    profileData?.full_name ??
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    "";
+  const displayName = rawName
+    ? rawName.split(" ").slice(0, 2).join(" ")
+    : "Pengguna";
+  const hasCustomAvatar = Boolean(avatarUrl);
+
+  const greeting = useMemo(() => {
+    const h = scheduleTime.getHours();
+    if (h >= 3 && h < 11) return "Selamat Pagi";
+    if (h >= 11 && h < 15) return "Selamat Siang";
+    if (h >= 15 && h < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  }, [scheduleTime]);
 
   const derivedActionType =
     attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
       ? "home"
       : "present";
 
-  const normalizeTimeString = (
-    value: string | null | undefined,
-  ): string | null => {
-    if (!value) return null;
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    if (trimmed.length >= 5) {
-      const [hours, minutes] = trimmed.split(":");
-      if (typeof hours === "string" && typeof minutes === "string") {
-        return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
-      }
-    }
-    return trimmed;
-  };
+  const { isPrimaryActionDisabled } = useMemo(() => {
+    const parseTime = (t: string | null): Date | null => {
+      if (!t) return null;
+      const [h, m] = t.split(":").map(Number);
+      const d = new Date(scheduleTime);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
 
-  // PERF-C01: Now uses scheduleTime (60s interval) instead of currentTime
-  const getDateForToday = useCallback(
-    (time: string | null | undefined): Date | null => {
-      const normalized = normalizeTimeString(time);
-      if (!normalized) return null;
+    const inWindow = (start: Date | null, end: Date | null) => {
+      if (!start) return true;
+      if (scheduleTime < start) return false;
+      if (end && scheduleTime > end) return false;
+      return true;
+    };
 
-      const [hours, minutes] = normalized
-        .split(":")
-        .map((part) => parseInt(part || "0", 10));
+    const presentOk = inWindow(
+      parseTime(attendanceSchedule?.mulai_masuk ?? null),
+      parseTime(attendanceSchedule?.selesai_masuk ?? null),
+    );
+    const pulangOk = inWindow(
+      parseTime(attendanceSchedule?.mulai_pulang ?? null),
+      parseTime(attendanceSchedule?.selesai_pulang ?? null),
+    );
 
-      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-        return null;
-      }
+    const allows =
+      derivedActionType === "home"
+        ? pulangOk
+        : derivedActionType === "present"
+          ? presentOk
+          : true;
 
-      const base = new Date(scheduleTime);
-      base.setHours(hours, minutes, 0, 0);
-      return base;
-    },
-    [scheduleTime],
+    return {
+      scheduleAllowsAction: allows,
+      isPrimaryActionDisabled:
+        refreshing ||
+        isInitializing ||
+        !allows ||
+        attendanceStatus.hasCheckedOut,
+    };
+  }, [
+    scheduleTime,
+    attendanceSchedule,
+    derivedActionType,
+    refreshing,
+    isInitializing,
+    attendanceStatus.hasCheckedOut,
+  ]);
+
+  // Navigation
+  const navigateToCheckIn = useCallback(
+    () => router.push("/attendance/AbsenceReport"),
+    [router],
+  );
+  const navigateToHistory = useCallback(
+    () => router.push("/extra/riwayat"),
+    [router],
+  );
+  const navigateToPerizinan = useCallback(
+    () => router.push("/perizinan/status"),
+    [router],
+  );
+  const navigateToSettings = useCallback(
+    () => router.push("/extra/pengaturan"),
+    [router],
+  );
+  const navigateToEditProfile = useCallback(
+    () => router.push("/profile/ManageAccount"),
+    [router],
   );
 
-  const presentScheduleWindow = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = getDateForToday(attendanceSchedule.mulai_masuk);
-    if (!start) return null;
-
-    const end = getDateForToday(attendanceSchedule.selesai_masuk);
-
-    return { start, end } as const;
-  }, [attendanceSchedule, getDateForToday]);
-
-  const pulangScheduleWindow = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = getDateForToday(attendanceSchedule.mulai_pulang);
-    if (!start) return null;
-
-    const end = getDateForToday(attendanceSchedule.selesai_pulang);
-
-    return { start, end } as const;
-  }, [attendanceSchedule, getDateForToday]);
-
-  // PERF-C01: Now uses scheduleTime (60s interval) - schedule windows change ~2x/day
-  const isWithinPresentWindow = useMemo(() => {
-    if (!presentScheduleWindow) return true;
-
-    if (scheduleTime < presentScheduleWindow.start) {
-      return false;
-    }
-
-    if (presentScheduleWindow.end && scheduleTime > presentScheduleWindow.end) {
-      return false;
-    }
-
-    return true;
-  }, [scheduleTime, presentScheduleWindow]);
-
-  const isWithinPulangWindow = useMemo(() => {
-    if (!pulangScheduleWindow) return true;
-
-    if (scheduleTime < pulangScheduleWindow.start) {
-      return false;
-    }
-
-    if (pulangScheduleWindow.end && scheduleTime > pulangScheduleWindow.end) {
-      return false;
-    }
-
-    return true;
-  }, [scheduleTime, pulangScheduleWindow]);
-
-  const scheduleAllowsAction = useMemo(() => {
-    if (derivedActionType === "home") {
-      return isWithinPulangWindow;
-    }
-
-    if (derivedActionType === "present") {
-      return isWithinPresentWindow;
-    }
-
-    return true;
-  }, [derivedActionType, isWithinPulangWindow, isWithinPresentWindow]);
-
-  const isPrimaryActionDisabled =
-    refreshing ||
-    isInitializing ||
-    !scheduleAllowsAction ||
-    attendanceStatus.hasCheckedOut;
-
-  // Animated pulse for the main action button
-  const pulseAnim = useMemo(() => new Animated.Value(1), []);
-
-  useEffect(() => {
-    if (!isPrimaryActionDisabled) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.02,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
-  }, [isPrimaryActionDisabled, pulseAnim]);
-
+  // Render
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-          gestureEnabled: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 bg-background">
@@ -677,9 +437,8 @@ export default function Dashboard() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 32 }}
           >
-            {/* === HEADER SECTION - Modern Clean Style === */}
+            {/* Header */}
             <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
-              {/* Top Bar - Logo & Actions */}
               <View className="flex-row items-center justify-between mb-8">
                 <View className="flex-row items-center gap-3">
                   <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
@@ -693,7 +452,6 @@ export default function Dashboard() {
                     SKANIDA APPS
                   </Text>
                 </View>
-
                 <View className="flex-row items-center gap-2">
                   <TouchableOpacity
                     onPress={navigateToSettings}
@@ -710,12 +468,12 @@ export default function Dashboard() {
                 </View>
               </View>
 
-              {/* Greeting Text */}
+              {/* Greeting */}
               <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
                 {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
               </Text>
 
-              {/* Profile & Time Card */}
+              {/* Profile + Clock Hero Card */}
               <View className="p-5 flex-row items-center shadow-lg shadow-blue-900/20 bg-blue-600 rounded-[35px]">
                 <TouchableOpacity
                   onPress={navigateToEditProfile}
@@ -734,23 +492,19 @@ export default function Dashboard() {
                       <Icon as={UserRound} className="size-10 text-white" />
                     </View>
                   )}
-                  {/* Active Indicator */}
                   <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
                 </TouchableOpacity>
-
                 <View className="flex-1 justify-center">
-                  {/* PERF-C01: Clock is isolated - only DashboardClock re-renders every second */}
                   <DashboardClock />
                 </View>
               </View>
             </View>
 
-            {/* === TODAY'S STATUS SECTION - MODERN MINIMAL DESIGN === */}
+            {/* Attendance Status Card */}
             <View className="px-6 mt-4">
               <Card className="p-0 overflow-hidden bg-card border border-border/50 shadow-sm rounded-3xl">
-                {/* Two Column Time Display */}
                 <View className="flex-row">
-                  {/* MASUK Column */}
+                  {/* Masuk Column */}
                   <View className="flex-1 items-center py-7 px-4">
                     <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
                       MASUK
@@ -785,10 +539,10 @@ export default function Dashboard() {
                     )}
                   </View>
 
-                  {/* Vertical Divider */}
+                  {/* Divider */}
                   <View className="w-px bg-border/50 self-stretch my-5" />
 
-                  {/* PULANG Column */}
+                  {/* Pulang Column */}
                   <View className="flex-1 items-center py-7 px-4">
                     <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
                       PULANG
@@ -822,10 +576,10 @@ export default function Dashboard() {
                   </View>
                 </View>
 
-                {/* Horizontal Divider */}
+                {/* Divider */}
                 <View className="h-px bg-border/50 mx-5" />
 
-                {/* PRESENSI Button */}
+                {/* Action Button */}
                 <View className="p-5">
                   <TouchableOpacity
                     onPress={navigateToCheckIn}
@@ -860,7 +614,6 @@ export default function Dashboard() {
                     )}
                   </TouchableOpacity>
 
-                  {/* Total Hours (if both checked) */}
                   {attendanceStatus.totalWorkHours && (
                     <View className="mt-3 items-center">
                       <Text className="text-muted-foreground text-xs">
@@ -875,9 +628,8 @@ export default function Dashboard() {
               </Card>
             </View>
 
-            {/* === NAVIGATION BUTTONS (Split) === */}
+            {/* Navigation Buttons */}
             <View className="flex-row mx-6 mt-10 mb-10 gap-3">
-              {/* Riwayat Button */}
               <TouchableOpacity
                 onPress={navigateToHistory}
                 activeOpacity={0.7}
@@ -886,12 +638,11 @@ export default function Dashboard() {
                 <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
                   <Icon as={History} className="size-5 text-white" />
                 </View>
-                <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                <Text className="text-base font-bold text-white tracking-wide">
                   Riwayat
                 </Text>
               </TouchableOpacity>
 
-              {/* Perizinan Button */}
               <TouchableOpacity
                 onPress={navigateToPerizinan}
                 activeOpacity={0.7}
@@ -900,14 +651,14 @@ export default function Dashboard() {
                 <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
                   <Icon as={ClipboardPenLine} className="size-5 text-white" />
                 </View>
-                <Text className="text-base font-bold text-white tracking-wide shadow-black/20">
+                <Text className="text-base font-bold text-white tracking-wide">
                   Perizinan
                 </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
 
-          {/* === FLOATING VERSION INFO (Moved Here) === */}
+          {/* Floating Version */}
           <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
             <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30 shadow-sm">
               <Text
@@ -920,17 +671,6 @@ export default function Dashboard() {
           </View>
         </View>
       </SafeAreaView>
-
-      {/* Success Popup */}
-      {successData && (
-        <AttendanceSuccessPopup
-          visible={showSuccessPopup}
-          onClose={handleSuccessPopupClose}
-          attendanceType={successData.attendanceType}
-          time={successData.time}
-          processingTime={successData.processingTime}
-        />
-      )}
     </>
   );
 }
