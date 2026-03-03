@@ -18,7 +18,6 @@ import {
   SafeAreaView,
 } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
-import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 
 import * as Sentry from "@sentry/react-native";
@@ -64,28 +63,6 @@ interface AttendanceStatus {
   checkInStatus?: "Hadir" | "Terlambat";
   totalWorkHours?: string;
   todayStatus: "present" | "absent" | "leave" | "pending";
-}
-
-// Define interface for RPC check_absensi_status result
-interface AbsensiCheckResult {
-  status_code:
-    | "VALID"
-    | "OUT_OF_RANGE"
-    | "NOT_SCHEDULED"
-    | "ALREADY_COMPLETED"
-    | "TIME_OUT"
-    | "FAILED_LOCATION";
-  required_action: "present" | "home" | "none";
-  location_name: string;
-  distance_m: number;
-  message: string;
-}
-
-// Define interface for validation status state
-interface ValidationStatus {
-  canCheckIn: boolean;
-  actionType: "present" | "home" | "none";
-  message: string;
 }
 
 interface AttendanceSchedule {
@@ -149,14 +126,8 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceSchedule, setAttendanceSchedule] =
     useState<AttendanceSchedule | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const isFocused = useIsFocused(); // Add isFocused hook
-
-  // Validation status for live schedule checking
-  const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
-    canCheckIn: false,
-    actionType: "none",
-    message: "Memeriksa status jadwal...",
-  });
 
   // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
@@ -385,98 +356,17 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Check live validation status using RPC
-  const checkLiveValidationStatus = useCallback(async () => {
-    if (!user?.id || attendanceStatus.hasCheckedOut) {
-      setValidationStatus({
-        canCheckIn: false,
-        actionType: "none",
-        message: attendanceStatus.hasCheckedOut
-          ? "Absensi hari ini sudah lengkap."
-          : "User tidak ditemukan",
-      });
-      return;
-    }
-
-    try {
-      let { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== "granted") {
-        status = (await Location.requestForegroundPermissionsAsync()).status;
-        if (status !== "granted") {
-          setValidationStatus({
-            canCheckIn: false,
-            actionType: "none",
-            message: "Izin lokasi ditolak.",
-          });
-          return;
-        }
-      }
-
-      // PERF-H01: Use Balanced accuracy instead of High to reduce battery drain
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      if (!location) {
-        setValidationStatus({
-          canCheckIn: false,
-          actionType: "none",
-          message: "Gagal mendapatkan lokasi GPS.",
-        });
-        return;
-      }
-
-      const { data, error } = await supabase.rpc("check_absensi_status", {
-        p_user_id: user.id,
-        p_user_lat: location.coords.latitude,
-        p_user_lon: location.coords.longitude,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      const result = data as AbsensiCheckResult;
-
-      setValidationStatus({
-        canCheckIn: result.status_code === "VALID",
-        actionType: result.required_action,
-        message: result.message,
-      });
-    } catch (error) {
-      if (__DEV__) console.error("Error during live validation:", error);
-      setValidationStatus({
-        canCheckIn: false,
-        actionType: "none",
-        message: "Gagal memeriksa status absensi.",
-      });
-    }
-  }, [user, attendanceStatus.hasCheckedOut]);
-
   // Fetch profile and attendance data when component mounts or user changes
   useEffect(() => {
     if (user) {
       if (__DEV__)
         console.log("Dashboard: Fetching initial data for user:", user?.id);
-      fetchProfileData();
-      fetchAttendanceData();
+      setIsInitializing(true);
+      Promise.all([fetchProfileData(), fetchAttendanceData()]).then(() => {
+        setIsInitializing(false);
+      });
     }
   }, [user, fetchProfileData, fetchAttendanceData]);
-
-  // PERF-H01: Reduced from 15s to 60s polling to save ~5-10% battery/hour
-  useEffect(() => {
-    if (!isFocused || !user?.id) return;
-
-    // Initial check when screen becomes focused
-    checkLiveValidationStatus();
-
-    // Set up interval for polling every 60 seconds
-    const validationInterval = setInterval(() => {
-      checkLiveValidationStatus();
-    }, 60000); // 60 seconds (was 15s)
-
-    // Cleanup interval on unmount or when focus changes
-    return () => clearInterval(validationInterval);
-  }, [isFocused, user?.id, checkLiveValidationStatus]);
 
   // Handle success popup close
   const handleSuccessPopupClose = useCallback(() => {
@@ -556,7 +446,6 @@ export default function Dashboard() {
     await Promise.all([
       fetchProfileData(),
       fetchAttendanceData(),
-      checkLiveValidationStatus(), // Refresh validation status, location, and time
       timeSync.forceSyncWithServer().then((success) => {
         if (success) {
           setScheduleTime(timeSync.getSyncedTime());
@@ -568,7 +457,6 @@ export default function Dashboard() {
   }, [
     fetchProfileData,
     fetchAttendanceData,
-    checkLiveValidationStatus,
     fetchAttendanceSchedule,
     currentDayKey,
   ]);
@@ -639,7 +527,7 @@ export default function Dashboard() {
   const derivedActionType =
     attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
       ? "home"
-      : validationStatus.actionType;
+      : "present";
 
   const normalizeTimeString = (
     value: string | null | undefined,
@@ -741,7 +629,10 @@ export default function Dashboard() {
   }, [derivedActionType, isWithinPulangWindow, isWithinPresentWindow]);
 
   const isPrimaryActionDisabled =
-    refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
+    refreshing ||
+    isInitializing ||
+    !scheduleAllowsAction ||
+    attendanceStatus.hasCheckedOut;
 
   // Animated pulse for the main action button
   const pulseAnim = useMemo(() => new Animated.Value(1), []);
