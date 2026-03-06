@@ -85,12 +85,9 @@ export default function Login() {
       }
 
       if (data?.user) {
-        // Cek metadata role user. Prioritaskan user_metadata lalu app_metadata sebagai fallback.
-        const userMetadata = data.user?.user_metadata;
-        const role = userMetadata?.role as string;
+        const role = data.user.app_metadata?.role as string;
 
-        if (role === "admin") {
-          // Sign out agar sesi tidak tersimpan di device
+        if (role !== "siswa") {
           try {
             await supabase.auth.signOut();
           } catch (signOutErr) {
@@ -100,8 +97,8 @@ export default function Login() {
                 signOutErr,
               );
           }
-          alert("Admin tidak bisa masuk.");
-          return; // Jangan lanjutkan login
+          Alert.alert("Login Gagal", "Invalid Credentials.");
+          return;
         }
 
         setUser(data.user);

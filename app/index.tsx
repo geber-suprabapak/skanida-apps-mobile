@@ -33,6 +33,14 @@ export default function Index() {
         }
 
         if (session?.user) {
+          const role = session.user.app_metadata?.role as string;
+
+          if (role !== "siswa") {
+            await supabase.auth.signOut();
+            router.replace("/auth/AuthSelector");
+            return;
+          }
+
           setLoadingMessage("Session found");
           setUser(session.user);
           router.replace("/Dashboard");

@@ -792,10 +792,17 @@ AS $$
 DECLARE
   user_nis_text TEXT;
   user_nis_bigint BIGINT;
+  validated_role TEXT;
 BEGIN
   -- Extract NIS from user metadata
   user_nis_text := NEW.raw_user_meta_data->>'nis';
   user_nis_bigint := user_nis_text::BIGINT;
+
+  -- Read role from app metadata and normalize to allowed values
+  validated_role := NEW.raw_app_meta_data->>'role';
+  IF validated_role NOT IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa') THEN
+    validated_role := 'siswa';
+  END IF;
 
   -- Create user profile by joining with biodata_siswa
   INSERT INTO user_profiles (user_id, full_name, email, nis, class_name, absence_number, gender, role)
@@ -807,7 +814,7 @@ BEGIN
     bs.kelas,
     bs.absen::TEXT,
     bs.kelamin,
-    'siswa' -- Default role
+    validated_role
   FROM biodata_siswa AS bs
   WHERE bs.nis = user_nis_bigint;
 
