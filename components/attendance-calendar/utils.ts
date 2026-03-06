@@ -35,7 +35,7 @@ export const getMonthDays = (year: number, month: number): CalendarDay[] => {
   const todayUTC = timeSync.getSyncedTime();
   const todayString = formatDateWIB(todayUTC);
 
-  const prevMonth = new Date(year, month - 1, 0);
+  const prevMonth = new Date(year, month, 0);
   for (let i = startDate - 1; i >= 0; i--) {
     const date = prevMonth.getDate() - i;
     const fullDate = formatDate(new Date(year, month - 1, date));
@@ -170,6 +170,8 @@ export const processAttendanceData = (
   });
 
   leaveRecords?.forEach((leave) => {
+    if (leave.approval_status === "rejected") return;
+
     const dateKey = normalizeDateKey(leave.tanggal);
     processedData[dateKey] = {
       id: leave.id,

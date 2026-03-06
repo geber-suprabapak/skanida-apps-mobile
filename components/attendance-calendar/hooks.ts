@@ -77,7 +77,9 @@ export const useOptimizedMonthlyAttendance = (
 
         const processedData = processAttendanceData(
           attendanceResult.data,
-          leaveResult.data,
+          leaveResult.data?.filter(
+            (leave) => leave.approval_status !== "rejected",
+          ) ?? null,
         );
 
         return processedData;
