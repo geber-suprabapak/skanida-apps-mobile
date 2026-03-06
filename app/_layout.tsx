@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PortalHost } from "@rn-primitives/portal";
 import ConnectionChecker from "~/components/ConnectionChecker";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { colorScheme } from "nativewind";
 import useThemeStore from "~/store/themeStore";
 import { timeSync } from "~/utils/timeSync";
@@ -13,6 +13,9 @@ import {
   setupNotificationHandler,
   setupNotificationChannel,
 } from "~/utils/notifications";
+import { ensureSupabaseInitialized } from "~/utils/supabase";
+import { View, ActivityIndicator } from "react-native";
+import { Text } from "~/components/ui/text";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -38,6 +41,8 @@ export { ErrorBoundary } from "expo-router";
 
 export default Sentry.wrap(function RootLayout() {
   const { theme } = useThemeStore();
+  const [isSupabaseReady, setIsSupabaseReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (theme === "system") {
@@ -47,22 +52,79 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [theme]);
 
+  // Initialize Supabase before rendering the app
   useEffect(() => {
-    timeSync.initialize().catch((error) => {
-      if (__DEV__) console.error("TimeSync initialization failed:", error);
-    });
+    let mounted = true;
+
+    async function initializeApp() {
+      try {
+        // Initialize Supabase first
+        await ensureSupabaseInitialized();
+
+        if (!mounted) return;
+
+        // Initialize TimeSync
+        await timeSync.initialize();
+
+        if (!mounted) return;
+
+        // Setup notifications
+        setupNotificationHandler();
+        await setupNotificationChannel();
+
+        if (!mounted) return;
+
+        setIsSupabaseReady(true);
+      } catch (error) {
+        if (__DEV__) {
+          console.error("App initialization failed:", error);
+        }
+        Sentry.captureException(error);
+        if (mounted) {
+          setInitError(
+            error instanceof Error ? error.message : "Failed to initialize app",
+          );
+        }
+      }
+    }
+
+    initializeApp();
 
     return () => {
+      mounted = false;
       timeSync.cleanup();
     };
   }, []);
 
-  useEffect(() => {
-    setupNotificationHandler();
-    setupNotificationChannel().catch((error) => {
-      if (__DEV__) console.error("Notification channel setup failed:", error);
-    });
-  }, []);
+  // Show loading screen while initializing
+  if (!isSupabaseReady) {
+    return (
+      <SafeAreaProvider>
+        <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950">
+          {initError ? (
+            <View className="items-center px-8">
+              <Text
+                variant="h3"
+                className="text-red-600 dark:text-red-500 mb-2"
+              >
+                Initialization Error
+              </Text>
+              <Text className="text-center text-gray-600 dark:text-gray-400">
+                {initError}
+              </Text>
+            </View>
+          ) : (
+            <View className="items-center">
+              <ActivityIndicator size="large" color="#0066FF" />
+              <Text className="mt-4 text-gray-600 dark:text-gray-400">
+                Initializing...
+              </Text>
+            </View>
+          )}
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>

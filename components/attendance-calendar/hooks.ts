@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "~/utils/supabase";
-import { AttendanceMap } from "~/components/ui/attendance-calendar/types";
-import { processAttendanceData } from "~/components/ui/attendance-calendar/utils";
+import { AttendanceMap } from "~/components/attendance-calendar/types";
+import { processAttendanceData } from "~/components/attendance-calendar/utils";
 
 const __DEV__ = process.env.NODE_ENV === "development";
 

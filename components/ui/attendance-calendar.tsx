@@ -1,6 +1,6 @@
-export { default } from "~/components/ui/attendance-calendar/index";
-export { formatTime } from "~/components/ui/attendance-calendar/utils";
+export { default } from "~/components/attendance-calendar/index";
+export { formatTime } from "~/components/attendance-calendar/utils";
 export type {
   AttendanceCalendarRef,
   AttendanceCalendarProps,
-} from "~/components/ui/attendance-calendar/types";
+} from "~/components/attendance-calendar/types";

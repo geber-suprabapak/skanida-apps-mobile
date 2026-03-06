@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { View } from "react-native";
 import { Text } from "~/components/ui/text";
-import { CalendarDay } from "~/components/ui/attendance-calendar/types";
+import { CalendarDay } from "~/components/attendance-calendar/types";
 
 interface CalendarDayComponentProps {
   day?: CalendarDay | null;

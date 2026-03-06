@@ -2,7 +2,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import * as Sentry from "@sentry/react-native";
 
 type PermissionResult = {
@@ -49,6 +49,9 @@ export async function openNotificationSettings() {
 
 export async function clearNotificationToken(userId: string) {
   try {
+    // Ensure Supabase is initialized
+    await ensureSupabaseInitialized();
+
     // Invalidate on Expo push server
     await Notifications.unregisterForNotificationsAsync();
 
@@ -122,6 +125,9 @@ export async function registerAndSaveNotificationToken(
 
 async function saveTokenToDatabase(userId: string): Promise<PermissionResult> {
   try {
+    // Ensure Supabase is initialized
+    await ensureSupabaseInitialized();
+
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
       Sentry.captureException(new Error("Missing EAS projectId"));

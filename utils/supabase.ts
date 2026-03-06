@@ -3,9 +3,12 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseConfig } from "~/utils/secureConfig";
 
 const secureStorageAdapter = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+  getItem: (key: string) =>
+    SecureStore.getItemAsync(key, { keychainService: "skanida.sb" }),
+  setItem: (key: string, value: string) =>
+    SecureStore.setItemAsync(key, value, { keychainService: "skanida.sb" }),
+  removeItem: (key: string) =>
+    SecureStore.deleteItemAsync(key, { keychainService: "skanida.sb" }),
 };
 
 // Lazy async initialization with runtime config loaded from SecureStore/AsyncStorage/env

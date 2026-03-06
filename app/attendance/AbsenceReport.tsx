@@ -3,7 +3,6 @@ import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import { format } from "date-fns";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,6 +16,8 @@ import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { supabase } from "~/utils/supabase";
 import useAuthStore from "~/store/authStore";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 
 import {
   ChevronLeft,
@@ -124,19 +125,17 @@ export default function AbsenceReport() {
   const checkTodayPermit = useCallback(
     async (userId: string): Promise<boolean> => {
       try {
-        const now = new Date();
-        const localDate = format(now, "yyyy-MM-dd");
-        const startOfDay = new Date(`${localDate}T00:00:00`);
-        const endOfDay = new Date(`${localDate}T23:59:59.999`);
-        const startOfDayUTC = startOfDay.toISOString();
-        const endOfDayUTC = endOfDay.toISOString();
+        // Use WIB-synced time for querying
+        const todayWIB = formatDateWIB(timeSync.getSyncedTime());
+        const startOfDayWIB = `${todayWIB}T00:00:00+07:00`;
+        const endOfDayWIB = `${todayWIB}T23:59:59.999+07:00`;
 
         const { data, error } = await supabase
           .from("perizinan")
           .select("id, approval_status")
           .eq("user_id", userId)
-          .gte("tanggal", startOfDayUTC)
-          .lte("tanggal", endOfDayUTC);
+          .gte("tanggal", startOfDayWIB)
+          .lte("tanggal", endOfDayWIB);
 
         if (error) {
           return false;

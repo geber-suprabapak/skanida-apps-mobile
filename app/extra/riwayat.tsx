@@ -24,7 +24,7 @@ import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Calendar } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
-import { AttendanceMap } from "~/components/ui/attendance-calendar/types";
+import { AttendanceMap } from "~/components/attendance-calendar/types";
 
 export default function Riwayat() {
   const router = useRouter();
