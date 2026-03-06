@@ -495,7 +495,8 @@ export default function ManageAccount() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      Alert.alert("Error", "Gagal mengubah password.");
+      const errorMessage = error?.message || "Gagal mengubah password.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setPasswordLoading(false);
     }
