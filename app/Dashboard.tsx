@@ -202,6 +202,7 @@ export default function Dashboard() {
         .from("perizinan")
         .select("approval_status, kategori_izin")
         .eq("user_id", user.id)
+        .in("approval_status", ["pending", "approved"])
         .gte("tanggal", `${today}T00:00:00.000Z`)
         .lt("tanggal", `${today}T23:59:59.999Z`);
 
