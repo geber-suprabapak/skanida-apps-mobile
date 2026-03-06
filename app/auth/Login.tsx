@@ -19,6 +19,37 @@ import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Eye, EyeOff, Key } from "lucide-react-native";
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    // base64url → base64 → JSON
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "=",
+    );
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function resolveUserRole(
+  accessToken: string | null | undefined,
+  appMetadata: Record<string, unknown> | undefined,
+): string | undefined {
+  const jwtPayload = accessToken ? decodeJwtPayload(accessToken) : null;
+  const jwtAppMetadata = jwtPayload?.app_metadata as
+    | Record<string, unknown>
+    | undefined;
+
+  return (
+    (jwtAppMetadata?.role as string | undefined) ??
+    (appMetadata?.role as string | undefined)
+  );
+}
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,7 +100,16 @@ export default function Login() {
       });
 
       if (error) {
-        if (__DEV__) console.log("Login error:", error.message); // Wrapped console.error
+        if (__DEV__) {
+          console.error(
+            "[Login] signInWithPassword error:",
+            error.message,
+            "| code:",
+            error.code ?? "n/a",
+            "| status:",
+            error.status ?? "n/a",
+          );
+        }
         if (error.message === "Email not confirmed") {
           Alert.alert(
             "Login Gagal",
@@ -85,27 +125,42 @@ export default function Login() {
       }
 
       if (data?.user) {
-        const role = data.user.app_metadata?.role as string;
+        const role = resolveUserRole(
+          data.session?.access_token,
+          data.user.app_metadata as Record<string, unknown> | undefined,
+        );
 
         if (role !== "siswa") {
           try {
             await supabase.auth.signOut();
           } catch (signOutErr) {
-            if (__DEV__)
-              console.warn(
-                "Gagal sign out setelah deteksi role tidak valid",
+            if (__DEV__) {
+              console.error(
+                "[Login] Failed to sign out after role check:",
                 signOutErr,
               );
+            }
           }
-          Alert.alert("Login Gagal", "Invalid Credentials.");
+          Alert.alert(
+            "Login Gagal",
+            "Akun ini tidak memiliki akses. Hubungi administrator.",
+          );
           return;
         }
 
         setUser(data.user);
         router.replace("/Dashboard");
+      } else {
+        Alert.alert("Login Gagal", "Terjadi kesalahan. Silakan coba lagi.");
       }
     } catch (error) {
-      if (__DEV__) console.error("Login error:", error);
+      if (__DEV__) {
+        console.error("[Login] Unexpected exception during login:", error);
+      }
+      Alert.alert(
+        "Login Gagal",
+        "Terjadi kesalahan tak terduga. Silakan coba lagi.",
+      );
     } finally {
       setLoading(false);
     }
