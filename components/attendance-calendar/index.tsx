@@ -17,13 +17,13 @@ import { Text } from "~/components/ui/text";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import useAuthStore from "~/store/authStore";
 
-import { CalendarDayComponent } from "~/components/ui/attendance-calendar/CalendarDay";
-import { useOptimizedMonthlyAttendance } from "~/components/ui/attendance-calendar/hooks";
-import { getMonthDays } from "~/components/ui/attendance-calendar/utils";
+import { CalendarDayComponent } from "~/components/attendance-calendar/CalendarDay";
+import { useOptimizedMonthlyAttendance } from "~/components/attendance-calendar/hooks";
+import { getMonthDays } from "~/components/attendance-calendar/utils";
 import {
   AttendanceCalendarProps,
   AttendanceCalendarRef,
-} from "~/components/ui/attendance-calendar/types";
+} from "~/components/attendance-calendar/types";
 import { RefreshCw } from "lucide-react-native";
 import { Icon } from "~/components/ui/icon";
 

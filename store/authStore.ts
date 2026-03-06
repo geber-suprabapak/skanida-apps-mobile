@@ -2,7 +2,7 @@
 import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
 import type { User } from "@supabase/supabase-js";
-import { supabase } from "~/utils/supabase";
+import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { registerAndSaveNotificationToken } from "~/utils/notifications";
 
 // Define a more specific type for your user profile based on your table
@@ -53,6 +53,9 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController = controller;
 
       (async () => {
+        // Ensure Supabase is initialized before making any calls
+        await ensureSupabaseInitialized();
+
         await Promise.all([
           get().fetchUserProfile(user.id, controller.signal),
           registerAndSaveNotificationToken(user.id),
