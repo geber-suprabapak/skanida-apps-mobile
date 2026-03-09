@@ -1,5 +1,7 @@
 import {
   Camera,
+  runAsync,
+  useCameraFormat,
   useCameraDevice,
   useCameraPermission,
   useFrameProcessor,
@@ -9,8 +11,7 @@ import {
   useFaceDetector,
   FaceDetectionOptions,
 } from "react-native-vision-camera-face-detector";
-import { Worklets } from "react-native-worklets-core";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { useRunOnJS } from "react-native-worklets-core";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
@@ -20,6 +21,7 @@ import {
   ActivityIndicator,
   StatusBar,
   BackHandler,
+  Dimensions,
   StyleSheet,
 } from "react-native";
 import { Text } from "~/components/ui/text";
@@ -54,6 +56,10 @@ import useAuthStore from "~/store/authStore";
 const MAX_BASE64_SIZE_MB = 5;
 const MAX_BASE64_SIZE_BYTES = MAX_BASE64_SIZE_MB * 1024 * 1024;
 const FACE_API_TIMEOUT_MS = 30_000;
+const LIVENESS_PROCESSING_FPS = 4;
+const LIVENESS_VIDEO_RESOLUTION = { width: 1280, height: 720 };
+const SCREEN_ASPECT_RATIO =
+  Dimensions.get("window").height / Dimensions.get("window").width;
 
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
@@ -73,7 +79,16 @@ interface LivenessState {
   progress: number;
 }
 
-type ExpoBlobInstance = InstanceType<typeof ExpoBlob>;
+interface ProcessProgress {
+  stage: ProcessStage;
+  percentage: number;
+  message: string;
+}
+
+interface FaceRecogResponse {
+  status: "ok" | "error";
+  message?: string;
+}
 
 // --- MEMOIZED COMPONENTS ---
 const ProgressBar = memo<{ percentage: number }>(({ percentage }) => {
@@ -101,17 +116,17 @@ ProgressBar.displayName = "ProgressBar";
 const CaptureButton = memo<{
   isCapturing: boolean;
   isReady: boolean;
-  isUploading: boolean;
+  isProcessing: boolean;
   isFaceValid: boolean;
   onPress: () => void;
-}>(({ isCapturing, isReady, isUploading, isFaceValid, onPress }) => (
+}>(({ isCapturing, isReady, isProcessing, isFaceValid, onPress }) => (
   <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
     <TouchableOpacity
       className={`w-20 h-20 rounded-full justify-center items-center ${
         isFaceValid ? "bg-[#0066FF]" : "bg-gray-400"
       }`}
       onPress={onPress}
-      disabled={isCapturing || !isReady || isUploading || !isFaceValid}
+      disabled={isCapturing || !isReady || isProcessing || !isFaceValid}
       activeOpacity={0.8}
     >
       {isCapturing ? (
@@ -167,7 +182,7 @@ const FaceStatusOverlay = memo<{
 });
 FaceStatusOverlay.displayName = "FaceStatusOverlay";
 
-const UploadOverlay = memo<{
+const ProcessOverlay = memo<{
   message: string;
   percentage: number;
   spinnerStyle: any;
@@ -248,6 +263,10 @@ const CameraAttendance = () => {
   // --- STATE ---
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>("front");
   const device = useCameraDevice(cameraFacing);
+  const processingFormat = useCameraFormat(device, [
+    { videoAspectRatio: SCREEN_ASPECT_RATIO },
+    { videoResolution: LIVENESS_VIDEO_RESOLUTION },
+  ]);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
   const [processProgress, setProcessProgress] = useState<ProcessProgress>({
@@ -267,7 +286,9 @@ const CameraAttendance = () => {
 
   // Refs for logic to avoid re-renders in worklets
   const lastChallengeTime = useSharedValue(0);
-  const challengeProgress = useSharedValue(0);
+  const lastLivenessProcessTime = useSharedValue(0);
+  const frameCounter = useSharedValue(0);
+  const nextFpsLogTime = useSharedValue(0);
   const currentChallengeRef = useSharedValue<string>(""); // "BLINK" | "SMILE" | "SHAKE" | ""
 
   // Constants for validation
@@ -285,7 +306,7 @@ const CameraAttendance = () => {
 
   const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
-  const handleDetectedFaces = Worklets.createRunOnJS(
+  const handleDetectedFaces = useRunOnJS(
     (faces: Face[], frameWidth: number, frameHeight: number) => {
       const now = Date.now();
 
@@ -351,7 +372,6 @@ const CameraAttendance = () => {
           challenges[Math.floor(Math.random() * challenges.length)];
 
         currentChallengeRef.value = nextChallenge;
-        challengeProgress.value = 0;
         lastChallengeTime.value = now;
 
         let msg = "";
@@ -422,15 +442,51 @@ const CameraAttendance = () => {
         }
       }
     },
+    [livenessState.status],
   );
 
   const frameProcessor = useFrameProcessor(
     (frame) => {
       "worklet";
+
+      const now = Date.now();
+      const targetIntervalMs = 1000 / LIVENESS_PROCESSING_FPS;
+
+      // Inisiasi timer logger pertama kali
+      if (nextFpsLogTime.value === 0) {
+        nextFpsLogTime.value = now + 1000;
+      }
+
+      if (now - lastLivenessProcessTime.value < targetIntervalMs) {
+        return;
+      }
+
+      lastLivenessProcessTime.value = now;
+      frameCounter.value += 1;
+
+      // Profiling deteksi wajah
+      const profilerStart = Date.now();
       const faces = detectFaces(frame);
+      const processingMs = Date.now() - profilerStart;
+
+      // Log report per 1 detik (jika ada pemrosesan berlangsung)
+      if (now >= nextFpsLogTime.value) {
+        console.log(
+          `[Liveness Profiler] Model FPS: ${frameCounter.value} (Target: ${LIVENESS_PROCESSING_FPS}fps) | Latency: ${processingMs}ms (Frame size: ${frame.width}x${frame.height})`,
+        );
+        nextFpsLogTime.value = now + 1000;
+        frameCounter.value = 0;
+      }
+
       handleDetectedFaces(faces, frame.width, frame.height);
     },
-    [handleDetectedFaces],
+    [
+      detectFaces,
+      handleDetectedFaces,
+      lastLivenessProcessTime,
+      frameCounter,
+      nextFpsLogTime,
+    ],
   );
 
   const spinnerRotation = useSharedValue(0);
@@ -864,6 +920,7 @@ const CameraAttendance = () => {
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
         device={device}
+        format={processingFormat}
         isActive={!isProcessing}
         photo
         enableZoomGesture
@@ -904,7 +961,7 @@ const CameraAttendance = () => {
               <CaptureButton
                 isCapturing={isCapturingPhoto}
                 isReady={isCameraReady}
-                isUploading={isUploading}
+                isProcessing={isProcessing}
                 isFaceValid={livenessState.status === "PASSED"}
                 onPress={handleTakePicture}
               />
