@@ -5,6 +5,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
+import { resolveUserRole } from "~/utils/authRole";
 import { getSupabaseConfig } from "~/utils/secureConfig";
 
 export default function Index() {
@@ -29,10 +30,22 @@ export default function Index() {
         } = sessionResponse;
 
         if (error) {
-          setLoadingMessage(`Error: ${error.message}`);
+          setLoadingMessage("Terjadi kesalahan saat memeriksa sesi.");
         }
 
         if (session?.user) {
+          const role = await resolveUserRole(
+            session.user.id,
+            session.access_token,
+            session.user.app_metadata as Record<string, unknown> | undefined,
+          );
+
+          if (role !== "siswa") {
+            await supabase.auth.signOut();
+            router.replace("/auth/AuthSelector");
+            return;
+          }
+
           setLoadingMessage("Session found");
           setUser(session.user);
           router.replace("/Dashboard");
@@ -41,9 +54,7 @@ export default function Index() {
         }
       } catch (err) {
         if (err instanceof Error) {
-          setLoadingMessage(
-            `Error occurred while checking session: ${err.message}`,
-          );
+          setLoadingMessage("Terjadi kesalahan saat memeriksa sesi.");
         } else {
           setLoadingMessage("Error occurred while checking session (unknown)");
         }

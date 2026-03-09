@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.2.0-luna-internal.1",
+  version: "1.2.0-development",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -30,12 +30,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
-    [
-      "expo-camera",
-      {
-        cameraPermission: "Allow $(PRODUCT_NAME) to access your camera",
-      },
-    ],
     "expo-web-browser",
     [
       "@sentry/react-native/expo",
@@ -67,6 +61,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-font",
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/icon.png",
+        color: "#3B82F6",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
@@ -80,7 +81,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     resizeMode: "contain",
     backgroundColor: "#ffffff",
   },
-  assetBundlePatterns: ["**/*"],
+  // PERF-M06: Only bundle essential assets (was "**/*" which bundles everything)
+  assetBundlePatterns: ["assets/images/*", "assets/fonts/*", "assets/*.png"],
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.hfzrk.skanidaappsmobile",
@@ -91,9 +93,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: "#ffffff",
     },
     package: "com.hfzrk.skanidaappsmobile",
+    googleServicesFile: "./certs/google-services.json",
     permissions: [
       "android.permission.CAMERA",
       "android.permission.RECORD_AUDIO",
+      "android.permission.POST_NOTIFICATIONS",
     ],
   },
   extra: {

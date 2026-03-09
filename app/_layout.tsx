@@ -5,64 +5,126 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PortalHost } from "@rn-primitives/portal";
 import ConnectionChecker from "~/components/ConnectionChecker";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { colorScheme } from "nativewind";
 import useThemeStore from "~/store/themeStore";
 import { timeSync } from "~/utils/timeSync";
+import {
+  setupNotificationHandler,
+  setupNotificationChannel,
+} from "~/utils/notifications";
+import { ensureSupabaseInitialized } from "~/utils/supabase";
+import { View, ActivityIndicator } from "react-native";
+import { Text } from "~/components/ui/text";
 
 import * as Sentry from "@sentry/react-native";
 
 Sentry.init({
-  dsn: "https://a6b6f7f50d7448b1d36d85f74336a3e4@o4509587174522880.ingest.de.sentry.io/4509587182321744",
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
+  tracesSampleRate: 0.1,
+  profilesSampleRate: 0.05,
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 0.1,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
   integrations: [
-    Sentry.mobileReplayIntegration(),
+    Sentry.mobileReplayIntegration({
+      maskAllText: true,
+      maskAllImages: true,
+    }),
     Sentry.feedbackIntegration(),
   ],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-  _experiments: { enableLogs: true },
+  spotlight: __DEV__,
 });
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export default Sentry.wrap(function RootLayout() {
   const { theme } = useThemeStore();
+  const [isSupabaseReady, setIsSupabaseReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
-  // Initialize theme from store on app load
   useEffect(() => {
     if (theme === "system") {
-      // Reset to system preference (defaults to light)
       colorScheme.set("light");
     } else {
       colorScheme.set(theme);
     }
   }, [theme]);
 
-  // Initialize time sync on app start
+  // Initialize Supabase before rendering the app
   useEffect(() => {
-    timeSync.initialize().catch((error) => {
-      console.error("TimeSync initialization failed:", error);
-    });
+    let mounted = true;
 
-    // Cleanup on unmount
+    async function initializeApp() {
+      try {
+        // Initialize Supabase first
+        await ensureSupabaseInitialized();
+
+        if (!mounted) return;
+
+        // Initialize TimeSync
+        await timeSync.initialize();
+
+        if (!mounted) return;
+
+        // Setup notifications
+        setupNotificationHandler();
+        await setupNotificationChannel();
+
+        if (!mounted) return;
+
+        setIsSupabaseReady(true);
+      } catch (error) {
+        if (__DEV__) {
+          console.error("App initialization failed:", error);
+        }
+        Sentry.captureException(error);
+        if (mounted) {
+          setInitError(
+            error instanceof Error ? error.message : "Failed to initialize app",
+          );
+        }
+      }
+    }
+
+    initializeApp();
+
     return () => {
+      mounted = false;
       timeSync.cleanup();
     };
   }, []);
+
+  // Show loading screen while initializing
+  if (!isSupabaseReady) {
+    return (
+      <SafeAreaProvider>
+        <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950">
+          {initError ? (
+            <View className="items-center px-8">
+              <Text
+                variant="h3"
+                className="text-red-600 dark:text-red-500 mb-2"
+              >
+                Initialization Error
+              </Text>
+              <Text className="text-center text-gray-600 dark:text-gray-400">
+                {initError}
+              </Text>
+            </View>
+          ) : (
+            <View className="items-center">
+              <ActivityIndicator size="large" color="#0066FF" />
+              <Text className="mt-4 text-gray-600 dark:text-gray-400">
+                Initializing...
+              </Text>
+            </View>
+          )}
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>

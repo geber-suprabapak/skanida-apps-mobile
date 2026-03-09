@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   TouchableOpacity,
   Modal,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
   Animated,
   Easing,
 } from "react-native";
@@ -47,7 +47,6 @@ const MONTHS = [
   "Desember",
 ];
 
-const { width: screenWidth } = Dimensions.get("window");
 const ITEM_HEIGHT = 50;
 
 const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
@@ -59,6 +58,9 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   buttonStyle,
   textStyle,
 }) => {
+  // PERF-L01: Use hook instead of module-scope Dimensions.get
+  const { width: screenWidth } = useWindowDimensions();
+
   const [showPicker, setShowPicker] = useState(false);
   const [tempYear, setTempYear] = useState(selectedDate.getFullYear());
   const [tempMonth, setTempMonth] = useState(selectedDate.getMonth());
@@ -73,9 +75,11 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
   const currentYear = timeSync.getSyncedTime().getFullYear();
   const startYear = minimumDate ? minimumDate.getFullYear() : currentYear - 10;
   const endYear = maximumDate ? maximumDate.getFullYear() : currentYear + 5;
-  const years = Array.from(
-    { length: endYear - startYear + 1 },
-    (_, i) => startYear + i,
+  // PERF-L02: Memoize years array to avoid recreating on each render
+  const years = useMemo(
+    () =>
+      Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i),
+    [startYear, endYear],
   );
 
   // Auto-scroll to selected items when picker opens

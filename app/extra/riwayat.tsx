@@ -1,127 +1,63 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   TouchableOpacity,
   BackHandler,
-  Alert,
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 
 import { Text } from "~/components/ui/text";
+import { StatusBar } from "expo-status-bar";
 import AttendanceCalendar, {
   AttendanceCalendarRef,
 } from "~/components/ui/attendance-calendar";
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { Icon } from "~/components/ui/icon";
-import { ChevronLeft, Settings, RefreshCw } from "lucide-react-native";
-import { attendanceCache } from "~/utils/attendanceCache";
+import { ChevronLeft, Calendar } from "lucide-react-native";
+
 import useAuthStore from "~/store/authStore";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  cancelAnimation,
-  Easing,
-} from "react-native-reanimated";
-
-const SpinningIcon = ({ spinning }: { spinning: boolean }) => {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    if (spinning) {
-      // start infinite linear rotation
-      progress.value = 0;
-      progress.value = withRepeat(
-        withTiming(1, { duration: 900, easing: Easing.linear }),
-        -1,
-        false,
-      );
-    } else {
-      // stop and gently reset to 0
-      cancelAnimation(progress);
-      progress.value = withTiming(0, { duration: 150 });
-    }
-  }, [spinning, progress]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${progress.value * 360}deg` }],
-  }));
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <Icon as={RefreshCw} className="size-5 text-foreground" />
-    </Animated.View>
-  );
-};
+import { AttendanceMap } from "~/components/attendance-calendar/types";
 
 export default function Riwayat() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isFocused = useIsFocused();
   const colorScheme = useColorScheme();
   const isDarkColorScheme = colorScheme === "dark";
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const calendarRef = useRef<AttendanceCalendarRef>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState({
+    hadir: 0,
+    terlambat: 0,
+    sakit: 0,
+    izin: 0,
+  });
 
-  // Auto-refresh when screen becomes focused
-  useEffect(() => {
-    if (isFocused && user?.id) {
-      const autoRefresh = async () => {
-        try {
-          // Clear cache for current and selected months for fresh data
-          const currentDate = new Date();
-          const selectedYear = selectedDate.getFullYear();
-          const selectedMonth = selectedDate.getMonth();
-          const currentYear = currentDate.getFullYear();
-          const currentMonth = currentDate.getMonth();
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && calendarRef.current) {
+        calendarRef.current.refetch(true);
+      }
+    }, [user?.id]),
+  );
 
-          // Clear cache for both current and selected months
-          await Promise.all([
-            attendanceCache.invalidate(user.id, currentYear, currentMonth),
-            selectedYear !== currentYear || selectedMonth !== currentMonth
-              ? attendanceCache.invalidate(user.id, selectedYear, selectedMonth)
-              : Promise.resolve(),
-          ]);
-
-          // Trigger calendar refresh
-          if (calendarRef.current) {
-            await calendarRef.current.refetch(true);
-          }
-
-          console.log("📅 Auto-refreshed riwayat data on focus");
-        } catch (error) {
-          console.error("Error auto-refreshing riwayat:", error);
-        }
-      };
-
-      // Small delay to ensure screen is fully loaded
-      const timeoutId = setTimeout(autoRefresh, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isFocused, user?.id, selectedDate]);
-
-  // Handle back button
   useEffect(() => {
     const onBackPress = () => {
-      try {
-        if (router.canGoBack()) {
-          router.back();
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error("Error in back press handler:", error);
-        return false;
+      if (router.canGoBack()) {
+        router.back();
+        return true;
       }
+      return false;
     };
-
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       onBackPress,
@@ -129,149 +65,153 @@ export default function Riwayat() {
     return () => subscription.remove();
   }, [router]);
 
-  // Cache management functions
-  const showCacheInfo = async () => {
-    try {
-      const stats = await attendanceCache.getCacheStats();
-      Alert.alert(
-        "📊 Cache Statistics",
-        `Total cached items: ${stats.totalItems}\nCache size: ${stats.totalSize}\nOldest: ${stats.oldestEntry || "N/A"}\nNewest: ${stats.newestEntry || "N/A"}`,
-        [
-          { text: "Clear Cache", style: "destructive", onPress: clearCache },
-          { text: "Close", style: "cancel" },
-        ],
-      );
-    } catch {
-      Alert.alert("Error", "Failed to get cache statistics");
-    }
-  };
+  // PERF-H06: Derive stats from calendar data instead of separate fetch
+  const handleCalendarDataLoaded = useCallback((data: AttendanceMap) => {
+    let hadirCount = 0;
+    let terlambatCount = 0;
+    let sakitCount = 0;
+    let izinCount = 0;
 
-  const clearCache = async () => {
-    try {
-      if (user?.id) {
-        await attendanceCache.invalidateUser(user.id);
-        Alert.alert("✅ Success", "Cache cleared successfully");
-        // Force refresh the calendar after clearing cache
-        if (calendarRef.current) {
-          await calendarRef.current.refetch(true);
-        }
+    // Group by date for deduplication
+    const byDate: Record<string, (typeof data)[string][]> = {};
+    Object.values(data).forEach((record) => {
+      if (!byDate[record.date]) byDate[record.date] = [];
+      byDate[record.date].push(record);
+    });
+
+    Object.values(byDate).forEach((records) => {
+      const firstRecord = records[0];
+      if (firstRecord.status === "sick") {
+        sakitCount++;
+      } else if (firstRecord.status === "leave") {
+        izinCount++;
+      } else if (firstRecord.isLate || firstRecord.status === "late") {
+        terlambatCount++;
+      } else if (firstRecord.status === "present") {
+        hadirCount++;
       }
-    } catch {
-      Alert.alert("❌ Error", "Failed to clear cache");
-    }
-  };
+    });
 
-  // Force refresh function for manual data refresh
-  const forceRefresh = async () => {
-    if (isRefreshing) return; // Prevent double-refresh
+    setMonthlyStats({
+      hadir: hadirCount,
+      terlambat: terlambatCount,
+      sakit: sakitCount,
+      izin: izinCount,
+    });
+  }, []);
 
-    setIsRefreshing(true);
-    try {
-      if (user?.id) {
-        // Clear cache for selected month first for instant feedback
-        const selectedYear = selectedDate.getFullYear();
-        const selectedMonth = selectedDate.getMonth();
+  // PERF-M10: Memoize maximumDate to avoid new Date() on every render
+  const maximumDate = useMemo(() => new Date(), []);
 
-        await attendanceCache.invalidate(user.id, selectedYear, selectedMonth);
-
-        // Trigger calendar refetch with force refresh
-        if (calendarRef.current) {
-          await calendarRef.current.refetch(true);
-        }
-
-        console.log("🔄 Manual refresh completed");
-      }
-    } catch (error) {
-      console.error("Error force refreshing:", error);
-      Alert.alert("Error", "Failed to refresh data. Please try again.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  // Optimized date change handler
-  const handleDateChange = async (date: Date) => {
+  // Handle date change
+  const handleDateChange = (date: Date) => {
     setSelectedDate(date);
-
-    // Pre-clear cache for the new month to ensure fresh data
-    if (user?.id) {
-      try {
-        await attendanceCache.invalidate(
-          user.id,
-          date.getFullYear(),
-          date.getMonth(),
-        );
-      } catch (error) {
-        console.error("Error clearing cache for new date:", error);
-      }
-    }
   };
 
   return (
-    <SafeAreaView className={`flex-1 bg-background`}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
+      <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 
-      {/* Header */}
-      <View className={`flex-row items-center p-4 border-b border-border`}>
+      {/* Simple Header */}
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
-          onPress={() => {
-            try {
-              if (router.canGoBack()) {
-                router.back();
-              }
-            } catch (error) {
-              console.error("Error navigating back:", error);
-            }
-          }}
-          className="mr-3"
+          onPress={() => router.canGoBack() && router.back()}
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
         >
-          <Icon as={ChevronLeft} className={`size-6 text-foreground`} />
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
         </TouchableOpacity>
 
-        <Text variant="large" className="flex-1 text-foreground">
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
           Riwayat Kehadiran
         </Text>
 
-        {/* Cache management button (only in development) */}
-        {__DEV__ && (
-          <TouchableOpacity onPress={showCacheInfo} className="ml-3">
-            <Icon as={Settings} className={`size-5 text-foreground`} />
-          </TouchableOpacity>
-        )}
-
-        {/* Force refresh button with loading state */}
-        <TouchableOpacity
-          onPress={forceRefresh}
-          className={`ml-3 ${isRefreshing ? "opacity-50" : ""}`}
-          disabled={isRefreshing}
-        >
-          <SpinningIcon spinning={isRefreshing} />
-        </TouchableOpacity>
+        <View className="w-10" />
       </View>
 
-      {/* Month/Year Picker */}
-      <View className={`p-4 border-b border-border`}>
-        <MonthYearPicker
-          selectedDate={selectedDate}
-          onDateChange={handleDateChange}
-          minimumDate={new Date(2020, 0, 1)}
-          maximumDate={new Date()}
+      {/* === MONTH/YEAR PICKER - MODERN CARD === */}
+      <View className="px-6 mt-6 mb-4">
+        <View className="bg-card rounded-2xl p-4 border border-border shadow-sm">
+          <View className="flex-row items-center mb-3">
+            <View className="w-8 h-8 rounded-lg bg-violet-500/10 items-center justify-center">
+              <Icon as={Calendar} className="size-4 text-violet-500" />
+            </View>
+            <Text className="text-foreground font-semibold ml-3">
+              Pilih Bulan
+            </Text>
+          </View>
+          <MonthYearPicker
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={maximumDate}
+            isDarkColorScheme={isDarkColorScheme}
+          />
+        </View>
+      </View>
+
+      {/* === MONTHLY STATISTICS CARDS === */}
+      <View className="px-6 mb-4">
+        <View className="flex-row flex-wrap gap-3">
+          {/* Hadir Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-green-400 dark:border-green-700 shadow-sm">
+            <Text className="text-green-600 dark:text-green-400 text-4xl font-bold mb-1">
+              {monthlyStats.hadir}
+            </Text>
+            <Text className="text-green-600 dark:text-green-400 text-sm font-semibold">
+              Hadir
+            </Text>
+          </View>
+
+          {/* Terlambat Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-orange-400 dark:border-orange-700 shadow-sm">
+            <Text className="text-orange-600 dark:text-orange-400 text-4xl font-bold mb-1">
+              {monthlyStats.terlambat}
+            </Text>
+            <Text className="text-orange-600 dark:text-orange-400 text-sm font-semibold">
+              Terlambat
+            </Text>
+          </View>
+
+          {/* Sakit Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-red-400 dark:border-red-700 shadow-sm">
+            <Text className="text-red-600 dark:text-red-400 text-4xl font-bold mb-1">
+              {monthlyStats.sakit}
+            </Text>
+            <Text className="text-red-600 dark:text-red-400 text-sm font-semibold">
+              Sakit
+            </Text>
+          </View>
+
+          {/* Izin Card */}
+          <View className="flex-1 min-w-[45%] bg-white dark:bg-card rounded-2xl p-4 border-[3px] border-blue-400 dark:border-blue-700 shadow-sm">
+            <Text className="text-blue-600 dark:text-blue-400 text-4xl font-bold mb-1">
+              {monthlyStats.izin}
+            </Text>
+            <Text className="text-blue-600 dark:text-blue-400 text-sm font-semibold">
+              Izin
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* === CALENDAR COMPONENT === */}
+      <View className="flex-1 px-2">
+        <AttendanceCalendar
+          ref={calendarRef}
+          currentYear={selectedDate.getFullYear()}
+          currentMonth={selectedDate.getMonth()}
           isDarkColorScheme={isDarkColorScheme}
+          onDataLoaded={handleCalendarDataLoaded}
         />
       </View>
-
-      {/* Calendar Component */}
-      <AttendanceCalendar
-        ref={calendarRef}
-        currentYear={selectedDate.getFullYear()}
-        currentMonth={selectedDate.getMonth()}
-        isDarkColorScheme={isDarkColorScheme}
-        key={`calendar-${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
-      />
     </SafeAreaView>
   );
 }

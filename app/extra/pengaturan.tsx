@@ -1,50 +1,54 @@
-import { useIsFocused } from "@react-navigation/native";
-import { Stack, useRouter } from "expo-router";
-import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
   TouchableOpacity,
   ScrollView,
   Alert,
   Image,
-  Clipboard,
   BackHandler,
   Switch,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { colorScheme } from "nativewind";
 import Constants from "expo-constants";
-
-import { Button } from "~/components/ui/button";
+import * as Updates from "expo-updates";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { Card, CardContent, CardFooter } from "~/components/ui/card";
+import { getAvatarSignedUrl } from "~/utils/avatar";
+import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
-  User,
-  Key,
   CircleFadingArrowUp,
   LogOut,
-  ChevronRight,
   Moon,
   Sun,
+  Shield,
+  Smartphone,
+  Pencil,
+  Bell,
+  BellOff,
 } from "lucide-react-native";
-import * as Updates from "expo-updates";
+import {
+  getNotificationPermissionStatus,
+  registerAndSaveNotificationToken,
+  clearNotificationToken,
+  openNotificationSettings,
+} from "~/utils/notifications";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const isFocused = useIsFocused();
   const { theme, setTheme } = useThemeStore();
 
-  // Memoize initial profile data to avoid recalculations
-  const initialProfileData = useMemo(
+  const initialProfile = useMemo(
     () => ({
       name: user?.user_metadata?.name || user?.email || "Pengguna Skanida",
       avatar: user?.user_metadata?.avatar_url || null,
@@ -52,272 +56,304 @@ function Pengaturan() {
     [user?.user_metadata?.name, user?.email, user?.user_metadata?.avatar_url],
   );
 
-  const [profileFullName, setProfileFullName] = useState(
-    initialProfileData.name,
+  const [profileName, setProfileName] = useState(initialProfile.name);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(
+    initialProfile.avatar,
   );
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(
-    initialProfileData.avatar,
-  );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifCanAsk, setNotifCanAsk] = useState(true);
+  const [notifLoading, setNotifLoading] = useState(true);
 
-  // Optimized navigation handlers with useCallback
-  const navigateToEditProfile = useCallback(() => {
-    // Preload the destination with a slight delay to improve perceived performance
-    requestAnimationFrame(() => {
-      router.push("/profile/EditProfile");
-    });
-  }, [router]);
-
-  const navigateToChangePassword = useCallback(() => {
-    requestAnimationFrame(() => {
-      router.push("/profile/ChangePassword");
-    });
-  }, [router]);
-
-  // Handle hardware back button
+  // Hardware back button
   useEffect(() => {
-    const backAction = () => {
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
       router.back();
-      return true; // Prevent default behavior
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
-
-    return () => backHandler.remove();
+      return true;
+    });
+    return () => handler.remove();
   }, [router]);
 
-  // Simplified profile data fetching that always gets fresh data from server
-  const fetchProfileDataAndUpdateState = useCallback(async () => {
-    if (!user) {
-      setProfileFullName("Pengguna Skanida");
-      setProfileAvatarUrl(null);
+  // Avatar URL resolution
+  useEffect(() => {
+    if (!profileAvatar) {
+      setAvatarUrl(null);
       return;
     }
+    let active = true;
+    getAvatarSignedUrl(profileAvatar)
+      .then((url) => active && setAvatarUrl(url))
+      .catch(() => active && setAvatarUrl(profileAvatar));
+    return () => {
+      active = false;
+    };
+  }, [profileAvatar]);
 
-    try {
-      // Set initial data from user metadata while fetching
-      const initialName =
-        user.user_metadata?.name || user.email || "Pengguna Skanida";
-      const initialAvatar = user.user_metadata?.avatar_url || null;
-      setProfileFullName(initialName);
-      setProfileAvatarUrl(initialAvatar);
+  // Fetch profile data
+  const fetchProfile = useCallback(async () => {
+    if (!user) {
+      setProfileName("Pengguna Skanida");
+      setProfileAvatar(null);
+      return;
+    }
+    setProfileName(
+      user.user_metadata?.name || user.email || "Pengguna Skanida",
+    );
+    setProfileAvatar(user.user_metadata?.avatar_url || null);
 
-      // Always fetch fresh data from database
-      const { data: userProfile, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("full_name, avatar_url")
-        .eq("user_id", user?.id)
-        .single();
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .select("full_name, avatar_url")
+      .eq("user_id", user.id)
+      .single();
 
-      if (profileError && profileError.code !== "PGRST116") {
-        console.error(
-          "Pengaturan: Error fetching from user_profiles:",
-          profileError.message,
-        );
-      } else if (userProfile) {
-        console.log("Pengaturan: Profile data found in database:", userProfile);
-
-        // Always update with latest data from server
-        const updatedName =
-          userProfile.full_name ||
+    if (!error && data) {
+      setProfileName(
+        data.full_name ||
           user.user_metadata?.name ||
           user.email ||
-          "Pengguna Skanida";
-        const updatedAvatar =
-          userProfile.avatar_url || user.user_metadata?.avatar_url || null;
-
-        setProfileFullName(updatedName);
-        setProfileAvatarUrl(updatedAvatar);
-      }
-    } catch (err) {
-      console.error("Pengaturan: Unexpected error fetching profile:", err);
+          "Pengguna Skanida",
+      );
+      setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
     }
   }, [user]);
 
-  // Fetch fresh data whenever the screen is focused
-  useEffect(() => {
-    if (isFocused) {
-      fetchProfileDataAndUpdateState();
-    } else if (!user) {
-      setProfileFullName("Pengguna Skanida");
-      setProfileAvatarUrl(null);
-    }
-  }, [user, isFocused, fetchProfileDataAndUpdateState]);
+  // Theme sync
+  useEffect(() => setIsDarkMode(theme === "dark"), [theme]);
 
-  // Corrected logout handler
-  const handleLogout = useCallback(async () => {
-    Alert.alert(
-      "Logout",
-      "Apakah Anda yakin ingin keluar?",
-      [
-        {
-          text: "Batal",
-          style: "cancel",
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const refreshFocusedData = async () => {
+        await fetchProfile();
+
+        if (!isActive) return;
+        setNotifLoading(true);
+
+        try {
+          const s = await getNotificationPermissionStatus();
+          if (!isActive) return;
+          setNotifEnabled(s.isGranted);
+          setNotifCanAsk(s.canAskAgain);
+        } finally {
+          if (isActive) {
+            setNotifLoading(false);
+          }
+        }
+      };
+
+      refreshFocusedData();
+
+      return () => {
+        isActive = false;
+      };
+    }, [fetchProfile]),
+  );
+
+  const handleLogout = useCallback(() => {
+    Alert.alert("Logout", "Apakah Anda yakin ingin keluar?", [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Ya, Keluar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await supabase.auth.signOut();
+            await AsyncStorage.clear();
+            setUser(null);
+            router.replace("/auth/AuthSelector");
+          } catch (error) {
+            if (__DEV__) console.error("Logout error:", error);
+            Alert.alert("Error", "Gagal melakukan logout. Silakan coba lagi.");
+          }
         },
-        {
-          text: "Ya, Keluar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await supabase.auth.signOut();
-              await AsyncStorage.clear();
-              setUser(null);
-              router.replace("/auth/AuthSelector");
-            } catch (error) {
-              console.error("Logout error:", error);
-              Alert.alert(
-                "Error",
-                "Gagal melakukan logout. Silakan coba lagi.",
-              );
-            }
-          },
-        },
-      ],
-      { cancelable: true },
-    );
+      },
+    ]);
   }, [setUser, router]);
 
-  // Optimized copy ID handler with useCallback
   const handleCopyId = useCallback(async () => {
     if (user?.id) {
-      Clipboard.setString(user.id);
+      await Clipboard.setStringAsync(user.id);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
   }, [user?.id]);
 
-  // Toggle theme handler
   const toggleTheme = useCallback(() => {
-    const newTheme = isDarkMode ? "light" : "dark";
+    const next = isDarkMode ? "light" : "dark";
     setIsDarkMode(!isDarkMode);
-    setTheme(newTheme);
-    colorScheme.set(newTheme);
+    setTheme(next);
+    colorScheme.set(next);
   }, [isDarkMode, setTheme]);
 
-  // Check update handler
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
     try {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
-        Alert.alert(
-          "Update Tersedia",
-          "Update baru tersedia. Unduh dan restart aplikasi?",
-          [
-            { text: "Batal", style: "cancel" },
-            {
-              text: "Update",
-              onPress: async () => {
-                await Updates.fetchUpdateAsync();
-                await Updates.reloadAsync();
-              },
+        Alert.alert("Update Tersedia", "Unduh dan restart aplikasi?", [
+          { text: "Batal", style: "cancel" },
+          {
+            text: "Update",
+            onPress: async () => {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
             },
-          ],
-        );
+          },
+        ]);
       } else {
         Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
       }
     } catch (error) {
-      Alert.alert("Error", `Gagal cek update: ${error}`);
+      Alert.alert("Gagal", "Gagal memeriksa pembaruan.");
     } finally {
       setIsCheckingUpdate(false);
     }
   }, []);
 
-  // Effect to sync theme state with store
-  useEffect(() => {
-    setIsDarkMode(theme === "dark");
-  }, [theme]);
+  const handleNotifToggle = useCallback(async () => {
+    if (!user?.id) return;
+
+    if (notifEnabled) {
+      setNotifLoading(true);
+      try {
+        const success = await clearNotificationToken(user.id);
+        if (success) {
+          setNotifEnabled(false);
+        } else {
+          Alert.alert(
+            "Error",
+            "Gagal menonaktifkan notifikasi. Silakan coba lagi.",
+          );
+        }
+      } finally {
+        setNotifLoading(false);
+      }
+      return;
+    }
+
+    if (!notifCanAsk) {
+      openNotificationSettings();
+      return;
+    }
+
+    setNotifLoading(true);
+    try {
+      const r = await registerAndSaveNotificationToken(user.id, false);
+      setNotifEnabled(r.success);
+      setNotifCanAsk(r.canAskAgain);
+      if (r.permissionDenied && !r.canAskAgain) {
+        Alert.alert(
+          "Izin Notifikasi",
+          "Izin ditolak permanen. Buka pengaturan perangkat.",
+          [
+            { text: "Batal", style: "cancel" },
+            { text: "Buka Pengaturan", onPress: openNotificationSettings },
+          ],
+        );
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  }, [user?.id, notifEnabled, notifCanAsk]);
+
+  const getNotifSubtitle = () => {
+    if (notifLoading) return "Memuat...";
+    if (notifEnabled) return "Notifikasi aktif";
+    if (!notifCanAsk) return "Tap untuk buka Pengaturan HP";
+    return "Notifikasi nonaktif";
+  };
+
+  const EditButton = ({ onPress }: { onPress: () => void }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
+    >
+      <Icon as={Pencil} className="size-4 text-white" />
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className="flex-row items-center p-4 border-b border-border bg-card">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Icon as={ChevronLeft} className="size-6 text-foreground" />
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+        >
+          <Icon
+            as={ChevronLeft}
+            className="size-6 text-gray-900 dark:text-gray-100"
+          />
         </TouchableOpacity>
-
-        <Text variant="large">Pengaturan</Text>
+        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          Pengaturan
+        </Text>
+        <View className="w-10" />
       </View>
 
       <ScrollView
-        className="flex-1 bg-background"
+        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Profile Section */}
-        <View className="px-6 pt-4 pb-3">
-          <Card className="p-4 bg-card border-border">
-            {/* Profile Header */}
-            <View className="flex-row items-center mb-4">
-              {profileAvatarUrl ? (
-                <View
-                  style={{
-                    // removed shadowColor hardcode
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                    elevation: 4,
-                    borderRadius: 32,
-                  }}
-                >
+        {/* Profile Card */}
+        <View className="px-5 mt-4">
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            <View className="p-5 flex-row items-center">
+              <View className="relative">
+                {avatarUrl ? (
                   <Image
-                    source={{
-                      uri: profileAvatarUrl,
-                    }}
-                    className="w-16 h-16 rounded-full"
+                    source={{ uri: avatarUrl }}
+                    style={{ width: 72, height: 72 }}
+                    className="rounded-2xl"
                   />
-                </View>
-              ) : (
-                <View
-                  className="w-16 h-16 rounded-full bg-primary justify-center items-center"
-                  style={{
-                    // removed shadowColor hardcode
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 6,
-                  }}
-                >
-                  <Text variant="large">
-                    {(profileFullName || user?.email)
-                      ?.charAt(0)
-                      .toUpperCase() || "U"}
-                  </Text>
-                </View>
-              )}
+                ) : (
+                  <View
+                    className="rounded-2xl items-center justify-center bg-indigo-500"
+                    style={{ width: 72, height: 72 }}
+                  >
+                    <Text className="text-white text-2xl font-bold">
+                      {(profileName || user?.email)?.charAt(0).toUpperCase() ||
+                        "U"}
+                    </Text>
+                  </View>
+                )}
+                <EditButton
+                  onPress={() => router.push("/profile/ManageAccount")}
+                />
+              </View>
 
               <View className="flex-1 ml-4">
-                <Text variant="large">
-                  {profileFullName || user?.email?.split("@")[0] || "Pengguna"}
+                <Text className="text-foreground font-bold text-lg">
+                  {profileName || user?.email?.split("@")[0] || "Pengguna"}
                 </Text>
-                <Text variant="small" className="mt-1">
+                <Text className="text-muted-foreground text-sm mt-0.5">
                   {user?.email || "Tidak ada email"}
                 </Text>
-
                 <TouchableOpacity
                   onPress={handleCopyId}
-                  className={`self-start mt-2 px-3 py-1.5 rounded-full ${
-                    copiedId ? "bg-accent" : "bg-muted"
-                  }`}
+                  className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${copiedId ? "bg-green-500/10" : "bg-muted"}`}
                   activeOpacity={0.7}
                 >
-                  <Text variant="small" className="font-medium">
+                  <Icon
+                    as={Shield}
+                    className={`size-3 mr-1.5 ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
+                  />
+                  <Text
+                    className={`text-xs font-medium ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
+                  >
                     {copiedId
-                      ? "✓ ID Tersalin!"
-                      : `ID: ${user?.id?.substring(0, 8) || "Unknown"}...`}
+                      ? "ID Tersalin!"
+                      : `${user?.id?.substring(0, 8) || "Unknown"}...`}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -325,161 +361,150 @@ function Pengaturan() {
           </Card>
         </View>
 
-        {/* Settings Section */}
-        <View className="px-6 mb-3">
-          <Card>
-            <CardContent className="pt-4">
-              <Text variant="h4" className="mb-3 text-foreground">
-                Pengaturan Akun
-              </Text>
-              <TouchableOpacity
-                className="flex-row items-center p-3 rounded-t-lg border-b border-border"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.7}
+        {/* Preferences */}
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Preferensi
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            {/* Dark Mode */}
+            <View className="flex-row items-center p-4 border-b border-border/50">
+              <View
+                className={`w-11 h-11 rounded-xl items-center justify-center ${isDarkMode ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
               >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon as={User} className="size-4 text-primary" />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    Edit Profil
-                  </Text>
-                  <Text variant="small">Ubah nama dan foto profil</Text>
-                </View>
                 <Icon
-                  as={ChevronRight}
-                  className="size-5 text-muted-foreground"
+                  as={isDarkMode ? Moon : Sun}
+                  className={`size-5 ${isDarkMode ? "text-purple-500" : "text-yellow-500"}`}
                 />
-              </TouchableOpacity>
+              </View>
+              <View className="flex-1 ml-4">
+                <Text className="text-foreground font-semibold">
+                  Mode Gelap
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  {isDarkMode ? "Tema gelap aktif" : "Tema terang aktif"}
+                </Text>
+              </View>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
+                trackColor={{ false: "#e5e7eb", true: "#6366f1" }}
+                thumbColor="#ffffff"
+              />
+            </View>
 
-              <TouchableOpacity
-                className="flex-row items-center p-3 border-b border-border"
-                onPress={navigateToChangePassword}
-                activeOpacity={0.7}
+            {/* Notification */}
+            <TouchableOpacity
+              className="flex-row items-center p-4 border-b border-border/50"
+              onPress={handleNotifToggle}
+              disabled={notifLoading}
+              activeOpacity={0.7}
+            >
+              <View
+                className={`w-11 h-11 rounded-xl items-center justify-center ${notifEnabled ? "bg-blue-500/10" : "bg-gray-500/10"}`}
               >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon as={Key} className="size-4 text-primary" />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    Ubah Password
-                  </Text>
-                  <Text variant="small">Perbarui kata sandi akun</Text>
-                </View>
                 <Icon
-                  as={ChevronRight}
-                  className="size-5 text-muted-foreground"
+                  as={notifEnabled ? Bell : BellOff}
+                  className={`size-5 ${notifEnabled ? "text-blue-500" : "text-gray-500"}`}
                 />
-              </TouchableOpacity>
-
-              {/* Dark Mode Toggle */}
-              <TouchableOpacity
-                className="flex-row items-center p-3 border-b border-border"
-                activeOpacity={0.7}
-              >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon
-                    as={isDarkMode ? Sun : Moon}
-                    className="size-4 text-primary"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    Mode Gelap
-                  </Text>
-                  <Text variant="small">
-                    {isDarkMode ? "Aktif" : "Tidak Aktif"}
-                  </Text>
-                </View>
+              </View>
+              <View className="flex-1 ml-4">
+                <Text className="text-foreground font-semibold">
+                  Notifikasi
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  {getNotifSubtitle()}
+                </Text>
+              </View>
+              {notifLoading ? (
+                <View className="w-5 h-5 border-2 border-t-transparent border-primary rounded-full" />
+              ) : (
                 <Switch
-                  value={isDarkMode}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: "#767577", true: "#4A5568" }}
-                  thumbColor={isDarkMode ? "#38B2AC" : "#f4f3f4"}
+                  value={notifEnabled}
+                  onValueChange={handleNotifToggle}
+                  trackColor={{ false: "#e5e7eb", true: "#3b82f6" }}
+                  thumbColor="#ffffff"
+                  disabled={notifLoading}
                 />
-              </TouchableOpacity>
+              )}
+            </TouchableOpacity>
 
-              {/* Check Update Manual Button */}
-              <TouchableOpacity
-                className="flex-row items-center p-3 rounded-b-lg"
-                onPress={handleCheckUpdate}
-                disabled={isCheckingUpdate}
-                activeOpacity={0.7}
-              >
-                <View className="w-8 h-8 rounded-lg bg-primary/10 justify-center items-center mr-3">
-                  <Icon
-                    as={CircleFadingArrowUp}
-                    className="size-4 text-primary"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text variant="default" className="font-medium">
-                    {isCheckingUpdate
-                      ? "Mengecek Update..."
-                      : "Cek Update Manual"}
-                  </Text>
-                  <Text variant="small">Periksa dan unduh update terbaru</Text>
-                </View>
-              </TouchableOpacity>
-            </CardContent>
-
-            <CardFooter>
-              <Button
-                size="default"
-                variant="destructive"
-                onPress={handleLogout}
-                className="w-full"
-              >
-                <View className="flex-row items-center">
-                  <Icon
-                    as={LogOut}
-                    className="size-5 mr-2 text-destructive-foreground"
-                  />
-                  <Text variant="default" className="font-medium">
-                    Keluar dari Akun
-                  </Text>
-                </View>
-              </Button>
-            </CardFooter>
+            {/* Check Update */}
+            <TouchableOpacity
+              className="flex-row items-center p-4"
+              onPress={handleCheckUpdate}
+              disabled={isCheckingUpdate}
+              activeOpacity={0.7}
+            >
+              <View className="w-11 h-11 rounded-xl bg-green-500/10 items-center justify-center mr-4">
+                <Icon
+                  as={CircleFadingArrowUp}
+                  className="size-5 text-green-500"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold">
+                  {isCheckingUpdate ? "Mengecek..." : "Cek Update"}
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Periksa update terbaru
+                </Text>
+              </View>
+              {isCheckingUpdate && (
+                <View className="w-5 h-5 border-2 border-t-transparent border-primary rounded-full" />
+              )}
+            </TouchableOpacity>
           </Card>
         </View>
 
-        {/* App Info Section */}
-        <View className="px-6">
-          <Card className="p-4 bg-card border-border">
-            <CardContent className="space-y-4">
-              <View className="flex-row items-center p-3">
-                <View className="flex-1">
-                  <Text variant="small" className="font-medium">
-                    Versi Aplikasi
-                  </Text>
-                  <Text variant="default" className="font-semibold">
-                    {Constants.expoConfig?.version}
-                  </Text>
-                </View>
+        {/* App Info */}
+        <View className="px-5 mt-5">
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3 ml-1">
+            Tentang
+          </Text>
+          <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
+            <View className="flex-row items-center p-4">
+              <View className="w-11 h-11 rounded-xl bg-indigo-500/10 items-center justify-center mr-4">
+                <Icon as={Smartphone} className="size-5 text-indigo-500" />
               </View>
-
-              <View className="pt-2 border-t border-border">
-                <Text
-                  variant="small"
-                  className="text-center text-muted-foreground"
-                >
-                  © 2025 Skanida Apps
+              <View className="flex-1">
+                <Text className="text-foreground font-semibold">
+                  Versi Aplikasi
                 </Text>
-                <Text
-                  variant="small"
-                  className="text-center text-muted-foreground mt-1"
-                >
-                  Semua hak dilindungi undang-undang
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  Skanida v{Constants.expoConfig?.version}
                 </Text>
               </View>
-            </CardContent>
+            </View>
           </Card>
+        </View>
+
+        {/* Logout */}
+        <View className="px-5 mt-6">
+          <TouchableOpacity
+            onPress={handleLogout}
+            activeOpacity={0.9}
+            className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
+          >
+            <Icon as={LogOut} className="size-5 text-white mr-3" />
+            <Text className="font-bold text-white text-base">
+              Keluar dari Akun
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <View className="items-center mt-8 px-5">
+          <Text className="text-muted-foreground text-xs">
+            © 2025 Skanida Apps
+          </Text>
+          <Text className="text-muted-foreground/50 text-xs mt-1">
+            Semua hak dilindungi undang-undang
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// Export the memoized component for better performance
 export default memo(Pengaturan);

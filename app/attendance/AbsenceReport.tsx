@@ -16,6 +16,8 @@ import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { supabase } from "~/utils/supabase";
 import useAuthStore from "~/store/authStore";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
 
 import {
   ChevronLeft,
@@ -120,6 +122,42 @@ export default function AbsenceReport() {
     return location;
   }, []);
 
+  const checkTodayPermit = useCallback(
+    async (userId: string): Promise<boolean> => {
+      try {
+        // Use WIB-synced time for querying
+        const todayWIB = formatDateWIB(timeSync.getSyncedTime());
+        const startOfDayWIB = `${todayWIB}T00:00:00+07:00`;
+        const endOfDayWIB = `${todayWIB}T23:59:59.999+07:00`;
+
+        const { data, error } = await supabase
+          .from("perizinan")
+          .select("id, approval_status")
+          .eq("user_id", userId)
+          .gte("tanggal", startOfDayWIB)
+          .lte("tanggal", endOfDayWIB);
+
+        if (error) {
+          return false;
+        }
+
+        // User memiliki izin aktif jika ada izin pending atau approved
+        return (
+          data &&
+          data.length > 0 &&
+          data.some(
+            (record) =>
+              record.approval_status === "pending" ||
+              record.approval_status === "approved",
+          )
+        );
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
   const fetchAttendanceStatus = useCallback(async () => {
     if (!user) {
       setErrorMessage("Sesi pengguna tidak valid, silakan login ulang.");
@@ -132,6 +170,14 @@ export default function AbsenceReport() {
     setStatus(null);
 
     try {
+      // Check if user has active permit today
+      const hasActivePermit = await checkTodayPermit(user.id);
+      if (hasActivePermit) {
+        throw new Error(
+          "Anda sudah mengajukan izin untuk hari ini. Tidak dapat melakukan absensi jika sudah ada izin aktif (pending/approved).",
+        );
+      }
+
       const location = await getCurrentLocation();
 
       const { data, error } = await supabase.rpc(
@@ -161,7 +207,7 @@ export default function AbsenceReport() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, getCurrentLocation, navigateToCamera]);
+  }, [user, getCurrentLocation, checkTodayPermit, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {

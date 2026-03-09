@@ -81,7 +81,7 @@ export default function ResetPassword() {
             opened = true;
             break;
           }
-        } catch (err) {
+        } catch {
           // Continue to next scheme
           continue;
         }
@@ -96,7 +96,7 @@ export default function ResetPassword() {
         );
       }
     } catch (err) {
-      console.error("Error opening email app:", err);
+      if (__DEV__) console.error("Error opening email app:", err);
       Alert.alert(
         "Buka Email Manual",
         "Tidak dapat membuka aplikasi email secara otomatis. Silakan buka aplikasi email Anda secara manual.",
@@ -121,18 +121,13 @@ export default function ResetPassword() {
       setLoading(true);
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://example.com",
+        redirectTo: process.env.EXPO_PUBLIC_AUTH_CALLBACK_URL,
       });
 
       if (error) {
-        console.error("Reset password error:", error.message);
-        setErrorMessage(
-          error.message || "Terjadi kesalahan. Silakan coba lagi nanti.",
-        );
-        Alert.alert(
-          "Gagal",
-          error.message || "Terjadi kesalahan, coba lagi nanti.",
-        );
+        if (__DEV__) console.error("Reset password error:", error.message);
+        setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
+        Alert.alert("Gagal", "Terjadi kesalahan, coba lagi nanti.");
         return;
       }
 
@@ -161,7 +156,7 @@ export default function ResetPassword() {
         { cancelable: false },
       );
     } catch (err) {
-      console.error("Reset password exception:", err);
+      if (__DEV__) console.error("Reset password exception:", err);
       setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
       Alert.alert("Gagal", "Terjadi kesalahan. Silakan coba lagi nanti.");
     } finally {
