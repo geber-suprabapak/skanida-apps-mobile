@@ -58,7 +58,10 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
         await Promise.all([
           get().fetchUserProfile(user.id, controller.signal),
-          registerAndSaveNotificationToken(user.id),
+          registerAndSaveNotificationToken(user.id, {
+            showAlertOnDenied: false,
+            allowPermissionPrompt: true,
+          }),
         ]);
       })().catch((error) => {
         Sentry.captureException(error);

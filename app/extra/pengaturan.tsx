@@ -64,9 +64,12 @@ function Pengaturan() {
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
-  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifPermissionGranted, setNotifPermissionGranted] = useState(false);
+  const [notifTokenSynced, setNotifTokenSynced] = useState(false);
+  const [notifOptedOut, setNotifOptedOut] = useState(false);
   const [notifCanAsk, setNotifCanAsk] = useState(true);
   const [notifLoading, setNotifLoading] = useState(true);
+  const notifEnabled = notifPermissionGranted && notifTokenSynced;
 
   // Hardware back button
   useEffect(() => {
@@ -124,6 +127,53 @@ function Pengaturan() {
   // Theme sync
   useEffect(() => setIsDarkMode(theme === "dark"), [theme]);
 
+  const applyNotificationState = useCallback(
+    (status: {
+      canAskAgain: boolean;
+      isGranted: boolean;
+      isOptedOut: boolean;
+      tokenSynced: boolean;
+    }) => {
+      setNotifCanAsk(status.canAskAgain);
+      setNotifPermissionGranted(status.isGranted);
+      setNotifTokenSynced(status.tokenSynced);
+      setNotifOptedOut(status.isOptedOut);
+    },
+    [],
+  );
+
+  const refreshNotificationState = useCallback(
+    async (allowSilentReconcile = true) => {
+      if (!user?.id) {
+        applyNotificationState({
+          canAskAgain: true,
+          isGranted: false,
+          isOptedOut: false,
+          tokenSynced: false,
+        });
+        return;
+      }
+
+      let status = await getNotificationPermissionStatus(user.id);
+
+      if (allowSilentReconcile) {
+        if (status.isGranted && !status.tokenSynced && !status.isOptedOut) {
+          await registerAndSaveNotificationToken(user.id, {
+            showAlertOnDenied: false,
+            allowPermissionPrompt: false,
+          });
+          status = await getNotificationPermissionStatus(user.id);
+        } else if (!status.isGranted && status.tokenSynced) {
+          await clearNotificationToken(user.id, { setOptOut: false });
+          status = await getNotificationPermissionStatus(user.id);
+        }
+      }
+
+      applyNotificationState(status);
+    },
+    [applyNotificationState, user?.id],
+  );
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -135,10 +185,8 @@ function Pengaturan() {
         setNotifLoading(true);
 
         try {
-          const s = await getNotificationPermissionStatus();
+          await refreshNotificationState();
           if (!isActive) return;
-          setNotifEnabled(s.isGranted);
-          setNotifCanAsk(s.canAskAgain);
         } finally {
           if (isActive) {
             setNotifLoading(false);
@@ -151,7 +199,7 @@ function Pengaturan() {
       return () => {
         isActive = false;
       };
-    }, [fetchProfile]),
+    }, [fetchProfile, refreshNotificationState]),
   );
 
   const handleLogout = useCallback(() => {
@@ -223,7 +271,7 @@ function Pengaturan() {
       try {
         const success = await clearNotificationToken(user.id);
         if (success) {
-          setNotifEnabled(false);
+          await refreshNotificationState(false);
         } else {
           Alert.alert(
             "Error",
@@ -243,9 +291,11 @@ function Pengaturan() {
 
     setNotifLoading(true);
     try {
-      const r = await registerAndSaveNotificationToken(user.id, false);
-      setNotifEnabled(r.success);
-      setNotifCanAsk(r.canAskAgain);
+      const r = await registerAndSaveNotificationToken(user.id, {
+        showAlertOnDenied: false,
+        allowPermissionPrompt: true,
+      });
+      await refreshNotificationState(false);
       if (r.permissionDenied && !r.canAskAgain) {
         Alert.alert(
           "Izin Notifikasi",
@@ -259,11 +309,17 @@ function Pengaturan() {
     } finally {
       setNotifLoading(false);
     }
-  }, [user?.id, notifEnabled, notifCanAsk]);
+  }, [user?.id, notifEnabled, notifCanAsk, refreshNotificationState]);
 
   const getNotifSubtitle = () => {
     if (notifLoading) return "Memuat...";
     if (notifEnabled) return "Notifikasi aktif";
+    if (notifPermissionGranted && notifOptedOut) {
+      return "Izin aktif, notifikasi dimatikan di aplikasi";
+    }
+    if (notifPermissionGranted && !notifTokenSynced) {
+      return "Izin aktif, sinkronisasi token diperlukan";
+    }
     if (!notifCanAsk) return "Tap untuk buka Pengaturan HP";
     return "Notifikasi nonaktif";
   };
