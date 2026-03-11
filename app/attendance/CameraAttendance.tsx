@@ -2,15 +2,7 @@ import {
   Camera,
   useCameraDevice,
   useCameraPermission,
-  useFrameProcessor,
 } from "react-native-vision-camera";
-import {
-  Face,
-  useFaceDetector,
-  FaceDetectionOptions,
-} from "react-native-vision-camera-face-detector";
-import { Worklets } from "react-native-worklets-core";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
@@ -41,11 +33,6 @@ import {
   SwitchCamera,
   ArrowLeft,
   Loader2,
-  CheckCircle,
-  AlertCircle,
-  Smile,
-  Eye,
-  MoveHorizontal,
 } from "lucide-react-native";
 import { timeSync } from "~/utils/timeSync";
 import useAuthStore from "~/store/authStore";
@@ -63,17 +50,20 @@ type Coordinates = {
   longitude: number;
 };
 
-type ChallengeType = "BLINK" | "SMILE" | "SHAKE";
-type LivenessStatus = "IDLE" | "CHECKING" | "PASSED" | "FAILED";
-
-interface LivenessState {
-  status: LivenessStatus;
-  currentChallenge: ChallengeType | null;
+interface ProcessProgress {
+  stage: ProcessStage;
+  percentage: number;
   message: string;
-  progress: number;
 }
 
-type ExpoBlobInstance = InstanceType<typeof ExpoBlob>;
+interface FaceRecogResponse {
+  status: string;
+  student_id?: string;
+  student_name?: string;
+  confidence?: number;
+  process_time_ms?: number;
+  message: string;
+}
 
 // --- MEMOIZED COMPONENTS ---
 const ProgressBar = memo<{ percentage: number }>(({ percentage }) => {
@@ -101,73 +91,27 @@ ProgressBar.displayName = "ProgressBar";
 const CaptureButton = memo<{
   isCapturing: boolean;
   isReady: boolean;
-  isUploading: boolean;
-  isFaceValid: boolean;
+  isProcessing: boolean;
   onPress: () => void;
-}>(({ isCapturing, isReady, isUploading, isFaceValid, onPress }) => (
+}>(({ isCapturing, isReady, isProcessing, onPress }) => (
   <Animated.View className="w-24 h-24 rounded-full bg-white/30 justify-center items-center">
     <TouchableOpacity
-      className={`w-20 h-20 rounded-full justify-center items-center ${
-        isFaceValid ? "bg-[#0066FF]" : "bg-gray-400"
-      }`}
+      className="w-20 h-20 rounded-full bg-white justify-center items-center"
       onPress={onPress}
-      disabled={isCapturing || !isReady || isUploading || !isFaceValid}
+      disabled={isCapturing || !isReady || isProcessing}
       activeOpacity={0.8}
     >
       {isCapturing ? (
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <ActivityIndicator size="large" color="#0066FF" />
       ) : (
-        <View
-          className={`w-16 h-16 rounded-full ${
-            isFaceValid ? "bg-[#0066FF] border-2 border-white" : "bg-gray-500"
-          }`}
-        />
+        <View className="w-16 h-16 rounded-full bg-[#0066FF]" />
       )}
     </TouchableOpacity>
   </Animated.View>
 ));
 CaptureButton.displayName = "CaptureButton";
 
-const FaceStatusOverlay = memo<{
-  message: string;
-  isValid: boolean;
-  challenge?: ChallengeType | null;
-}>(({ message, isValid, challenge }) => {
-  const getIcon = () => {
-    if (isValid) return CheckCircle;
-    switch (challenge) {
-      case "BLINK":
-        return Eye;
-      case "SMILE":
-        return Smile;
-      case "SHAKE":
-        return MoveHorizontal;
-      default:
-        return AlertCircle;
-    }
-  };
-
-  return (
-    <View className="absolute top-32 left-0 right-0 items-center justify-center z-10 pointer-events-none">
-      <View
-        className={`px-6 py-3 rounded-full flex-row items-center shadow-sm ${
-          isValid ? "bg-green-500/90" : "bg-black/60 backdrop-blur-md"
-        }`}
-      >
-        <Icon
-          as={getIcon()}
-          className={`size-5 mr-2 ${isValid ? "text-white" : "text-[#0066FF]"}`}
-        />
-        <Text variant="small" className="text-white font-bold">
-          {message}
-        </Text>
-      </View>
-    </View>
-  );
-});
-FaceStatusOverlay.displayName = "FaceStatusOverlay";
-
-const UploadOverlay = memo<{
+const ProcessOverlay = memo<{
   message: string;
   percentage: number;
   spinnerStyle: any;
@@ -256,182 +200,6 @@ const CameraAttendance = () => {
     message: "Menunggu proses...",
   });
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Liveness State
-  const [livenessState, setLivenessState] = useState<LivenessState>({
-    status: "IDLE",
-    currentChallenge: null,
-    message: "Posisikan wajah di dalam frame",
-    progress: 0,
-  });
-
-  // Refs for logic to avoid re-renders in worklets
-  const lastChallengeTime = useSharedValue(0);
-  const challengeProgress = useSharedValue(0);
-  const currentChallengeRef = useSharedValue<string>(""); // "BLINK" | "SMILE" | "SHAKE" | ""
-
-  // Constants for validation
-  const MIN_FACE_SIZE = 0.25; // Face must be at least 25% of screen width
-  const MAX_YAW_ANGLE = 15; // Head turn limit for "front" face
-  const BLINK_THRESHOLD = 0.3; // Eye open prob < 0.3 = blink
-  const SMILE_THRESHOLD = 0.6; // Smile prob > 0.6 = smile
-  const SHAKE_THRESHOLD = 10; // Head yaw > 10 or < -10
-
-  const faceDetectionOptions = useRef<FaceDetectionOptions>({
-    performanceMode: "fast",
-    classificationMode: "all",
-    minFaceSize: 0.15,
-  }).current;
-
-  const { detectFaces } = useFaceDetector(faceDetectionOptions);
-
-  const handleDetectedFaces = Worklets.createRunOnJS(
-    (faces: Face[], frameWidth: number, frameHeight: number) => {
-      const now = Date.now();
-
-      // 1. Basic Validation
-      if (faces.length === 0) {
-        setLivenessState((prev) => ({
-          ...prev,
-          status: "IDLE",
-          message: "Wajah tidak ditemukan",
-          progress: 0,
-        }));
-        currentChallengeRef.value = "";
-        return;
-      }
-
-      if (faces.length > 1) {
-        setLivenessState((prev) => ({
-          ...prev,
-          status: "FAILED",
-          message: "Hanya satu wajah diperbolehkan",
-          progress: 0,
-        }));
-        return;
-      }
-
-      const face = faces[0];
-
-      // 2. Anti-Spoofing: Face Size & Position
-      // Check if face is too small (too far)
-      const faceWidthRatio = face.bounds.width / frameWidth;
-      if (faceWidthRatio < MIN_FACE_SIZE) {
-        setLivenessState((prev) => ({
-          ...prev,
-          status: "IDLE",
-          message: "Dekatkan wajah ke kamera",
-          progress: 0,
-        }));
-        return;
-      }
-
-      // Check if face is looking straight (unless shaking)
-      const isShaking = currentChallengeRef.value === "SHAKE";
-      if (!isShaking && Math.abs(face.yawAngle ?? 0) > MAX_YAW_ANGLE) {
-        setLivenessState((prev) => ({
-          ...prev,
-          status: "IDLE",
-          message: "Hadap lurus ke kamera",
-          progress: 0,
-        }));
-        return;
-      }
-
-      if (livenessState.status === "PASSED") return;
-
-      // 3. Liveness Logic
-      if (
-        livenessState.status === "IDLE" ||
-        livenessState.status === "FAILED"
-      ) {
-        // Start new challenge sequence
-        const challenges: ChallengeType[] = ["BLINK", "SMILE", "SHAKE"];
-        const nextChallenge =
-          challenges[Math.floor(Math.random() * challenges.length)];
-
-        currentChallengeRef.value = nextChallenge;
-        challengeProgress.value = 0;
-        lastChallengeTime.value = now;
-
-        let msg = "";
-        switch (nextChallenge) {
-          case "BLINK":
-            msg = "Silakan berkedip...";
-            break;
-          case "SMILE":
-            msg = "Silakan senyum...";
-            break;
-          case "SHAKE":
-            msg = "Gelengkan kepala...";
-            break;
-        }
-
-        setLivenessState({
-          status: "CHECKING",
-          currentChallenge: nextChallenge,
-          message: msg,
-          progress: 0,
-        });
-        return;
-      }
-
-      if (livenessState.status === "CHECKING") {
-        const challenge = currentChallengeRef.value;
-        let passed = false;
-
-        if (challenge === "BLINK") {
-          const leftEye = face.leftEyeOpenProbability ?? 1;
-          const rightEye = face.rightEyeOpenProbability ?? 1;
-          // Detect blink: both eyes closed then open
-          // Simplified: just check for closed eyes for now, in real app we'd track state change Open->Closed->Open
-          if (leftEye < BLINK_THRESHOLD && rightEye < BLINK_THRESHOLD) {
-            passed = true;
-          }
-        } else if (challenge === "SMILE") {
-          const smileProb = face.smilingProbability ?? 0;
-          if (smileProb > SMILE_THRESHOLD) {
-            passed = true;
-          }
-        } else if (challenge === "SHAKE") {
-          const yaw = face.yawAngle ?? 0;
-          if (Math.abs(yaw) > SHAKE_THRESHOLD) {
-            passed = true;
-          }
-        }
-
-        if (passed) {
-          setLivenessState({
-            status: "PASSED",
-            currentChallenge: null,
-            message: "Verifikasi Berhasil!",
-            progress: 100,
-          });
-          currentChallengeRef.value = "";
-        } else {
-          // Timeout check (e.g., 5 seconds)
-          if (now - lastChallengeTime.value > 5000) {
-            setLivenessState({
-              status: "FAILED",
-              currentChallenge: null,
-              message: "Waktu habis. Coba lagi.",
-              progress: 0,
-            });
-            currentChallengeRef.value = "";
-          }
-        }
-      }
-    },
-  );
-
-  const frameProcessor = useFrameProcessor(
-    (frame) => {
-      "worklet";
-      const faces = detectFaces(frame);
-      handleDetectedFaces(faces, frame.width, frame.height);
-    },
-    [handleDetectedFaces],
-  );
 
   const spinnerRotation = useSharedValue(0);
 
@@ -868,7 +636,6 @@ const CameraAttendance = () => {
         photo
         enableZoomGesture
         onInitialized={handleCameraReady}
-        frameProcessor={frameProcessor}
       />
 
       <View className="absolute inset-0" pointerEvents="box-none">
@@ -904,17 +671,12 @@ const CameraAttendance = () => {
               <CaptureButton
                 isCapturing={isCapturingPhoto}
                 isReady={isCameraReady}
-                isUploading={isUploading}
-                isFaceValid={livenessState.status === "PASSED"}
+                isProcessing={isProcessing}
                 onPress={handleTakePicture}
               />
-            </View>
 
-            <FaceStatusOverlay
-              message={livenessState.message}
-              isValid={livenessState.status === "PASSED"}
-              challenge={livenessState.currentChallenge}
-            />
+              <View className="w-16 h-16" />
+            </View>
           </View>
         </SafeAreaView>
       </View>

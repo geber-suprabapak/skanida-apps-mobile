@@ -49,7 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-build-properties",
       {
         android: {
-          minSdkVersion: 26,
+          minSdkVersion: 24,
           enableBundleCompression: true,
           enableMinifyInReleaseBuilds: true,
           useLegacyPackaging: true,
