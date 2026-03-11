@@ -13,12 +13,42 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
-import { resolveUserRole } from "~/utils/authRole";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Eye, EyeOff, Key } from "lucide-react-native";
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    // base64url → base64 → JSON
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "=",
+    );
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function resolveUserRole(
+  accessToken: string | null | undefined,
+  appMetadata: Record<string, unknown> | undefined,
+): string | undefined {
+  const jwtPayload = accessToken ? decodeJwtPayload(accessToken) : null;
+  const jwtAppMetadata = jwtPayload?.app_metadata as
+    | Record<string, unknown>
+    | undefined;
+
+  return (
+    (jwtAppMetadata?.role as string | undefined) ??
+    (appMetadata?.role as string | undefined)
+  );
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -95,8 +125,7 @@ export default function Login() {
       }
 
       if (data?.user) {
-        const role = await resolveUserRole(
-          data.user.id,
+        const role = resolveUserRole(
           data.session?.access_token,
           data.user.app_metadata as Record<string, unknown> | undefined,
         );

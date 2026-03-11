@@ -5,7 +5,6 @@ import { View, Text, ActivityIndicator } from "react-native";
 
 import useAuthStore from "../store/authStore";
 import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
-import { resolveUserRole } from "~/utils/authRole";
 import { getSupabaseConfig } from "~/utils/secureConfig";
 
 export default function Index() {
@@ -34,11 +33,7 @@ export default function Index() {
         }
 
         if (session?.user) {
-          const role = await resolveUserRole(
-            session.user.id,
-            session.access_token,
-            session.user.app_metadata as Record<string, unknown> | undefined,
-          );
+          const role = session.user.app_metadata?.role as string;
 
           if (role !== "siswa") {
             await supabase.auth.signOut();
