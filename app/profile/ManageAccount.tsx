@@ -361,6 +361,10 @@ export default function ManageAccount() {
       // 3. Update Local State
       setAvatarPath(fileNameInBucket);
       setAvatarUrl(newAvatarUrl);
+      setInitialData((current) => ({
+        ...current,
+        avatarPath: fileNameInBucket,
+      }));
       await clearProfileCache();
 
       // Sync global auth store
@@ -404,6 +408,10 @@ export default function ManageAccount() {
 
               setAvatarPath(null);
               setAvatarUrl(null);
+              setInitialData((current) => ({
+                ...current,
+                avatarPath: null,
+              }));
               await clearProfileCache();
 
               const { data: userData } = await supabase.auth.getUser();

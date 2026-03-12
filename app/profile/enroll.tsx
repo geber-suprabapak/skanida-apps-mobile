@@ -741,6 +741,7 @@ const FaceEnrollment = () => {
         device={device}
         isActive={step === "capture"}
         photo
+        video
         onInitialized={handleCameraReady}
       />
 

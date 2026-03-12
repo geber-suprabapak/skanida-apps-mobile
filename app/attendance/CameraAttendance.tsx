@@ -28,6 +28,7 @@ import * as FileSystem from "expo-file-system";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
+import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import {
   Camera as CameraIcon,
   SwitchCamera,
@@ -194,6 +195,15 @@ const CameraAttendance = () => {
   const device = useCameraDevice(cameraFacing);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
+  const [successState, setSuccessState] = useState<{
+    visible: boolean;
+    time: string;
+    processingTime: number;
+  }>({
+    visible: false,
+    time: "",
+    processingTime: 0,
+  });
   const [processProgress, setProcessProgress] = useState<ProcessProgress>({
     stage: "verifying",
     percentage: 0,
@@ -222,13 +232,13 @@ const CameraAttendance = () => {
   // --- STORE & PARAMS ---
   const user = useAuthStore((state) => state.user);
 
-  const actionType = useMemo<"check_in" | "check_out" | null>(() => {
+  const actionType = useMemo<"check_in" | "check_out">(() => {
     const value = params.actionType;
     const candidate = Array.isArray(value) ? value[0] : value;
     if (candidate === "check_in" || candidate === "check_out") {
       return candidate;
     }
-    return null;
+    return "check_in";
   }, [params.actionType]);
 
   const preFetchedLocation = useMemo<Coordinates | null>(() => {
@@ -407,14 +417,10 @@ const CameraAttendance = () => {
             minute: "2-digit",
           });
 
-        router.replace({
-          pathname: "/Dashboard",
-          params: {
-            showSuccessPopup: "true",
-            attendanceType: actionType,
-            successTime: currentTime,
-            processingTime: totalTime.toString(),
-          },
+        setSuccessState({
+          visible: true,
+          time: currentTime,
+          processingTime: totalTime,
         });
       } catch (error: any) {
         Alert.alert(
@@ -425,7 +431,7 @@ const CameraAttendance = () => {
         setIsProcessing(false);
       }
     },
-    [user, actionType, verifyFaceWithServer, router, preFetchedLocation],
+    [user, actionType, verifyFaceWithServer, preFetchedLocation],
   );
 
   // --- EVENT HANDLERS ---
@@ -634,8 +640,23 @@ const CameraAttendance = () => {
         device={device}
         isActive={!isProcessing}
         photo
+        video
         enableZoomGesture
         onInitialized={handleCameraReady}
+      />
+
+      <AttendanceSuccessPopup
+        visible={successState.visible}
+        onClose={() => {
+          setSuccessState((current) => ({ ...current, visible: false }));
+          router.replace("/Dashboard");
+        }}
+        attendanceType={actionType}
+        studentName={
+          user?.user_metadata?.full_name || user?.user_metadata?.name || ""
+        }
+        time={successState.time}
+        processingTime={successState.processingTime}
       />
 
       <View className="absolute inset-0" pointerEvents="box-none">
