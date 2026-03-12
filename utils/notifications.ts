@@ -6,7 +6,11 @@ import Constants from "expo-constants";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import * as Sentry from "@sentry/react-native";
 
-type NotificationPermissionStatus = {
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type NotificationPermissionStatus = {
   status: Notifications.PermissionStatus;
   canAskAgain: boolean;
   isGranted: boolean;
@@ -32,8 +36,13 @@ type ClearNotificationOptions = {
   setOptOut?: boolean;
 };
 
+// ---------------------------------------------------------------------------
+// Constants & module-level state
+// ---------------------------------------------------------------------------
+
 const NOTIFICATION_OPT_OUT_PREFIX = "notification-opt-out";
 const EXPO_PUSH_TOKEN_MAX_RETRIES = 3;
+
 let activeNotificationSync: {
   userId: string;
   promise: Promise<PermissionResult>;
@@ -46,6 +55,54 @@ const FAIL_RESULT: PermissionResult = {
   isGranted: false,
   tokenSynced: false,
 };
+
+const DEFAULT_PERMISSION_STATUS: NotificationPermissionStatus = {
+  status: Notifications.PermissionStatus.UNDETERMINED,
+  canAskAgain: true,
+  isGranted: false,
+  tokenSynced: false,
+  isOptedOut: false,
+};
+
+// ---------------------------------------------------------------------------
+// Generic helpers
+// ---------------------------------------------------------------------------
+
+async function retryAsync<T>(
+  fn: () => Promise<T>,
+  maxRetries: number,
+  baseDelayMs = 500,
+): Promise<{ result: T | null; lastError: Error | null }> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await fn();
+      return { result, lastError: null };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Unknown error");
+    }
+
+    if (attempt < maxRetries - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, baseDelayMs * 2 ** attempt),
+      );
+    }
+  }
+
+  return { result: null, lastError };
+}
+
+function getProjectId(): string | undefined {
+  return (
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    (Constants as Record<string, unknown>).easConfig?.projectId
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Opt-out persistence (AsyncStorage)
+// ---------------------------------------------------------------------------
 
 function getNotificationOptOutKey(userId: string) {
   return `${NOTIFICATION_OPT_OUT_PREFIX}:${userId}`;
@@ -78,6 +135,10 @@ async function setNotificationOptOut(userId: string, isOptedOut: boolean) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Token persistence (Supabase)
+// ---------------------------------------------------------------------------
+
 async function hasStoredNotificationToken(userId: string) {
   try {
     await ensureSupabaseInitialized();
@@ -104,6 +165,32 @@ async function hasStoredNotificationToken(userId: string) {
   }
 }
 
+async function updateStoredNotificationToken(
+  userId: string,
+  notificationToken: string | null,
+) {
+  await ensureSupabaseInitialized();
+
+  return supabase
+    .from("user_profiles")
+    .update({ notification_token: notificationToken })
+    .eq("user_id", userId);
+}
+
+// ---------------------------------------------------------------------------
+// Permission helpers
+// ---------------------------------------------------------------------------
+
+async function getCurrentPermissionSnapshot() {
+  const permission = await Notifications.getPermissionsAsync();
+
+  return {
+    status: permission.status,
+    canAskAgain: permission.canAskAgain,
+    isGranted: permission.granted || permission.status === "granted",
+  };
+}
+
 function runNotificationSyncLocked(
   userId: string,
   callback: () => Promise<PermissionResult>,
@@ -121,6 +208,61 @@ function runNotificationSyncLocked(
   activeNotificationSync = { userId, promise };
   return promise;
 }
+
+// ---------------------------------------------------------------------------
+// Token fetch & save
+// ---------------------------------------------------------------------------
+
+async function saveTokenToDatabase(userId: string): Promise<PermissionResult> {
+  try {
+    const projectId = getProjectId();
+    if (!projectId) {
+      Sentry.captureException(new Error("Missing EAS projectId"));
+      return FAIL_RESULT;
+    }
+
+    const { result: token, lastError } = await retryAsync(async () => {
+      const response = await Notifications.getExpoPushTokenAsync({
+        projectId,
+      });
+      if (!response.data) throw new Error("Token undefined");
+      return response.data;
+    }, EXPO_PUSH_TOKEN_MAX_RETRIES);
+
+    if (!token) {
+      Sentry.captureException(lastError ?? new Error("Token undefined"), {
+        extra: { userId, projectId, scope: "notification-token-fetch" },
+      });
+      return { ...FAIL_RESULT, canAskAgain: true, isGranted: true };
+    }
+
+    const { error } = await updateStoredNotificationToken(userId, token);
+
+    if (error) {
+      Sentry.captureException(new Error(`Save error: ${error.message}`));
+      return FAIL_RESULT;
+    }
+
+    await setNotificationOptOut(userId, false);
+
+    return {
+      success: true,
+      permissionDenied: false,
+      canAskAgain: true,
+      isGranted: true,
+      tokenSynced: true,
+    };
+  } catch (err) {
+    Sentry.captureException(err, {
+      extra: { userId, scope: "notification-token-save" },
+    });
+    return FAIL_RESULT;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export function setupNotificationHandler() {
   Notifications.setNotificationHandler({
@@ -145,7 +287,7 @@ export async function getNotificationPermissionStatus(
   userId?: string,
 ): Promise<NotificationPermissionStatus> {
   try {
-    const s = await Notifications.getPermissionsAsync();
+    const permission = await getCurrentPermissionSnapshot();
     const [tokenSynced, isOptedOut] = userId
       ? await Promise.all([
           hasStoredNotificationToken(userId),
@@ -154,9 +296,9 @@ export async function getNotificationPermissionStatus(
       : [false, false];
 
     return {
-      status: s.status,
-      canAskAgain: s.canAskAgain,
-      isGranted: s.granted,
+      status: permission.status,
+      canAskAgain: permission.canAskAgain,
+      isGranted: permission.isGranted,
       tokenSynced,
       isOptedOut,
     };
@@ -164,20 +306,36 @@ export async function getNotificationPermissionStatus(
     Sentry.captureException(error, {
       extra: { userId, scope: "notification-permission-status" },
     });
-    return {
-      status: Notifications.PermissionStatus.UNDETERMINED,
-      canAskAgain: true,
-      isGranted: false,
-      tokenSynced: false,
-      isOptedOut: false,
-    };
+    return DEFAULT_PERMISSION_STATUS;
   }
 }
 
+export async function reconcileNotificationState(
+  userId: string,
+): Promise<NotificationPermissionStatus> {
+  let status = await getNotificationPermissionStatus(userId);
+
+  if (status.isGranted && !status.tokenSynced && !status.isOptedOut) {
+    await registerAndSaveNotificationToken(userId, {
+      showAlertOnDenied: false,
+      allowPermissionPrompt: false,
+    });
+    status = await getNotificationPermissionStatus(userId);
+  } else if (!status.isGranted && status.tokenSynced) {
+    await clearNotificationToken(userId, { setOptOut: false });
+    status = await getNotificationPermissionStatus(userId);
+  }
+
+  return status;
+}
+
 export async function openNotificationSettings() {
-  Platform.OS === "android"
-    ? await Linking.openSettings()
-    : await Linking.openURL("app-settings:");
+  if (Platform.OS === "android") {
+    await Linking.openSettings();
+    return;
+  }
+
+  await Linking.openURL("app-settings:");
 }
 
 export async function clearNotificationToken(
@@ -185,10 +343,6 @@ export async function clearNotificationToken(
   options: ClearNotificationOptions = {},
 ) {
   try {
-    // Ensure Supabase is initialized
-    await ensureSupabaseInitialized();
-
-    // Invalidate on Expo push server
     try {
       await Notifications.unregisterForNotificationsAsync();
     } catch (error) {
@@ -197,10 +351,7 @@ export async function clearNotificationToken(
       });
     }
 
-    const { error } = await supabase
-      .from("user_profiles")
-      .update({ notification_token: null })
-      .eq("user_id", userId);
+    const { error } = await updateStoredNotificationToken(userId, null);
     if (error) {
       Sentry.captureException(new Error(`Clear token error: ${error.message}`));
       return false;
@@ -228,14 +379,13 @@ export async function registerAndSaveNotificationToken(
     try {
       if (!Device.isDevice) return FAIL_RESULT;
 
-      // Android < 13: permission auto-granted
       if (Platform.OS === "android" && Number(Platform.Version) < 33) {
         return await saveTokenToDatabase(userId);
       }
 
-      const permission = await Notifications.getPermissionsAsync();
+      const permission = await getCurrentPermissionSnapshot();
 
-      if (permission.status === "granted" || permission.granted) {
+      if (permission.isGranted) {
         return await saveTokenToDatabase(userId);
       }
 
@@ -244,11 +394,9 @@ export async function registerAndSaveNotificationToken(
           await clearNotificationToken(userId, { setOptOut: false });
         }
         return {
-          success: false,
+          ...FAIL_RESULT,
           permissionDenied: true,
           canAskAgain: permission.canAskAgain,
-          isGranted: false,
-          tokenSynced: false,
         };
       }
 
@@ -263,13 +411,7 @@ export async function registerAndSaveNotificationToken(
             ],
           );
         }
-        return {
-          success: false,
-          permissionDenied: true,
-          canAskAgain: false,
-          isGranted: false,
-          tokenSynced: false,
-        };
+        return { ...FAIL_RESULT, permissionDenied: true, canAskAgain: false };
       }
 
       const requestResult = await Notifications.requestPermissionsAsync();
@@ -281,11 +423,9 @@ export async function registerAndSaveNotificationToken(
           );
         }
         return {
-          success: false,
+          ...FAIL_RESULT,
           permissionDenied: true,
           canAskAgain: requestResult.canAskAgain,
-          isGranted: false,
-          tokenSynced: false,
         };
       }
 
@@ -303,79 +443,4 @@ export async function registerAndSaveNotificationToken(
       return FAIL_RESULT;
     }
   });
-}
-
-async function saveTokenToDatabase(userId: string): Promise<PermissionResult> {
-  try {
-    // Ensure Supabase is initialized
-    await ensureSupabaseInitialized();
-
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    if (!projectId) {
-      Sentry.captureException(new Error("Missing EAS projectId"));
-      return FAIL_RESULT;
-    }
-
-    let token: string | null = null;
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt < EXPO_PUSH_TOKEN_MAX_RETRIES; attempt++) {
-      try {
-        const response = await Notifications.getExpoPushTokenAsync({
-          projectId,
-        });
-        if (response.data) {
-          token = response.data;
-          break;
-        }
-
-        lastError = new Error("Token undefined");
-      } catch (error) {
-        lastError =
-          error instanceof Error ? error : new Error("Token fetch failed");
-      }
-
-      if (attempt < EXPO_PUSH_TOKEN_MAX_RETRIES - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
-      }
-    }
-
-    if (!token) {
-      Sentry.captureException(lastError ?? new Error("Token undefined"), {
-        extra: { userId, projectId, scope: "notification-token-fetch" },
-      });
-      return {
-        success: false,
-        permissionDenied: false,
-        canAskAgain: true,
-        isGranted: true,
-        tokenSynced: false,
-      };
-    }
-
-    const { error } = await supabase
-      .from("user_profiles")
-      .update({ notification_token: token })
-      .eq("user_id", userId);
-
-    if (error) {
-      Sentry.captureException(new Error(`Save error: ${error.message}`));
-      return FAIL_RESULT;
-    }
-
-    await setNotificationOptOut(userId, false);
-
-    return {
-      success: true,
-      permissionDenied: false,
-      canAskAgain: true,
-      isGranted: true,
-      tokenSynced: true,
-    };
-  } catch (err) {
-    Sentry.captureException(err, {
-      extra: { userId, scope: "notification-token-save" },
-    });
-    return FAIL_RESULT;
-  }
 }

@@ -12,12 +12,10 @@ import { timeSync } from "~/utils/timeSync";
 import {
   setupNotificationHandler,
   setupNotificationChannel,
-  getNotificationPermissionStatus,
-  registerAndSaveNotificationToken,
-  clearNotificationToken,
 } from "~/utils/notifications";
+import { useNotificationSync } from "~/hooks/useNotificationSync";
 import { ensureSupabaseInitialized } from "~/utils/supabase";
-import { View, ActivityIndicator, AppState } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 
@@ -101,49 +99,8 @@ export default Sentry.wrap(function RootLayout() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isSupabaseReady || !user?.id) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const reconcileNotificationState = async () => {
-      try {
-        const status = await getNotificationPermissionStatus(user.id);
-        if (!isMounted) return;
-
-        if (status.isGranted && !status.tokenSynced && !status.isOptedOut) {
-          await registerAndSaveNotificationToken(user.id, {
-            showAlertOnDenied: false,
-            allowPermissionPrompt: false,
-          });
-          return;
-        }
-
-        if (!status.isGranted && status.tokenSynced) {
-          await clearNotificationToken(user.id, { setOptOut: false });
-        }
-      } catch (error) {
-        Sentry.captureException(error, {
-          extra: { userId: user.id, scope: "root-notification-reconcile" },
-        });
-      }
-    };
-
-    void reconcileNotificationState();
-
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void reconcileNotificationState();
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      subscription.remove();
-    };
-  }, [isSupabaseReady, user?.id]);
+  // Reconcile notification state on mount & app resume
+  useNotificationSync({ userId: user?.id, enabled: isSupabaseReady });
 
   // Show loading screen while initializing
   if (!isSupabaseReady) {

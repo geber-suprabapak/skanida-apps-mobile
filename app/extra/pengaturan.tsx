@@ -35,12 +35,7 @@ import {
   Bell,
   BellOff,
 } from "lucide-react-native";
-import {
-  getNotificationPermissionStatus,
-  registerAndSaveNotificationToken,
-  clearNotificationToken,
-  openNotificationSettings,
-} from "~/utils/notifications";
+import { useNotificationSettings } from "~/hooks/useNotificationSettings";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
@@ -64,12 +59,8 @@ function Pengaturan() {
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
-  const [notifPermissionGranted, setNotifPermissionGranted] = useState(false);
-  const [notifTokenSynced, setNotifTokenSynced] = useState(false);
-  const [notifOptedOut, setNotifOptedOut] = useState(false);
-  const [notifCanAsk, setNotifCanAsk] = useState(true);
-  const [notifLoading, setNotifLoading] = useState(true);
-  const notifEnabled = notifPermissionGranted && notifTokenSynced;
+
+  const notif = useNotificationSettings(user?.id);
 
   // Hardware back button
   useEffect(() => {
@@ -127,71 +118,14 @@ function Pengaturan() {
   // Theme sync
   useEffect(() => setIsDarkMode(theme === "dark"), [theme]);
 
-  const applyNotificationState = useCallback(
-    (status: {
-      canAskAgain: boolean;
-      isGranted: boolean;
-      isOptedOut: boolean;
-      tokenSynced: boolean;
-    }) => {
-      setNotifCanAsk(status.canAskAgain);
-      setNotifPermissionGranted(status.isGranted);
-      setNotifTokenSynced(status.tokenSynced);
-      setNotifOptedOut(status.isOptedOut);
-    },
-    [],
-  );
-
-  const refreshNotificationState = useCallback(
-    async (allowSilentReconcile = true) => {
-      if (!user?.id) {
-        applyNotificationState({
-          canAskAgain: true,
-          isGranted: false,
-          isOptedOut: false,
-          tokenSynced: false,
-        });
-        return;
-      }
-
-      let status = await getNotificationPermissionStatus(user.id);
-
-      if (allowSilentReconcile) {
-        if (status.isGranted && !status.tokenSynced && !status.isOptedOut) {
-          await registerAndSaveNotificationToken(user.id, {
-            showAlertOnDenied: false,
-            allowPermissionPrompt: false,
-          });
-          status = await getNotificationPermissionStatus(user.id);
-        } else if (!status.isGranted && status.tokenSynced) {
-          await clearNotificationToken(user.id, { setOptOut: false });
-          status = await getNotificationPermissionStatus(user.id);
-        }
-      }
-
-      applyNotificationState(status);
-    },
-    [applyNotificationState, user?.id],
-  );
-
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
       const refreshFocusedData = async () => {
         await fetchProfile();
-
         if (!isActive) return;
-        setNotifLoading(true);
-
-        try {
-          await refreshNotificationState();
-          if (!isActive) return;
-        } finally {
-          if (isActive) {
-            setNotifLoading(false);
-          }
-        }
+        await notif.refresh();
       };
 
       refreshFocusedData();
@@ -199,7 +133,7 @@ function Pengaturan() {
       return () => {
         isActive = false;
       };
-    }, [fetchProfile, refreshNotificationState]),
+    }, [fetchProfile, notif.refresh]),
   );
 
   const handleLogout = useCallback(() => {
@@ -262,67 +196,6 @@ function Pengaturan() {
       setIsCheckingUpdate(false);
     }
   }, []);
-
-  const handleNotifToggle = useCallback(async () => {
-    if (!user?.id) return;
-
-    if (notifEnabled) {
-      setNotifLoading(true);
-      try {
-        const success = await clearNotificationToken(user.id);
-        if (success) {
-          await refreshNotificationState(false);
-        } else {
-          Alert.alert(
-            "Error",
-            "Gagal menonaktifkan notifikasi. Silakan coba lagi.",
-          );
-        }
-      } finally {
-        setNotifLoading(false);
-      }
-      return;
-    }
-
-    if (!notifCanAsk) {
-      openNotificationSettings();
-      return;
-    }
-
-    setNotifLoading(true);
-    try {
-      const r = await registerAndSaveNotificationToken(user.id, {
-        showAlertOnDenied: false,
-        allowPermissionPrompt: true,
-      });
-      await refreshNotificationState(false);
-      if (r.permissionDenied && !r.canAskAgain) {
-        Alert.alert(
-          "Izin Notifikasi",
-          "Izin ditolak permanen. Buka pengaturan perangkat.",
-          [
-            { text: "Batal", style: "cancel" },
-            { text: "Buka Pengaturan", onPress: openNotificationSettings },
-          ],
-        );
-      }
-    } finally {
-      setNotifLoading(false);
-    }
-  }, [user?.id, notifEnabled, notifCanAsk, refreshNotificationState]);
-
-  const getNotifSubtitle = () => {
-    if (notifLoading) return "Memuat...";
-    if (notifEnabled) return "Notifikasi aktif";
-    if (notifPermissionGranted && notifOptedOut) {
-      return "Izin aktif, notifikasi dimatikan di aplikasi";
-    }
-    if (notifPermissionGranted && !notifTokenSynced) {
-      return "Izin aktif, sinkronisasi token diperlukan";
-    }
-    if (!notifCanAsk) return "Tap untuk buka Pengaturan HP";
-    return "Notifikasi nonaktif";
-  };
 
   const EditButton = ({ onPress }: { onPress: () => void }) => (
     <TouchableOpacity
@@ -452,16 +325,16 @@ function Pengaturan() {
             {/* Notification */}
             <TouchableOpacity
               className="flex-row items-center p-4 border-b border-border/50"
-              onPress={handleNotifToggle}
-              disabled={notifLoading}
+              onPress={notif.toggle}
+              disabled={notif.isLoading}
               activeOpacity={0.7}
             >
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${notifEnabled ? "bg-blue-500/10" : "bg-gray-500/10"}`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${notif.isEnabled ? "bg-blue-500/10" : "bg-gray-500/10"}`}
               >
                 <Icon
-                  as={notifEnabled ? Bell : BellOff}
-                  className={`size-5 ${notifEnabled ? "text-blue-500" : "text-gray-500"}`}
+                  as={notif.isEnabled ? Bell : BellOff}
+                  className={`size-5 ${notif.isEnabled ? "text-blue-500" : "text-gray-500"}`}
                 />
               </View>
               <View className="flex-1 ml-4">
@@ -469,18 +342,18 @@ function Pengaturan() {
                   Notifikasi
                 </Text>
                 <Text className="text-muted-foreground text-xs mt-0.5">
-                  {getNotifSubtitle()}
+                  {notif.subtitle}
                 </Text>
               </View>
-              {notifLoading ? (
+              {notif.isLoading ? (
                 <View className="w-5 h-5 border-2 border-t-transparent border-primary rounded-full" />
               ) : (
                 <Switch
-                  value={notifEnabled}
-                  onValueChange={handleNotifToggle}
+                  value={notif.isEnabled}
+                  onValueChange={notif.toggle}
                   trackColor={{ false: "#e5e7eb", true: "#3b82f6" }}
                   thumbColor="#ffffff"
-                  disabled={notifLoading}
+                  disabled={notif.isLoading}
                 />
               )}
             </TouchableOpacity>

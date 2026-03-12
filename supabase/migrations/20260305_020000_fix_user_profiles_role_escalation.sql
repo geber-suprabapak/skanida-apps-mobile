@@ -44,7 +44,8 @@ GRANT UPDATE (
   absence_number,
   class_name,
   gender,
-  updated_at
+  updated_at,
+  notification_token
 ) ON TABLE public.user_profiles TO anon, authenticated;
 
 -- Recreate own-update policy with role immutability.
