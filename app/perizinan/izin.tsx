@@ -20,8 +20,9 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+import { timeSync } from "~/utils/timeSync";
 import { Icon } from "~/components/ui/icon";
-import { cn } from "~/lib/utils";
+import { cn, getWIBDayBounds } from "~/lib/utils";
 import {
   ChevronLeft,
   FileText,
@@ -273,19 +274,15 @@ export default function PerizinanScreen() {
       userId: string,
     ): Promise<{ canSubmit: boolean; reason?: string }> => {
       try {
-        const now = new Date();
-        const localDate = format(now, "yyyy-MM-dd");
-        const startOfDay = new Date(`${localDate}T00:00:00`);
-        const endOfDay = new Date(`${localDate}T23:59:59.999`);
-        const startOfDayUTC = startOfDay.toISOString();
-        const endOfDayUTC = endOfDay.toISOString();
+        const syncedNow = timeSync.getSyncedTime();
+        const { start, endExclusive } = getWIBDayBounds(syncedNow);
 
         const { data, error } = await supabase
           .from("perizinan")
           .select("id, tanggal, kategori_izin, approval_status")
           .eq("user_id", userId)
-          .gte("tanggal", startOfDayUTC)
-          .lte("tanggal", endOfDayUTC);
+          .gte("tanggal", start)
+          .lt("tanggal", endExclusive);
 
         if (error) {
           return { canSubmit: false, reason: "Gagal memverifikasi status" };
@@ -589,7 +586,7 @@ export default function PerizinanScreen() {
         deskripsi: permitData.description,
         status: false,
         link_foto: permitData.imageUrl || null,
-        tanggal: new Date().toISOString(),
+        tanggal: timeSync.getSyncedTime().toISOString(),
       };
 
       const { error: insertError } = await supabase

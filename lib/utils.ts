@@ -24,3 +24,24 @@ export function formatDateWIB(date: Date): string {
   const day = String(wibDate.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Build an inclusive-exclusive UTC range that matches a calendar day in WIB.
+ */
+export function getWIBDayBounds(date: Date): {
+  start: string;
+  endExclusive: string;
+} {
+  const wibDate = toWIB(date);
+  const year = wibDate.getUTCFullYear();
+  const month = wibDate.getUTCMonth();
+  const day = wibDate.getUTCDate();
+
+  const start = new Date(Date.UTC(year, month, day, -7, 0, 0, 0));
+  const endExclusive = new Date(Date.UTC(year, month, day + 1, -7, 0, 0, 0));
+
+  return {
+    start: start.toISOString(),
+    endExclusive: endExclusive.toISOString(),
+  };
+}

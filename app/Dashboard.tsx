@@ -29,7 +29,7 @@ import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { fetchEnrollmentStatus } from "~/utils/enrollment";
 import type { EnrollmentStatus } from "~/utils/enrollment";
-import { formatDateWIB } from "~/lib/utils";
+import { formatDateWIB, getWIBDayBounds } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
 import {
@@ -167,7 +167,9 @@ export default function Dashboard() {
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
     try {
-      const today = formatDateWIB(timeSync.getSyncedTime());
+      const syncedNow = timeSync.getSyncedTime();
+      const today = formatDateWIB(syncedNow);
+      const { start, endExclusive } = getWIBDayBounds(syncedNow);
 
       const { data: todayAttendance } = await supabase
         .from("absences")
@@ -181,8 +183,8 @@ export default function Dashboard() {
         .select("approval_status, kategori_izin")
         .eq("user_id", user.id)
         .in("approval_status", ["pending", "approved"])
-        .gte("tanggal", `${today}T00:00:00.000Z`)
-        .lt("tanggal", `${today}T23:59:59.999Z`);
+        .gte("tanggal", start)
+        .lt("tanggal", endExclusive);
 
       let hasCheckedIn = false;
       let hasCheckedOut = false;

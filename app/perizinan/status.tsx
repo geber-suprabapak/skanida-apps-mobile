@@ -319,7 +319,9 @@ export default function StatusPerizinanScreen() {
 
   // Filter records for today only
   const todayRecords = useMemo(() => {
-    return records.filter((r) => r.tanggal.startsWith(todayStr));
+    return records.filter(
+      (r) => formatDateWIB(parseISO(r.tanggal)) === todayStr,
+    );
   }, [records, todayStr]);
 
   // Latest record for TODAY (for TopStatusCard)
