@@ -1,5 +1,5 @@
 import { Stack, useRouter, useFocusEffect } from "expo-router";
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useState, useMemo, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -92,7 +92,11 @@ function StatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function PermissionCard({ item }: { item: PerizinanRecord }) {
+const PermissionCard = memo(function PermissionCard({
+  item,
+}: {
+  item: PerizinanRecord;
+}) {
   const category =
     CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
   const date = parseISO(item.tanggal);
@@ -158,7 +162,7 @@ function PermissionCard({ item }: { item: PerizinanRecord }) {
       )}
     </View>
   );
-}
+});
 
 function TopStatusCard({
   item,
@@ -248,7 +252,8 @@ function TopStatusCard({
 
 export default function StatusPerizinanScreen() {
   const router = useRouter();
-  const { user, userProfile } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const userProfile = useAuthStore((state) => state.userProfile);
 
   // ---- State ----
   const [loading, setLoading] = useState(true);
@@ -262,7 +267,9 @@ export default function StatusPerizinanScreen() {
     try {
       const { data, error } = await supabase
         .from("perizinan")
-        .select("*")
+        .select(
+          "id, kategori_izin, deskripsi, approval_status, tanggal, created_at, rejection_reason, rejected_at",
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -298,10 +305,15 @@ export default function StatusPerizinanScreen() {
     }, [router]),
   );
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchRecords();
-  };
+  }, [fetchRecords]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: PerizinanRecord }) => <PermissionCard item={item} />,
+    [],
+  );
 
   const todayStr = formatDateWIB(new Date());
 
@@ -365,13 +377,17 @@ export default function StatusPerizinanScreen() {
         <FlatList
           className="flex-1 px-5"
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          initialNumToRender={6}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
           contentContainerStyle={{ paddingBottom: 100 }}
           data={records}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PermissionCard item={item} />}
+          renderItem={renderItem}
           ListHeaderComponent={
             todayLatestRecord ? (
               <TopStatusCard

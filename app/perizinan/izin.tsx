@@ -333,29 +333,7 @@ export default function PerizinanScreen() {
 
   // ---- Effect Hooks ----
 
-  // Check initial submission status
-  useEffect(() => {
-    const checkInitialSubmissionStatus = async () => {
-      if (!user?.id) {
-        setUIState((prev) => ({ ...prev, checking: false }));
-        return;
-      }
-
-      try {
-        const result = await checkTodayIzin(user.id);
-        setHasSubmittedToday(!result.canSubmit);
-        setBlockingReason(result.reason);
-      } catch {
-        setHasSubmittedToday(false);
-      } finally {
-        setUIState((prev) => ({ ...prev, checking: false }));
-      }
-    };
-
-    checkInitialSubmissionStatus();
-  }, [user?.id, checkTodayIzin]);
-
-  // Refresh submission status on focus
+  // Refresh submission status on focus (also fires on initial mount)
   useFocusEffect(
     useCallback(() => {
       const refreshSubmissionStatus = async () => {
@@ -644,15 +622,6 @@ export default function PerizinanScreen() {
       return;
     }
 
-    const result = await checkTodayIzin(user.id);
-    if (!result.canSubmit) {
-      Alert.alert(
-        "Tidak Dapat Mengajukan",
-        result.reason || "Tidak dapat mengajukan perizinan saat ini.",
-      );
-      return;
-    }
-
     try {
       setUIState((prev) => ({ ...prev, uploading: true }));
 
@@ -697,7 +666,6 @@ export default function PerizinanScreen() {
     user,
     formData,
     validation.description,
-    checkTodayIzin,
     uploadImageToStorage,
     insertPermitToDatabase,
     router,

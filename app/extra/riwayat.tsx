@@ -103,10 +103,9 @@ export default function Riwayat() {
   // PERF-M10: Memoize maximumDate to avoid new Date() on every render
   const maximumDate = useMemo(() => new Date(), []);
 
-  // Handle date change
-  const handleDateChange = (date: Date) => {
+  const handleDateChange = useCallback((date: Date) => {
     setSelectedDate(date);
-  };
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">

@@ -96,7 +96,7 @@ async function retryAsync<T>(
 function getProjectId(): string | undefined {
   return (
     Constants.expoConfig?.extra?.eas?.projectId ??
-    (Constants as Record<string, unknown>).easConfig?.projectId
+    (Constants as Record<string, Record<string, unknown>>).easConfig?.projectId
   );
 }
 

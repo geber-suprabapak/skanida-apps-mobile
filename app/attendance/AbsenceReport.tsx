@@ -42,7 +42,7 @@ type AttendanceActionResponse = {
 };
 
 export default function AbsenceReport() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
 
   // Hanya butuh beberapa state sederhana

@@ -46,12 +46,6 @@ import Constants from "expo-constants";
 import LogoImage from "~/assets/skanidatransparan.png";
 
 // Types
-interface UserProfile {
-  id: string;
-  full_name?: string;
-  avatar_url?: string;
-}
-
 interface AttendanceStatus {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
@@ -118,11 +112,11 @@ export default function Dashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
+  const userProfile = useAuthStore((state) => state.userProfile);
   const theme = useThemeStore((state) => state.theme);
 
   // State
   const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
@@ -148,7 +142,7 @@ export default function Dashboard() {
 
   // Avatar pipeline
   const rawAvatarValue =
-    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
+    userProfile?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
 
   useEffect(() => {
     let active = true;
@@ -170,22 +164,6 @@ export default function Dashboard() {
   }, [rawAvatarValue]);
 
   // Data fetching
-  const fetchProfileData = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("full_name, avatar_url")
-        .eq("user_id", user.id)
-        .single();
-      if (error) throw error;
-      if (data) setProfileData(data as UserProfile);
-    } catch (error) {
-      Sentry.captureException(error);
-      setProfileData(null);
-    }
-  }, [user]);
-
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
     try {
@@ -285,21 +263,11 @@ export default function Dashboard() {
   const initializeDashboard = useCallback(async () => {
     try {
       setIsInitializing(true);
-      await Promise.all([
-        fetchProfileData(),
-        fetchAttendanceData(),
-        fetchAttendanceSchedule(),
-        checkEnrollmentStatus(),
-      ]);
+      await Promise.all([fetchAttendanceData(), fetchAttendanceSchedule()]);
     } finally {
       setIsInitializing(false);
     }
-  }, [
-    fetchProfileData,
-    fetchAttendanceData,
-    fetchAttendanceSchedule,
-    checkEnrollmentStatus,
-  ]);
+  }, [fetchAttendanceData, fetchAttendanceSchedule]);
 
   useEffect(() => {
     initializeDashboard();
@@ -349,7 +317,6 @@ export default function Dashboard() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
-      fetchProfileData(),
       fetchAttendanceData(),
       timeSync.forceSyncWithServer().then((ok) => {
         if (ok) setScheduleTime(timeSync.getSyncedTime());
@@ -358,16 +325,11 @@ export default function Dashboard() {
       checkEnrollmentStatus(),
     ]);
     setRefreshing(false);
-  }, [
-    fetchProfileData,
-    fetchAttendanceData,
-    fetchAttendanceSchedule,
-    checkEnrollmentStatus,
-  ]);
+  }, [fetchAttendanceData, fetchAttendanceSchedule, checkEnrollmentStatus]);
 
   // Computed values
   const rawName =
-    profileData?.full_name ??
+    userProfile?.full_name ??
     user?.user_metadata?.full_name ??
     user?.user_metadata?.name ??
     "";

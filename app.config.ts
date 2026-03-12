@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.2.1-development",
+  version: "1.2.2-development",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -52,7 +52,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           minSdkVersion: 24,
           enableBundleCompression: true,
           enableMinifyInReleaseBuilds: true,
-          useLegacyPackaging: true,
+          enableProguardInReleaseBuilds: true,
+          shrinkResources: true,
+          useLegacyPackaging: false,
           targetSdkVersion: 35,
         },
         ios: {
@@ -60,7 +62,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
     ],
-    "expo-font",
     [
       "expo-notifications",
       {
@@ -96,7 +97,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     googleServicesFile: "./certs/google-services.json",
     permissions: [
       "android.permission.CAMERA",
-      "android.permission.RECORD_AUDIO",
       "android.permission.POST_NOTIFICATIONS",
     ],
   },

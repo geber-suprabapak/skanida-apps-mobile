@@ -220,7 +220,7 @@ const CameraAttendance = () => {
   }));
 
   // --- STORE & PARAMS ---
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
 
   const actionType = useMemo<"check_in" | "check_out" | null>(() => {
     const value = params.actionType;

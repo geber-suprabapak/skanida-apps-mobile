@@ -58,7 +58,6 @@ function Pengaturan() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
 
   const notif = useNotificationSettings(user?.id);
 
@@ -115,9 +114,6 @@ function Pengaturan() {
     }
   }, [user]);
 
-  // Theme sync
-  useEffect(() => setIsDarkMode(theme === "dark"), [theme]);
-
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -166,11 +162,10 @@ function Pengaturan() {
   }, [user?.id]);
 
   const toggleTheme = useCallback(() => {
-    const next = isDarkMode ? "light" : "dark";
-    setIsDarkMode(!isDarkMode);
+    const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     colorScheme.set(next);
-  }, [isDarkMode, setTheme]);
+  }, [theme, setTheme]);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
@@ -209,7 +204,7 @@ function Pengaturan() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
@@ -299,11 +294,11 @@ function Pengaturan() {
             {/* Dark Mode */}
             <View className="flex-row items-center p-4 border-b border-border/50">
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${isDarkMode ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${theme === "dark" ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
               >
                 <Icon
-                  as={isDarkMode ? Moon : Sun}
-                  className={`size-5 ${isDarkMode ? "text-purple-500" : "text-yellow-500"}`}
+                  as={theme === "dark" ? Moon : Sun}
+                  className={`size-5 ${theme === "dark" ? "text-purple-500" : "text-yellow-500"}`}
                 />
               </View>
               <View className="flex-1 ml-4">
@@ -311,11 +306,11 @@ function Pengaturan() {
                   Mode Gelap
                 </Text>
                 <Text className="text-muted-foreground text-xs mt-0.5">
-                  {isDarkMode ? "Tema gelap aktif" : "Tema terang aktif"}
+                  {theme === "dark" ? "Tema gelap aktif" : "Tema terang aktif"}
                 </Text>
               </View>
               <Switch
-                value={isDarkMode}
+                value={theme === "dark"}
                 onValueChange={toggleTheme}
                 trackColor={{ false: "#e5e7eb", true: "#6366f1" }}
                 thumbColor="#ffffff"
