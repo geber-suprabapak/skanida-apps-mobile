@@ -14,7 +14,7 @@ import {
   setupNotificationChannel,
 } from "~/utils/notifications";
 import { useNotificationSync } from "~/hooks/useNotificationSync";
-import { ensureSupabaseInitialized } from "~/utils/supabase";
+import { ensureSupabaseInitialized, supabase } from "~/utils/supabase";
 import { View, ActivityIndicator } from "react-native";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
@@ -44,6 +44,7 @@ export { ErrorBoundary } from "expo-router";
 export default Sentry.wrap(function RootLayout() {
   const { theme } = useThemeStore();
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -55,32 +56,20 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [theme]);
 
-  // Initialize Supabase before rendering the app
+  // Initialize Supabase first — this gates rendering. TimeSync and
+  // notifications are initialized afterwards without blocking auth.
   useEffect(() => {
     let mounted = true;
 
     async function initializeApp() {
       try {
-        // Initialize Supabase first
         await ensureSupabaseInitialized();
-
         if (!mounted) return;
-
-        // Initialize TimeSync
-        await timeSync.initialize();
-
-        if (!mounted) return;
-
-        // Setup notifications
-        setupNotificationHandler();
-        await setupNotificationChannel();
-
-        if (!mounted) return;
-
+        // Unblock auth routing immediately after Supabase is ready.
         setIsSupabaseReady(true);
       } catch (error) {
         if (__DEV__) {
-          console.error("App initialization failed:", error);
+          console.error("Supabase initialization failed:", error);
         }
         Sentry.captureException(error);
         if (mounted) {
@@ -88,6 +77,25 @@ export default Sentry.wrap(function RootLayout() {
             error instanceof Error ? error.message : "Failed to initialize app",
           );
         }
+        return;
+      }
+
+      // Non-blocking: failures here don't affect auth or routing.
+      try {
+        await timeSync.initialize();
+      } catch (error) {
+        if (__DEV__) console.warn("TimeSync initialization failed:", error);
+        Sentry.captureException(error);
+      }
+
+      if (!mounted) return;
+
+      try {
+        setupNotificationHandler();
+        await setupNotificationChannel();
+      } catch (error) {
+        if (__DEV__) console.warn("Notification setup failed:", error);
+        Sentry.captureException(error);
       }
     }
 
@@ -98,6 +106,23 @@ export default Sentry.wrap(function RootLayout() {
       timeSync.cleanup();
     };
   }, []);
+
+  // Keep Zustand auth store in sync with Supabase auth state changes
+  // (token refresh, sign-out, sign-in from another tab/device, etc.)
+  // INITIAL_SESSION is intentionally skipped — index.tsx handles the first
+  // routing decision via getSession() to avoid a double fetchUserProfile call.
+  useEffect(() => {
+    if (!isSupabaseReady) return;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [isSupabaseReady, setUser]);
 
   // Reconcile notification state on mount & app resume
   useNotificationSync({ userId: user?.id, enabled: isSupabaseReady });

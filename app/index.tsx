@@ -2,38 +2,36 @@
 import { useRouter, Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 import useAuthStore from "../store/authStore";
-import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
-import { getSupabaseConfig } from "~/utils/secureConfig";
+import { supabase } from "../utils/supabase";
+import { resolveUserRole } from "~/utils/authUtils";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Ensure Supabase is initialized with runtime config
-        await getSupabaseConfig();
-        await ensureSupabaseInitialized();
-
-        const sessionResponse = await supabase.auth.getSession();
-
         const {
           data: { session },
           error,
-        } = sessionResponse;
+        } = await supabase.auth.getSession();
 
         if (error) {
-          setLoadingMessage("Terjadi kesalahan saat memeriksa sesi.");
+          if (__DEV__)
+            console.error("[Index] getSession error:", error.message);
+          Sentry.captureException(error);
         }
 
         if (session?.user) {
-          const role = session.user.app_metadata?.role as string;
+          const role = resolveUserRole(
+            session.access_token,
+            session.user.app_metadata as Record<string, unknown> | undefined,
+          );
 
           if (role !== "siswa") {
             await supabase.auth.signOut();
@@ -48,13 +46,9 @@ export default function Index() {
           router.replace("/auth/AuthSelector");
         }
       } catch (err) {
-        if (err instanceof Error) {
-          setLoadingMessage("Terjadi kesalahan saat memeriksa sesi.");
-        } else {
-          setLoadingMessage("Error occurred while checking session (unknown)");
-        }
-      } finally {
-        setIsLoading(false);
+        if (__DEV__) console.error("[Index] checkAuth error:", err);
+        Sentry.captureException(err);
+        router.replace("/auth/AuthSelector");
       }
     };
 
