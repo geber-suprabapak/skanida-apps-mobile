@@ -329,9 +329,21 @@ export default function StatusPerizinanScreen() {
 
   // Count today's submissions
   const todayCount = todayRecords.length;
+  const hasPendingOrApproved = todayRecords.some(
+    (r) => r.approval_status === "pending" || r.approval_status === "approved",
+  );
 
   const MAX_DAILY_SUBMISSIONS = 3;
-  const canSubmitMore = todayCount < MAX_DAILY_SUBMISSIONS;
+  const canSubmitMore =
+    todayCount < MAX_DAILY_SUBMISSIONS && !hasPendingOrApproved;
+
+  const buttonLabel = useMemo(() => {
+    if (canSubmitMore) return "Ajukan Izin Baru";
+    if (hasPendingOrApproved) return "Sudah Ada Izin Aktif";
+    if (todayCount >= MAX_DAILY_SUBMISSIONS)
+      return `Batas Harian Tercapai (${MAX_DAILY_SUBMISSIONS})`;
+    return "Tidak Dapat Mengajukan Izin";
+  }, [canSubmitMore, hasPendingOrApproved, todayCount]);
 
   // ---- Render ----
   return (
@@ -426,9 +438,7 @@ export default function StatusPerizinanScreen() {
           >
             <Icon as={Plus} className="text-white mr-2 size-5" />
             <Text className="text-white font-bold text-base">
-              {canSubmitMore
-                ? "Ajukan Izin Baru"
-                : `Batas Harian Tercapai (${MAX_DAILY_SUBMISSIONS})`}
+              {buttonLabel}
             </Text>
           </TouchableOpacity>
         </View>
