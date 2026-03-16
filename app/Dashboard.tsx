@@ -29,7 +29,7 @@ import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { fetchEnrollmentStatus } from "~/utils/enrollment";
 import type { EnrollmentStatus } from "~/utils/enrollment";
-import { formatDateWIB, getWIBDayBounds } from "~/lib/utils";
+import { formatDateWIB, getWIBDayBounds, toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
 import {
@@ -341,7 +341,8 @@ export default function Dashboard() {
   const hasCustomAvatar = Boolean(avatarUrl);
 
   const greeting = useMemo(() => {
-    const h = scheduleTime.getHours();
+    const wibDate = toWIB(scheduleTime);
+    const h = wibDate.getUTCHours();
     if (h >= 3 && h < 11) return "Selamat Pagi";
     if (h >= 11 && h < 15) return "Selamat Siang";
     if (h >= 15 && h < 18) return "Selamat Sore";

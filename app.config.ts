@@ -83,7 +83,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: "#ffffff",
   },
   // PERF-M06: Only bundle essential assets (was "**/*" which bundles everything)
-  assetBundlePatterns: ["assets/images/*", "assets/fonts/*", "assets/*.png"],
+  assetBundlePatterns: [
+    "assets/images/*",
+    "assets/fonts/*",
+    "assets/*.png",
+    "assets/*.jpg",
+  ],
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.hfzrk.skanidaappsmobile",

@@ -217,7 +217,11 @@ async function saveTokenToDatabase(userId: string): Promise<PermissionResult> {
   try {
     const projectId = getProjectId();
     if (!projectId) {
-      Sentry.captureException(new Error("Missing EAS projectId"));
+      const error = new Error(
+        "Missing EAS projectId. Ensure project is configured in app.config.ts",
+      );
+      Sentry.captureException(error);
+      if (__DEV__) console.error(error.message);
       return FAIL_RESULT;
     }
 
