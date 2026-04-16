@@ -30,6 +30,18 @@
         "RELEASE_CHANNEL": "production"
       }
     },
+    "production-ci": {
+      "pnpm": "10.19.0",
+      "autoIncrement": false,
+      "channel": "production",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a --daemon --parallel --configure-on-demand --build-cache"
+      },
+      "env": {
+        "RELEASE_CHANNEL": "production"
+      }
+    },
     "production-armv7a": {
       "autoIncrement": false,
       "channel": "production",
