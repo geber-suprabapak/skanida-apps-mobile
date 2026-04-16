@@ -5,15 +5,11 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-      - develop
       - master
-      - release/v1.2.0-astra
 
   push:
     branches:
-      - develop
       - master
-      - release/v1.2.0-astra
 
 permissions:
   contents: read
@@ -25,14 +21,14 @@ concurrency:
 jobs:
   build:
     name: Build Android APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: harin-runner
+    timeout-minutes: 90
 
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
       EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
-      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+      NODE_OPTIONS: --max-old-space-size=8192
 
     steps:
       - name: Check required secrets
@@ -68,7 +64,21 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: pnpm
+
+      - name: Configure Harin runner caches
+        run: |
+          rm -rf artifacts "$RUNNER_TEMP/eas-local-build"
+          mkdir -p artifacts "$RUNNER_TEMP/eas-local-build"
+          mkdir -p "$HOME/.gradle" "$HOME/.local/share/pnpm/store"
+          pnpm config set store-dir "$HOME/.local/share/pnpm/store"
+          {
+            echo "GRADLE_USER_HOME=$HOME/.gradle"
+            echo "EAS_LOCAL_BUILD_WORKINGDIR=$RUNNER_TEMP/eas-local-build"
+          } >> "$GITHUB_ENV"
+          echo "Runner: ${{ runner.name }} (${{ runner.os }}/${{ runner.arch }})"
+          nproc
+          free -h
+          df -h "$HOME" "$GITHUB_WORKSPACE"
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -76,18 +86,6 @@ jobs:
           eas-version: latest
           packager: pnpm
           token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            .gradle
-            android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
