@@ -53,6 +53,7 @@ jobs:
         run: |
           mkdir -p certs
           printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > certs/google-services.json
+          test -s certs/google-services.json
 
       - name: Setup Java
         uses: actions/setup-java@v5

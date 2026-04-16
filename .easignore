@@ -1,0 +1,40 @@
+node_modules/
+.expo/
+dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+# expo router
+expo-env.d.ts
+# tamagui
+.tamagui/
+# firebase/supabase/vexo
+.env
+# idea
+.idea
+ios
+android
+
+app-env.d.ts
+nativewind-env.d.ts
+# macOS
+.DS_Store
+
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
+.env.local
+
+# Certs
+certs/private-key.pem
+certs/public-key.pem
+
+.serena
+google-services.json
+
+# EAS build needs this generated file from GitHub Actions secrets.
+!certs/google-services.json
