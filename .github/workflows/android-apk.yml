@@ -7,10 +7,13 @@ on:
     branches:
       - develop
       - master
+      - release/v1.2.0-astra
+
   push:
     branches:
       - develop
       - master
+      - release/v1.2.0-astra
 
 permissions:
   contents: read
