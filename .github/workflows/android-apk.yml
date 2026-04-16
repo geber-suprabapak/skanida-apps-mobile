@@ -27,7 +27,8 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-      EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
+      EAS_LOCAL_BUILD_ARTIFACTS_DIR: ./artifacts
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
       NODE_OPTIONS: --max-old-space-size=8192
 
     steps:
@@ -57,6 +58,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
@@ -67,12 +79,11 @@ jobs:
 
       - name: Configure Harin runner caches
         run: |
-          rm -rf artifacts "$RUNNER_TEMP/eas-local-build"
-          mkdir -p artifacts "$RUNNER_TEMP/eas-local-build"
-          mkdir -p "$HOME/.gradle" "$HOME/.local/share/pnpm/store"
+          rm -rf "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" "$RUNNER_TEMP/eas-local-build"
+          mkdir -p "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" "$RUNNER_TEMP/eas-local-build"
+          mkdir -p "$GRADLE_USER_HOME" "$HOME/.local/share/pnpm/store"
           pnpm config set store-dir "$HOME/.local/share/pnpm/store"
           {
-            echo "GRADLE_USER_HOME=$HOME/.gradle"
             echo "EAS_LOCAL_BUILD_WORKINGDIR=$RUNNER_TEMP/eas-local-build"
           } >> "$GITHUB_ENV"
           echo "Runner: ${{ runner.name }} (${{ runner.os }}/${{ runner.arch }})"
@@ -97,5 +108,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: skanida-apps-android-apk
-          path: artifacts/**/*.apk
+          path: ${{ env.EAS_LOCAL_BUILD_ARTIFACTS_DIR }}/**/*.apk
           if-no-files-found: error

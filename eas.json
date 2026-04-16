@@ -39,6 +39,7 @@
         "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --parallel --configure-on-demand --build-cache"  
       },
       "env": {
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "./artifacts",
         "RELEASE_CHANNEL": "production"
       }
     },
