@@ -1,0 +1,112 @@
+---
+name: Android APK
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: harin-runner
+    timeout-minutes: 90
+
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+      EAS_LOCAL_BUILD_ARTIFACTS_DIR: ./artifacts
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+      NODE_OPTIONS: --max-old-space-size=8192
+
+    steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing EXPO_TOKEN. Add it in GitHub repository secrets."
+            exit 1
+          fi
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "Missing GOOGLE_SERVICES_JSON_BASE64. Add it in GitHub repository secrets."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Restore google-services.json
+        run: |
+          mkdir -p certs
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > certs/google-services.json
+          test -s certs/google-services.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Configure Harin runner caches
+        run: |
+          rm -rf "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" "$RUNNER_TEMP/eas-local-build"
+          mkdir -p "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" "$RUNNER_TEMP/eas-local-build"
+          mkdir -p "$GRADLE_USER_HOME" "$HOME/.local/share/pnpm/store"
+          pnpm config set store-dir "$HOME/.local/share/pnpm/store"
+          {
+            echo "EAS_LOCAL_BUILD_WORKINGDIR=$RUNNER_TEMP/eas-local-build"
+          } >> "$GITHUB_ENV"
+          echo "Runner: ${{ runner.name }} (${{ runner.os }}/${{ runner.arch }})"
+          nproc
+          free -h
+          df -h "$HOME" "$GITHUB_WORKSPACE"
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: pnpm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build APK
+        run: eas build --local --platform android --profile production-ci --non-interactive
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skanida-apps-android-apk
+          path: ${{ env.EAS_LOCAL_BUILD_ARTIFACTS_DIR }}/**/*.apk
+          if-no-files-found: error
