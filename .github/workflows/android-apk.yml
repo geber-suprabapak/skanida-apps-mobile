@@ -21,7 +21,8 @@ concurrency:
 jobs:
   build:
     name: Build Android APK
-    runs-on: [harin-runner, evernight]
+    runs-on:
+      group: big-boy
     timeout-minutes: 90
 
     env:
