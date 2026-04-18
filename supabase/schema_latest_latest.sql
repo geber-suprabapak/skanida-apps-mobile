@@ -220,11 +220,62 @@ CREATE TRIGGER set_perizinan_tanggal_utc_date_trigger
     FOR EACH ROW
     EXECUTE FUNCTION set_perizinan_tanggal_utc_date();
 
+-- Function to enforce perizinan daily submission rules
+CREATE OR REPLACE FUNCTION validate_perizinan_daily_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+    existing_count INTEGER;
+    has_pending BOOLEAN;
+    has_approved BOOLEAN;
+BEGIN
+    IF NEW.tanggal_utc_date IS NULL THEN
+        NEW.tanggal_utc_date = (NEW.tanggal AT TIME ZONE 'UTC')::DATE;
+    END IF;
+
+    SELECT
+        COUNT(*) FILTER (WHERE approval_status = 'pending') > 0,
+        COUNT(*) FILTER (WHERE approval_status = 'approved') > 0,
+        COUNT(*)
+    INTO has_pending, has_approved, existing_count
+    FROM perizinan
+    WHERE user_id = NEW.user_id
+      AND tanggal_utc_date = NEW.tanggal_utc_date
+      AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::UUID);
+
+    IF has_pending THEN
+        RAISE EXCEPTION 'Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.'
+            USING ERRCODE = '23505';
+    END IF;
+
+    IF has_approved THEN
+        RAISE EXCEPTION 'Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.'
+            USING ERRCODE = '23505';
+    END IF;
+
+    IF existing_count >= 3 THEN
+        RAISE EXCEPTION 'Batas maksimal 3 pengajuan per hari telah tercapai.'
+            USING ERRCODE = '23505';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS enforce_perizinan_daily_limit ON perizinan;
+CREATE TRIGGER enforce_perizinan_daily_limit
+    BEFORE INSERT OR UPDATE OF tanggal, tanggal_utc_date ON perizinan
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_perizinan_daily_limit();
+
 -- Backfill existing records (safe to run multiple times)
 UPDATE perizinan SET tanggal_utc_date = (tanggal AT TIME ZONE 'UTC')::DATE WHERE tanggal_utc_date IS NULL;
 
--- Create unique constraint to enforce one perizinan per user per day
-CREATE UNIQUE INDEX IF NOT EXISTS perizinan_user_day_unique ON perizinan(user_id, tanggal_utc_date);
+-- Create partial unique constraint for active perizinan submissions
+DROP INDEX IF EXISTS perizinan_user_day_unique;
+CREATE UNIQUE INDEX perizinan_user_day_unique
+  ON perizinan(user_id, tanggal_utc_date)
+  WHERE approval_status IN ('pending', 'approved');
+COMMENT ON INDEX perizinan_user_day_unique IS 'Partial unique index: enforces one pending or approved perizinan per user per day. Rejected submissions are not constrained, allowing up to 3 resubmissions per day.';
 
 -- ============================================================================
 -- Comments for documentation
@@ -240,7 +291,8 @@ COMMENT ON TABLE jadwal_absensi IS 'Schedule configuration for attendance time w
 COMMENT ON COLUMN absences.status IS 'Attendance status: Hadir (present), Terlambat (late), Pulang (check-out), Alpha (absent without notice)';
 COMMENT ON COLUMN perizinan.kategori_izin IS 'Permission category: sakit (sick), pergi (other leave)';
 COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pending, approved, rejected';
-COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries';
+COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries and daily limit validation. Blocks new submissions if any pending/approved exists; allows max 3 if all rejected.';
+COMMENT ON COLUMN user_profiles.notification_token IS 'Expo push notification token for the user device';
 COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location in meters';
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
 
@@ -761,7 +813,8 @@ GRANT UPDATE (
   absence_number,
   class_name,
   gender,
-  updated_at
+  updated_at,
+  notification_token
 ) ON TABLE user_profiles TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO anon, authenticated;
@@ -863,6 +916,69 @@ $$;
 -- Grant execute permission to anon role (for pre-login activation check)
 GRANT EXECUTE ON FUNCTION get_biodata_siswa(TEXT) TO anon;
 
+-- Function to create or refresh a user profile from biodata_siswa
+CREATE OR REPLACE FUNCTION create_user_profile_from_biodata(
+  p_user_id UUID,
+  p_nis TEXT,
+  p_email TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_nis_bigint BIGINT;
+  v_result JSON;
+BEGIN
+  v_nis_bigint := p_nis::BIGINT;
+
+  INSERT INTO user_profiles (user_id, full_name, email, nis, class_name, absence_number, gender, role)
+  SELECT
+    p_user_id,
+    bs.nama,
+    p_email,
+    bs.nis::TEXT,
+    bs.kelas,
+    bs.absen::TEXT,
+    bs.kelamin,
+    'siswa'
+  FROM biodata_siswa AS bs
+  WHERE bs.nis = v_nis_bigint
+  ON CONFLICT (user_id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    email = EXCLUDED.email,
+    nis = EXCLUDED.nis,
+    class_name = EXCLUDED.class_name,
+    absence_number = EXCLUDED.absence_number,
+    gender = EXCLUDED.gender,
+    updated_at = NOW();
+
+  UPDATE biodata_siswa
+  SET activated = true
+  WHERE nis = v_nis_bigint;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'User profile created successfully',
+    'user_id', p_user_id,
+    'nis', p_nis
+  ) INTO v_result;
+
+  RETURN v_result;
+EXCEPTION
+  WHEN OTHERS THEN
+    SELECT json_build_object(
+      'success', false,
+      'message', SQLERRM,
+      'user_id', p_user_id,
+      'nis', p_nis
+    ) INTO v_result;
+    RETURN v_result;
+END;
+$$;
+
+COMMENT ON FUNCTION create_user_profile_from_biodata(UUID, TEXT, TEXT) IS 'Creates user profile from biodata_siswa data. Uses SECURITY DEFINER to bypass RLS policies safely. Called by account creation scripts.';
+
 -- Function to check nearest location and validate user distance
 CREATE OR REPLACE FUNCTION check_nearest_location(
   user_lat DOUBLE PRECISION,
@@ -922,6 +1038,29 @@ $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION check_nearest_location(DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
+
+-- Function to lookup student info by auth user id
+CREATE OR REPLACE FUNCTION get_student_by_user_id(p_user_id UUID)
+RETURNS TABLE (nis TEXT, nama TEXT, kelas TEXT, absen INTEGER)
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    up.nis,
+    bs.nama,
+    bs.kelas,
+    bs.absen
+  FROM user_profiles AS up
+  INNER JOIN biodata_siswa AS bs ON up.nis = bs.nis::TEXT
+  WHERE up.user_id = p_user_id
+  LIMIT 1;
+END;
+$$;
+
+COMMENT ON FUNCTION get_student_by_user_id(UUID) IS 'Lookup student info by user_id for face recognition system';
+GRANT EXECUTE ON FUNCTION get_student_by_user_id(UUID) TO authenticated, service_role;
 
 -- ============================================================================
 -- RPC Function: check_absensi_status
