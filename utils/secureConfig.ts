@@ -173,7 +173,7 @@ export async function ensureFaceApiConfigured(): Promise<string> {
 
   const config = await getFaceApiConfig();
   if (!config) {
-    throw new Error("Face API URL tidak dikonfigurasi. Hubungi administrator.");
+    throw new Error("Server verifikasi belum dikonfigurasi. Hubungi administrator.");
   }
 
   cachedFaceApiUrl = config.url;

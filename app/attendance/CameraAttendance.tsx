@@ -28,14 +28,12 @@ import * as FileSystem from "expo-file-system";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
-import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import {
   Camera as CameraIcon,
   SwitchCamera,
   ArrowLeft,
   Loader2,
 } from "lucide-react-native";
-import { timeSync } from "~/utils/timeSync";
 import useAuthStore from "~/store/authStore";
 import {
   bytesInfo,
@@ -48,6 +46,8 @@ import {
   sessionDebugInfo,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
+import { ensureFaceApiReady } from "~/utils/faceApiRuntime";
+import { setPendingAttendanceSuccess } from "~/utils/attendanceSuccess";
 
 // --- CONSTANTS ---
 const MAX_BASE64_SIZE_MB = 5;
@@ -209,15 +209,6 @@ const CameraAttendance = () => {
   const device = useCameraDevice(cameraFacing);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
-  const [successState, setSuccessState] = useState<{
-    visible: boolean;
-    time: string;
-    processingTime: number;
-  }>({
-    visible: false,
-    time: "",
-    processingTime: 0,
-  });
   const [processProgress, setProcessProgress] = useState<ProcessProgress>({
     stage: "verifying",
     percentage: 0,
@@ -295,6 +286,13 @@ const CameraAttendance = () => {
         payloadSize: bytesInfo(getBase64ByteSize(base64Image)),
       });
 
+      const runtime = await ensureFaceApiReady();
+      faceApiLog("identify:runtime-ready", {
+        message: runtime.message,
+        readinessPath: runtime.info?.readinessPath ?? null,
+        issues: runtime.issues,
+      });
+
       await ensureSupabaseInitialized();
 
       const {
@@ -362,7 +360,7 @@ const CameraAttendance = () => {
         }
 
         if (!isRecord(parsedBody)) {
-          throw new Error("Respons Face API tidak valid.");
+          throw new Error("Respons server tidak valid.");
         }
 
         return parsedBody as unknown as FaceRecogResponse;
@@ -546,18 +544,11 @@ const CameraAttendance = () => {
           faceResult,
           saveData,
         });
-        const currentTime = timeSync
-          .getSyncedTime()
-          .toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-
-        setSuccessState({
-          visible: true,
-          time: currentTime,
+        setPendingAttendanceSuccess({
+          attendanceType: actionType,
           processingTime: totalTime,
         });
+        router.replace("/Dashboard");
       } catch (error: any) {
         faceApiError("attendance-process:failed", {
           durationMs: elapsedMs(startedAt),
@@ -572,7 +563,7 @@ const CameraAttendance = () => {
         setIsProcessing(false);
       }
     },
-    [user, actionType, verifyFaceWithServer, preFetchedLocation],
+    [user, actionType, verifyFaceWithServer, preFetchedLocation, router],
   );
 
   // --- EVENT HANDLERS ---
@@ -843,20 +834,6 @@ const CameraAttendance = () => {
         video
         enableZoomGesture
         onInitialized={handleCameraReady}
-      />
-
-      <AttendanceSuccessPopup
-        visible={successState.visible}
-        onClose={() => {
-          setSuccessState((current) => ({ ...current, visible: false }));
-          router.replace("/Dashboard");
-        }}
-        attendanceType={actionType}
-        studentName={
-          user?.user_metadata?.full_name || user?.user_metadata?.name || ""
-        }
-        time={successState.time}
-        processingTime={successState.processingTime}
       />
 
       <View className="absolute inset-0" pointerEvents="box-none">

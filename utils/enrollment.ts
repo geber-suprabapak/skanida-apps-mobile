@@ -20,6 +20,8 @@ export type EnrollmentStatus =
 export interface EnrollmentCheckResult {
   status: EnrollmentStatus;
   error?: string;
+  embeddingCount?: number;
+  userId?: string;
 }
 
 interface EnrollmentStatusResponse {
@@ -84,6 +86,8 @@ export async function fetchEnrollmentStatus(): Promise<EnrollmentCheckResult> {
 
     return {
       status: response.data.is_enrolled ? "enrolled" : "not_enrolled",
+      embeddingCount: response.data.embedding_count,
+      userId: response.data.user_id,
     };
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 404) {
@@ -93,10 +97,37 @@ export async function fetchEnrollmentStatus(): Promise<EnrollmentCheckResult> {
       });
       return { status: "not_enrolled" };
     }
+
+    let errorMessage = "Gagal terhubung ke server";
+    if (isAxiosError(error)) {
+      const responseData = error.response?.data;
+      if (
+        responseData &&
+        typeof responseData === "object" &&
+        "detail" in responseData &&
+        typeof responseData.detail === "string"
+      ) {
+        errorMessage = responseData.detail;
+      } else if (
+        responseData &&
+        typeof responseData === "object" &&
+        "message" in responseData &&
+        typeof responseData.message === "string"
+      ) {
+        errorMessage = responseData.message;
+      }
+    }
+
+    if (errorMessage === "Embedding store is unavailable") {
+      errorMessage = "Server verifikasi sedang tidak tersedia.";
+    } else if (errorMessage.startsWith("Failed to check enrollment status")) {
+      errorMessage = "Gagal memeriksa status wajah di server.";
+    }
+
     faceApiError("enroll-status:failed", {
       durationMs: elapsedMs(startedAt),
       error: axiosErrorDebugInfo(error),
     });
-    return { status: "error", error: "Gagal terhubung ke server" };
+    return { status: "error", error: errorMessage };
   }
 }

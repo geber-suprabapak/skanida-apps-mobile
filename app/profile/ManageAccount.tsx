@@ -15,7 +15,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import axios, { isAxiosError } from "axios";
 import { StatusBar } from "expo-status-bar";
 
 import { Button } from "~/components/ui/button";
@@ -44,18 +43,19 @@ import {
 } from "lucide-react-native";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
-import { ensureFaceApiConfigured } from "~/utils/secureConfig";
+import { supabase } from "~/utils/supabase";
 import { extractAvatarPath, getAvatarSignedUrl } from "~/utils/avatar";
 import {
-  axiosErrorDebugInfo,
-  elapsedMs,
-  faceApiError,
+  fetchEnrollmentStatus,
+  type EnrollmentStatus,
+} from "~/utils/enrollment";
+import {
   faceApiLog,
-  faceApiWarn,
-  sessionDebugInfo,
-  startFaceApiTimer,
 } from "~/utils/faceApiDebug";
+import {
+  fetchFaceApiRuntimeStatus,
+  type FaceApiRuntimeStatusResult,
+} from "~/utils/faceApiRuntime";
 
 // --- Utility Functions ---
 
@@ -104,15 +104,6 @@ const base64ToUint8Array = (base64: string): Uint8Array => {
 
 // --- Interfaces ---
 
-// Enrollment status types
-type EnrollmentStatus = "loading" | "enrolled" | "not_enrolled" | "error";
-
-interface EnrollmentStatusResponse {
-  is_enrolled: boolean;
-  embedding_count: number;
-  user_id: string;
-}
-
 export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -151,6 +142,9 @@ export default function ManageAccount() {
   const [enrollmentStatus, setEnrollmentStatus] =
     useState<EnrollmentStatus>("loading");
   const [enrollmentError, setEnrollmentError] = useState<string>("");
+  const [faceApiRuntime, setFaceApiRuntime] =
+    useState<FaceApiRuntimeStatusResult | null>(null);
+  const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
 
   // --- Fetch Profile Data ---
   useEffect(() => {
@@ -214,87 +208,40 @@ export default function ManageAccount() {
 
   // --- Check Face Enrollment Status ---
   const checkEnrollmentStatus = useCallback(async () => {
-    const startedAt = startFaceApiTimer();
-    faceApiLog("settings:enroll-status:start", {
+    setEnrollmentStatus("loading");
+    setEnrollmentError("");
+
+    const result = await fetchEnrollmentStatus();
+    faceApiLog("settings:enroll-status:result", {
       userId: user?.id ?? null,
-      email: user?.email ?? null,
+      result,
     });
 
-    try {
-      setEnrollmentStatus("loading");
-      setEnrollmentError("");
-
-      await ensureSupabaseInitialized();
-
-      const faceApiBaseUrl = await ensureFaceApiConfigured();
-      const enrollStatusUrl = `${faceApiBaseUrl}/v1/enroll/status`;
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      faceApiLog("settings:enroll-status:session", sessionDebugInfo(session));
-
-      if (!session) {
-        faceApiWarn("settings:enroll-status:missing-session", {
-          durationMs: elapsedMs(startedAt),
-        });
-        setEnrollmentStatus("error");
-        setEnrollmentError("Sesi tidak valid");
-        return;
-      }
-
-      faceApiLog("settings:enroll-status:request", {
-        method: "GET",
-        url: enrollStatusUrl,
-        headers: {
-          Authorization: "[redacted bearer]",
-          Accept: "application/json",
-        },
-      });
-
-      const response = await axios.get<EnrollmentStatusResponse>(
-        enrollStatusUrl,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            Accept: "application/json",
-          },
-        },
-      );
-
-      const data = response.data;
-      faceApiLog("settings:enroll-status:response", {
-        status: response.status,
-        statusText: response.statusText,
-        durationMs: elapsedMs(startedAt),
-        data,
-      });
-      setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
-    } catch (error) {
-      if (isAxiosError(error)) {
-        if (error.response?.status === 404) {
-          faceApiWarn("settings:enroll-status:not-found", {
-            durationMs: elapsedMs(startedAt),
-            error: axiosErrorDebugInfo(error),
-          });
-          setEnrollmentStatus("not_enrolled");
-          return;
-        }
-      }
-      faceApiError("settings:enroll-status:failed", {
-        durationMs: elapsedMs(startedAt),
-        error: axiosErrorDebugInfo(error),
-      });
-      setEnrollmentStatus("error");
-      setEnrollmentError("Gagal terhubung ke server");
+    setEnrollmentStatus(result.status);
+    if (result.error) {
+      setEnrollmentError(result.error);
     }
   }, [user?.email, user?.id]);
 
+  const checkFaceApiRuntime = useCallback(async () => {
+    setIsCheckingFaceApi(true);
+    const result = await fetchFaceApiRuntimeStatus();
+    faceApiLog("settings:runtime-status:result", {
+      userId: user?.id ?? null,
+      result,
+    });
+    setFaceApiRuntime(result);
+    setIsCheckingFaceApi(false);
+  }, [user?.id]);
+
+  const refreshFaceVerificationStatus = useCallback(async () => {
+    await Promise.all([checkEnrollmentStatus(), checkFaceApiRuntime()]);
+  }, [checkEnrollmentStatus, checkFaceApiRuntime]);
+
   useFocusEffect(
     useCallback(() => {
-      void checkEnrollmentStatus();
-    }, [checkEnrollmentStatus]),
+      void refreshFaceVerificationStatus();
+    }, [refreshFaceVerificationStatus]),
   );
 
   // --- Avatar Logic ---
@@ -780,11 +727,11 @@ export default function ManageAccount() {
           </Text>
 
           <Card className="p-5 mb-2 bg-card border-border shadow-sm rounded-2xl">
-            {enrollmentStatus === "loading" && (
+            {(enrollmentStatus === "loading" || isCheckingFaceApi) && (
               <View className="flex-row items-center py-2">
                 <ActivityIndicator size="small" color="#3b82f6" />
                 <Text className="text-muted-foreground ml-3">
-                  Memeriksa status enrollment...
+                  Memeriksa status wajah dan server...
                 </Text>
               </View>
             )}
@@ -856,15 +803,57 @@ export default function ManageAccount() {
                     </Text>
                   </View>
                 </View>
+              </View>
+            )}
+
+            {faceApiRuntime && (
+              <View className="mt-4 pt-4 border-t border-border/60">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-foreground font-semibold">
+                    Status Server
+                  </Text>
+                  <View
+                    className={`px-2.5 py-1 rounded-full ${
+                      faceApiRuntime.state === "healthy"
+                        ? "bg-green-500/15"
+                        : faceApiRuntime.state === "unhealthy"
+                          ? "bg-amber-500/15"
+                          : "bg-red-500/15"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[11px] font-semibold ${
+                        faceApiRuntime.state === "healthy"
+                          ? "text-green-600"
+                          : faceApiRuntime.state === "unhealthy"
+                            ? "text-amber-600"
+                            : "text-red-600"
+                      }`}
+                    >
+                      {faceApiRuntime.state === "healthy"
+                        ? "SIAP"
+                        : faceApiRuntime.state === "unhealthy"
+                          ? "BELUM SIAP"
+                          : faceApiRuntime.state === "misconfigured"
+                            ? "KONFIG"
+                            : "OFFLINE"}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text className="text-xs text-muted-foreground mb-4">
+                  {faceApiRuntime.message}
+                </Text>
+
                 <Button
                   variant="outline"
                   size="default"
-                  onPress={checkEnrollmentStatus}
+                  onPress={refreshFaceVerificationStatus}
                   className="w-full border-border"
                 >
                   <Icon as={Loader2} className="size-5 text-foreground mr-2" />
                   <Text className="text-foreground font-semibold">
-                    Coba Lagi
+                    Segarkan Status
                   </Text>
                 </Button>
               </View>

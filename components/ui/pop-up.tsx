@@ -15,7 +15,6 @@ import {
   getFallbackQuote,
   type MotivationalQuote,
 } from "~/lib/motivationalQuotes";
-import { timeSync } from "~/utils/timeSync";
 import { cn } from "~/lib/utils";
 
 interface ConfettiPiece {
@@ -32,8 +31,6 @@ interface AttendanceSuccessPopupProps {
   visible: boolean;
   onClose: () => void;
   attendanceType: "check_in" | "check_out";
-  studentName?: string;
-  time?: string;
   processingTime?: number;
 }
 
@@ -54,8 +51,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   visible,
   onClose,
   attendanceType,
-  studentName = "",
-  time,
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
@@ -262,11 +257,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     if (!timeMs) return "";
 
     if (timeMs < 1000) {
-      return `Processed in ${timeMs}ms ⚡`;
+      return `Processed in ${timeMs}ms`;
     } else if (timeMs < 10000) {
-      return `Processed in ${(timeMs / 1000).toFixed(1)}s ⚡`;
+      return `Processed in ${(timeMs / 1000).toFixed(1)}s`;
     } else {
-      return `Processed in ${Math.round(timeMs / 1000)}s ⚡`;
+      return `Processed in ${Math.round(timeMs / 1000)}s`;
     }
   };
 
@@ -276,13 +271,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         motivationalQuote.author ? ` — ${motivationalQuote.author}` : ""
       }`
     : message.defaultSubtitle;
-  const currentTime =
-    time ||
-    timeSync.getSyncedTime().toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
   if (!visible) return null;
 
   return (
@@ -381,21 +369,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               >
                 {motivationalMessage}
               </Text>
-
-              {/* Time Display */}
-              <View
-                className={`px-4 py-2 rounded-full mb-2 ${
-                  colorScheme === "dark" ? "bg-gray-700" : "bg-gray-100"
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    colorScheme === "dark" ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  {currentTime}
-                </Text>
-              </View>
 
               {/* Processing Time Display */}
               {processingTime && (
