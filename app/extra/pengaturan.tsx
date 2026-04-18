@@ -21,6 +21,7 @@ import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { getAvatarSignedUrl } from "~/utils/avatar";
+import { faceApiLog } from "~/utils/faceApiDebug";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
@@ -185,7 +186,7 @@ function Pengaturan() {
       } else {
         Alert.alert("Tidak Ada Update", "Aplikasi sudah versi terbaru.");
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Gagal", "Gagal memeriksa pembaruan.");
     } finally {
       setIsCheckingUpdate(false);
@@ -252,7 +253,13 @@ function Pengaturan() {
                   </View>
                 )}
                 <EditButton
-                  onPress={() => router.push("/profile/ManageAccount")}
+                  onPress={() => {
+                    faceApiLog("settings-page:navigate-manage-account", {
+                      userId: user?.id ?? null,
+                      email: user?.email ?? null,
+                    });
+                    router.push("/profile/ManageAccount");
+                  }}
                 />
               </View>
 

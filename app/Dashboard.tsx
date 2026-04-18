@@ -32,6 +32,7 @@ import type { EnrollmentStatus } from "~/utils/enrollment";
 import { formatDateWIB, getWIBDayBounds, toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
+import { faceApiLog } from "~/utils/faceApiDebug";
 import {
   AlertCircle,
   Bug,
@@ -255,11 +256,20 @@ export default function Dashboard() {
 
   // Face enrollment check
   const checkEnrollmentStatus = useCallback(async () => {
+    faceApiLog("dashboard:enroll-status-check:start", {
+      userId: user?.id ?? null,
+      email: user?.email ?? null,
+    });
     setEnrollmentStatus("loading");
+    setEnrollmentError("");
     const result = await fetchEnrollmentStatus();
+    faceApiLog("dashboard:enroll-status-check:result", {
+      result,
+      userId: user?.id ?? null,
+    });
     setEnrollmentStatus(result.status);
     if (result.error) setEnrollmentError(result.error);
-  }, []);
+  }, [user?.email, user?.id]);
 
   // Lifecycle
   const initializeDashboard = useCallback(async () => {
@@ -406,14 +416,29 @@ export default function Dashboard() {
   ]);
 
   // Navigation
-  const navigateToCheckIn = useCallback(
-    () => router.push("/attendance/AbsenceReport"),
-    [router],
-  );
-  const navigateToEnroll = useCallback(
-    () => router.push("/profile/enroll"),
-    [router],
-  );
+  const navigateToCheckIn = useCallback(() => {
+    faceApiLog("dashboard:navigate-attendance", {
+      enrollmentStatus,
+      attendanceStatus,
+      derivedActionType,
+      isPrimaryActionDisabled,
+    });
+    router.push("/attendance/AbsenceReport");
+  }, [
+    router,
+    enrollmentStatus,
+    attendanceStatus,
+    derivedActionType,
+    isPrimaryActionDisabled,
+  ]);
+  const navigateToEnroll = useCallback(() => {
+    faceApiLog("dashboard:navigate-enroll", {
+      enrollmentStatus,
+      enrollmentError,
+      userId: user?.id ?? null,
+    });
+    router.push("/profile/enroll");
+  }, [router, enrollmentStatus, enrollmentError, user?.id]);
   const navigateToHistory = useCallback(
     () => router.push("/extra/riwayat"),
     [router],

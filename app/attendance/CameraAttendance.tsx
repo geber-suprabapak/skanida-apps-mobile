@@ -37,6 +37,17 @@ import {
 } from "lucide-react-native";
 import { timeSync } from "~/utils/timeSync";
 import useAuthStore from "~/store/authStore";
+import {
+  bytesInfo,
+  elapsedMs,
+  faceApiError,
+  faceApiLog,
+  faceApiWarn,
+  parseFaceApiBody,
+  responseDebugInfo,
+  sessionDebugInfo,
+  startFaceApiTimer,
+} from "~/utils/faceApiDebug";
 
 // --- CONSTANTS ---
 const MAX_BASE64_SIZE_MB = 5;
@@ -177,6 +188,9 @@ const getBase64ByteSize = (base64: string) => {
   return (base64.length * 3) / 4 - paddingLength;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 // --- MAIN COMPONENT ---
 const CameraAttendance = () => {
   // --- HOOKS ---
@@ -262,16 +276,37 @@ const CameraAttendance = () => {
     return { latitude, longitude };
   }, [params.latitude, params.longitude]);
 
+  useEffect(() => {
+    faceApiLog("attendance-camera:params", {
+      actionType,
+      rawParams: params,
+      preFetchedLocation,
+      userId: user?.id ?? null,
+      cameraFacing,
+    });
+  }, [actionType, cameraFacing, params, preFetchedLocation, user?.id]);
+
   // --- FACE RECOGNITION API ---
   const verifyFaceWithServer = useCallback(
     async (base64Image: string): Promise<FaceRecogResponse> => {
+      const startedAt = startFaceApiTimer();
+      faceApiLog("identify:start", {
+        base64Chars: base64Image.length,
+        payloadSize: bytesInfo(getBase64ByteSize(base64Image)),
+      });
+
       await ensureSupabaseInitialized();
 
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
+      faceApiLog("identify:session", sessionDebugInfo(session));
+
       if (!session) {
+        faceApiWarn("identify:missing-session", {
+          durationMs: elapsedMs(startedAt),
+        });
         throw new Error("Sesi tidak valid. Silakan login ulang.");
       }
 
@@ -285,6 +320,21 @@ const CameraAttendance = () => {
       );
 
       try {
+        faceApiLog("identify:request", {
+          method: "POST",
+          url: faceApiUrl,
+          timeoutMs: FACE_API_TIMEOUT_MS,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "[redacted bearer]",
+          },
+          body: {
+            image_base64: "[redacted]",
+            base64Chars: base64Image.length,
+            estimatedSize: bytesInfo(getBase64ByteSize(base64Image)),
+          },
+        });
+
         const response = await fetch(faceApiUrl, {
           method: "POST",
           headers: {
@@ -295,20 +345,42 @@ const CameraAttendance = () => {
           signal: controller.signal,
         });
 
+        const bodyText = await response.text();
+        const parsedBody = parseFaceApiBody(bodyText);
+        faceApiLog("identify:response", {
+          durationMs: elapsedMs(startedAt),
+          ...responseDebugInfo(response, parsedBody),
+        });
+
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
+          const errData = isRecord(parsedBody) ? parsedBody : {};
           throw new Error(
-            errData.message || `Gagal verifikasi wajah (${response.status})`,
+            typeof errData.message === "string"
+              ? errData.message
+              : `Gagal verifikasi wajah (${response.status})`,
           );
         }
 
-        return response.json();
+        if (!isRecord(parsedBody)) {
+          throw new Error("Respons Face API tidak valid.");
+        }
+
+        return parsedBody as unknown as FaceRecogResponse;
       } catch (error: any) {
         if (error?.name === "AbortError") {
+          faceApiError("identify:timeout", {
+            durationMs: elapsedMs(startedAt),
+            timeoutMs: FACE_API_TIMEOUT_MS,
+            error,
+          });
           throw new Error(
             "Permintaan verifikasi wajah melebihi batas waktu. Silakan coba lagi.",
           );
         }
+        faceApiError("identify:failed", {
+          durationMs: elapsedMs(startedAt),
+          error,
+        });
         throw error;
       } finally {
         clearTimeout(timeoutId);
@@ -321,19 +393,40 @@ const CameraAttendance = () => {
   const processAttendance = useCallback(
     async (base64Image: string): Promise<void> => {
       if (!user) {
+        faceApiWarn("attendance-process:missing-user", {
+          actionType,
+        });
         Alert.alert("Error", "Sesi pengguna tidak valid.");
         return;
       }
 
       if (!actionType) {
+        faceApiWarn("attendance-process:missing-action-type", {
+          userId: user.id,
+        });
         Alert.alert("Error", "Data absensi tidak valid.");
         return;
       }
 
       const sanitizedBase64 = sanitizeBase64(base64Image);
       const payloadSizeBytes = getBase64ByteSize(sanitizedBase64);
+      const startedAt = startFaceApiTimer();
+
+      faceApiLog("attendance-process:start", {
+        userId: user.id,
+        actionType,
+        rawBase64Chars: base64Image.length,
+        sanitizedBase64Chars: sanitizedBase64.length,
+        payloadSize: bytesInfo(payloadSizeBytes),
+        hasPreFetchedLocation: Boolean(preFetchedLocation),
+        preFetchedLocation,
+      });
 
       if (payloadSizeBytes > MAX_BASE64_SIZE_BYTES) {
+        faceApiWarn("attendance-process:payload-too-large", {
+          maxSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
+          payloadSize: bytesInfo(payloadSizeBytes),
+        });
         Alert.alert(
           "Error",
           `Ukuran data foto melebihi batas ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto dengan pencahayaan lebih baik atau jarak lebih dekat.`,
@@ -353,6 +446,10 @@ const CameraAttendance = () => {
         });
 
         const faceResult = await verifyFaceWithServer(sanitizedBase64);
+        faceApiLog("attendance-process:identify-result", {
+          durationMs: elapsedMs(startedAt),
+          faceResult,
+        });
 
         if (faceResult.status !== "ok") {
           throw new Error(faceResult.message || "Wajah tidak dikenali.");
@@ -368,8 +465,18 @@ const CameraAttendance = () => {
         let resolvedLocation = preFetchedLocation;
 
         if (!resolvedLocation) {
+          faceApiLog("attendance-process:location-fetch:start", {
+            reason: "no-prefetched-location",
+          });
           const latestLocation = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.High,
+          });
+
+          faceApiLog("attendance-process:location-fetch:result", {
+            mocked: latestLocation.mocked,
+            latitude: latestLocation.coords.latitude,
+            longitude: latestLocation.coords.longitude,
+            accuracy: latestLocation.coords.accuracy,
           });
 
           if (latestLocation.mocked) {
@@ -382,7 +489,23 @@ const CameraAttendance = () => {
             latitude: latestLocation.coords.latitude,
             longitude: latestLocation.coords.longitude,
           };
+        } else {
+          faceApiLog("attendance-process:location-prefetched", {
+            latitude: resolvedLocation.latitude,
+            longitude: resolvedLocation.longitude,
+          });
         }
+
+        faceApiLog("attendance-process:save-rpc:request", {
+          rpc: "save_attendance_record",
+          params: {
+            p_user_id: user.id,
+            p_action_type: actionType,
+            p_photo_path: null,
+            p_latitude: resolvedLocation.latitude,
+            p_longitude: resolvedLocation.longitude,
+          },
+        });
 
         const { data: saveData, error: saveError } = await supabase.rpc(
           "save_attendance_record",
@@ -394,6 +517,12 @@ const CameraAttendance = () => {
             p_longitude: resolvedLocation.longitude,
           },
         );
+
+        faceApiLog("attendance-process:save-rpc:response", {
+          durationMs: elapsedMs(startedAt),
+          data: saveData,
+          error: saveError,
+        });
 
         if (saveError || !saveData?.success) {
           throw new Error(
@@ -410,6 +539,13 @@ const CameraAttendance = () => {
         });
 
         const totalTime = Date.now() - startTime;
+        faceApiLog("attendance-process:success", {
+          totalTimeMs: totalTime,
+          fullDurationMs: elapsedMs(startedAt),
+          actionType,
+          faceResult,
+          saveData,
+        });
         const currentTime = timeSync
           .getSyncedTime()
           .toLocaleTimeString("id-ID", {
@@ -423,6 +559,11 @@ const CameraAttendance = () => {
           processingTime: totalTime,
         });
       } catch (error: any) {
+        faceApiError("attendance-process:failed", {
+          durationMs: elapsedMs(startedAt),
+          actionType,
+          error,
+        });
         Alert.alert(
           "Error",
           getReadableError(error, "Gagal memproses absensi."),
@@ -437,9 +578,13 @@ const CameraAttendance = () => {
   // --- EVENT HANDLERS ---
   const requestCameraAccess = useCallback(async () => {
     permissionAttemptedRef.current = true;
+    faceApiLog("attendance-camera:permission-request:start", {
+      currentPermission: hasPermission,
+    });
 
     try {
       const granted = await requestPermission();
+      faceApiLog("attendance-camera:permission-request:result", { granted });
 
       if (!granted) {
         Alert.alert(
@@ -449,18 +594,29 @@ const CameraAttendance = () => {
       }
 
       return granted;
-    } catch {
+    } catch (error) {
+      faceApiError("attendance-camera:permission-request:failed", { error });
       Alert.alert(
         "Error",
         "Gagal meminta izin kamera. Silakan coba lagi dari pengaturan.",
       );
       return false;
     }
-  }, [requestPermission]);
+  }, [hasPermission, requestPermission]);
 
   const handleCameraReady = useCallback(() => {
+    faceApiLog("attendance-camera:ready", {
+      device: device
+        ? {
+            id: device.id,
+            name: device.name,
+            position: device.position,
+          }
+        : null,
+      cameraFacing,
+    });
     setIsCameraReady(true);
-  }, []);
+  }, [cameraFacing, device]);
 
   const handleTakePicture = useCallback(async () => {
     if (
@@ -469,17 +625,35 @@ const CameraAttendance = () => {
       isCapturingPhoto ||
       isProcessing
     ) {
+      faceApiWarn("attendance-capture:blocked", {
+        isCameraReady,
+        hasCameraRef: Boolean(cameraRef.current),
+        isCapturingPhoto,
+        isProcessing,
+      });
       return;
     }
 
     setIsCapturingPhoto(true);
 
     let photoUri: string | null = null;
+    const startedAt = startFaceApiTimer();
+    faceApiLog("attendance-capture:start", {
+      cameraFacing,
+      actionType,
+      snapshotQuality: 70,
+    });
 
     try {
       // Use takeSnapshot for faster capture
       const snapshot = await cameraRef.current.takeSnapshot({
         quality: 70,
+      });
+
+      faceApiLog("attendance-capture:snapshot", {
+        durationMs: elapsedMs(startedAt),
+        hasPath: Boolean(snapshot?.path),
+        path: snapshot?.path,
       });
 
       if (!snapshot?.path) {
@@ -490,6 +664,13 @@ const CameraAttendance = () => {
         ? snapshot.path
         : `file://${snapshot.path}`;
 
+      const fileInfo = await FileSystem.getInfoAsync(photoUri);
+      faceApiLog("attendance-capture:file-info", {
+        exists: fileInfo.exists,
+        uri: photoUri,
+        size: fileInfo.exists ? bytesInfo(fileInfo.size || 0) : null,
+      });
+
       // Read file as base64 directly (no compression)
       const rawBase64 = await FileSystem.readAsStringAsync(photoUri, {
         encoding: FileSystem.EncodingType.Base64,
@@ -497,8 +678,18 @@ const CameraAttendance = () => {
 
       const sanitizedBase64 = sanitizeBase64(rawBase64);
       const base64SizeBytes = getBase64ByteSize(sanitizedBase64);
+      faceApiLog("attendance-capture:base64-ready", {
+        rawChars: rawBase64.length,
+        sanitizedChars: sanitizedBase64.length,
+        payloadSize: bytesInfo(base64SizeBytes),
+        maxPayloadSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
+      });
 
       if (base64SizeBytes > MAX_BASE64_SIZE_BYTES) {
+        faceApiWarn("attendance-capture:base64-too-large", {
+          payloadSize: bytesInfo(base64SizeBytes),
+          maxPayloadSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
+        });
         Alert.alert(
           "Error",
           `Ukuran data foto melebihi ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto.`,
@@ -508,6 +699,10 @@ const CameraAttendance = () => {
 
       await processAttendance(sanitizedBase64);
     } catch (error) {
+      faceApiError("attendance-capture:failed", {
+        durationMs: elapsedMs(startedAt),
+        error,
+      });
       Alert.alert(
         "Error",
         error instanceof Error
@@ -516,6 +711,7 @@ const CameraAttendance = () => {
       );
     } finally {
       if (photoUri) {
+        faceApiLog("attendance-capture:cleanup-temp-file", { photoUri });
         FileSystem.deleteAsync(photoUri, { idempotent: true }).catch(() => {});
       }
       setIsCapturingPhoto(false);
@@ -523,8 +719,12 @@ const CameraAttendance = () => {
   }, [isCameraReady, isCapturingPhoto, processAttendance, isProcessing]);
 
   const handleToggleCameraFacing = useCallback(() => {
+    faceApiLog("attendance-camera:toggle-facing", {
+      from: cameraFacing,
+      to: cameraFacing === "front" ? "back" : "front",
+    });
     setCameraFacing((current) => (current === "front" ? "back" : "front"));
-  }, []);
+  }, [cameraFacing]);
 
   const handleBackPress = useCallback(() => {
     if (isProcessing) {

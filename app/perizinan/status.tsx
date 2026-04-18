@@ -42,6 +42,7 @@ const CATEGORY_CONFIG: Record<
   { label: string; icon: any; color: string }
 > = {
   sakit: { label: "Sakit", icon: Stethoscope, color: "text-red-500" },
+  pergi: { label: "Pergi", icon: FileText, color: "text-blue-500" },
   izin: { label: "Izin", icon: FileText, color: "text-blue-500" },
   cuti: { label: "Cuti", icon: Calendar, color: "text-purple-500" },
   default: { label: "Izin", icon: FileText, color: "text-gray-500" },

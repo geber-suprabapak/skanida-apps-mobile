@@ -28,6 +28,16 @@ import axios, { isAxiosError, isCancel } from "axios";
 
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
+import {
+  axiosErrorDebugInfo,
+  bytesInfo,
+  elapsedMs,
+  faceApiError,
+  faceApiLog,
+  faceApiWarn,
+  sessionDebugInfo,
+  startFaceApiTimer,
+} from "~/utils/faceApiDebug";
 import { Icon } from "~/components/ui/icon";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -357,8 +367,12 @@ const FaceEnrollment = () => {
   // --- HANDLERS ---
   const requestCameraAccess = useCallback(async () => {
     permissionAttemptedRef.current = true;
+    faceApiLog("enroll-camera:permission-request:start", {
+      currentPermission: hasPermission,
+    });
     try {
       const granted = await requestPermission();
+      faceApiLog("enroll-camera:permission-request:result", { granted });
       if (!granted) {
         Alert.alert(
           "Izin Kamera Diperlukan",
@@ -366,25 +380,61 @@ const FaceEnrollment = () => {
         );
       }
       return granted;
-    } catch {
+    } catch (error) {
+      faceApiError("enroll-camera:permission-request:failed", { error });
       Alert.alert("Error", "Gagal meminta izin kamera.");
       return false;
     }
-  }, [requestPermission]);
+  }, [hasPermission, requestPermission]);
 
   const handleCameraReady = useCallback(() => {
+    faceApiLog("enroll-camera:ready", {
+      device: device
+        ? {
+            id: device.id,
+            name: device.name,
+            position: device.position,
+          }
+        : null,
+    });
     setIsCameraReady(true);
-  }, []);
+  }, [device]);
 
   const handleTakePicture = useCallback(async () => {
-    if (!isCameraReady || !cameraRef.current || isCapturing) return;
-    if (capturedImages.length >= REQUIRED_IMAGES) return;
+    if (!isCameraReady || !cameraRef.current || isCapturing) {
+      faceApiWarn("enroll-capture:blocked", {
+        isCameraReady,
+        hasCameraRef: Boolean(cameraRef.current),
+        isCapturing,
+        capturedCount: capturedImages.length,
+      });
+      return;
+    }
+    if (capturedImages.length >= REQUIRED_IMAGES) {
+      faceApiWarn("enroll-capture:max-images-reached", {
+        capturedCount: capturedImages.length,
+        requiredImages: REQUIRED_IMAGES,
+      });
+      return;
+    }
 
     setIsCapturing(true);
+    const startedAt = startFaceApiTimer();
+    faceApiLog("enroll-capture:start", {
+      capturedCount: capturedImages.length,
+      requiredImages: REQUIRED_IMAGES,
+      snapshotQuality: SNAPSHOT_QUALITY,
+    });
 
     try {
       const snapshot = await cameraRef.current.takeSnapshot({
         quality: SNAPSHOT_QUALITY,
+      });
+
+      faceApiLog("enroll-capture:snapshot", {
+        durationMs: elapsedMs(startedAt),
+        hasPath: Boolean(snapshot?.path),
+        path: snapshot?.path,
       });
 
       if (!snapshot?.path) {
@@ -403,8 +453,16 @@ const FaceEnrollment = () => {
 
       const fileSizeBytes = fileInfo.size || 0;
       const fileSizeMB = fileSizeBytes / (1024 * 1024);
+      faceApiLog("enroll-capture:file-info", {
+        uri: photoUri,
+        size: bytesInfo(fileSizeBytes),
+      });
 
       if (fileSizeMB > MAX_IMAGE_SIZE_MB) {
+        faceApiWarn("enroll-capture:file-too-large", {
+          maxMb: MAX_IMAGE_SIZE_MB,
+          size: bytesInfo(fileSizeBytes),
+        });
         Alert.alert(
           "Ukuran Foto Terlalu Besar",
           `Foto melebihi ${MAX_IMAGE_SIZE_MB}MB. Coba ambil foto dengan pencahayaan yang lebih baik.`,
@@ -417,12 +475,26 @@ const FaceEnrollment = () => {
         { uri: photoUri, size: fileSizeBytes },
       ];
       setCapturedImages(newImages);
+      faceApiLog("enroll-capture:stored", {
+        capturedCount: newImages.length,
+        requiredImages: REQUIRED_IMAGES,
+        totalSize: bytesInfo(
+          newImages.reduce((total, item) => total + item.size, 0),
+        ),
+      });
 
       // Check if we have enough images
       if (newImages.length >= REQUIRED_IMAGES) {
+        faceApiLog("enroll-capture:ready-to-confirm", {
+          capturedCount: newImages.length,
+        });
         setStep("confirm");
       }
     } catch (error) {
+      faceApiError("enroll-capture:failed", {
+        durationMs: elapsedMs(startedAt),
+        error,
+      });
       Alert.alert("Error", getReadableError(error, "Gagal mengambil foto."));
     } finally {
       setIsCapturing(false);
@@ -430,6 +502,14 @@ const FaceEnrollment = () => {
   }, [isCameraReady, isCapturing, capturedImages]);
 
   const handleRetryCapture = useCallback(() => {
+    faceApiLog("enroll-capture:retry", {
+      capturedCount: capturedImages.length,
+      files: capturedImages.map((img, index) => ({
+        index,
+        uri: img.uri,
+        size: bytesInfo(img.size),
+      })),
+    });
     // Clean up temporary files
     capturedImages.forEach((img) => {
       FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
@@ -440,7 +520,25 @@ const FaceEnrollment = () => {
   }, [capturedImages]);
 
   const handleEnroll = useCallback(async () => {
+    const startedAt = startFaceApiTimer();
+    faceApiLog("enroll-upload:start", {
+      capturedCount: capturedImages.length,
+      requiredImages: REQUIRED_IMAGES,
+      totalSize: bytesInfo(
+        capturedImages.reduce((total, item) => total + item.size, 0),
+      ),
+      files: capturedImages.map((img, index) => ({
+        index,
+        uri: img.uri,
+        size: bytesInfo(img.size),
+      })),
+    });
+
     if (capturedImages.length < REQUIRED_IMAGES) {
+      faceApiWarn("enroll-upload:not-enough-images", {
+        capturedCount: capturedImages.length,
+        requiredImages: REQUIRED_IMAGES,
+      });
       Alert.alert(
         "Error",
         `Diperlukan ${REQUIRED_IMAGES} foto untuk enrollment.`,
@@ -461,12 +559,22 @@ const FaceEnrollment = () => {
         data: { session },
       } = await supabase.auth.getSession();
 
+      faceApiLog("enroll-upload:session", sessionDebugInfo(session));
+
       if (!session) {
         throw new Error("Sesi tidak valid. Silakan login ulang.");
       }
 
       const faceApiBaseUrl = await ensureFaceApiConfigured();
       const enrollApiUrl = `${faceApiBaseUrl}/v1/enroll`;
+      faceApiLog("enroll-upload:request-prep", {
+        method: "POST",
+        url: enrollApiUrl,
+        headers: {
+          Authorization: "[redacted bearer]",
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       setUploadMessage("Mengunggah foto ke server...");
 
@@ -482,6 +590,16 @@ const FaceEnrollment = () => {
 
         formData.append("files", filePart as unknown as Blob);
       }
+      faceApiLog("enroll-upload:formdata-ready", {
+        fileCount: capturedImages.length,
+        files: capturedImages.map((img, index) => ({
+          field: "files",
+          name: `face_${index}.jpg`,
+          type: "image/jpeg",
+          uri: img.uri,
+          size: bytesInfo(img.size),
+        })),
+      });
 
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
 
@@ -497,14 +615,27 @@ const FaceEnrollment = () => {
         },
       );
 
+      faceApiLog("enroll-upload:response", {
+        status: response.status,
+        statusText: response.statusText,
+        durationMs: elapsedMs(startedAt),
+        data: response.data,
+      });
       setSuccessResponse(response.data);
       setStep("success");
     } catch (error) {
       if (isCancel(error)) {
+        faceApiWarn("enroll-upload:cancelled", {
+          durationMs: elapsedMs(startedAt),
+        });
         return;
       }
 
       if (isAxiosError(error) && error.response) {
+        faceApiError("enroll-upload:axios-failed", {
+          durationMs: elapsedMs(startedAt),
+          error: axiosErrorDebugInfo(error),
+        });
         const errorData = error.response.data as EnrollmentErrorResponse;
         let errorMsg =
           errorData?.message ||
@@ -521,10 +652,17 @@ const FaceEnrollment = () => {
         return;
       }
 
+      faceApiError("enroll-upload:failed", {
+        durationMs: elapsedMs(startedAt),
+        error,
+      });
       setErrorMessage(getReadableError(error, "Gagal mendaftarkan wajah."));
       setStep("error");
     } finally {
       uploadController.current = null;
+      faceApiLog("enroll-upload:cleanup-temp-files", {
+        capturedCount: capturedImages.length,
+      });
       // Clean up temporary files
       capturedImages.forEach((img) => {
         FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
@@ -547,6 +685,9 @@ const FaceEnrollment = () => {
             text: "Ya, Batalkan",
             style: "destructive",
             onPress: () => {
+              faceApiWarn("enroll-upload:abort-from-back", {
+                capturedCount: capturedImages.length,
+              });
               uploadController.current?.abort();
               router.back();
             },
@@ -566,6 +707,9 @@ const FaceEnrollment = () => {
             text: "Ya, Batalkan",
             style: "destructive",
             onPress: () => {
+              faceApiWarn("enroll-capture:cancel-from-back", {
+                capturedCount: capturedImages.length,
+              });
               // Clean up temporary files
               capturedImages.forEach((img) => {
                 FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(

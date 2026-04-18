@@ -1,5 +1,5 @@
-import { useRouter, Stack } from "expo-router";
-import React, { useState, useEffect } from "react";
+import { useRouter, Stack, useFocusEffect } from "expo-router";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Alert,
@@ -47,6 +47,15 @@ import useThemeStore from "~/store/themeStore";
 import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
 import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { extractAvatarPath, getAvatarSignedUrl } from "~/utils/avatar";
+import {
+  axiosErrorDebugInfo,
+  elapsedMs,
+  faceApiError,
+  faceApiLog,
+  faceApiWarn,
+  sessionDebugInfo,
+  startFaceApiTimer,
+} from "~/utils/faceApiDebug";
 
 // --- Utility Functions ---
 
@@ -204,9 +213,16 @@ export default function ManageAccount() {
   }, [user]);
 
   // --- Check Face Enrollment Status ---
-  const checkEnrollmentStatus = async () => {
+  const checkEnrollmentStatus = useCallback(async () => {
+    const startedAt = startFaceApiTimer();
+    faceApiLog("settings:enroll-status:start", {
+      userId: user?.id ?? null,
+      email: user?.email ?? null,
+    });
+
     try {
       setEnrollmentStatus("loading");
+      setEnrollmentError("");
 
       await ensureSupabaseInitialized();
 
@@ -217,11 +233,25 @@ export default function ManageAccount() {
         data: { session },
       } = await supabase.auth.getSession();
 
+      faceApiLog("settings:enroll-status:session", sessionDebugInfo(session));
+
       if (!session) {
+        faceApiWarn("settings:enroll-status:missing-session", {
+          durationMs: elapsedMs(startedAt),
+        });
         setEnrollmentStatus("error");
         setEnrollmentError("Sesi tidak valid");
         return;
       }
+
+      faceApiLog("settings:enroll-status:request", {
+        method: "GET",
+        url: enrollStatusUrl,
+        headers: {
+          Authorization: "[redacted bearer]",
+          Accept: "application/json",
+        },
+      });
 
       const response = await axios.get<EnrollmentStatusResponse>(
         enrollStatusUrl,
@@ -234,23 +264,38 @@ export default function ManageAccount() {
       );
 
       const data = response.data;
+      faceApiLog("settings:enroll-status:response", {
+        status: response.status,
+        statusText: response.statusText,
+        durationMs: elapsedMs(startedAt),
+        data,
+      });
       setEnrollmentStatus(data.is_enrolled ? "enrolled" : "not_enrolled");
     } catch (error) {
       if (isAxiosError(error)) {
         if (error.response?.status === 404) {
+          faceApiWarn("settings:enroll-status:not-found", {
+            durationMs: elapsedMs(startedAt),
+            error: axiosErrorDebugInfo(error),
+          });
           setEnrollmentStatus("not_enrolled");
           return;
         }
       }
-      if (__DEV__) console.error("Error checking enrollment status:", error);
+      faceApiError("settings:enroll-status:failed", {
+        durationMs: elapsedMs(startedAt),
+        error: axiosErrorDebugInfo(error),
+      });
       setEnrollmentStatus("error");
       setEnrollmentError("Gagal terhubung ke server");
     }
-  };
+  }, [user?.email, user?.id]);
 
-  useEffect(() => {
-    checkEnrollmentStatus();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void checkEnrollmentStatus();
+    }, [checkEnrollmentStatus]),
+  );
 
   // --- Avatar Logic ---
   const pickImageFromGallery = async () => {
@@ -778,7 +823,14 @@ export default function ManageAccount() {
                 <Button
                   variant="default"
                   size="default"
-                  onPress={() => router.push("./enroll")}
+                  onPress={() => {
+                    faceApiLog("settings:navigate-enroll", {
+                      enrollmentStatus,
+                      enrollmentError,
+                      userId: user?.id ?? null,
+                    });
+                    router.push("./enroll");
+                  }}
                   className="w-full bg-blue-600"
                 >
                   <Icon as={Scan} className="size-5 text-white mr-2" />
