@@ -28,6 +28,8 @@ import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
+import { fetchEnrollmentStatus } from "~/utils/enrollment";
+import type { EnrollmentStatus } from "~/utils/enrollment";
 import {
   fetchFaceApiRuntimeStatus,
   type FaceApiRuntimeStatusResult,
@@ -46,6 +48,7 @@ import {
   History,
   ClipboardPenLine,
   Loader2,
+  Scan,
   Settings,
   UserRound,
 } from "lucide-react-native";
@@ -134,6 +137,9 @@ export default function Dashboard() {
     useState<AttendanceSchedule | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [enrollmentStatus, setEnrollmentStatus] =
+    useState<EnrollmentStatus>("loading");
+  const [enrollmentError, setEnrollmentError] = useState("");
   const [faceApiRuntime, setFaceApiRuntime] =
     useState<FaceApiRuntimeStatusResult | null>(null);
   const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
@@ -262,6 +268,26 @@ export default function Dashboard() {
     }
   }, []);
 
+  const checkEnrollmentStatus = useCallback(async () => {
+    faceApiLog("dashboard:enroll-status-check:start", {
+      userId: user?.id ?? null,
+      email: user?.email ?? null,
+    });
+    setEnrollmentStatus("loading");
+    setEnrollmentError("");
+
+    const result = await fetchEnrollmentStatus();
+    faceApiLog("dashboard:enroll-status-check:result", {
+      result,
+      userId: user?.id ?? null,
+    });
+
+    setEnrollmentStatus(result.status);
+    if (result.error) {
+      setEnrollmentError(result.error);
+    }
+  }, [user?.email, user?.id]);
+
   const checkFaceApiRuntime = useCallback(async () => {
     setIsCheckingFaceApi(true);
     const result = await fetchFaceApiRuntimeStatus();
@@ -297,10 +323,16 @@ export default function Dashboard() {
 
       void Promise.all([
         checkFaceApiRuntime(),
+        checkEnrollmentStatus(),
         fetchAttendanceData(),
         fetchAttendanceSchedule(),
       ]);
-    }, [checkFaceApiRuntime, fetchAttendanceData, fetchAttendanceSchedule]),
+    }, [
+      checkFaceApiRuntime,
+      checkEnrollmentStatus,
+      fetchAttendanceData,
+      fetchAttendanceSchedule,
+    ]),
   );
 
   useEffect(() => {
@@ -311,10 +343,11 @@ export default function Dashboard() {
         });
         fetchAttendanceData();
         void checkFaceApiRuntime();
+        void checkEnrollmentStatus();
       }
     });
     return () => sub.remove();
-  }, [fetchAttendanceData, checkFaceApiRuntime]);
+  }, [fetchAttendanceData, checkFaceApiRuntime, checkEnrollmentStatus]);
 
   // Back button
   useEffect(() => {
@@ -346,12 +379,14 @@ export default function Dashboard() {
       }),
       fetchAttendanceSchedule(),
       checkFaceApiRuntime(),
+      checkEnrollmentStatus(),
     ]);
     setRefreshing(false);
   }, [
     fetchAttendanceData,
     fetchAttendanceSchedule,
     checkFaceApiRuntime,
+    checkEnrollmentStatus,
   ]);
 
   // Computed values
@@ -417,6 +452,7 @@ export default function Dashboard() {
         refreshing ||
         isInitializing ||
         isCheckingFaceApi ||
+        enrollmentStatus !== "enrolled" ||
         !allows ||
         faceApiRuntime?.state !== "healthy" ||
         attendanceStatus.hasCheckedOut,
@@ -428,6 +464,7 @@ export default function Dashboard() {
     refreshing,
     isInitializing,
     isCheckingFaceApi,
+    enrollmentStatus,
     faceApiRuntime?.state,
     attendanceStatus.hasCheckedOut,
   ]);
@@ -449,17 +486,31 @@ export default function Dashboard() {
       return "SERVER BELUM SIAP";
     }
 
+    if (enrollmentStatus === "loading") {
+      return "CEK STATUS WAJAH...";
+    }
+
+    if (enrollmentStatus === "not_enrolled") {
+      return "WAJAH BELUM TERDAFTAR";
+    }
+
+    if (enrollmentStatus === "error") {
+      return "CEK STATUS WAJAH";
+    }
+
     return "PRESENSI";
   }, [
     attendanceStatus.hasCheckedOut,
     refreshing,
     isCheckingFaceApi,
     faceApiRuntime?.state,
+    enrollmentStatus,
   ]);
 
   // Navigation
   const navigateToCheckIn = useCallback(() => {
     faceApiLog("dashboard:navigate-attendance", {
+      enrollmentStatus,
       attendanceStatus,
       derivedActionType,
       isPrimaryActionDisabled,
@@ -467,10 +518,19 @@ export default function Dashboard() {
     router.push("/attendance/AbsenceReport");
   }, [
     router,
+    enrollmentStatus,
     attendanceStatus,
     derivedActionType,
     isPrimaryActionDisabled,
   ]);
+  const navigateToEnroll = useCallback(() => {
+    faceApiLog("dashboard:navigate-enroll", {
+      enrollmentStatus,
+      enrollmentError,
+      userId: user?.id ?? null,
+    });
+    router.push("/profile/enroll");
+  }, [router, enrollmentStatus, enrollmentError, user?.id]);
   const navigateToHistory = useCallback(
     () => router.push("/extra/riwayat"),
     [router],
@@ -623,6 +683,80 @@ export default function Dashboard() {
                       />
                       <Text className="text-foreground font-semibold">
                         Cek Status Server
+                      </Text>
+                    </Button>
+                  </Card>
+                </View>
+              )}
+
+            {faceApiRuntime?.state === "healthy" &&
+              enrollmentStatus === "not_enrolled" && (
+                <View className="px-6 mt-4">
+                  <Card className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-3xl">
+                    <View className="flex-row items-center mb-3">
+                      <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
+                        <Icon
+                          as={AlertCircle}
+                          className="size-6 text-amber-600 dark:text-amber-400"
+                        />
+                      </View>
+                      <View className="ml-3 flex-1">
+                        <Text className="text-foreground font-bold text-base">
+                          Wajah Belum Terdaftar
+                        </Text>
+                        <Text className="text-xs text-muted-foreground">
+                          Daftarkan wajah terlebih dahulu sebelum melakukan
+                          presensi.
+                        </Text>
+                      </View>
+                    </View>
+                    <Button
+                      variant="default"
+                      size="default"
+                      onPress={navigateToEnroll}
+                      className="w-full bg-amber-500 active:bg-amber-600"
+                    >
+                      <Icon as={Scan} className="size-5 text-white mr-2" />
+                      <Text className="text-white font-semibold">
+                        Daftarkan Wajah
+                      </Text>
+                    </Button>
+                  </Card>
+                </View>
+              )}
+
+            {faceApiRuntime?.state === "healthy" &&
+              enrollmentStatus === "error" && (
+                <View className="px-6 mt-4">
+                  <Card className="p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl">
+                    <View className="flex-row items-center mb-3">
+                      <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                        <Icon
+                          as={AlertCircle}
+                          className="size-6 text-red-600 dark:text-red-400"
+                        />
+                      </View>
+                      <View className="ml-3 flex-1">
+                        <Text className="text-foreground font-bold text-base">
+                          Status Wajah Belum Terbaca
+                        </Text>
+                        <Text className="text-xs text-muted-foreground">
+                          {enrollmentError || "Silakan coba lagi."}
+                        </Text>
+                      </View>
+                    </View>
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onPress={checkEnrollmentStatus}
+                      className="w-full border-border"
+                    >
+                      <Icon
+                        as={Loader2}
+                        className="size-5 text-foreground mr-2"
+                      />
+                      <Text className="text-foreground font-semibold">
+                        Coba Lagi
                       </Text>
                     </Button>
                   </Card>
