@@ -68,7 +68,7 @@ const isRecord = (value: unknown): value is JsonRecord =>
 
 const getErrorMessage = (
   error: unknown,
-  fallback = "Terjadi kesalahan saat menghubungi Face API.",
+  fallback = "Terjadi kesalahan saat menghubungi server.",
 ) => {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -193,7 +193,7 @@ const fetchFaceApiJson = async (
         error,
       });
       throw new Error(
-        "Permintaan status Face API melebihi batas waktu. Silakan coba lagi.",
+        "Permintaan status server melebihi batas waktu. Silakan coba lagi.",
       );
     }
 
@@ -209,7 +209,7 @@ const fetchFaceApiJson = async (
 
 export const getFaceApiIssues = (readiness: FaceApiReadinessInfo | null) => {
   if (!readiness) {
-    return ["Status readiness Face API tidak valid."];
+    return ["Status server tidak valid."];
   }
 
   const issues: string[] = [];
@@ -242,7 +242,7 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
   } catch (error) {
     const message = getErrorMessage(
       error,
-      "Face API URL tidak dikonfigurasi. Hubungi administrator.",
+      "Server verifikasi belum dikonfigurasi. Hubungi administrator.",
     );
 
     faceApiError("runtime-status:misconfigured", {
@@ -253,8 +253,8 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
 
     return {
       state: "misconfigured",
-      title: "Face API belum dikonfigurasi",
-      message,
+      title: "Server belum dikonfigurasi",
+      message: "Server verifikasi belum dikonfigurasi.",
       issues: [],
       error: message,
     };
@@ -282,13 +282,13 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
   } catch (error) {
     const message = getErrorMessage(
       error,
-      "Tidak dapat menghubungi Face API. Periksa URL server atau koneksi jaringan.",
+      "Tidak dapat menghubungi server. Periksa koneksi jaringan.",
     );
 
     return {
       state: "offline",
-      title: "Face API tidak terhubung",
-      message,
+      title: "Server tidak terhubung",
+      message: "Server verifikasi tidak dapat dihubungi.",
       issues: [],
       info: {
         baseUrl,
@@ -326,9 +326,9 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
   if (!live || live.status !== "alive") {
     return {
       state: "offline",
-      title: "Face API tidak merespons normal",
+      title: "Server tidak merespons normal",
       message:
-        "Endpoint liveness tidak mengembalikan status hidup. Periksa proses Project Robin.",
+        "Server verifikasi belum dapat digunakan saat ini.",
       issues: [],
       info,
       error: "Endpoint /live tidak merespons status alive.",
@@ -338,9 +338,9 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
   if (!readiness) {
     return {
       state: "unhealthy",
-      title: "Face API mengirim status yang tidak valid",
+      title: "Status server tidak valid",
       message:
-        "Respons readiness tidak bisa dibaca. Periksa deployment Project Robin.",
+        "Status server verifikasi belum dapat dibaca.",
       issues: ["Respons readiness tidak valid."],
       info,
       error: "Respons readiness tidak valid.",
@@ -354,20 +354,15 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
   const result: FaceApiRuntimeStatusResult = isHealthy
     ? {
         state: "healthy",
-        title: "Project Robin siap digunakan",
-        message: root?.version
-          ? `Versi ${root.version} siap melayani verifikasi wajah.`
-          : "Layanan verifikasi wajah siap digunakan.",
+        title: "Server siap digunakan",
+        message: "Layanan verifikasi wajah siap digunakan.",
         issues,
         info,
       }
     : {
         state: "unhealthy",
-        title: "Project Robin belum siap",
-        message:
-          issues.length > 0
-            ? issues.join(". ")
-            : "Ada dependency Face API yang belum siap.",
+        title: "Server belum siap",
+        message: "Server verifikasi sedang belum siap. Silakan coba lagi.",
         issues,
         info,
         error: issues.join(". "),

@@ -345,8 +345,8 @@ const FaceApiStatusScreen = memo<{
         </View>
         <Text variant="h1" className="text-white text-center mb-2">
           {isLoading
-            ? "Memeriksa Project Robin..."
-            : status?.title || "Project Robin belum siap"}
+            ? "Memeriksa server..."
+            : status?.title || "Server belum siap"}
         </Text>
         <Text variant="default" className="text-white/70 text-center mb-8">
           {isLoading

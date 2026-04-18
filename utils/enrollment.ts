@@ -119,9 +119,9 @@ export async function fetchEnrollmentStatus(): Promise<EnrollmentCheckResult> {
     }
 
     if (errorMessage === "Embedding store is unavailable") {
-      errorMessage = "Penyimpanan embedding Project Robin sedang tidak tersedia.";
+      errorMessage = "Server verifikasi sedang tidak tersedia.";
     } else if (errorMessage.startsWith("Failed to check enrollment status")) {
-      errorMessage = "Gagal memeriksa status enrollment di Project Robin.";
+      errorMessage = "Gagal memeriksa status wajah di server.";
     }
 
     faceApiError("enroll-status:failed", {

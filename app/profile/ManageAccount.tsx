@@ -142,7 +142,6 @@ export default function ManageAccount() {
   const [enrollmentStatus, setEnrollmentStatus] =
     useState<EnrollmentStatus>("loading");
   const [enrollmentError, setEnrollmentError] = useState<string>("");
-  const [embeddingCount, setEmbeddingCount] = useState<number | null>(null);
   const [faceApiRuntime, setFaceApiRuntime] =
     useState<FaceApiRuntimeStatusResult | null>(null);
   const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
@@ -219,7 +218,6 @@ export default function ManageAccount() {
     });
 
     setEnrollmentStatus(result.status);
-    setEmbeddingCount(result.embeddingCount ?? null);
     if (result.error) {
       setEnrollmentError(result.error);
     }
@@ -733,7 +731,7 @@ export default function ManageAccount() {
               <View className="flex-row items-center py-2">
                 <ActivityIndicator size="small" color="#3b82f6" />
                 <Text className="text-muted-foreground ml-3">
-                  Memeriksa status enrollment dan kesiapan Project Robin...
+                  Memeriksa status wajah dan server...
                 </Text>
               </View>
             )}
@@ -748,9 +746,7 @@ export default function ManageAccount() {
                     Wajah Sudah Terdaftar
                   </Text>
                   <Text className="text-xs text-muted-foreground">
-                    {embeddingCount !== null
-                      ? `${embeddingCount} embedding tersimpan di Project Robin`
-                      : "Data wajah Anda tersimpan untuk verifikasi absensi"}
+                    Data wajah Anda tersimpan untuk verifikasi absensi
                   </Text>
                 </View>
               </View>
@@ -814,7 +810,7 @@ export default function ManageAccount() {
               <View className="mt-4 pt-4 border-t border-border/60">
                 <View className="flex-row items-center justify-between mb-2">
                   <Text className="text-foreground font-semibold">
-                    Status Project Robin
+                    Status Server
                   </Text>
                   <View
                     className={`px-2.5 py-1 rounded-full ${
@@ -835,84 +831,19 @@ export default function ManageAccount() {
                       }`}
                     >
                       {faceApiRuntime.state === "healthy"
-                        ? "READY"
+                        ? "SIAP"
                         : faceApiRuntime.state === "unhealthy"
-                          ? "DEGRADED"
+                          ? "BELUM SIAP"
                           : faceApiRuntime.state === "misconfigured"
-                            ? "CONFIG"
+                            ? "KONFIG"
                             : "OFFLINE"}
                     </Text>
                   </View>
                 </View>
 
-                <Text className="text-xs text-muted-foreground mb-3">
+                <Text className="text-xs text-muted-foreground mb-4">
                   {faceApiRuntime.message}
                 </Text>
-
-                <View className="flex-row flex-wrap gap-2 mb-4">
-                  {faceApiRuntime.info?.root?.version && (
-                    <View className="px-3 py-1 rounded-full bg-secondary">
-                      <Text className="text-[11px] font-medium text-foreground">
-                        v{faceApiRuntime.info.root.version}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View className="px-3 py-1 rounded-full bg-secondary">
-                    <Text className="text-[11px] font-medium text-foreground">
-                      {faceApiRuntime.info?.readiness?.gpu_available
-                        ? "GPU aktif"
-                        : "CPU mode"}
-                    </Text>
-                  </View>
-
-                  <View className="px-3 py-1 rounded-full bg-secondary">
-                    <Text className="text-[11px] font-medium text-foreground">
-                      {faceApiRuntime.info?.readinessPath === "/health"
-                        ? "Fallback /health"
-                        : "Readiness /ready"}
-                    </Text>
-                  </View>
-                </View>
-
-                {faceApiRuntime.info?.readiness && (
-                  <View className="gap-2 mb-4">
-                    {[
-                      {
-                        label: "Model",
-                        ok: faceApiRuntime.info.readiness.model_loaded,
-                      },
-                      {
-                        label: "Detector",
-                        ok: faceApiRuntime.info.readiness.face_detector_ready,
-                      },
-                      {
-                        label: "Supabase",
-                        ok: faceApiRuntime.info.readiness.supabase_connected,
-                      },
-                      {
-                        label: "Qdrant",
-                        ok: faceApiRuntime.info.readiness.qdrant_connected,
-                      },
-                    ].map((item) => (
-                      <View
-                        key={item.label}
-                        className="flex-row items-center justify-between"
-                      >
-                        <Text className="text-sm text-muted-foreground">
-                          {item.label}
-                        </Text>
-                        <Text
-                          className={`text-sm font-semibold ${
-                            item.ok ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {item.ok ? "Siap" : "Bermasalah"}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
 
                 <Button
                   variant="outline"
