@@ -32,6 +32,9 @@ AS $$
   );
 $$;
 
+ALTER TABLE public.user_profiles
+  ADD COLUMN IF NOT EXISTS notification_token TEXT;
+
 -- Remove broad UPDATE table privilege for client roles.
 REVOKE UPDATE ON TABLE public.user_profiles FROM anon, authenticated;
 

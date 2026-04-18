@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     full_name TEXT,
     email TEXT,
     avatar_url TEXT,
+    notification_token TEXT,
     absence_number TEXT,
     class_name TEXT,
     gender TEXT,

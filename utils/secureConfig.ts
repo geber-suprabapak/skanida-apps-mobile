@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import { faceApiLog, faceApiWarn } from "~/utils/faceApiDebug";
 
 export type SupabaseConfig = {
   url: string;
@@ -109,12 +110,21 @@ export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
   // 1) SecureStore
   const urlSecure = await getFromSecureStore(KEY_FACE_API_URL);
   if (urlSecure) {
+    faceApiLog("config:loaded", {
+      source: "secure",
+      url: urlSecure,
+    });
     return { url: urlSecure, source: "secure" };
   }
 
   // 2) AsyncStorage (legacy fallback)
   const urlAsync = await getFromAsyncStorage(KEY_FACE_API_URL);
   if (urlAsync) {
+    faceApiLog("config:loaded-legacy", {
+      source: "async",
+      url: urlAsync,
+      action: "migrate-to-secure-store",
+    });
     // Self-heal: migrate to SecureStore
     await setInSecureStore(KEY_FACE_API_URL, urlAsync);
     // Cleanup insecure storage
@@ -125,6 +135,11 @@ export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
   // 3) Env fallback
   const envUrl = process.env.EXPO_PUBLIC_FACE_API_URL as string | undefined;
   if (envUrl) {
+    faceApiLog("config:loaded", {
+      source: "env",
+      url: envUrl,
+      action: "persist-env-value",
+    });
     // Persist for future OTA runs
     await Promise.all([
       setInSecureStore(KEY_FACE_API_URL, envUrl),
@@ -133,10 +148,14 @@ export async function getFaceApiConfig(): Promise<FaceApiConfig | null> {
     return { url: envUrl, source: "env" };
   }
 
+  faceApiWarn("config:missing", {
+    message: "EXPO_PUBLIC_FACE_API_URL / secure config tidak ditemukan",
+  });
   return null;
 }
 
 export async function setFaceApiUrl(url: string): Promise<void> {
+  faceApiLog("config:set-url", { url });
   await Promise.all([
     setInSecureStore(KEY_FACE_API_URL, url),
     setInAsyncStorage(KEY_FACE_API_URL, url),
@@ -148,6 +167,7 @@ let cachedFaceApiUrl: string | null = null;
 
 export async function ensureFaceApiConfigured(): Promise<string> {
   if (cachedFaceApiUrl) {
+    faceApiLog("config:cache-hit", { url: cachedFaceApiUrl });
     return cachedFaceApiUrl;
   }
 
@@ -157,6 +177,10 @@ export async function ensureFaceApiConfigured(): Promise<string> {
   }
 
   cachedFaceApiUrl = config.url;
+  faceApiLog("config:ready", {
+    source: config.source,
+    url: config.url,
+  });
   return config.url;
 }
 

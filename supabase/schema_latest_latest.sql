@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     full_name TEXT,
     email TEXT,
     avatar_url TEXT,
+    notification_token TEXT,
     absence_number TEXT,
     class_name TEXT,
     gender TEXT,
@@ -1142,6 +1143,7 @@ DECLARE
   v_nearest_location RECORD;
   v_has_checked_in BOOLEAN := FALSE;
   v_has_checked_out BOOLEAN := FALSE;
+  v_has_active_permit BOOLEAN := FALSE;
   v_response public.attendance_action_response;
 BEGIN
   IF p_user_id != auth.uid() THEN
@@ -1159,6 +1161,19 @@ BEGIN
     WHEN 'friday' THEN 'jumat'
     WHEN 'saturday' THEN 'sabtu'
   END;
+
+  SELECT EXISTS(
+    SELECT 1
+    FROM public.perizinan
+    WHERE user_id = p_user_id
+      AND approval_status IN ('pending', 'approved')
+      AND (tanggal AT TIME ZONE 'Asia/Jakarta')::date = v_today_wib
+  ) INTO v_has_active_permit;
+
+  IF v_has_active_permit THEN
+    SELECT FALSE, 'none', 'Anda sudah mengajukan izin untuk hari ini. Tidak dapat melakukan absensi jika sudah ada izin aktif (pending/approved).', null::jsonb INTO v_response;
+    RETURN v_response;
+  END IF;
 
   SELECT
     id,
@@ -1262,6 +1277,7 @@ DECLARE
   v_new_attendance_id UUID;
   v_result JSONB;
   v_current_day_indonesian TEXT;
+  v_validated_action public.attendance_action_response;
 BEGIN
   IF p_user_id != auth.uid() THEN
     RAISE EXCEPTION 'Unauthorized: user_id mismatch';
@@ -1286,10 +1302,21 @@ BEGIN
     AND is_active = TRUE
   LIMIT 1;
 
+  SELECT * INTO v_validated_action
+  FROM public.get_and_validate_attendance_action(p_user_id, p_latitude, p_longitude);
+
+  IF NOT COALESCE(v_validated_action.actionable, FALSE)
+    OR v_validated_action.action_type IS DISTINCT FROM p_action_type THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'message', COALESCE(v_validated_action.message, 'Aksi absensi tidak valid.')
+    );
+  END IF;
+
   IF p_action_type = 'check_in' THEN
-    IF v_schedule IS NOT NULL AND v_current_time_wib > v_schedule.selesai_masuk::time THEN
-      v_status_text := 'Terlambat';
-    ELSE
+    v_status_text := COALESCE(v_validated_action.details ->> 'status', 'Hadir');
+
+    IF v_status_text NOT IN ('Hadir', 'Terlambat') THEN
       v_status_text := 'Hadir';
     END IF;
 
