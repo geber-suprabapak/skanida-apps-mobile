@@ -48,6 +48,7 @@ import {
   sessionDebugInfo,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
+import { ensureFaceApiReady } from "~/utils/faceApiRuntime";
 
 // --- CONSTANTS ---
 const MAX_BASE64_SIZE_MB = 5;
@@ -213,6 +214,9 @@ const CameraAttendance = () => {
     visible: boolean;
     time: string;
     processingTime: number;
+    confidence?: number;
+    serverProcessTime?: number;
+    studentName?: string;
   }>({
     visible: false,
     time: "",
@@ -224,6 +228,9 @@ const CameraAttendance = () => {
     message: "Menunggu proses...",
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lastFaceResult, setLastFaceResult] = useState<FaceRecogResponse | null>(
+    null,
+  );
 
   const spinnerRotation = useSharedValue(0);
 
@@ -293,6 +300,13 @@ const CameraAttendance = () => {
       faceApiLog("identify:start", {
         base64Chars: base64Image.length,
         payloadSize: bytesInfo(getBase64ByteSize(base64Image)),
+      });
+
+      const runtime = await ensureFaceApiReady();
+      faceApiLog("identify:runtime-ready", {
+        message: runtime.message,
+        readinessPath: runtime.info?.readinessPath ?? null,
+        issues: runtime.issues,
       });
 
       await ensureSupabaseInitialized();
@@ -435,6 +449,7 @@ const CameraAttendance = () => {
       }
 
       setIsProcessing(true);
+      setLastFaceResult(null);
       const startTime = Date.now();
 
       try {
@@ -546,6 +561,7 @@ const CameraAttendance = () => {
           faceResult,
           saveData,
         });
+        setLastFaceResult(faceResult);
         const currentTime = timeSync
           .getSyncedTime()
           .toLocaleTimeString("id-ID", {
@@ -557,6 +573,9 @@ const CameraAttendance = () => {
           visible: true,
           time: currentTime,
           processingTime: totalTime,
+          confidence: faceResult.confidence,
+          serverProcessTime: faceResult.process_time_ms,
+          studentName: faceResult.student_name,
         });
       } catch (error: any) {
         faceApiError("attendance-process:failed", {
@@ -853,10 +872,18 @@ const CameraAttendance = () => {
         }}
         attendanceType={actionType}
         studentName={
-          user?.user_metadata?.full_name || user?.user_metadata?.name || ""
+          successState.studentName ||
+          lastFaceResult?.student_name ||
+          user?.user_metadata?.full_name ||
+          user?.user_metadata?.name ||
+          ""
         }
         time={successState.time}
         processingTime={successState.processingTime}
+        confidence={successState.confidence ?? lastFaceResult?.confidence}
+        serverProcessTime={
+          successState.serverProcessTime ?? lastFaceResult?.process_time_ms
+        }
       />
 
       <View className="absolute inset-0" pointerEvents="box-none">

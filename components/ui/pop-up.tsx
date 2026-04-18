@@ -35,6 +35,8 @@ interface AttendanceSuccessPopupProps {
   studentName?: string;
   time?: string;
   processingTime?: number;
+  confidence?: number;
+  serverProcessTime?: number;
 }
 
 const CONFETTI_COLORS = [
@@ -57,6 +59,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   studentName = "",
   time,
   processingTime,
+  confidence,
+  serverProcessTime,
 }) => {
   const { colorScheme } = useColorScheme();
   // PERF-L01: Use hook instead of module-scope Dimensions.get
@@ -270,6 +274,22 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     }
   };
 
+  const formatConfidence = (value?: number) => {
+    if (typeof value !== "number") return "";
+    return `Confidence ${(value * 100).toFixed(1)}%`;
+  };
+
+  const formatServerProcessingTime = (timeMs?: number): string => {
+    if (typeof timeMs !== "number") return "";
+    if (timeMs < 1000) {
+      return `Robin ${timeMs}ms`;
+    }
+    if (timeMs < 10000) {
+      return `Robin ${(timeMs / 1000).toFixed(1)}s`;
+    }
+    return `Robin ${Math.round(timeMs / 1000)}s`;
+  };
+
   const message = getSuccessMessage();
   const motivationalMessage = motivationalQuote.quote
     ? `${motivationalQuote.quote}${
@@ -397,6 +417,16 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                 </Text>
               </View>
 
+              {studentName ? (
+                <Text
+                  className={`text-sm font-medium mb-2 ${
+                    colorScheme === "dark" ? "text-white" : "text-gray-800"
+                  }`}
+                >
+                  {studentName}
+                </Text>
+              ) : null}
+
               {/* Processing Time Display */}
               {processingTime && (
                 <View
@@ -413,6 +443,51 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                   >
                     {formatProcessingTime(processingTime)}
                   </Text>
+                </View>
+              )}
+
+              {(typeof confidence === "number" ||
+                typeof serverProcessTime === "number") && (
+                <View className="mt-2 items-center gap-2">
+                  {typeof confidence === "number" ? (
+                    <View
+                      className={`px-3 py-1 rounded-full ${
+                        colorScheme === "dark"
+                          ? "bg-blue-800/30"
+                          : "bg-blue-100"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-medium ${
+                          colorScheme === "dark"
+                            ? "text-blue-300"
+                            : "text-blue-700"
+                        }`}
+                      >
+                        {formatConfidence(confidence)}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {typeof serverProcessTime === "number" ? (
+                    <View
+                      className={`px-3 py-1 rounded-full ${
+                        colorScheme === "dark"
+                          ? "bg-indigo-800/30"
+                          : "bg-indigo-100"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-medium ${
+                          colorScheme === "dark"
+                            ? "text-indigo-300"
+                            : "text-indigo-700"
+                        }`}
+                      >
+                        {formatServerProcessingTime(serverProcessTime)}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               )}
             </Animated.View>

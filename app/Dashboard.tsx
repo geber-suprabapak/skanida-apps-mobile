@@ -29,6 +29,10 @@ import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import { fetchEnrollmentStatus } from "~/utils/enrollment";
 import type { EnrollmentStatus } from "~/utils/enrollment";
+import {
+  fetchFaceApiRuntimeStatus,
+  type FaceApiRuntimeStatusResult,
+} from "~/utils/faceApiRuntime";
 import { formatDateWIB, getWIBDayBounds, toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { getAvatarSignedUrl } from "~/utils/avatar";
@@ -131,6 +135,10 @@ export default function Dashboard() {
   const [enrollmentStatus, setEnrollmentStatus] =
     useState<EnrollmentStatus>("loading");
   const [enrollmentError, setEnrollmentError] = useState("");
+  const [embeddingCount, setEmbeddingCount] = useState<number | null>(null);
+  const [faceApiRuntime, setFaceApiRuntime] =
+    useState<FaceApiRuntimeStatusResult | null>(null);
+  const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
 
   // 60-second interval for schedule computations
   useEffect(() => {
@@ -268,8 +276,20 @@ export default function Dashboard() {
       userId: user?.id ?? null,
     });
     setEnrollmentStatus(result.status);
+    setEmbeddingCount(result.embeddingCount ?? null);
     if (result.error) setEnrollmentError(result.error);
   }, [user?.email, user?.id]);
+
+  const checkFaceApiRuntime = useCallback(async () => {
+    setIsCheckingFaceApi(true);
+    const result = await fetchFaceApiRuntimeStatus();
+    faceApiLog("dashboard:runtime-check:result", {
+      result,
+      userId: user?.id ?? null,
+    });
+    setFaceApiRuntime(result);
+    setIsCheckingFaceApi(false);
+  }, [user?.id]);
 
   // Lifecycle
   const initializeDashboard = useCallback(async () => {
@@ -289,8 +309,8 @@ export default function Dashboard() {
   // (e.g. after returning from the enroll screen via back navigation)
   useFocusEffect(
     useCallback(() => {
-      checkEnrollmentStatus();
-    }, [checkEnrollmentStatus]),
+      void Promise.all([checkEnrollmentStatus(), checkFaceApiRuntime()]);
+    }, [checkEnrollmentStatus, checkFaceApiRuntime]),
   );
 
   useEffect(() => {
@@ -300,10 +320,11 @@ export default function Dashboard() {
           if (ok) setScheduleTime(timeSync.getSyncedTime());
         });
         fetchAttendanceData();
+        void checkFaceApiRuntime();
       }
     });
     return () => sub.remove();
-  }, [fetchAttendanceData]);
+  }, [fetchAttendanceData, checkFaceApiRuntime]);
 
   // Back button
   useEffect(() => {
@@ -335,9 +356,15 @@ export default function Dashboard() {
       }),
       fetchAttendanceSchedule(),
       checkEnrollmentStatus(),
+      checkFaceApiRuntime(),
     ]);
     setRefreshing(false);
-  }, [fetchAttendanceData, fetchAttendanceSchedule, checkEnrollmentStatus]);
+  }, [
+    fetchAttendanceData,
+    fetchAttendanceSchedule,
+    checkEnrollmentStatus,
+    checkFaceApiRuntime,
+  ]);
 
   // Computed values
   const rawName =
@@ -401,7 +428,9 @@ export default function Dashboard() {
       isPrimaryActionDisabled:
         refreshing ||
         isInitializing ||
+        isCheckingFaceApi ||
         !allows ||
+        faceApiRuntime?.state !== "healthy" ||
         enrollmentStatus !== "enrolled" ||
         attendanceStatus.hasCheckedOut,
     };
@@ -411,8 +440,35 @@ export default function Dashboard() {
     derivedActionType,
     refreshing,
     isInitializing,
+    isCheckingFaceApi,
+    faceApiRuntime?.state,
     enrollmentStatus,
     attendanceStatus.hasCheckedOut,
+  ]);
+
+  const primaryActionLabel = useMemo(() => {
+    if (attendanceStatus.hasCheckedOut) {
+      return "SELESAI";
+    }
+
+    if (refreshing) {
+      return "MEMUAT...";
+    }
+
+    if (isCheckingFaceApi) {
+      return "CEK ROBIN...";
+    }
+
+    if (faceApiRuntime?.state !== "healthy") {
+      return "SERVER BELUM SIAP";
+    }
+
+    return "PRESENSI";
+  }, [
+    attendanceStatus.hasCheckedOut,
+    refreshing,
+    isCheckingFaceApi,
+    faceApiRuntime?.state,
   ]);
 
   // Navigation
@@ -606,6 +662,62 @@ export default function Dashboard() {
               </View>
             )}
 
+            {!isCheckingFaceApi &&
+              faceApiRuntime &&
+              faceApiRuntime.state !== "healthy" && (
+                <View className="px-6 mt-4">
+                  <Card
+                    className={`p-5 border rounded-3xl ${
+                      faceApiRuntime.state === "unhealthy"
+                        ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                        : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+                    }`}
+                  >
+                    <View className="flex-row items-center mb-3">
+                      <View
+                        className={`w-10 h-10 rounded-full items-center justify-center ${
+                          faceApiRuntime.state === "unhealthy"
+                            ? "bg-amber-500/20"
+                            : "bg-red-500/20"
+                        }`}
+                      >
+                        <Icon
+                          as={AlertCircle}
+                          className={`size-6 ${
+                            faceApiRuntime.state === "unhealthy"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        />
+                      </View>
+                      <View className="ml-3 flex-1">
+                        <Text className="text-foreground font-bold text-base">
+                          {faceApiRuntime.title}
+                        </Text>
+                        <Text className="text-xs text-muted-foreground">
+                          {faceApiRuntime.message}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onPress={checkFaceApiRuntime}
+                      className="w-full border-border"
+                    >
+                      <Icon
+                        as={Loader2}
+                        className="size-5 text-foreground mr-2"
+                      />
+                      <Text className="text-foreground font-semibold">
+                        Cek Status Robin
+                      </Text>
+                    </Button>
+                  </Card>
+                </View>
+              )}
+
             {/* Attendance Status Card */}
             <View className="px-6 mt-4">
               <Card className="p-0 overflow-hidden bg-card border border-border/50 rounded-3xl">
@@ -696,11 +808,7 @@ export default function Dashboard() {
                     {isPrimaryActionDisabled ? (
                       <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
                         <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
-                          {attendanceStatus.hasCheckedOut
-                            ? "SELESAI"
-                            : refreshing
-                              ? "MEMUAT..."
-                              : "PRESENSI"}
+                          {primaryActionLabel}
                         </Text>
                       </View>
                     ) : (
@@ -726,6 +834,17 @@ export default function Dashboard() {
                         Total waktu kerja:{" "}
                         <Text className="font-bold text-foreground">
                           {attendanceStatus.totalWorkHours}
+                        </Text>
+                      </Text>
+                    </View>
+                  )}
+
+                  {enrollmentStatus === "enrolled" && embeddingCount !== null && (
+                    <View className="mt-2 items-center">
+                      <Text className="text-muted-foreground text-xs">
+                        Verifikasi wajah aktif:{" "}
+                        <Text className="font-bold text-foreground">
+                          {embeddingCount} embedding
                         </Text>
                       </Text>
                     </View>

@@ -38,6 +38,10 @@ import {
   sessionDebugInfo,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
+import {
+  fetchFaceApiRuntimeStatus,
+  type FaceApiRuntimeStatusResult,
+} from "~/utils/faceApiRuntime";
 import { Icon } from "~/components/ui/icon";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -327,6 +331,54 @@ const ErrorScreen = memo<{
 ));
 ErrorScreen.displayName = "ErrorScreen";
 
+const FaceApiStatusScreen = memo<{
+  status: FaceApiRuntimeStatusResult | null;
+  isLoading: boolean;
+  onRetry: () => void;
+  onBack: () => void;
+}>(({ status, isLoading, onRetry, onBack }) => (
+  <SafeAreaView className="flex-1 bg-gray-900" edges={["top", "bottom"]}>
+    <View className="flex-1 justify-center items-center px-8">
+      <Animated.View entering={FadeIn.duration(500)} className="items-center">
+        <View className="w-24 h-24 rounded-full bg-amber-500/20 items-center justify-center mb-6">
+          <Icon as={AlertCircle} className="size-16 text-amber-500" />
+        </View>
+        <Text variant="h1" className="text-white text-center mb-2">
+          {isLoading
+            ? "Memeriksa Project Robin..."
+            : status?.title || "Project Robin belum siap"}
+        </Text>
+        <Text variant="default" className="text-white/70 text-center mb-8">
+          {isLoading
+            ? "Sedang memastikan server verifikasi wajah siap menerima enrollment."
+            : status?.message ||
+              "Server verifikasi wajah belum bisa digunakan saat ini."}
+        </Text>
+
+        <View className="gap-3 w-full">
+          <Button onPress={onRetry} className="bg-[#0066FF]">
+            <Icon as={RefreshCw} className="size-5 text-white mr-2" />
+            <Text variant="default" className="text-white font-semibold">
+              Cek Lagi
+            </Text>
+          </Button>
+
+          <Button
+            variant="outline"
+            onPress={onBack}
+            className="border-white/30"
+          >
+            <Text variant="default" className="text-white">
+              Kembali
+            </Text>
+          </Button>
+        </View>
+      </Animated.View>
+    </View>
+  </SafeAreaView>
+));
+FaceApiStatusScreen.displayName = "FaceApiStatusScreen";
+
 // --- MAIN COMPONENT ---
 const FaceEnrollment = () => {
   const router = useRouter();
@@ -345,6 +397,9 @@ const FaceEnrollment = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [successResponse, setSuccessResponse] =
     useState<EnrollmentSuccessResponse | null>(null);
+  const [faceApiRuntime, setFaceApiRuntime] =
+    useState<FaceApiRuntimeStatusResult | null>(null);
+  const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
 
   const spinnerRotation = useSharedValue(0);
 
@@ -363,6 +418,14 @@ const FaceEnrollment = () => {
   const spinnerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${spinnerRotation.value}deg` }],
   }));
+
+  const refreshFaceApiRuntime = useCallback(async () => {
+    setIsCheckingFaceApi(true);
+    const result = await fetchFaceApiRuntimeStatus();
+    faceApiLog("enroll-runtime:result", { result });
+    setFaceApiRuntime(result);
+    setIsCheckingFaceApi(false);
+  }, []);
 
   // --- HANDLERS ---
   const requestCameraAccess = useCallback(async () => {
@@ -550,6 +613,14 @@ const FaceEnrollment = () => {
     setUploadMessage("Mempersiapkan foto...");
 
     try {
+      const runtime = await fetchFaceApiRuntimeStatus();
+      setFaceApiRuntime(runtime);
+      if (runtime.state !== "healthy") {
+        setErrorMessage(runtime.message);
+        setStep("error");
+        return;
+      }
+
       const controller = new AbortController();
       uploadController.current = controller;
 
@@ -729,6 +800,10 @@ const FaceEnrollment = () => {
 
   // --- EFFECTS ---
   useEffect(() => {
+    void refreshFaceApiRuntime();
+  }, [refreshFaceApiRuntime]);
+
+  useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
       handleBackPress,
@@ -798,6 +873,21 @@ const FaceEnrollment = () => {
           onConfirm={handleEnroll}
           onRetry={handleRetryCapture}
           isUploading={false}
+        />
+      </>
+    );
+  }
+
+  if (isCheckingFaceApi || faceApiRuntime?.state !== "healthy") {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar barStyle="light-content" backgroundColor="#111827" />
+        <FaceApiStatusScreen
+          status={faceApiRuntime}
+          isLoading={isCheckingFaceApi}
+          onRetry={refreshFaceApiRuntime}
+          onBack={handleDone}
         />
       </>
     );
