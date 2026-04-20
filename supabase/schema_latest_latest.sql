@@ -1255,6 +1255,30 @@ COMMENT ON FUNCTION check_absensi_status IS 'Validates attendance check-in/out b
 -- RPC Function: get_and_validate_attendance_action (compat)
 -- ============================================================================
 
+CREATE OR REPLACE FUNCTION public.can_act_for_attendance_user(
+  p_target_user_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT auth.uid() IS NOT NULL
+    AND p_target_user_id IS NOT NULL
+    AND (
+      p_target_user_id IS NOT DISTINCT FROM auth.uid()
+      OR EXISTS (
+        SELECT 1
+        FROM public.user_profiles
+        WHERE user_id = auth.uid()
+          AND role = 'admin'
+      )
+    );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.can_act_for_attendance_user(UUID) TO authenticated;
+
 DROP FUNCTION IF EXISTS public.get_and_validate_attendance_action(uuid, double precision, double precision);
 DROP TYPE IF EXISTS public.attendance_action_response;
 
@@ -1285,7 +1309,7 @@ DECLARE
   v_has_active_permit BOOLEAN := FALSE;
   v_response public.attendance_action_response;
 BEGIN
-  IF p_user_id != auth.uid() THEN
+  IF NOT public.can_act_for_attendance_user(p_user_id) THEN
     RAISE EXCEPTION 'Unauthorized: user_id mismatch';
   END IF;
 
@@ -1418,7 +1442,7 @@ DECLARE
   v_current_day_indonesian TEXT;
   v_validated_action public.attendance_action_response;
 BEGIN
-  IF p_user_id != auth.uid() THEN
+  IF NOT public.can_act_for_attendance_user(p_user_id) THEN
     RAISE EXCEPTION 'Unauthorized: user_id mismatch';
   END IF;
 
