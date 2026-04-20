@@ -12,10 +12,7 @@ import {
   Image,
   AppState,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as Sentry from "@sentry/react-native";
 
@@ -71,6 +68,7 @@ interface AttendanceSchedule {
   selesai_masuk: string | null;
   mulai_pulang: string | null;
   selesai_pulang: string | null;
+  kompensasi_waktu: number | null;
 }
 
 const DAY_KEY_MAP = [
@@ -82,6 +80,75 @@ const DAY_KEY_MAP = [
   "jumat",
   "sabtu",
 ] as const;
+
+const getWIBDayKey = (date: Date) => {
+  const wibDate = toWIB(date);
+  return DAY_KEY_MAP[wibDate.getUTCDay()];
+};
+
+const parseScheduleTimeForWIBDate = (
+  time: string | null,
+  baseDate: Date,
+): Date | null => {
+  if (!time) return null;
+
+  const timeParts = time.split(":");
+  if (timeParts.length < 2 || timeParts.length > 3) return null;
+
+  const [hoursRaw, minutesRaw, secondsRaw = "0"] = timeParts;
+  const isIntegerToken = (value: string) => /^\d+$/.test(value);
+  if (
+    !isIntegerToken(hoursRaw) ||
+    !isIntegerToken(minutesRaw) ||
+    !isIntegerToken(secondsRaw)
+  ) {
+    return null;
+  }
+
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  const seconds = Number(secondsRaw);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    !Number.isInteger(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return null;
+  }
+
+  const wibDate = toWIB(baseDate);
+  return new Date(
+    Date.UTC(
+      wibDate.getUTCFullYear(),
+      wibDate.getUTCMonth(),
+      wibDate.getUTCDate(),
+      hours - 7,
+      minutes,
+      seconds,
+      0,
+    ),
+  );
+};
+
+const addMinutesToDate = (
+  date: Date | null,
+  minutes: number | null | undefined,
+): Date | null => {
+  if (!date) return null;
+
+  const normalizedMinutes =
+    typeof minutes === "number" && Number.isFinite(minutes)
+      ? Math.max(0, Math.trunc(minutes))
+      : 0;
+  return new Date(date.getTime() + normalizedMinutes * 60 * 1000);
+};
 
 const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
   !!url && /^https?:\/\//.test(url);
@@ -120,7 +187,6 @@ const DashboardClock = React.memo(function DashboardClock() {
 
 export default function Dashboard() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.userProfile);
   const theme = useThemeStore((state) => state.theme);
@@ -252,10 +318,12 @@ export default function Dashboard() {
 
   const fetchAttendanceSchedule = useCallback(async () => {
     try {
-      const dayKey = DAY_KEY_MAP[new Date().getDay()];
+      const dayKey = getWIBDayKey(timeSync.getSyncedTime());
       const { data, error } = await supabase
         .from("jadwal_absensi")
-        .select("mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang")
+        .select(
+          "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
+        )
         .eq("hari", dayKey)
         .eq("is_active", true)
         .maybeSingle();
@@ -416,23 +484,24 @@ export default function Dashboard() {
 
   const { isPrimaryActionDisabled } = useMemo(() => {
     const parseTime = (t: string | null): Date | null => {
-      if (!t) return null;
-      const [h, m] = t.split(":").map(Number);
-      const d = new Date(scheduleTime);
-      d.setHours(h, m, 0, 0);
-      return d;
+      return parseScheduleTimeForWIBDate(t, scheduleTime);
     };
 
     const inWindow = (start: Date | null, end: Date | null) => {
-      if (!start) return true;
+      if (!start) return false;
       if (scheduleTime < start) return false;
       if (end && scheduleTime > end) return false;
       return true;
     };
 
+    const checkInEnd = addMinutesToDate(
+      parseTime(attendanceSchedule?.selesai_masuk ?? null),
+      attendanceSchedule?.kompensasi_waktu,
+    );
+
     const presentOk = inWindow(
       parseTime(attendanceSchedule?.mulai_masuk ?? null),
-      parseTime(attendanceSchedule?.selesai_masuk ?? null),
+      checkInEnd,
     );
     const pulangOk = inWindow(
       parseTime(attendanceSchedule?.mulai_pulang ?? null),
@@ -571,7 +640,7 @@ export default function Dashboard() {
             contentContainerStyle={{ paddingBottom: 32 }}
           >
             {/* Header */}
-            <View className="px-6 pt-2 pb-6" style={{ paddingTop: insets.top }}>
+            <View className="px-6 pt-2 pb-6">
               <View className="flex-row items-center justify-between mb-8">
                 <View className="flex-row items-center gap-3">
                   <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
