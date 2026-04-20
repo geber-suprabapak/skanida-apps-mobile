@@ -831,7 +831,6 @@ const CameraAttendance = () => {
         device={device}
         isActive={!isProcessing}
         photo
-        video
         enableZoomGesture
         onInitialized={handleCameraReady}
       />

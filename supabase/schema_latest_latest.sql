@@ -854,7 +854,7 @@ BEGIN
   user_nis_bigint := user_nis_text::BIGINT;
 
   -- Read role from app metadata and normalize to allowed values
-  validated_role := NEW.raw_app_meta_data->>'role';
+  validated_role := COALESCE(NEW.raw_app_meta_data->>'role', 'siswa');
   IF validated_role NOT IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa') THEN
     validated_role := 'siswa';
   END IF;

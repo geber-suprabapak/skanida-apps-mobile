@@ -14,7 +14,7 @@ BEGIN
   user_nis_text := NEW.raw_user_meta_data->>'nis';
   user_nis_bigint := user_nis_text::BIGINT;
 
-  validated_role := NEW.raw_app_meta_data->>'role';
+  validated_role := COALESCE(NEW.raw_app_meta_data->>'role', 'siswa');
   IF validated_role NOT IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa') THEN
     validated_role := 'siswa';
   END IF;
