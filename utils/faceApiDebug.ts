@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import * as Sentry from "@sentry/react-native";
 
 const PREFIX = "[FaceAPI DEV]";
 const MAX_STRING_PREVIEW = 900;
@@ -128,19 +129,53 @@ export const startFaceApiTimer = () => Date.now();
 
 export const elapsedMs = (startedAt: number) => Date.now() - startedAt;
 
+const captureFaceApiProductionEvent = (
+  level: "warning" | "error",
+  event: string,
+  payload: Jsonish,
+  originalPayload?: unknown,
+) => {
+  Sentry.withScope((scope) => {
+    scope.setTag("feature", "face-api");
+    scope.setTag("event", event);
+    scope.setLevel(level);
+    scope.setContext("face_api", {
+      event,
+      payload: payload ?? null,
+    });
+
+    if (level === "error" && originalPayload instanceof Error) {
+      Sentry.captureException(originalPayload);
+      return;
+    }
+
+    Sentry.captureMessage(`Face API ${level}: ${event}`);
+  });
+};
+
 export const faceApiLog = (event: string, payload?: unknown) => {
   if (!isDevLoggingEnabled()) return;
   console.log(`${PREFIX} ${event}`, normalizeDebugValue(payload));
 };
 
 export const faceApiWarn = (event: string, payload?: unknown) => {
-  if (!isDevLoggingEnabled()) return;
-  console.warn(`${PREFIX} ${event}`, normalizeDebugValue(payload));
+  const normalizedPayload = normalizeDebugValue(payload);
+  if (isDevLoggingEnabled()) {
+    console.warn(`${PREFIX} ${event}`, normalizedPayload);
+    return;
+  }
+
+  captureFaceApiProductionEvent("warning", event, normalizedPayload, payload);
 };
 
 export const faceApiError = (event: string, payload?: unknown) => {
-  if (!isDevLoggingEnabled()) return;
-  console.error(`${PREFIX} ${event}`, normalizeDebugValue(payload));
+  const normalizedPayload = normalizeDebugValue(payload);
+  if (isDevLoggingEnabled()) {
+    console.error(`${PREFIX} ${event}`, normalizedPayload);
+    return;
+  }
+
+  captureFaceApiProductionEvent("error", event, normalizedPayload, payload);
 };
 
 export const sessionDebugInfo = (

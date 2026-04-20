@@ -847,6 +847,7 @@ DECLARE
   user_nis_text TEXT;
   user_nis_bigint BIGINT;
   validated_role TEXT;
+  profile_insert_count INTEGER;
 BEGIN
   -- Extract NIS from user metadata
   user_nis_text := NEW.raw_user_meta_data->>'nis';
@@ -871,6 +872,13 @@ BEGIN
     validated_role
   FROM biodata_siswa AS bs
   WHERE bs.nis = user_nis_bigint;
+
+  GET DIAGNOSTICS profile_insert_count = ROW_COUNT;
+
+  IF profile_insert_count = 0 THEN
+    RAISE EXCEPTION 'No biodata_siswa row found for nis % while creating user profile',
+      user_nis_text;
+  END IF;
 
   -- Mark biodata as activated
   UPDATE biodata_siswa

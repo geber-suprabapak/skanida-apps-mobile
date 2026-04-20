@@ -83,6 +83,44 @@ const DAY_KEY_MAP = [
   "sabtu",
 ] as const;
 
+const getWIBDayKey = (date: Date) => {
+  const wibDate = toWIB(date);
+  return DAY_KEY_MAP[wibDate.getUTCDay()];
+};
+
+const parseScheduleTimeForWIBDate = (
+  time: string | null,
+  baseDate: Date,
+): Date | null => {
+  if (!time) return null;
+
+  const [hoursRaw, minutesRaw, secondsRaw = "0"] = time.split(":");
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  const seconds = Number(secondsRaw);
+
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(seconds)
+  ) {
+    return null;
+  }
+
+  const wibDate = toWIB(baseDate);
+  return new Date(
+    Date.UTC(
+      wibDate.getUTCFullYear(),
+      wibDate.getUTCMonth(),
+      wibDate.getUTCDate(),
+      hours - 7,
+      minutes,
+      seconds,
+      0,
+    ),
+  );
+};
+
 const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
   !!url && /^https?:\/\//.test(url);
 
@@ -252,7 +290,7 @@ export default function Dashboard() {
 
   const fetchAttendanceSchedule = useCallback(async () => {
     try {
-      const dayKey = DAY_KEY_MAP[new Date().getDay()];
+      const dayKey = getWIBDayKey(timeSync.getSyncedTime());
       const { data, error } = await supabase
         .from("jadwal_absensi")
         .select("mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang")
@@ -416,11 +454,7 @@ export default function Dashboard() {
 
   const { isPrimaryActionDisabled } = useMemo(() => {
     const parseTime = (t: string | null): Date | null => {
-      if (!t) return null;
-      const [h, m] = t.split(":").map(Number);
-      const d = new Date(scheduleTime);
-      d.setHours(h, m, 0, 0);
-      return d;
+      return parseScheduleTimeForWIBDate(t, scheduleTime);
     };
 
     const inWindow = (start: Date | null, end: Date | null) => {

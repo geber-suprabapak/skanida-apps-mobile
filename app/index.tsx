@@ -28,20 +28,66 @@ export default function Index() {
         }
 
         if (session?.user) {
-          const role = resolveUserRole(
-            session.access_token,
-            session.user.app_metadata as Record<string, unknown> | undefined,
+          let activeSession = session;
+          let role = resolveUserRole(
+            activeSession.access_token,
+            activeSession.user.app_metadata as
+              | Record<string, unknown>
+              | undefined,
           );
 
-          if (role !== "siswa") {
+          if (!role) {
+            setLoadingMessage("Refreshing session");
+
+            const {
+              data: { session: refreshedSession },
+              error: refreshError,
+            } = await supabase.auth.refreshSession();
+
+            if (refreshError) {
+              if (__DEV__)
+                console.error(
+                  "[Index] refreshSession error:",
+                  refreshError.message,
+                );
+              Sentry.captureException(refreshError, {
+                tags: { feature: "auth-startup", reason: "missing-role" },
+                extra: { userId: activeSession.user.id },
+              });
+              router.replace("/auth/AuthSelector");
+              return;
+            }
+
+            if (refreshedSession?.user) {
+              activeSession = refreshedSession;
+              role = resolveUserRole(
+                activeSession.access_token,
+                activeSession.user.app_metadata as
+                  | Record<string, unknown>
+                  | undefined,
+              );
+            }
+          }
+
+          if (role === "siswa") {
+            setLoadingMessage("Session found");
+            setUser(activeSession.user);
+            router.replace("/Dashboard");
+            return;
+          }
+
+          if (role) {
             await supabase.auth.signOut();
             router.replace("/auth/AuthSelector");
             return;
           }
 
-          setLoadingMessage("Session found");
-          setUser(session.user);
-          router.replace("/Dashboard");
+          Sentry.captureMessage("Missing user role after session refresh", {
+            level: "warning",
+            tags: { feature: "auth-startup", reason: "missing-role" },
+            extra: { userId: activeSession.user.id },
+          });
+          router.replace("/auth/AuthSelector");
         } else {
           router.replace("/auth/AuthSelector");
         }
