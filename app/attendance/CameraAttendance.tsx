@@ -25,8 +25,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
 
-import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
-import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import { Icon } from "~/components/ui/icon";
 import {
   Camera as CameraIcon,
@@ -41,19 +39,14 @@ import {
   faceApiError,
   faceApiLog,
   faceApiWarn,
-  parseFaceApiBody,
-  responseDebugInfo,
-  sessionDebugInfo,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
-import { ensureFaceApiReady } from "~/utils/faceApiRuntime";
 import { setPendingAttendanceSuccess } from "~/utils/attendanceSuccess";
+import { submitAttendance } from "~/utils/bffMobileApi";
 
 // --- CONSTANTS ---
 const MAX_BASE64_SIZE_MB = 5;
 const MAX_BASE64_SIZE_BYTES = MAX_BASE64_SIZE_MB * 1024 * 1024;
-const FACE_API_TIMEOUT_MS = 30_000;
-
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
 type ProcessStage = "verifying" | "saving";
@@ -65,15 +58,6 @@ type Coordinates = {
 interface ProcessProgress {
   stage: ProcessStage;
   percentage: number;
-  message: string;
-}
-
-interface FaceRecogResponse {
-  status: string;
-  student_id?: string;
-  student_name?: string;
-  confidence?: number;
-  process_time_ms?: number;
   message: string;
 }
 
@@ -188,9 +172,6 @@ const getBase64ByteSize = (base64: string) => {
   return (base64.length * 3) / 4 - paddingLength;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 // --- MAIN COMPONENT ---
 const CameraAttendance = () => {
   // --- HOOKS ---
@@ -277,116 +258,6 @@ const CameraAttendance = () => {
     });
   }, [actionType, cameraFacing, params, preFetchedLocation, user?.id]);
 
-  // --- FACE RECOGNITION API ---
-  const verifyFaceWithServer = useCallback(
-    async (base64Image: string): Promise<FaceRecogResponse> => {
-      const startedAt = startFaceApiTimer();
-      faceApiLog("identify:start", {
-        base64Chars: base64Image.length,
-        payloadSize: bytesInfo(getBase64ByteSize(base64Image)),
-      });
-
-      const runtime = await ensureFaceApiReady();
-      faceApiLog("identify:runtime-ready", {
-        message: runtime.message,
-        readinessPath: runtime.info?.readinessPath ?? null,
-        issues: runtime.issues,
-      });
-
-      await ensureSupabaseInitialized();
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      faceApiLog("identify:session", sessionDebugInfo(session));
-
-      if (!session) {
-        faceApiWarn("identify:missing-session", {
-          durationMs: elapsedMs(startedAt),
-        });
-        throw new Error("Sesi tidak valid. Silakan login ulang.");
-      }
-
-      const faceApiBaseUrl = await ensureFaceApiConfigured();
-      const faceApiUrl = `${faceApiBaseUrl}/v1/identify`;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        FACE_API_TIMEOUT_MS,
-      );
-
-      try {
-        faceApiLog("identify:request", {
-          method: "POST",
-          url: faceApiUrl,
-          timeoutMs: FACE_API_TIMEOUT_MS,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "[redacted bearer]",
-          },
-          body: {
-            image_base64: "[redacted]",
-            base64Chars: base64Image.length,
-            estimatedSize: bytesInfo(getBase64ByteSize(base64Image)),
-          },
-        });
-
-        const response = await fetch(faceApiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ image_base64: base64Image }),
-          signal: controller.signal,
-        });
-
-        const bodyText = await response.text();
-        const parsedBody = parseFaceApiBody(bodyText);
-        faceApiLog("identify:response", {
-          durationMs: elapsedMs(startedAt),
-          ...responseDebugInfo(response, parsedBody),
-        });
-
-        if (!response.ok) {
-          const errData = isRecord(parsedBody) ? parsedBody : {};
-          throw new Error(
-            typeof errData.message === "string"
-              ? errData.message
-              : `Gagal verifikasi wajah (${response.status})`,
-          );
-        }
-
-        if (!isRecord(parsedBody)) {
-          throw new Error("Respons server tidak valid.");
-        }
-
-        return parsedBody as unknown as FaceRecogResponse;
-      } catch (error: any) {
-        if (error?.name === "AbortError") {
-          faceApiError("identify:timeout", {
-            durationMs: elapsedMs(startedAt),
-            timeoutMs: FACE_API_TIMEOUT_MS,
-            error,
-          });
-          throw new Error(
-            "Permintaan verifikasi wajah melebihi batas waktu. Silakan coba lagi.",
-          );
-        }
-        faceApiError("identify:failed", {
-          durationMs: elapsedMs(startedAt),
-          error,
-        });
-        throw error;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    },
-    [],
-  );
-
   // --- MAIN PROCESS ---
   const processAttendance = useCallback(
     async (base64Image: string): Promise<void> => {
@@ -436,30 +307,6 @@ const CameraAttendance = () => {
       const startTime = Date.now();
 
       try {
-        // Step 1: Verify Face
-        setProcessProgress({
-          stage: "verifying",
-          percentage: 30,
-          message: "Memverifikasi wajah...",
-        });
-
-        const faceResult = await verifyFaceWithServer(sanitizedBase64);
-        faceApiLog("attendance-process:identify-result", {
-          durationMs: elapsedMs(startedAt),
-          faceResult,
-        });
-
-        if (faceResult.status !== "ok") {
-          throw new Error(faceResult.message || "Wajah tidak dikenali.");
-        }
-
-        // Step 2: Save to Database
-        setProcessProgress({
-          stage: "saving",
-          percentage: 70,
-          message: "Menyimpan data absensi...",
-        });
-
         let resolvedLocation = preFetchedLocation;
 
         if (!resolvedLocation) {
@@ -494,41 +341,24 @@ const CameraAttendance = () => {
           });
         }
 
-        faceApiLog("attendance-process:save-rpc:request", {
-          rpc: "save_attendance_record",
-          params: {
-            p_user_id: user.id,
-            p_action_type: actionType,
-            p_photo_path: null,
-            p_latitude: resolvedLocation.latitude,
-            p_longitude: resolvedLocation.longitude,
-          },
+        // BFF verifies face through Robin and persists attendance server-side.
+        setProcessProgress({
+          stage: "verifying",
+          percentage: 30,
+          message: "Memverifikasi wajah...",
         });
 
-        const { data: saveData, error: saveError } = await supabase.rpc(
-          "save_attendance_record",
-          {
-            p_user_id: user.id,
-            p_action_type: actionType,
-            p_photo_path: null,
-            p_latitude: resolvedLocation.latitude,
-            p_longitude: resolvedLocation.longitude,
-          },
-        );
+        const submitResult = await submitAttendance({
+          action_type: actionType,
+          image_base64: sanitizedBase64,
+          latitude: resolvedLocation.latitude,
+          longitude: resolvedLocation.longitude,
+        });
 
-        faceApiLog("attendance-process:save-rpc:response", {
+        faceApiLog("attendance-process:bff-submit-result", {
           durationMs: elapsedMs(startedAt),
-          data: saveData,
-          error: saveError,
+          submitResult,
         });
-
-        if (saveError || !saveData?.success) {
-          throw new Error(
-            `Gagal menyimpan data: ${
-              saveError?.message || saveData?.message || "Respons tidak valid"
-            }`,
-          );
-        }
 
         setProcessProgress({
           stage: "saving",
@@ -541,12 +371,11 @@ const CameraAttendance = () => {
           totalTimeMs: totalTime,
           fullDurationMs: elapsedMs(startedAt),
           actionType,
-          faceResult,
-          saveData,
+          submitResult,
         });
         setPendingAttendanceSuccess({
-          attendanceType: actionType,
-          processingTime: totalTime,
+          attendanceType: submitResult.attendance_type,
+          processingTime: submitResult.processed_ms || totalTime,
         });
         router.replace("/Dashboard");
       } catch (error: any) {
@@ -563,7 +392,7 @@ const CameraAttendance = () => {
         setIsProcessing(false);
       }
     },
-    [user, actionType, verifyFaceWithServer, preFetchedLocation, router],
+    [user, actionType, preFetchedLocation, router],
   );
 
   // --- EVENT HANDLERS ---

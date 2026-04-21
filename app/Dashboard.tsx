@@ -24,7 +24,6 @@ import { Icon } from "~/components/ui/icon";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
 import { fetchEnrollmentStatus } from "~/utils/enrollment";
 import type { EnrollmentStatus } from "~/utils/enrollment";
 import {
@@ -35,10 +34,10 @@ import {
   consumePendingAttendanceSuccess,
   type PendingAttendanceSuccess,
 } from "~/utils/attendanceSuccess";
-import { formatDateWIB, getWIBDayBounds, toWIB } from "~/lib/utils";
+import { toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
-import { getAvatarSignedUrl } from "~/utils/avatar";
 import { faceApiLog } from "~/utils/faceApiDebug";
+import { getDashboard } from "~/utils/bffMobileApi";
 import {
   AlertCircle,
   Bug,
@@ -70,21 +69,6 @@ interface AttendanceSchedule {
   selesai_pulang: string | null;
   kompensasi_waktu: number | null;
 }
-
-const DAY_KEY_MAP = [
-  "minggu",
-  "senin",
-  "selasa",
-  "rabu",
-  "kamis",
-  "jumat",
-  "sabtu",
-] as const;
-
-const getWIBDayKey = (date: Date) => {
-  const wibDate = toWIB(date);
-  return DAY_KEY_MAP[wibDate.getUTCDay()];
-};
 
 const parseScheduleTimeForWIBDate = (
   time: string | null,
@@ -153,17 +137,6 @@ const addMinutesToDate = (
 const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
   !!url && /^https?:\/\//.test(url);
 
-const calculateWorkHours = (checkIn: string, checkOut: string): string => {
-  try {
-    const diffMs = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-    const hours = Math.floor(diffMs / 3600000);
-    const minutes = Math.floor((diffMs % 3600000) / 60000);
-    return `${hours}j ${minutes}m`;
-  } catch {
-    return "0j 0m";
-  }
-};
-
 // Isolated clock — only this re-renders every second
 const DashboardClock = React.memo(function DashboardClock() {
   const [time, setTime] = useState(timeSync.getSyncedTime());
@@ -194,6 +167,7 @@ export default function Dashboard() {
   // State
   const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [dashboardName, setDashboardName] = useState("");
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
     hasCheckedOut: false,
@@ -221,120 +195,26 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  // Avatar pipeline
-  const rawAvatarValue =
-    userProfile?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
-
-  useEffect(() => {
-    let active = true;
-    if (!rawAvatarValue || typeof rawAvatarValue !== "string") {
-      setAvatarUrl(null);
-      return;
-    }
-    getAvatarSignedUrl(rawAvatarValue)
-      .then((url) => {
-        if (active && isValidRemoteImageUrl(url)) setAvatarUrl(url!.trim());
-        else if (active) setAvatarUrl(null);
-      })
-      .catch(() => {
-        if (active) setAvatarUrl(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [rawAvatarValue]);
-
   // Data fetching
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
     try {
-      const syncedNow = timeSync.getSyncedTime();
-      const today = formatDateWIB(syncedNow);
-      const { start, endExclusive } = getWIBDayBounds(syncedNow);
-
-      const { data: todayAttendance } = await supabase
-        .from("absences")
-        .select("status, created_at")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .order("created_at", { ascending: true });
-
-      const { data: leaveRequests } = await supabase
-        .from("perizinan")
-        .select("approval_status, kategori_izin")
-        .eq("user_id", user.id)
-        .in("approval_status", ["pending", "approved"])
-        .gte("tanggal", start)
-        .lt("tanggal", endExclusive);
-
-      let hasCheckedIn = false;
-      let hasCheckedOut = false;
-      let checkInTime = "";
-      let checkOutTime = "";
-      let checkInStatus: "Hadir" | "Terlambat" | undefined;
-      let todayStatus: AttendanceStatus["todayStatus"] = "pending";
-
-      if (leaveRequests && leaveRequests.length > 0) {
-        todayStatus = "leave";
-      } else if (todayAttendance && todayAttendance.length > 0) {
-        if (todayAttendance.some((r) => r.status === "Alpha")) {
-          todayStatus = "absent";
-        } else {
-          const inRec = todayAttendance.find(
-            (r) => r.status === "Hadir" || r.status === "Terlambat",
-          );
-          const outRec = todayAttendance.find((r) => r.status === "Pulang");
-          if (inRec) {
-            hasCheckedIn = true;
-            checkInTime = inRec.created_at;
-            checkInStatus = inRec.status as "Hadir" | "Terlambat";
-            todayStatus = "present";
-          }
-          if (outRec) {
-            hasCheckedOut = true;
-            checkOutTime = outRec.created_at;
-          }
-        }
-      }
-
-      const totalWorkHours =
-        hasCheckedIn && hasCheckedOut
-          ? calculateWorkHours(checkInTime, checkOutTime)
-          : undefined;
+      const data = await getDashboard();
+      const avatar = data.profile.avatar_url;
 
       setAttendanceStatus({
-        hasCheckedIn,
-        hasCheckedOut,
-        checkInTime,
-        checkOutTime,
-        checkInStatus,
-        totalWorkHours,
-        todayStatus,
+        hasCheckedIn: data.today_status.hasCheckedIn,
+        hasCheckedOut: data.today_status.hasCheckedOut,
+        checkInStatus: data.today_status.checkInStatus ?? undefined,
+        todayStatus: data.today_status.today,
       });
+      setAttendanceSchedule(data.schedule);
+      setAvatarUrl(isValidRemoteImageUrl(avatar) ? avatar!.trim() : null);
+      setDashboardName(data.profile.full_name ?? "");
     } catch (error) {
       Sentry.captureException(error);
     }
   }, [user]);
-
-  const fetchAttendanceSchedule = useCallback(async () => {
-    try {
-      const dayKey = getWIBDayKey(timeSync.getSyncedTime());
-      const { data, error } = await supabase
-        .from("jadwal_absensi")
-        .select(
-          "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
-        )
-        .eq("hari", dayKey)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (error) throw error;
-      setAttendanceSchedule(data as AttendanceSchedule | null);
-    } catch (error) {
-      Sentry.captureException(error);
-      setAttendanceSchedule(null);
-    }
-  }, []);
 
   const checkEnrollmentStatus = useCallback(async () => {
     faceApiLog("dashboard:enroll-status-check:start", {
@@ -371,11 +251,11 @@ export default function Dashboard() {
   const initializeDashboard = useCallback(async () => {
     try {
       setIsInitializing(true);
-      await Promise.all([fetchAttendanceData(), fetchAttendanceSchedule()]);
+      await fetchAttendanceData();
     } finally {
       setIsInitializing(false);
     }
-  }, [fetchAttendanceData, fetchAttendanceSchedule]);
+  }, [fetchAttendanceData]);
 
   useEffect(() => {
     initializeDashboard();
@@ -393,14 +273,8 @@ export default function Dashboard() {
         checkFaceApiRuntime(),
         checkEnrollmentStatus(),
         fetchAttendanceData(),
-        fetchAttendanceSchedule(),
       ]);
-    }, [
-      checkFaceApiRuntime,
-      checkEnrollmentStatus,
-      fetchAttendanceData,
-      fetchAttendanceSchedule,
-    ]),
+    }, [checkFaceApiRuntime, checkEnrollmentStatus, fetchAttendanceData]),
   );
 
   useEffect(() => {
@@ -445,23 +319,18 @@ export default function Dashboard() {
       timeSync.forceSyncWithServer().then((ok) => {
         if (ok) setScheduleTime(timeSync.getSyncedTime());
       }),
-      fetchAttendanceSchedule(),
       checkFaceApiRuntime(),
       checkEnrollmentStatus(),
     ]);
     setRefreshing(false);
-  }, [
-    fetchAttendanceData,
-    fetchAttendanceSchedule,
-    checkFaceApiRuntime,
-    checkEnrollmentStatus,
-  ]);
+  }, [fetchAttendanceData, checkFaceApiRuntime, checkEnrollmentStatus]);
 
   // Computed values
   const rawName =
-    userProfile?.full_name ??
-    user?.user_metadata?.full_name ??
-    user?.user_metadata?.name ??
+    dashboardName ||
+    userProfile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
     "";
   const displayName = rawName
     ? rawName.split(" ").slice(0, 2).join(" ")
@@ -521,6 +390,7 @@ export default function Dashboard() {
         refreshing ||
         isInitializing ||
         isCheckingFaceApi ||
+        attendanceStatus.todayStatus === "leave" ||
         enrollmentStatus !== "enrolled" ||
         !allows ||
         faceApiRuntime?.state !== "healthy" ||
@@ -536,11 +406,16 @@ export default function Dashboard() {
     enrollmentStatus,
     faceApiRuntime?.state,
     attendanceStatus.hasCheckedOut,
+    attendanceStatus.todayStatus,
   ]);
 
   const primaryActionLabel = useMemo(() => {
     if (attendanceStatus.hasCheckedOut) {
       return "SELESAI";
+    }
+
+    if (attendanceStatus.todayStatus === "leave") {
+      return "SUDAH ADA IZIN";
     }
 
     if (refreshing) {
@@ -570,6 +445,7 @@ export default function Dashboard() {
     return "PRESENSI";
   }, [
     attendanceStatus.hasCheckedOut,
+    attendanceStatus.todayStatus,
     refreshing,
     isCheckingFaceApi,
     faceApiRuntime?.state,

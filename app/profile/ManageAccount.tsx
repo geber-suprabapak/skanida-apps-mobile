@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { StatusBar } from "expo-status-bar";
 
@@ -44,18 +43,20 @@ import {
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { extractAvatarPath, getAvatarSignedUrl } from "~/utils/avatar";
 import {
   fetchEnrollmentStatus,
   type EnrollmentStatus,
 } from "~/utils/enrollment";
-import {
-  faceApiLog,
-} from "~/utils/faceApiDebug";
+import { faceApiLog } from "~/utils/faceApiDebug";
 import {
   fetchFaceApiRuntimeStatus,
   type FaceApiRuntimeStatusResult,
 } from "~/utils/faceApiRuntime";
+import {
+  changePassword as changeBffPassword,
+  getProfile,
+  updateAvatar as updateBffAvatar,
+} from "~/utils/bffMobileApi";
 
 // --- Utility Functions ---
 
@@ -67,39 +68,6 @@ const clearProfileCache = async () => {
   } catch (error) {
     if (__DEV__) console.log("Failed to clear profile cache:", error);
   }
-};
-
-const base64ToUint8Array = (base64: string): Uint8Array => {
-  const cleaned = base64.replace(/\s/g, "");
-  const base64Chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-  let bufferLength = cleaned.length * 0.75;
-  if (cleaned.endsWith("==")) {
-    bufferLength -= 2;
-  } else if (cleaned.endsWith("=")) {
-    bufferLength -= 1;
-  }
-
-  const bytes = new Uint8Array(bufferLength);
-
-  let p = 0;
-  for (let i = 0; i < cleaned.length; i += 4) {
-    const encoded1 = base64Chars.indexOf(cleaned[i]);
-    const encoded2 = base64Chars.indexOf(cleaned[i + 1]);
-    const encoded3 = base64Chars.indexOf(cleaned[i + 2]);
-    const encoded4 = base64Chars.indexOf(cleaned[i + 3]);
-
-    bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
-    if (encoded3 !== 64 && encoded3 !== -1) {
-      bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
-    }
-    if (encoded4 !== 64 && encoded4 !== -1) {
-      bytes[p++] = ((encoded3 & 3) << 6) | encoded4;
-    }
-  }
-
-  return bytes;
 };
 
 // --- Interfaces ---
@@ -152,14 +120,7 @@ export default function ManageAccount() {
       if (!user) return;
 
       try {
-        const { data } = await supabase
-          .from("user_profiles")
-          .select(
-            "full_name, email, absence_number, class_name, nis, avatar_url",
-          )
-          .eq("user_id", user.id)
-          .single();
-
+        const data = await getProfile();
         let profileName =
           user.user_metadata?.name || user.user_metadata?.full_name || "";
         let profileEmail = user.email || "";
@@ -171,7 +132,9 @@ export default function ManageAccount() {
         if (data) {
           profileName = data.full_name || profileName;
           profileEmail = data.email || profileEmail;
-          profileAbsence = data.absence_number || profileAbsence;
+          profileAbsence = data.absence_number
+            ? String(data.absence_number)
+            : profileAbsence;
           profileClass = data.class_name || profileClass;
           profileNis = data.nis || profileNis;
           profileAvatar = data.avatar_url || profileAvatar;
@@ -182,14 +145,10 @@ export default function ManageAccount() {
         setAbsenceNumber(profileAbsence);
         setClassName(profileClass);
         setNis(profileNis);
-        const normalizedAvatarPath = profileAvatar
-          ? (extractAvatarPath(profileAvatar) ?? profileAvatar)
-          : null;
-        const resolvedAvatarUrl =
-          await getAvatarSignedUrl(normalizedAvatarPath);
+        const normalizedAvatarPath = profileAvatar || null;
 
         setAvatarPath(normalizedAvatarPath);
-        setAvatarUrl(resolvedAvatarUrl);
+        setAvatarUrl(normalizedAvatarPath);
 
         setInitialData({
           name: profileName,
@@ -300,62 +259,23 @@ export default function ManageAccount() {
     setUploadingAvatar(true);
 
     try {
-      // 1. Upload Image to Storage
       const fileExt = uri.split(".").pop()?.toLowerCase() || "jpg";
-      const fileNameInBucket = `avatar_${user.id}_${Date.now()}.${fileExt}`;
+      const fileName = `avatar_${Date.now()}.${fileExt}`;
       const contentType = `image/${fileExt === "jpg" ? "jpeg" : fileExt}`;
 
-      const base64Data = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+      const newAvatarUrl = await updateBffAvatar({
+        uri,
+        name: fileName,
+        type: contentType,
       });
-      const fileBytes = base64ToUint8Array(base64Data);
-
-      const { error: storageError } = await supabase.storage
-        .from("avatars")
-        .upload(fileNameInBucket, fileBytes, {
-          contentType,
-          upsert: true,
-        });
-
-      if (storageError) throw storageError;
-
-      const newAvatarUrl = await getAvatarSignedUrl(fileNameInBucket);
 
       if (!newAvatarUrl) throw new Error("Gagal mendapatkan URL avatar.");
 
-      // 2. Auto-Save to Database
-      // Update Auth Metadata
-      const { error: authError } = await supabase.auth.updateUser({
-        data: { avatar_url: fileNameInBucket },
-      });
-      if (authError) throw authError;
-
-      // Update Profile Table
-      const { error: profileError } = await supabase
-        .from("user_profiles")
-        .update({ avatar_url: fileNameInBucket })
-        .eq("user_id", user.id);
-
-      if (profileError) {
-        // If update fails (e.g. row doesn't exist), try upsert
-        if (__DEV__)
-          console.error("Update failed, trying upsert for avatar...");
-        await supabase.from("user_profiles").upsert(
-          {
-            user_id: user.id,
-            avatar_url: fileNameInBucket,
-            full_name: name || user.email, // Minimal required fields
-          },
-          { onConflict: "user_id" },
-        );
-      }
-
-      // 3. Update Local State
-      setAvatarPath(fileNameInBucket);
+      setAvatarPath(newAvatarUrl);
       setAvatarUrl(newAvatarUrl);
       setInitialData((current) => ({
         ...current,
-        avatarPath: fileNameInBucket,
+        avatarPath: newAvatarUrl,
       }));
       await clearProfileCache();
 
@@ -390,13 +310,7 @@ export default function ManageAccount() {
             setIsAvatarOptionsVisible(false);
             setUploadingAvatar(true);
             try {
-              // Remove from Auth
-              await supabase.auth.updateUser({ data: { avatar_url: null } });
-              // Remove from Table
-              await supabase
-                .from("user_profiles")
-                .update({ avatar_url: null })
-                .eq("user_id", user?.id);
+              await updateBffAvatar(null, true);
 
               setAvatarPath(null);
               setAvatarUrl(null);
@@ -446,37 +360,10 @@ export default function ManageAccount() {
 
     setPasswordLoading(true);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user?.email) {
-        throw new Error("Sesi tidak valid.");
-      }
-      const { error: reAuthError } = await supabase.auth.signInWithPassword({
-        email: session.user.email,
-        password: currentPassword,
+      await changeBffPassword({
+        current_password: currentPassword,
+        new_password: newPassword,
       });
-
-      if (reAuthError) {
-        // Provide user-friendly error message for incorrect password
-        if (
-          reAuthError.message.toLowerCase().includes("invalid") ||
-          reAuthError.message.toLowerCase().includes("incorrect") ||
-          reAuthError.message.toLowerCase().includes("wrong")
-        ) {
-          throw new Error("Password lama yang Anda masukkan salah.");
-        }
-        throw new Error(
-          reAuthError.message || "Gagal memverifikasi password lama.",
-        );
-      }
-
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (updateError) throw updateError;
 
       Alert.alert(
         "Sukses",

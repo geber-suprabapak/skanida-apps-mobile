@@ -20,7 +20,7 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { getAvatarSignedUrl } from "~/utils/avatar";
+import { getProfile } from "~/utils/bffMobileApi";
 import { faceApiLog } from "~/utils/faceApiDebug";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
@@ -71,19 +71,12 @@ function Pengaturan() {
     return () => handler.remove();
   }, [router]);
 
-  // Avatar URL resolution
   useEffect(() => {
     if (!profileAvatar) {
       setAvatarUrl(null);
       return;
     }
-    let active = true;
-    getAvatarSignedUrl(profileAvatar)
-      .then((url) => active && setAvatarUrl(url))
-      .catch(() => active && setAvatarUrl(profileAvatar));
-    return () => {
-      active = false;
-    };
+    setAvatarUrl(profileAvatar);
   }, [profileAvatar]);
 
   // Fetch profile data
@@ -98,13 +91,8 @@ function Pengaturan() {
     );
     setProfileAvatar(user.user_metadata?.avatar_url || null);
 
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("full_name, avatar_url")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!error && data) {
+    try {
+      const data = await getProfile();
       setProfileName(
         data.full_name ||
           user.user_metadata?.name ||
@@ -112,6 +100,8 @@ function Pengaturan() {
           "Pengguna Skanida",
       );
       setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
+    } catch (error) {
+      if (__DEV__) console.error("Error fetching settings profile:", error);
     }
   }, [user]);
 
