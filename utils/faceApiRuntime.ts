@@ -71,9 +71,10 @@ export async function fetchFaceApiRuntimeStatus(): Promise<FaceApiRuntimeStatusR
 
   try {
     const result = await getMobileHealth();
-    const runtime = result.operational
-      ? healthyResult()
-      : unhealthyResult("Server aplikasi belum operasional.");
+    const runtime =
+      result.status === "healthy"
+        ? healthyResult()
+        : unhealthyResult("Server aplikasi belum siap.");
 
     faceApiLog("runtime-status:result", {
       durationMs: elapsedMs(startedAt),

@@ -1,14 +1,32 @@
-import { formatDateWIB } from "~/lib/utils";
+import { formatDateWIB, toWIB } from "~/lib/utils";
 import { bffRequest } from "~/utils/bff";
 
 export type BffAttendanceAction = "check_in" | "check_out";
 
+export type BffHealthStatus = "healthy" | "unhealthy";
+
+export type BffCheckResult = {
+  robin: "pass" | "fail";
+  enrollment: "pass" | "fail";
+  permit: "pass" | "fail";
+  schedule: "pass" | "fail";
+  location: "pass" | "fail";
+};
+
+export type BffScheduleWindow = {
+  start_at: string;
+  end_at: string | null;
+  action: BffAttendanceAction;
+  late_deadline: string | null;
+};
+
 export type BffAttendancePrecheck = {
   allowed: boolean;
-  action_type: BffAttendanceAction;
+  action_type: BffAttendanceAction | null;
   blocking_reason?: string | null;
   location_name?: string | null;
-  schedule_window?: string | null;
+  schedule_window?: BffScheduleWindow | null;
+  checks?: BffCheckResult;
 };
 
 export type MobileAttendanceAction = {
@@ -43,17 +61,37 @@ export type BffDashboard = {
   profile: {
     user_id: string;
     full_name: string | null;
-    nis?: string | null;
-    class_name?: string | null;
-    role?: string | null;
+    email: string | null;
+    nis: string | null;
+    class_name: string | null;
+    absence_number: string | null;
     avatar_url: string | null;
+    role?: string | null;
   };
-  today_date: string;
-  today_status: {
-    today: "pending" | "present" | "absent" | "leave";
-    hasCheckedIn: boolean;
-    hasCheckedOut: boolean;
-    checkInStatus: "Hadir" | "Terlambat" | null;
+  attendance: {
+    today_status: "pending" | "present" | "absent" | "leave";
+    has_checked_in: boolean;
+    has_checked_out: boolean;
+    check_in_time: string | null;
+    check_out_time: string | null;
+    total_work_hours: number | null;
+  };
+  schedule: {
+    day_key: string;
+    start_check_in_at: string | null;
+    end_check_in_at: string | null;
+    start_check_out_at: string | null;
+    end_check_out_at: string | null;
+    compensation_minutes: number | null;
+  } | null;
+  face: {
+    server_status: BffHealthStatus;
+    enrollment_status: "enrolled" | "not_enrolled";
+    message: string;
+  };
+  permit: {
+    has_active_permit: boolean;
+    active_category: string | null;
   };
   primary_action:
     | {
@@ -61,21 +99,40 @@ export type BffDashboard = {
         type: null;
         reason_code: string;
         label: string;
+        reason_message: string;
       }
     | {
         allowed: true;
         type: BffAttendanceAction;
         reason_code: null;
         label: string;
+        reason_message: null;
       };
-  schedule: {
-    mulai_masuk: string | null;
-    selesai_masuk: string | null;
-    mulai_pulang: string | null;
-    selesai_pulang: string | null;
-    kompensasi_waktu: number | null;
-  } | null;
-  service_operational: boolean;
+  server_time: {
+    now: string;
+    timezone: string;
+    source: "bff";
+  };
+};
+
+export type BffDashboardPrimaryAction = BffDashboard["primary_action"];
+
+export type MobileAttendanceStatus = {
+  hasCheckedIn: boolean;
+  hasCheckedOut: boolean;
+  checkInTime?: string;
+  checkOutTime?: string;
+  checkInStatus?: "Hadir" | "Terlambat";
+  totalWorkHours?: string;
+  todayStatus: "present" | "absent" | "leave" | "pending";
+};
+
+export type MobileAttendanceSchedule = {
+  mulai_masuk: string | null;
+  selesai_masuk: string | null;
+  mulai_pulang: string | null;
+  selesai_pulang: string | null;
+  kompensasi_waktu: number | null;
 };
 
 export type BffPermit = {
@@ -87,6 +144,7 @@ export type BffPermit = {
   attachment_url: string | null;
   created_at?: string;
   rejection_reason?: string | null;
+  rejected_at?: string | null;
 };
 
 export type MobilePermit = {
@@ -125,6 +183,24 @@ type FilePart = {
   type: string;
 };
 
+const formatIsoAsWIBTime = (value: string | null) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const wib = toWIB(date);
+  const hours = String(wib.getUTCHours()).padStart(2, "0");
+  const minutes = String(wib.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(wib.getUTCSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+};
+
+const formatWorkHours = (hours: number | null) => {
+  if (typeof hours !== "number" || !Number.isFinite(hours)) return undefined;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(2)} jam`;
+};
+
 const attendanceMessage = (result: BffAttendancePrecheck) => {
   if (!result.allowed) {
     return result.blocking_reason ?? "Presensi belum dapat dilakukan.";
@@ -134,12 +210,37 @@ const attendanceMessage = (result: BffAttendancePrecheck) => {
     : "Silakan lanjut presensi masuk.";
 };
 
+export const toMobileAttendanceStatus = (
+  attendance: BffDashboard["attendance"],
+): MobileAttendanceStatus => ({
+  hasCheckedIn: attendance.has_checked_in,
+  hasCheckedOut: attendance.has_checked_out,
+  checkInTime: attendance.check_in_time ?? undefined,
+  checkOutTime: attendance.check_out_time ?? undefined,
+  checkInStatus: attendance.has_checked_in ? "Hadir" : undefined,
+  totalWorkHours: formatWorkHours(attendance.total_work_hours),
+  todayStatus: attendance.today_status,
+});
+
+export const toMobileAttendanceSchedule = (
+  schedule: BffDashboard["schedule"],
+): MobileAttendanceSchedule | null =>
+  schedule
+    ? {
+        mulai_masuk: formatIsoAsWIBTime(schedule.start_check_in_at),
+        selesai_masuk: formatIsoAsWIBTime(schedule.end_check_in_at),
+        mulai_pulang: formatIsoAsWIBTime(schedule.start_check_out_at),
+        selesai_pulang: formatIsoAsWIBTime(schedule.end_check_out_at),
+        kompensasi_waktu: schedule.compensation_minutes,
+      }
+    : null;
+
 export async function getDashboard() {
   return bffRequest<BffDashboard>("/v1/mobile/dashboard");
 }
 
 export async function getMobileHealth() {
-  return bffRequest<{ operational: boolean }>("/v1/mobile/health");
+  return bffRequest<{ status: BffHealthStatus }>("/v1/mobile/health");
 }
 
 export async function getServerTime() {
@@ -160,7 +261,8 @@ export async function precheckAttendance(params: {
 
   return {
     actionable: result.allowed,
-    action_type: result.allowed ? result.action_type : "none",
+    action_type:
+      result.allowed && result.action_type ? result.action_type : "none",
     message: attendanceMessage(result),
     details: result.location_name
       ? {
@@ -201,8 +303,8 @@ export async function submitEnrollment(files: FilePart[]) {
 }
 
 export async function listPermits(): Promise<MobilePermit[]> {
-  const permits = await bffRequest<BffPermit[]>("/v1/mobile/permits");
-  return permits.map((permit) => ({
+  const result = await bffRequest<{ items: BffPermit[] }>("/v1/mobile/permits");
+  return result.items.map((permit) => ({
     id: permit.id,
     kategori_izin: permit.category as MobilePermit["kategori_izin"],
     deskripsi: permit.description,
@@ -210,7 +312,7 @@ export async function listPermits(): Promise<MobilePermit[]> {
     tanggal: permit.date,
     created_at: permit.created_at ?? permit.date,
     rejection_reason: permit.rejection_reason,
-    rejected_at: null,
+    rejected_at: permit.rejected_at ?? null,
   }));
 }
 

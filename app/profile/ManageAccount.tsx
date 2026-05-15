@@ -74,7 +74,6 @@ const clearProfileCache = async () => {
 
 export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
-  const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
   const theme = useThemeStore((state) => state.theme);
 
@@ -279,10 +278,6 @@ export default function ManageAccount() {
       }));
       await clearProfileCache();
 
-      // Sync global auth store
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) setUser(userData.user);
-
       Alert.alert("Sukses", "Foto profil berhasil diperbarui.");
     } catch (error: any) {
       if (__DEV__) console.error("Upload error:", error);
@@ -319,9 +314,6 @@ export default function ManageAccount() {
                 avatarPath: null,
               }));
               await clearProfileCache();
-
-              const { data: userData } = await supabase.auth.getUser();
-              if (userData?.user) setUser(userData.user);
 
               Alert.alert("Sukses", "Foto profil telah dihapus.");
             } catch {

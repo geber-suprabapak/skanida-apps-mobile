@@ -37,7 +37,12 @@ import {
 import { toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { faceApiLog } from "~/utils/faceApiDebug";
-import { getDashboard } from "~/utils/bffMobileApi";
+import {
+  getDashboard,
+  toMobileAttendanceSchedule,
+  toMobileAttendanceStatus,
+  type BffDashboardPrimaryAction,
+} from "~/utils/bffMobileApi";
 import {
   AlertCircle,
   Bug,
@@ -137,6 +142,43 @@ const addMinutesToDate = (
 const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
   !!url && /^https?:\/\//.test(url);
 
+const toRuntimeStatus = (
+  status: "healthy" | "unhealthy",
+  message?: string | null,
+): FaceApiRuntimeStatusResult => {
+  if (status === "healthy") {
+    return {
+      state: "healthy",
+      title: "Server siap digunakan",
+      message: "Layanan verifikasi siap digunakan.",
+      issues: [],
+    };
+  }
+
+  return {
+    state: "unhealthy",
+    title: "Server belum siap",
+    message: "Server verifikasi sedang belum siap. Silakan coba lagi.",
+    issues: message ? [message] : [],
+    error: message ?? undefined,
+  };
+};
+
+const toOfflineRuntimeStatus = (error: unknown): FaceApiRuntimeStatusResult => {
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Dashboard belum dapat dimuat dari server.";
+
+  return {
+    state: "offline",
+    title: "Server tidak terhubung",
+    message: "Server verifikasi tidak dapat dihubungi.",
+    issues: [],
+    error: message,
+  };
+};
+
 // Isolated clock — only this re-renders every second
 const DashboardClock = React.memo(function DashboardClock() {
   const [time, setTime] = useState(timeSync.getSyncedTime());
@@ -183,6 +225,8 @@ export default function Dashboard() {
   const [faceApiRuntime, setFaceApiRuntime] =
     useState<FaceApiRuntimeStatusResult | null>(null);
   const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
+  const [primaryAction, setPrimaryAction] =
+    useState<BffDashboardPrimaryAction | null>(null);
   const [attendanceSuccess, setAttendanceSuccess] =
     useState<PendingAttendanceSuccess | null>(null);
 
@@ -198,21 +242,35 @@ export default function Dashboard() {
   // Data fetching
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
+    setIsCheckingFaceApi(true);
     try {
       const data = await getDashboard();
       const avatar = data.profile.avatar_url;
 
-      setAttendanceStatus({
-        hasCheckedIn: data.today_status.hasCheckedIn,
-        hasCheckedOut: data.today_status.hasCheckedOut,
-        checkInStatus: data.today_status.checkInStatus ?? undefined,
-        todayStatus: data.today_status.today,
-      });
-      setAttendanceSchedule(data.schedule);
+      setAttendanceStatus(toMobileAttendanceStatus(data.attendance));
+      setAttendanceSchedule(toMobileAttendanceSchedule(data.schedule));
       setAvatarUrl(isValidRemoteImageUrl(avatar) ? avatar!.trim() : null);
       setDashboardName(data.profile.full_name ?? "");
+      setFaceApiRuntime(
+        toRuntimeStatus(data.face.server_status, data.face.message),
+      );
+      setEnrollmentStatus(data.face.enrollment_status);
+      setEnrollmentError(
+        data.face.enrollment_status === "not_enrolled" ? data.face.message : "",
+      );
+      setPrimaryAction(data.primary_action);
     } catch (error) {
       Sentry.captureException(error);
+      setFaceApiRuntime(toOfflineRuntimeStatus(error));
+      setEnrollmentStatus("error");
+      setEnrollmentError(
+        error instanceof Error
+          ? error.message
+          : "Gagal memuat dashboard dari server.",
+      );
+      setPrimaryAction(null);
+    } finally {
+      setIsCheckingFaceApi(false);
     }
   }, [user]);
 
@@ -261,7 +319,7 @@ export default function Dashboard() {
     initializeDashboard();
   }, [initializeDashboard]);
 
-  // Re-check server readiness whenever Dashboard comes back into focus.
+  // Refresh dashboard-owned readiness/enrollment/attendance whenever focus returns.
   useFocusEffect(
     useCallback(() => {
       const pendingSuccess = consumePendingAttendanceSuccess();
@@ -269,12 +327,8 @@ export default function Dashboard() {
         setAttendanceSuccess(pendingSuccess);
       }
 
-      void Promise.all([
-        checkFaceApiRuntime(),
-        checkEnrollmentStatus(),
-        fetchAttendanceData(),
-      ]);
-    }, [checkFaceApiRuntime, checkEnrollmentStatus, fetchAttendanceData]),
+      void fetchAttendanceData();
+    }, [fetchAttendanceData]),
   );
 
   useEffect(() => {
@@ -284,12 +338,10 @@ export default function Dashboard() {
           if (ok) setScheduleTime(timeSync.getSyncedTime());
         });
         fetchAttendanceData();
-        void checkFaceApiRuntime();
-        void checkEnrollmentStatus();
       }
     });
     return () => sub.remove();
-  }, [fetchAttendanceData, checkFaceApiRuntime, checkEnrollmentStatus]);
+  }, [fetchAttendanceData]);
 
   // Back button
   useEffect(() => {
@@ -319,11 +371,9 @@ export default function Dashboard() {
       timeSync.forceSyncWithServer().then((ok) => {
         if (ok) setScheduleTime(timeSync.getSyncedTime());
       }),
-      checkFaceApiRuntime(),
-      checkEnrollmentStatus(),
     ]);
     setRefreshing(false);
-  }, [fetchAttendanceData, checkFaceApiRuntime, checkEnrollmentStatus]);
+  }, [fetchAttendanceData]);
 
   // Computed values
   const rawName =
@@ -347,9 +397,13 @@ export default function Dashboard() {
   }, [scheduleTime]);
 
   const derivedActionType =
-    attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+    primaryAction?.type === "check_out"
       ? "home"
-      : "present";
+      : primaryAction?.type === "check_in"
+        ? "present"
+        : attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+          ? "home"
+          : "present";
 
   const { isPrimaryActionDisabled } = useMemo(() => {
     const parseTime = (t: string | null): Date | null => {
@@ -383,6 +437,7 @@ export default function Dashboard() {
         : derivedActionType === "present"
           ? presentOk
           : true;
+    const serverAllowsAction = primaryAction?.allowed ?? allows;
 
     return {
       scheduleAllowsAction: allows,
@@ -392,7 +447,7 @@ export default function Dashboard() {
         isCheckingFaceApi ||
         attendanceStatus.todayStatus === "leave" ||
         enrollmentStatus !== "enrolled" ||
-        !allows ||
+        !serverAllowsAction ||
         faceApiRuntime?.state !== "healthy" ||
         attendanceStatus.hasCheckedOut,
     };
@@ -405,6 +460,7 @@ export default function Dashboard() {
     isCheckingFaceApi,
     enrollmentStatus,
     faceApiRuntime?.state,
+    primaryAction?.allowed,
     attendanceStatus.hasCheckedOut,
     attendanceStatus.todayStatus,
   ]);
@@ -442,6 +498,10 @@ export default function Dashboard() {
       return "CEK STATUS WAJAH";
     }
 
+    if (primaryAction && !primaryAction.allowed) {
+      return primaryAction.label.toUpperCase();
+    }
+
     return "PRESENSI";
   }, [
     attendanceStatus.hasCheckedOut,
@@ -450,6 +510,7 @@ export default function Dashboard() {
     isCheckingFaceApi,
     faceApiRuntime?.state,
     enrollmentStatus,
+    primaryAction,
   ]);
 
   // Navigation
@@ -810,9 +871,11 @@ export default function Dashboard() {
                         }`}
                       >
                         <Text className="font-bold text-white text-base uppercase tracking-wider">
-                          {derivedActionType === "home"
-                            ? "PRESENSI PULANG"
-                            : "PRESENSI MASUK"}
+                          {primaryAction?.allowed
+                            ? primaryAction.label.toUpperCase()
+                            : derivedActionType === "home"
+                              ? "PRESENSI PULANG"
+                              : "PRESENSI MASUK"}
                         </Text>
                       </View>
                     )}
