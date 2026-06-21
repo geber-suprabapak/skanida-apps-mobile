@@ -220,62 +220,11 @@ CREATE TRIGGER set_perizinan_tanggal_utc_date_trigger
     FOR EACH ROW
     EXECUTE FUNCTION set_perizinan_tanggal_utc_date();
 
--- Function to enforce perizinan daily submission rules
-CREATE OR REPLACE FUNCTION validate_perizinan_daily_limit()
-RETURNS TRIGGER AS $$
-DECLARE
-    existing_count INTEGER;
-    has_pending BOOLEAN;
-    has_approved BOOLEAN;
-BEGIN
-    IF NEW.tanggal_utc_date IS NULL THEN
-        NEW.tanggal_utc_date = (NEW.tanggal AT TIME ZONE 'UTC')::DATE;
-    END IF;
-
-    SELECT
-        COUNT(*) FILTER (WHERE approval_status = 'pending') > 0,
-        COUNT(*) FILTER (WHERE approval_status = 'approved') > 0,
-        COUNT(*)
-    INTO has_pending, has_approved, existing_count
-    FROM perizinan
-    WHERE user_id = NEW.user_id
-      AND tanggal_utc_date = NEW.tanggal_utc_date
-      AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::UUID);
-
-    IF has_pending THEN
-        RAISE EXCEPTION 'Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.'
-            USING ERRCODE = '23505';
-    END IF;
-
-    IF has_approved THEN
-        RAISE EXCEPTION 'Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.'
-            USING ERRCODE = '23505';
-    END IF;
-
-    IF existing_count >= 3 THEN
-        RAISE EXCEPTION 'Batas maksimal 3 pengajuan per hari telah tercapai.'
-            USING ERRCODE = '23505';
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS enforce_perizinan_daily_limit ON perizinan;
-CREATE TRIGGER enforce_perizinan_daily_limit
-    BEFORE INSERT OR UPDATE OF tanggal, tanggal_utc_date ON perizinan
-    FOR EACH ROW
-    EXECUTE FUNCTION validate_perizinan_daily_limit();
-
 -- Backfill existing records (safe to run multiple times)
 UPDATE perizinan SET tanggal_utc_date = (tanggal AT TIME ZONE 'UTC')::DATE WHERE tanggal_utc_date IS NULL;
 
--- Create partial unique constraint for active perizinan submissions
-DROP INDEX IF EXISTS perizinan_user_day_unique;
-CREATE UNIQUE INDEX perizinan_user_day_unique
-  ON perizinan(user_id, tanggal_utc_date)
-  WHERE approval_status IN ('pending', 'approved');
-COMMENT ON INDEX perizinan_user_day_unique IS 'Partial unique index: enforces one pending or approved perizinan per user per day. Rejected submissions are not constrained, allowing up to 3 resubmissions per day.';
+-- Create unique constraint to enforce one perizinan per user per day
+CREATE UNIQUE INDEX IF NOT EXISTS perizinan_user_day_unique ON perizinan(user_id, tanggal_utc_date);
 
 -- ============================================================================
 -- Comments for documentation
@@ -291,8 +240,7 @@ COMMENT ON TABLE jadwal_absensi IS 'Schedule configuration for attendance time w
 COMMENT ON COLUMN absences.status IS 'Attendance status: Hadir (present), Terlambat (late), Pulang (check-out), Alpha (absent without notice)';
 COMMENT ON COLUMN perizinan.kategori_izin IS 'Permission category: sakit (sick), pergi (other leave)';
 COMMENT ON COLUMN perizinan.approval_status IS 'Approval workflow status: pending, approved, rejected';
-COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries and daily limit validation. Blocks new submissions if any pending/approved exists; allows max 3 if all rejected.';
-COMMENT ON COLUMN user_profiles.notification_token IS 'Expo push notification token for the user device';
+COMMENT ON COLUMN perizinan.tanggal_utc_date IS 'Helper column auto-populated from tanggal for date-based queries';
 COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location in meters';
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
 
@@ -813,8 +761,7 @@ GRANT UPDATE (
   absence_number,
   class_name,
   gender,
-  updated_at,
-  notification_token
+  updated_at
 ) ON TABLE user_profiles TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO anon, authenticated;
@@ -846,18 +793,10 @@ AS $$
 DECLARE
   user_nis_text TEXT;
   user_nis_bigint BIGINT;
-  validated_role TEXT;
-  profile_insert_count INTEGER;
 BEGIN
   -- Extract NIS from user metadata
   user_nis_text := NEW.raw_user_meta_data->>'nis';
   user_nis_bigint := user_nis_text::BIGINT;
-
-  -- Read role from app metadata and normalize to allowed values
-  validated_role := COALESCE(NEW.raw_app_meta_data->>'role', 'siswa');
-  IF validated_role NOT IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa') THEN
-    validated_role := 'siswa';
-  END IF;
 
   -- Create user profile by joining with biodata_siswa
   INSERT INTO user_profiles (user_id, full_name, email, nis, class_name, absence_number, gender, role)
@@ -869,16 +808,9 @@ BEGIN
     bs.kelas,
     bs.absen::TEXT,
     bs.kelamin,
-    validated_role
+    'siswa' -- Default role
   FROM biodata_siswa AS bs
   WHERE bs.nis = user_nis_bigint;
-
-  GET DIAGNOSTICS profile_insert_count = ROW_COUNT;
-
-  IF profile_insert_count = 0 THEN
-    RAISE EXCEPTION 'No biodata_siswa row found for nis % while creating user profile',
-      user_nis_text;
-  END IF;
 
   -- Mark biodata as activated
   UPDATE biodata_siswa
@@ -923,69 +855,6 @@ $$;
 
 -- Grant execute permission to anon role (for pre-login activation check)
 GRANT EXECUTE ON FUNCTION get_biodata_siswa(TEXT) TO anon;
-
--- Function to create or refresh a user profile from biodata_siswa
-CREATE OR REPLACE FUNCTION create_user_profile_from_biodata(
-  p_user_id UUID,
-  p_nis TEXT,
-  p_email TEXT
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_nis_bigint BIGINT;
-  v_result JSON;
-BEGIN
-  v_nis_bigint := p_nis::BIGINT;
-
-  INSERT INTO user_profiles (user_id, full_name, email, nis, class_name, absence_number, gender, role)
-  SELECT
-    p_user_id,
-    bs.nama,
-    p_email,
-    bs.nis::TEXT,
-    bs.kelas,
-    bs.absen::TEXT,
-    bs.kelamin,
-    'siswa'
-  FROM biodata_siswa AS bs
-  WHERE bs.nis = v_nis_bigint
-  ON CONFLICT (user_id) DO UPDATE SET
-    full_name = EXCLUDED.full_name,
-    email = EXCLUDED.email,
-    nis = EXCLUDED.nis,
-    class_name = EXCLUDED.class_name,
-    absence_number = EXCLUDED.absence_number,
-    gender = EXCLUDED.gender,
-    updated_at = NOW();
-
-  UPDATE biodata_siswa
-  SET activated = true
-  WHERE nis = v_nis_bigint;
-
-  SELECT json_build_object(
-    'success', true,
-    'message', 'User profile created successfully',
-    'user_id', p_user_id,
-    'nis', p_nis
-  ) INTO v_result;
-
-  RETURN v_result;
-EXCEPTION
-  WHEN OTHERS THEN
-    SELECT json_build_object(
-      'success', false,
-      'message', SQLERRM,
-      'user_id', p_user_id,
-      'nis', p_nis
-    ) INTO v_result;
-    RETURN v_result;
-END;
-$$;
-
-COMMENT ON FUNCTION create_user_profile_from_biodata(UUID, TEXT, TEXT) IS 'Creates user profile from biodata_siswa data. Uses SECURITY DEFINER to bypass RLS policies safely. Called by account creation scripts.';
 
 -- Function to check nearest location and validate user distance
 CREATE OR REPLACE FUNCTION check_nearest_location(
@@ -1046,29 +915,6 @@ $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION check_nearest_location(DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
-
--- Function to lookup student info by auth user id
-CREATE OR REPLACE FUNCTION get_student_by_user_id(p_user_id UUID)
-RETURNS TABLE (nis TEXT, nama TEXT, kelas TEXT, absen INTEGER)
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    up.nis,
-    bs.nama,
-    bs.kelas,
-    bs.absen
-  FROM user_profiles AS up
-  INNER JOIN biodata_siswa AS bs ON up.nis = bs.nis::TEXT
-  WHERE up.user_id = p_user_id
-  LIMIT 1;
-END;
-$$;
-
-COMMENT ON FUNCTION get_student_by_user_id(UUID) IS 'Lookup student info by user_id for face recognition system';
-GRANT EXECUTE ON FUNCTION get_student_by_user_id(UUID) TO authenticated, service_role;
 
 -- ============================================================================
 -- RPC Function: check_absensi_status
@@ -1258,261 +1104,6 @@ GRANT EXECUTE ON FUNCTION check_absensi_status(UUID, DOUBLE PRECISION, DOUBLE PR
 
 -- Add comment for documentation
 COMMENT ON FUNCTION check_absensi_status IS 'Validates attendance check-in/out based on schedule, location proximity, and previous attendance records. Uses Asia/Jakarta timezone.';
-
--- ============================================================================
--- RPC Function: get_and_validate_attendance_action (compat)
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION public.can_act_for_attendance_user(
-  p_target_user_id UUID
-)
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT auth.uid() IS NOT NULL
-    AND p_target_user_id IS NOT NULL
-    AND (
-      p_target_user_id IS NOT DISTINCT FROM auth.uid()
-      OR EXISTS (
-        SELECT 1
-        FROM public.user_profiles
-        WHERE user_id = auth.uid()
-          AND role = 'admin'
-      )
-    );
-$$;
-
-GRANT EXECUTE ON FUNCTION public.can_act_for_attendance_user(UUID) TO authenticated;
-
-DROP FUNCTION IF EXISTS public.get_and_validate_attendance_action(uuid, double precision, double precision);
-DROP TYPE IF EXISTS public.attendance_action_response;
-
-CREATE TYPE public.attendance_action_response AS (
-  actionable BOOLEAN,
-  action_type TEXT,
-  message TEXT,
-  details JSONB
-);
-
-CREATE OR REPLACE FUNCTION public.get_and_validate_attendance_action(
-  p_user_id UUID,
-  p_user_lat DOUBLE PRECISION,
-  p_user_lon DOUBLE PRECISION
-)
-RETURNS public.attendance_action_response
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_today_wib DATE;
-  v_current_time_wib TIME;
-  v_current_day_indonesian TEXT;
-  v_schedule RECORD;
-  v_nearest_location RECORD;
-  v_has_checked_in BOOLEAN := FALSE;
-  v_has_checked_out BOOLEAN := FALSE;
-  v_has_active_permit BOOLEAN := FALSE;
-  v_response public.attendance_action_response;
-BEGIN
-  IF NOT public.can_act_for_attendance_user(p_user_id) THEN
-    RAISE EXCEPTION 'Unauthorized: user_id mismatch';
-  END IF;
-
-  v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
-  v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
-  v_current_day_indonesian := CASE trim(lower(to_char(now() AT TIME ZONE 'Asia/Jakarta', 'Day')))
-    WHEN 'sunday' THEN 'minggu'
-    WHEN 'monday' THEN 'senin'
-    WHEN 'tuesday' THEN 'selasa'
-    WHEN 'wednesday' THEN 'rabu'
-    WHEN 'thursday' THEN 'kamis'
-    WHEN 'friday' THEN 'jumat'
-    WHEN 'saturday' THEN 'sabtu'
-  END;
-
-  SELECT EXISTS(
-    SELECT 1
-    FROM public.perizinan
-    WHERE user_id = p_user_id
-      AND approval_status IN ('pending', 'approved')
-      AND (tanggal AT TIME ZONE 'Asia/Jakarta')::date = v_today_wib
-  ) INTO v_has_active_permit;
-
-  IF v_has_active_permit THEN
-    SELECT FALSE, 'none', 'Anda sudah mengajukan izin untuk hari ini. Tidak dapat melakukan absensi jika sudah ada izin aktif (pending/approved).', null::jsonb INTO v_response;
-    RETURN v_response;
-  END IF;
-
-  SELECT
-    id,
-    name,
-    distance AS max_distance,
-    (point(p_user_lon, p_user_lat) <@> point(longitude, latitude)) * 1609.34 AS distance_m
-  INTO v_nearest_location
-  FROM public.location
-  WHERE is_active = TRUE
-  ORDER BY distance_m ASC
-  LIMIT 1;
-
-  IF NOT FOUND THEN
-    SELECT FALSE, 'none', 'Tidak ada lokasi absensi yang aktif.', null::jsonb INTO v_response;
-    RETURN v_response;
-  END IF;
-
-  IF v_nearest_location.distance_m > v_nearest_location.max_distance THEN
-    SELECT FALSE, 'none', 'Anda berada di luar jangkauan area absensi.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-    RETURN v_response;
-  END IF;
-
-  SELECT *
-  INTO v_schedule
-  FROM public.jadwal_absensi
-  WHERE hari = v_current_day_indonesian
-    AND is_active = TRUE
-  LIMIT 1;
-
-  IF NOT FOUND THEN
-    SELECT FALSE, 'none', 'Tidak ada jadwal absensi yang aktif untuk hari ini.', null::jsonb INTO v_response;
-    RETURN v_response;
-  END IF;
-
-  SELECT
-    EXISTS(
-      SELECT 1
-      FROM public.absences
-      WHERE user_id = p_user_id
-        AND date = v_today_wib
-        AND status IN ('Hadir', 'Terlambat')
-    ),
-    EXISTS(
-      SELECT 1
-      FROM public.absences
-      WHERE user_id = p_user_id
-        AND date = v_today_wib
-        AND status = 'Pulang'
-    )
-  INTO v_has_checked_in, v_has_checked_out;
-
-  IF v_has_checked_out THEN
-    SELECT FALSE, 'none', 'Anda sudah menyelesaikan absensi hari ini.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-  ELSIF v_has_checked_in THEN
-    IF v_current_time_wib BETWEEN v_schedule.mulai_pulang::time AND v_schedule.selesai_pulang::time THEN
-      SELECT TRUE, 'check_out', 'Silakan lakukan presensi pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-    ELSE
-      SELECT FALSE, 'none', 'Belum memasuki waktu presensi pulang.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-    END IF;
-  ELSE
-    IF v_current_time_wib BETWEEN v_schedule.mulai_masuk::time AND (v_schedule.selesai_masuk::time + (v_schedule.kompensasi_waktu || ' minutes')::interval) THEN
-      IF v_current_time_wib > v_schedule.selesai_masuk::time THEN
-        SELECT TRUE, 'check_in', 'Anda terlambat. Silakan lanjutkan absensi.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Terlambat') INTO v_response;
-      ELSE
-        SELECT TRUE, 'check_in', 'Tepat waktu! Silakan presensi masuk.', jsonb_build_object('location_name', v_nearest_location.name, 'status', 'Hadir') INTO v_response;
-      END IF;
-    ELSE
-      SELECT FALSE, 'none', 'Waktu untuk absen masuk sudah berakhir atau belum dimulai.', jsonb_build_object('location_name', v_nearest_location.name) INTO v_response;
-    END IF;
-  END IF;
-
-  RETURN v_response;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.get_and_validate_attendance_action(UUID, DOUBLE PRECISION, DOUBLE PRECISION) TO authenticated;
-
--- ============================================================================
--- RPC Function: save_attendance_record (compat)
--- ============================================================================
-
-DROP FUNCTION IF EXISTS public.save_attendance_record(UUID, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, UUID);
-
-CREATE OR REPLACE FUNCTION public.save_attendance_record(
-  p_user_id UUID,
-  p_action_type TEXT,
-  p_photo_path TEXT,
-  p_latitude DOUBLE PRECISION,
-  p_longitude DOUBLE PRECISION,
-  p_attendance_id_to_update UUID DEFAULT NULL
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_today_wib DATE;
-  v_current_time_wib TIME;
-  v_schedule RECORD;
-  v_status_text TEXT;
-  v_new_attendance_id UUID;
-  v_result JSONB;
-  v_current_day_indonesian TEXT;
-  v_validated_action public.attendance_action_response;
-BEGIN
-  IF NOT public.can_act_for_attendance_user(p_user_id) THEN
-    RAISE EXCEPTION 'Unauthorized: user_id mismatch';
-  END IF;
-
-  v_today_wib := (now() AT TIME ZONE 'Asia/Jakarta')::date;
-  v_current_time_wib := (now() AT TIME ZONE 'Asia/Jakarta')::time;
-
-  v_current_day_indonesian := CASE trim(lower(to_char(now() AT TIME ZONE 'Asia/Jakarta', 'Day')))
-    WHEN 'sunday' THEN 'minggu'
-    WHEN 'monday' THEN 'senin'
-    WHEN 'tuesday' THEN 'selasa'
-    WHEN 'wednesday' THEN 'rabu'
-    WHEN 'thursday' THEN 'kamis'
-    WHEN 'friday' THEN 'jumat'
-    WHEN 'saturday' THEN 'sabtu'
-  END;
-
-  SELECT * INTO v_schedule
-  FROM public.jadwal_absensi
-  WHERE hari = v_current_day_indonesian
-    AND is_active = TRUE
-  LIMIT 1;
-
-  SELECT * INTO v_validated_action
-  FROM public.get_and_validate_attendance_action(p_user_id, p_latitude, p_longitude);
-
-  IF NOT COALESCE(v_validated_action.actionable, FALSE)
-    OR v_validated_action.action_type IS DISTINCT FROM p_action_type THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'message', COALESCE(v_validated_action.message, 'Aksi absensi tidak valid.')
-    );
-  END IF;
-
-  IF p_action_type = 'check_in' THEN
-    v_status_text := COALESCE(v_validated_action.details ->> 'status', 'Hadir');
-
-    IF v_status_text NOT IN ('Hadir', 'Terlambat') THEN
-      v_status_text := 'Hadir';
-    END IF;
-
-    INSERT INTO public.absences (user_id, date, status, photo_url, latitude, longitude)
-    VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
-    RETURNING id INTO v_new_attendance_id;
-
-    v_result := jsonb_build_object('success', true, 'message', 'Presensi masuk berhasil direkam.', 'attendance_id', v_new_attendance_id);
-  ELSIF p_action_type = 'check_out' THEN
-    v_status_text := 'Pulang';
-
-    INSERT INTO public.absences (user_id, date, status, photo_url, latitude, longitude)
-    VALUES (p_user_id, v_today_wib, v_status_text, p_photo_path, p_latitude, p_longitude)
-    RETURNING id INTO v_new_attendance_id;
-
-    v_result := jsonb_build_object('success', true, 'message', 'Presensi pulang berhasil direkam.', 'attendance_id', v_new_attendance_id);
-  ELSE
-    v_result := jsonb_build_object('success', false, 'message', 'Aksi tidak valid.');
-  END IF;
-
-  RETURN v_result;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.save_attendance_record(UUID, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, UUID) TO authenticated;
 
 -- ============================================================================
 -- End of Schema

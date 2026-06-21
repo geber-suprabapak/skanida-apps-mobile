@@ -87,7 +87,7 @@ export default function Activate() {
       });
 
       if (error) {
-        Alert.alert("Error", `Terjadi kesalahan: ${error.message}`);
+        Alert.alert("Error", "Terjadi kesalahan saat memproses data.");
         return;
       }
 
@@ -177,17 +177,16 @@ export default function Activate() {
           data: {
             full_name: userProfile.nama,
             nis: userProfile.nis,
-            role: "siswa",
           },
         },
       });
 
       if (error) {
-        console.error("Supabase signup error:", error.message);
+        if (__DEV__) console.error("Supabase signup error:", error.message);
         if (error.message.includes("already registered")) {
           Alert.alert("Error", "Email sudah terdaftar");
         } else {
-          Alert.alert("Error", `Gagal membuat akun: ${error.message}`);
+          Alert.alert("Error", "Gagal membuat akun. Silakan coba lagi.");
         }
         setLoading(false); // Pastikan loading berhenti jika ada error
         return;
@@ -201,7 +200,7 @@ export default function Activate() {
         [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
       );
     } catch (error) {
-      console.error("Activation error:", error);
+      if (__DEV__) console.error("Activation error:", error);
       Alert.alert("Error", "Terjadi kesalahan tak terduga saat aktivasi");
     } finally {
       setLoading(false);

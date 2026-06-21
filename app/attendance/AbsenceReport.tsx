@@ -16,6 +16,15 @@ import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { supabase } from "~/utils/supabase";
 import useAuthStore from "~/store/authStore";
+import { formatDateWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
+import {
+  elapsedMs,
+  faceApiError,
+  faceApiLog,
+  faceApiWarn,
+  startFaceApiTimer,
+} from "~/utils/faceApiDebug";
 
 import {
   ChevronLeft,
@@ -40,7 +49,7 @@ type AttendanceActionResponse = {
 };
 
 export default function AbsenceReport() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
 
   // Hanya butuh beberapa state sederhana
@@ -74,7 +83,16 @@ export default function AbsenceReport() {
       locationCoords: Location.LocationObjectCoords,
     ) => {
       // Prevent navigation if component is unmounted
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        faceApiWarn("attendance-report:navigate-camera:blocked-unmounted", {
+          statusData,
+          location: {
+            latitude: locationCoords.latitude,
+            longitude: locationCoords.longitude,
+          },
+        });
+        return;
+      }
 
       const params: Record<string, string> = {
         actionType: statusData.action_type,
@@ -87,6 +105,11 @@ export default function AbsenceReport() {
       params.latitude = locationCoords.latitude.toString();
       params.longitude = locationCoords.longitude.toString();
 
+      faceApiLog("attendance-report:navigate-camera", {
+        statusData,
+        params,
+      });
+
       router.push({
         pathname: "/attendance/CameraAttendance",
         params,
@@ -97,18 +120,40 @@ export default function AbsenceReport() {
 
   // Fungsi inti untuk memeriksa status absensi
   const getCurrentLocation = useCallback(async () => {
+    const startedAt = startFaceApiTimer();
+    faceApiLog("attendance-report:location:start", {});
     let { status: permissionStatus } =
       await Location.getForegroundPermissionsAsync();
+    faceApiLog("attendance-report:location:permission-current", {
+      permissionStatus,
+    });
     if (permissionStatus !== "granted") {
       permissionStatus = (await Location.requestForegroundPermissionsAsync())
         .status;
+      faceApiLog("attendance-report:location:permission-request", {
+        permissionStatus,
+      });
     }
     if (permissionStatus !== "granted") {
+      faceApiWarn("attendance-report:location:permission-denied", {
+        durationMs: elapsedMs(startedAt),
+      });
       throw new Error("Izin lokasi ditolak. Absensi tidak dapat dilanjutkan.");
     }
 
     const location = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.High,
+    });
+
+    faceApiLog("attendance-report:location:result", {
+      durationMs: elapsedMs(startedAt),
+      mocked: location.mocked,
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      accuracy: location.coords.accuracy,
+      altitude: location.coords.altitude,
+      heading: location.coords.heading,
+      speed: location.coords.speed,
     });
 
     if (location.mocked) {
@@ -120,19 +165,101 @@ export default function AbsenceReport() {
     return location;
   }, []);
 
+  const checkTodayPermit = useCallback(
+    async (userId: string): Promise<boolean> => {
+      const startedAt = startFaceApiTimer();
+      try {
+        // Use WIB-synced time for querying
+        const todayWIB = formatDateWIB(timeSync.getSyncedTime());
+        const startOfDayWIB = `${todayWIB}T00:00:00+07:00`;
+        const endOfDayWIB = `${todayWIB}T23:59:59.999+07:00`;
+        faceApiLog("attendance-report:permit-check:request", {
+          userId,
+          todayWIB,
+          startOfDayWIB,
+          endOfDayWIB,
+        });
+
+        const { data, error } = await supabase
+          .from("perizinan")
+          .select("id, approval_status")
+          .eq("user_id", userId)
+          .gte("tanggal", startOfDayWIB)
+          .lte("tanggal", endOfDayWIB);
+
+        if (error) {
+          faceApiWarn("attendance-report:permit-check:error", {
+            durationMs: elapsedMs(startedAt),
+            error,
+          });
+          return false;
+        }
+
+        // User memiliki izin aktif jika ada izin pending atau approved
+        const hasActivePermit = Boolean(
+          data?.some(
+            (record) =>
+              record.approval_status === "pending" ||
+              record.approval_status === "approved",
+          ),
+        );
+        faceApiLog("attendance-report:permit-check:result", {
+          durationMs: elapsedMs(startedAt),
+          count: data?.length ?? 0,
+          hasActivePermit,
+          data,
+        });
+        return hasActivePermit;
+      } catch {
+        faceApiWarn("attendance-report:permit-check:failed", {
+          durationMs: elapsedMs(startedAt),
+        });
+        return false;
+      }
+    },
+    [],
+  );
+
   const fetchAttendanceStatus = useCallback(async () => {
     if (!user) {
+      faceApiWarn("attendance-report:status:missing-user", {});
       setErrorMessage("Sesi pengguna tidak valid, silakan login ulang.");
       setIsLoading(false);
       return;
     }
+
+    const startedAt = startFaceApiTimer();
+    faceApiLog("attendance-report:status:start", {
+      userId: user.id,
+      email: user.email ?? null,
+    });
 
     setIsLoading(true);
     setErrorMessage(null);
     setStatus(null);
 
     try {
+      // Check if user has active permit today
+      const hasActivePermit = await checkTodayPermit(user.id);
+      if (hasActivePermit) {
+        faceApiWarn("attendance-report:status:blocked-active-permit", {
+          userId: user.id,
+        });
+        throw new Error(
+          "Anda sudah mengajukan izin untuk hari ini. Tidak dapat melakukan absensi jika sudah ada izin aktif (pending/approved).",
+        );
+      }
+
       const location = await getCurrentLocation();
+
+      faceApiLog("attendance-report:status-rpc:request", {
+        rpc: "get_and_validate_attendance_action",
+        params: {
+          p_user_id: user.id,
+          p_user_lat: location.coords.latitude,
+          p_user_lon: location.coords.longitude,
+        },
+      });
 
       const { data, error } = await supabase.rpc(
         "get_and_validate_attendance_action",
@@ -142,6 +269,12 @@ export default function AbsenceReport() {
           p_user_lon: location.coords.longitude,
         },
       );
+
+      faceApiLog("attendance-report:status-rpc:response", {
+        durationMs: elapsedMs(startedAt),
+        data,
+        error,
+      });
 
       if (error) {
         throw new Error(`Gagal memeriksa status: ${error.message}`);
@@ -157,11 +290,18 @@ export default function AbsenceReport() {
         navigateToCamera(data, location.coords);
       }
     } catch (e: any) {
+      faceApiError("attendance-report:status:failed", {
+        durationMs: elapsedMs(startedAt),
+        error: e,
+      });
       setErrorMessage(e.message || "Terjadi kesalahan tidak diketahui.");
     } finally {
+      faceApiLog("attendance-report:status:finish", {
+        durationMs: elapsedMs(startedAt),
+      });
       setIsLoading(false);
     }
-  }, [user, getCurrentLocation, navigateToCamera]);
+  }, [user, getCurrentLocation, checkTodayPermit, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {

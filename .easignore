@@ -35,3 +35,6 @@ certs/public-key.pem
 
 .serena
 google-services.json
+
+# EAS build needs this generated file from GitHub Actions secrets.
+!certs/google-services.json

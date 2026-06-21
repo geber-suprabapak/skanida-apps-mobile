@@ -3,23 +3,19 @@ import {
   View,
   Modal,
   Animated,
-  Dimensions,
   TouchableOpacity,
   Easing,
+  useWindowDimensions,
 } from "react-native";
 import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
 import { CheckCircle } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import {
-  fetchRandomQuote,
   getFallbackQuote,
   type MotivationalQuote,
 } from "~/lib/motivationalQuotes";
-import { timeSync } from "~/utils/timeSync";
 import { cn } from "~/lib/utils";
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface ConfettiPiece {
   id: number;
@@ -35,8 +31,6 @@ interface AttendanceSuccessPopupProps {
   visible: boolean;
   onClose: () => void;
   attendanceType: "check_in" | "check_out";
-  studentName?: string;
-  time?: string;
   processingTime?: number;
 }
 
@@ -57,11 +51,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   visible,
   onClose,
   attendanceType,
-  studentName = "",
-  time,
   processingTime,
 }) => {
   const { colorScheme } = useColorScheme();
+  // PERF-L01: Use hook instead of module-scope Dimensions.get
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const backdropColor =
     colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)";
   const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(
@@ -82,7 +76,8 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
 
   // Initialize confetti pieces
   const initializeConfetti = () => {
-    confettiPieces.current = Array.from({ length: 30 }, (_, index) => ({
+    // PERF-M01: Reduced from 30 to 15 pieces to halve animation overhead
+    confettiPieces.current = Array.from({ length: 15 }, (_, index) => ({
       id: index,
       x: new Animated.Value(Math.random() * screenWidth),
       y: new Animated.Value(-50),
@@ -226,38 +221,20 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose();
+      // Use setTimeout to defer state update outside of animation callback
+      // This prevents "useInsertionEffect must not schedule updates" error
+      setTimeout(() => {
+        onClose();
+      }, 0);
     });
   };
 
+  // PERF-M02: Use local quotes directly, avoid 5s external API call
   useEffect(() => {
-    let isActive = true;
-
-    const loadQuote = async () => {
-      try {
-        const remoteQuote = await fetchRandomQuote();
-
-        if (isActive && remoteQuote?.quote?.trim()) {
-          setMotivationalQuote(remoteQuote);
-        } else if (isActive) {
-          setMotivationalQuote(getFallbackQuote());
-        }
-      } catch {
-        if (isActive) {
-          setMotivationalQuote(getFallbackQuote());
-        }
-        // Error handled by setting fallback quote; do not re-throw.
-      }
-    };
-
     if (visible) {
-      loadQuote();
+      setMotivationalQuote(getFallbackQuote());
       showAnimation();
     }
-
-    return () => {
-      isActive = false;
-    };
   }, [visible, showAnimation]);
 
   const getSuccessMessage = () => {
@@ -280,11 +257,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     if (!timeMs) return "";
 
     if (timeMs < 1000) {
-      return `Processed in ${timeMs}ms ⚡`;
+      return `Processed in ${timeMs}ms`;
     } else if (timeMs < 10000) {
-      return `Processed in ${(timeMs / 1000).toFixed(1)}s ⚡`;
+      return `Processed in ${(timeMs / 1000).toFixed(1)}s`;
     } else {
-      return `Processed in ${Math.round(timeMs / 1000)}s ⚡`;
+      return `Processed in ${Math.round(timeMs / 1000)}s`;
     }
   };
 
@@ -294,13 +271,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         motivationalQuote.author ? ` — ${motivationalQuote.author}` : ""
       }`
     : message.defaultSubtitle;
-  const currentTime =
-    time ||
-    timeSync.getSyncedTime().toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
   if (!visible) return null;
 
   return (
@@ -399,21 +369,6 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               >
                 {motivationalMessage}
               </Text>
-
-              {/* Time Display */}
-              <View
-                className={`px-4 py-2 rounded-full mb-2 ${
-                  colorScheme === "dark" ? "bg-gray-700" : "bg-gray-100"
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    colorScheme === "dark" ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  {currentTime}
-                </Text>
-              </View>
 
               {/* Processing Time Display */}
               {processingTime && (

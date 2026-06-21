@@ -2,53 +2,99 @@
 import { useRouter, Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 import useAuthStore from "../store/authStore";
-import { supabase, ensureSupabaseInitialized } from "../utils/supabase";
-import { getSupabaseConfig } from "~/utils/secureConfig";
+import { supabase } from "../utils/supabase";
+import { resolveUserRole } from "~/utils/authUtils";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Ensure Supabase is initialized with runtime config
-        await getSupabaseConfig();
-        await ensureSupabaseInitialized();
-
-        const sessionResponse = await supabase.auth.getSession();
-
         const {
           data: { session },
           error,
-        } = sessionResponse;
+        } = await supabase.auth.getSession();
 
         if (error) {
-          setLoadingMessage(`Error: ${error.message}`);
+          if (__DEV__)
+            console.error("[Index] getSession error:", error.message);
+          Sentry.captureException(error);
         }
 
         if (session?.user) {
-          setLoadingMessage("Session found");
-          setUser(session.user);
-          router.replace("/Dashboard");
+          let activeSession = session;
+          let role = resolveUserRole(
+            activeSession.access_token,
+            activeSession.user.app_metadata as
+              | Record<string, unknown>
+              | undefined,
+          );
+
+          if (!role) {
+            setLoadingMessage("Refreshing session");
+
+            const {
+              data: { session: refreshedSession },
+              error: refreshError,
+            } = await supabase.auth.refreshSession();
+
+            if (refreshError) {
+              if (__DEV__)
+                console.error(
+                  "[Index] refreshSession error:",
+                  refreshError.message,
+                );
+              Sentry.captureException(refreshError, {
+                tags: { feature: "auth-startup", reason: "missing-role" },
+                extra: { userId: activeSession.user.id },
+              });
+              router.replace("/auth/AuthSelector");
+              return;
+            }
+
+            if (refreshedSession?.user) {
+              activeSession = refreshedSession;
+              role = resolveUserRole(
+                activeSession.access_token,
+                activeSession.user.app_metadata as
+                  | Record<string, unknown>
+                  | undefined,
+              );
+            }
+          }
+
+          if (role === "siswa") {
+            setLoadingMessage("Session found");
+            setUser(activeSession.user);
+            router.replace("/Dashboard");
+            return;
+          }
+
+          if (role) {
+            await supabase.auth.signOut();
+            router.replace("/auth/AuthSelector");
+            return;
+          }
+
+          Sentry.captureMessage("Missing user role after session refresh", {
+            level: "warning",
+            tags: { feature: "auth-startup", reason: "missing-role" },
+            extra: { userId: activeSession.user.id },
+          });
+          router.replace("/auth/AuthSelector");
         } else {
           router.replace("/auth/AuthSelector");
         }
       } catch (err) {
-        if (err instanceof Error) {
-          setLoadingMessage(
-            `Error occurred while checking session: ${err.message}`,
-          );
-        } else {
-          setLoadingMessage("Error occurred while checking session (unknown)");
-        }
-      } finally {
-        setIsLoading(false);
+        if (__DEV__) console.error("[Index] checkAuth error:", err);
+        Sentry.captureException(err);
+        router.replace("/auth/AuthSelector");
       }
     };
 

@@ -1,8 +1,7 @@
-// app/Dashboard.tsx
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -10,52 +9,50 @@ import {
   BackHandler,
   Alert,
   RefreshControl,
+  Image,
+  AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from "expo-location";
-
+import { StatusBar } from "expo-status-bar";
 import * as Sentry from "@sentry/react-native";
 
-// Import your reusable shadcn/ui components
 import { Avatar } from "~/components/ui/avatar";
+import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Card } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
+import { Icon } from "~/components/ui/icon";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
-import useTimeSyncStore from "~/store/timeSyncStore";
+import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
-import { attendanceCache } from "~/utils/attendanceCache";
-import { Icon } from "~/components/ui/icon";
-import { formatDateWIB } from "~/lib/utils";
-import { timeSync } from "~/utils/timeSync";
+import { fetchEnrollmentStatus } from "~/utils/enrollment";
+import type { EnrollmentStatus } from "~/utils/enrollment";
 import {
-  Clock,
-  Bug,
-  CheckCircle,
+  fetchFaceApiRuntimeStatus,
+  type FaceApiRuntimeStatusResult,
+} from "~/utils/faceApiRuntime";
+import {
+  consumePendingAttendanceSuccess,
+  type PendingAttendanceSuccess,
+} from "~/utils/attendanceSuccess";
+import { formatDateWIB, getWIBDayBounds, toWIB } from "~/lib/utils";
+import { timeSync } from "~/utils/timeSync";
+import { getAvatarSignedUrl } from "~/utils/avatar";
+import { faceApiLog } from "~/utils/faceApiDebug";
+import {
   AlertCircle,
-  UserCheck,
+  Bug,
   History,
   ClipboardPenLine,
+  Loader2,
+  Scan,
   Settings,
   UserRound,
-  WifiOff,
-  Wifi,
 } from "lucide-react-native";
 import Constants from "expo-constants";
+import LogoImage from "~/assets/skanidatransparan.png";
 
-// Define interface for user profile data
-interface UserProfile {
-  id: string;
-  full_name?: string;
-  avatar_url?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Define interface for attendance data
+// Types
 interface AttendanceStatus {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
@@ -66,34 +63,12 @@ interface AttendanceStatus {
   todayStatus: "present" | "absent" | "leave" | "pending";
 }
 
-// Define interface for RPC check_absensi_status result
-interface AbsensiCheckResult {
-  status_code:
-    | "VALID"
-    | "OUT_OF_RANGE"
-    | "NOT_SCHEDULED"
-    | "ALREADY_COMPLETED"
-    | "TIME_OUT"
-    | "FAILED_LOCATION";
-  required_action: "present" | "home" | "none";
-  location_name: string;
-  distance_m: number;
-  message: string;
-}
-
-// Define interface for validation status state
-interface ValidationStatus {
-  canCheckIn: boolean;
-  actionType: "present" | "home" | "none";
-  message: string;
-}
-
 interface AttendanceSchedule {
   mulai_masuk: string | null;
   selesai_masuk: string | null;
   mulai_pulang: string | null;
   selesai_pulang: string | null;
-  kompensasi_waktu?: number | null;
+  kompensasi_waktu: number | null;
 }
 
 const DAY_KEY_MAP = [
@@ -106,172 +81,177 @@ const DAY_KEY_MAP = [
   "sabtu",
 ] as const;
 
-type DayKey = (typeof DAY_KEY_MAP)[number];
+const getWIBDayKey = (date: Date) => {
+  const wibDate = toWIB(date);
+  return DAY_KEY_MAP[wibDate.getUTCDay()];
+};
+
+const parseScheduleTimeForWIBDate = (
+  time: string | null,
+  baseDate: Date,
+): Date | null => {
+  if (!time) return null;
+
+  const timeParts = time.split(":");
+  if (timeParts.length < 2 || timeParts.length > 3) return null;
+
+  const [hoursRaw, minutesRaw, secondsRaw = "0"] = timeParts;
+  const isIntegerToken = (value: string) => /^\d+$/.test(value);
+  if (
+    !isIntegerToken(hoursRaw) ||
+    !isIntegerToken(minutesRaw) ||
+    !isIntegerToken(secondsRaw)
+  ) {
+    return null;
+  }
+
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  const seconds = Number(secondsRaw);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    !Number.isInteger(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return null;
+  }
+
+  const wibDate = toWIB(baseDate);
+  return new Date(
+    Date.UTC(
+      wibDate.getUTCFullYear(),
+      wibDate.getUTCMonth(),
+      wibDate.getUTCDate(),
+      hours - 7,
+      minutes,
+      seconds,
+      0,
+    ),
+  );
+};
+
+const addMinutesToDate = (
+  date: Date | null,
+  minutes: number | null | undefined,
+): Date | null => {
+  if (!date) return null;
+
+  const normalizedMinutes =
+    typeof minutes === "number" && Number.isFinite(minutes)
+      ? Math.max(0, Math.trunc(minutes))
+      : 0;
+  return new Date(date.getTime() + normalizedMinutes * 60 * 1000);
+};
+
+const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
+  !!url && /^https?:\/\//.test(url);
+
+const calculateWorkHours = (checkIn: string, checkOut: string): string => {
+  try {
+    const diffMs = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    const hours = Math.floor(diffMs / 3600000);
+    const minutes = Math.floor((diffMs % 3600000) / 60000);
+    return `${hours}j ${minutes}m`;
+  } catch {
+    return "0j 0m";
+  }
+};
+
+// Isolated clock — only this re-renders every second
+const DashboardClock = React.memo(function DashboardClock() {
+  const [time, setTime] = useState(timeSync.getSyncedTime());
+
+  useEffect(() => {
+    const id = setInterval(() => setTime(timeSync.getSyncedTime()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <>
+      <Text className="text-blue-100 text-xs font-medium mb-1">
+        {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
+      </Text>
+      <Text className="text-white text-4xl font-bold tracking-tighter leading-tight">
+        {format(time, "HH:mm:ss")}
+      </Text>
+    </>
+  );
+});
 
 export default function Dashboard() {
-  const user = useAuthStore((state) => state.user);
-  const syncStatus = useTimeSyncStore((state) => state.status);
-  const syncSource = useTimeSyncStore((state) => state.syncSource);
-  const driftDetected = useTimeSyncStore((state) => state.driftDetected);
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const [currentTime, setCurrentTime] = useState(timeSync.getSyncedTime());
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const userProfile = useAuthStore((state) => state.userProfile);
+  const theme = useThemeStore((state) => state.theme);
+
+  // State
+  const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
     hasCheckedOut: false,
     todayStatus: "pending",
   });
-  const [refreshing, setRefreshing] = useState(false);
   const [attendanceSchedule, setAttendanceSchedule] =
     useState<AttendanceSchedule | null>(null);
-  const isFocused = useIsFocused(); // Add isFocused hook
+  const [refreshing, setRefreshing] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [enrollmentStatus, setEnrollmentStatus] =
+    useState<EnrollmentStatus>("loading");
+  const [enrollmentError, setEnrollmentError] = useState("");
+  const [faceApiRuntime, setFaceApiRuntime] =
+    useState<FaceApiRuntimeStatusResult | null>(null);
+  const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
+  const [attendanceSuccess, setAttendanceSuccess] =
+    useState<PendingAttendanceSuccess | null>(null);
 
-  // Validation status for live schedule checking
-  const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
-    canCheckIn: false,
-    actionType: "none",
-    message: "Memeriksa status jadwal...",
-  });
-
-  // Success popup state
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [successData, setSuccessData] = useState<{
-    attendanceType: "check_in" | "check_out";
-    time: string;
-    processingTime?: number;
-  } | null>(null);
-
-  // Handle success popup from navigation params
+  // 60-second interval for schedule computations
   useEffect(() => {
-    if (
-      params.showSuccessPopup === "true" &&
-      params.attendanceType &&
-      params.successTime
-    ) {
-      setSuccessData({
-        attendanceType: params.attendanceType as "check_in" | "check_out",
-        time: params.successTime as string,
-        processingTime: params.processingTime
-          ? parseInt(params.processingTime as string)
-          : undefined,
-      });
-      setShowSuccessPopup(true);
+    const t = setInterval(
+      () => setScheduleTime(timeSync.getSyncedTime()),
+      60000,
+    );
+    return () => clearInterval(t);
+  }, []);
 
-      // Clear params to prevent popup from showing again
-      router.setParams({
-        showSuccessPopup: undefined,
-        attendanceType: undefined,
-        successTime: undefined,
-        processingTime: undefined,
-      });
+  // Avatar pipeline
+  const rawAvatarValue =
+    userProfile?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
+
+  useEffect(() => {
+    let active = true;
+    if (!rawAvatarValue || typeof rawAvatarValue !== "string") {
+      setAvatarUrl(null);
+      return;
     }
-  }, [params, router]);
-
-  // Show alpha release popup only once
-  useEffect(() => {
-    const showAlphaReleaseAlert = async () => {
-      try {
-        const hasSeenAlert = await AsyncStorage.getItem(
-          "alpha_release_alert_shown",
-        );
-
-        if (!hasSeenAlert) {
-          Alert.alert(
-            "🚧 Alpha Release",
-            "Aplikasi ini masih dalam tahap pengembangan (Alpha). Fitur dan data dapat berubah sewaktu-waktu. Mohon laporkan bug atau masukan ke tim pengembang. Terima kasih atas partisipasinya!",
-            [
-              {
-                text: "Saya Mengerti",
-                style: "default",
-                onPress: async () => {
-                  await AsyncStorage.setItem(
-                    "alpha_release_alert_shown",
-                    "true",
-                  );
-                },
-              },
-            ],
-            { cancelable: false },
-          );
-        }
-      } catch (error) {
-        console.warn("Failed to check/set alpha release alert flag:", error);
-      }
+    getAvatarSignedUrl(rawAvatarValue)
+      .then((url) => {
+        if (active && isValidRemoteImageUrl(url)) setAvatarUrl(url!.trim());
+        else if (active) setAvatarUrl(null);
+      })
+      .catch(() => {
+        if (active) setAvatarUrl(null);
+      });
+    return () => {
+      active = false;
     };
+  }, [rawAvatarValue]);
 
-    showAlphaReleaseAlert();
-  }, []);
-
-  // Sync time with server on mount and set up interval for updating time
-  useEffect(() => {
-    // Initial sync handled by _layout.tsx
-    // Update current time every second
-    // Date object automatically displays in device timezone (WIB)
-    const timerId = setInterval(() => {
-      setCurrentTime(timeSync.getSyncedTime());
-    }, 1000);
-
-    return () => clearInterval(timerId);
-  }, []);
-
-  // Re-sync when screen is focused
-  useEffect(() => {
-    if (isFocused) {
-      timeSync.syncWithServer().then((success) => {
-        if (success) {
-          setCurrentTime(timeSync.getSyncedTime());
-        }
-      });
-    }
-  }, [isFocused]);
-
-  // Fetch profile data from Supabase
-  const fetchProfileData = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("full_name, avatar_url")
-        .eq("user_id", user?.id)
-        .single();
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          console.log("Dashboard: No profile data found for user:", user?.id);
-          setProfileData(null);
-        } else {
-          console.error(
-            "Dashboard: Error fetching profile data:",
-            error.message,
-          );
-          setProfileData(null);
-        }
-      } else if (data) {
-        console.log("Dashboard: Profile data found:", data);
-        setProfileData(data as UserProfile);
-      } else {
-        console.log("Dashboard: No profile data found for user:", user?.id);
-        setProfileData(null);
-      }
-    } catch (err: any) {
-      console.error(
-        "Dashboard: Exception during user_profiles data fetch:",
-        err.message,
-      );
-      setProfileData(null);
-    }
-  }, [user]);
-
-  // Fetch attendance data for today
+  // Data fetching
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
-
     try {
-      const today = formatDateWIB(timeSync.getSyncedTime());
+      const syncedNow = timeSync.getSyncedTime();
+      const today = formatDateWIB(syncedNow);
+      const { start, endExclusive } = getWIBDayBounds(syncedNow);
 
-      // Fetch today's attendance
       const { data: todayAttendance } = await supabase
         .from("absences")
         .select("status, created_at")
@@ -279,75 +259,42 @@ export default function Dashboard() {
         .eq("date", today)
         .order("created_at", { ascending: true });
 
-      // Fetch leave requests for today
       const { data: leaveRequests } = await supabase
         .from("perizinan")
-        .select("approval_status, kategori_izin, status")
+        .select("approval_status, kategori_izin")
         .eq("user_id", user.id)
-        .gte("tanggal", `${today}T00:00:00.000Z`)
-        .lt("tanggal", `${today}T23:59:59.999Z`);
+        .in("approval_status", ["pending", "approved"])
+        .gte("tanggal", start)
+        .lt("tanggal", endExclusive);
 
       let hasCheckedIn = false;
       let hasCheckedOut = false;
       let checkInTime = "";
       let checkOutTime = "";
       let checkInStatus: "Hadir" | "Terlambat" | undefined;
-      let todayStatus: "present" | "absent" | "leave" | "pending" = "pending";
+      let todayStatus: AttendanceStatus["todayStatus"] = "pending";
 
-      // Check for leave requests first (they take priority)
       if (leaveRequests && leaveRequests.length > 0) {
-        // Check if there's any leave request for today (any submitted request counts)
-        const hasLeaveRequest = leaveRequests.length > 0;
-        if (hasLeaveRequest) {
-          todayStatus = "leave";
-        }
-      }
-
-      // Only check attendance if no leave request exists
-      if (
-        todayStatus !== "leave" &&
-        todayAttendance &&
-        todayAttendance.length > 0
-      ) {
-        const hasAlphaRecord = todayAttendance.some(
-          (record) => record.status === "Alpha",
-        );
-
-        if (hasAlphaRecord) {
+        todayStatus = "leave";
+      } else if (todayAttendance && todayAttendance.length > 0) {
+        if (todayAttendance.some((r) => r.status === "Alpha")) {
           todayStatus = "absent";
         } else {
-          const checkInRecord = todayAttendance.find(
-            (record) =>
-              record.status === "Hadir" || record.status === "Terlambat",
+          const inRec = todayAttendance.find(
+            (r) => r.status === "Hadir" || r.status === "Terlambat",
           );
-          const checkOutRecord = todayAttendance.find(
-            (record) => record.status === "Pulang",
-          );
-
-          if (checkInRecord) {
+          const outRec = todayAttendance.find((r) => r.status === "Pulang");
+          if (inRec) {
             hasCheckedIn = true;
-            checkInTime = checkInRecord.created_at;
-            checkInStatus = checkInRecord.status as "Hadir" | "Terlambat";
-          }
-
-          if (checkOutRecord) {
-            hasCheckedOut = true;
-            checkOutTime = checkOutRecord.created_at;
-          }
-
-          if (hasCheckedIn) {
+            checkInTime = inRec.created_at;
+            checkInStatus = inRec.status as "Hadir" | "Terlambat";
             todayStatus = "present";
           }
+          if (outRec) {
+            hasCheckedOut = true;
+            checkOutTime = outRec.created_at;
+          }
         }
-      }
-
-      // If no attendance and no leave request, mark as absent
-      if (
-        todayStatus === "pending" &&
-        !todayAttendance?.length &&
-        !leaveRequests?.length
-      ) {
-        todayStatus = "absent";
       }
 
       const totalWorkHours =
@@ -365,113 +312,13 @@ export default function Dashboard() {
         todayStatus,
       });
     } catch (error) {
-      console.error("Error fetching attendance data:", error);
+      Sentry.captureException(error);
     }
   }, [user]);
 
-  // Check live validation status using RPC
-  const checkLiveValidationStatus = useCallback(async () => {
-    if (!user?.id || attendanceStatus.hasCheckedOut) {
-      setValidationStatus({
-        canCheckIn: false,
-        actionType: "none",
-        message: attendanceStatus.hasCheckedOut
-          ? "Absensi hari ini sudah lengkap."
-          : "User tidak ditemukan",
-      });
-      return;
-    }
-
+  const fetchAttendanceSchedule = useCallback(async () => {
     try {
-      let { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== "granted") {
-        status = (await Location.requestForegroundPermissionsAsync()).status;
-        if (status !== "granted") {
-          setValidationStatus({
-            canCheckIn: false,
-            actionType: "none",
-            message: "Izin lokasi ditolak.",
-          });
-          return;
-        }
-      }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      if (!location) {
-        setValidationStatus({
-          canCheckIn: false,
-          actionType: "none",
-          message: "Gagal mendapatkan lokasi GPS.",
-        });
-        return;
-      }
-
-      const { data, error } = await supabase.rpc("check_absensi_status", {
-        p_user_id: user.id,
-        p_user_lat: location.coords.latitude,
-        p_user_lon: location.coords.longitude,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      const result = data as AbsensiCheckResult;
-
-      setValidationStatus({
-        canCheckIn: result.status_code === "VALID",
-        actionType: result.required_action,
-        message: result.message,
-      });
-    } catch (error) {
-      console.error("Error during live validation:", error);
-      setValidationStatus({
-        canCheckIn: false,
-        actionType: "none",
-        message: "Gagal memeriksa status absensi.",
-      });
-    }
-  }, [user, attendanceStatus.hasCheckedOut]);
-
-  // Fetch profile and attendance data when component mounts or user changes
-  useEffect(() => {
-    if (user) {
-      console.log("Dashboard: Fetching initial data for user:", user?.id);
-      fetchProfileData();
-      fetchAttendanceData();
-    }
-  }, [user, fetchProfileData, fetchAttendanceData]);
-
-  // Polling for live validation status every 15 seconds when screen is focused
-  useEffect(() => {
-    if (!isFocused || !user?.id) return;
-
-    // Initial check when screen becomes focused
-    checkLiveValidationStatus();
-
-    // Set up interval for polling every 15 seconds
-    const validationInterval = setInterval(() => {
-      checkLiveValidationStatus();
-    }, 15000); // 15 seconds
-
-    // Cleanup interval on unmount or when focus changes
-    return () => clearInterval(validationInterval);
-  }, [isFocused, user?.id, checkLiveValidationStatus]);
-
-  // Handle success popup close
-  const handleSuccessPopupClose = useCallback(() => {
-    setShowSuccessPopup(false);
-    setSuccessData(null);
-    // Refresh attendance data after successful attendance
-    if (isFocused) {
-      fetchAttendanceData();
-    }
-  }, [isFocused, fetchAttendanceData]);
-
-  const fetchAttendanceSchedule = useCallback(async (dayKey: DayKey) => {
-    try {
+      const dayKey = getWIBDayKey(timeSync.getSyncedTime());
       const { data, error } = await supabase
         .from("jadwal_absensi")
         .select(
@@ -481,117 +328,98 @@ export default function Dashboard() {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (error) {
-        if (error.code !== "PGRST116") {
-          console.error(
-            "Dashboard: Error fetching attendance schedule:",
-            error.message,
-          );
-        }
-        setAttendanceSchedule(null);
-        return;
-      }
-
-      if (data) {
-        setAttendanceSchedule(data as AttendanceSchedule);
-      } else {
-        setAttendanceSchedule(null);
-      }
-    } catch (scheduleError: any) {
-      console.error(
-        "Dashboard: Exception during attendance schedule fetch:",
-        scheduleError.message,
-      );
+      if (error) throw error;
+      setAttendanceSchedule(data as AttendanceSchedule | null);
+    } catch (error) {
+      Sentry.captureException(error);
       setAttendanceSchedule(null);
     }
   }, []);
 
-  const currentDayKey = useMemo<DayKey>(() => {
-    const dayKey = DAY_KEY_MAP[currentTime.getDay()];
-    return dayKey ?? "senin";
-  }, [currentTime]);
+  const checkEnrollmentStatus = useCallback(async () => {
+    faceApiLog("dashboard:enroll-status-check:start", {
+      userId: user?.id ?? null,
+      email: user?.email ?? null,
+    });
+    setEnrollmentStatus("loading");
+    setEnrollmentError("");
+
+    const result = await fetchEnrollmentStatus();
+    faceApiLog("dashboard:enroll-status-check:result", {
+      result,
+      userId: user?.id ?? null,
+    });
+
+    setEnrollmentStatus(result.status);
+    if (result.error) {
+      setEnrollmentError(result.error);
+    }
+  }, [user?.email, user?.id]);
+
+  const checkFaceApiRuntime = useCallback(async () => {
+    setIsCheckingFaceApi(true);
+    const result = await fetchFaceApiRuntimeStatus();
+    faceApiLog("dashboard:runtime-check:result", {
+      result,
+      userId: user?.id ?? null,
+    });
+    setFaceApiRuntime(result);
+    setIsCheckingFaceApi(false);
+  }, [user?.id]);
+
+  // Lifecycle
+  const initializeDashboard = useCallback(async () => {
+    try {
+      setIsInitializing(true);
+      await Promise.all([fetchAttendanceData(), fetchAttendanceSchedule()]);
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [fetchAttendanceData, fetchAttendanceSchedule]);
 
   useEffect(() => {
-    fetchAttendanceSchedule(currentDayKey);
-  }, [currentDayKey, fetchAttendanceSchedule]);
+    initializeDashboard();
+  }, [initializeDashboard]);
 
-  // Helper function to calculate work hours
-  const calculateWorkHours = (checkIn: string, checkOut: string): string => {
-    try {
-      const checkInTime = new Date(checkIn);
-      const checkOutTime = new Date(checkOut);
-      const diffMs = checkOutTime.getTime() - checkInTime.getTime();
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      return `${hours}j ${minutes}m`;
-    } catch {
-      return "0j 0m";
-    }
-  };
-
-  // Refresh function
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([
-      fetchProfileData(),
-      fetchAttendanceData(),
-      checkLiveValidationStatus(), // Refresh validation status, location, and time
-      timeSync.forceSyncWithServer().then((success) => {
-        if (success) {
-          setCurrentTime(timeSync.getSyncedTime());
-        }
-      }),
-      fetchAttendanceSchedule(currentDayKey),
-    ]);
-    setRefreshing(false);
-  }, [
-    fetchProfileData,
-    fetchAttendanceData,
-    checkLiveValidationStatus,
-    fetchAttendanceSchedule,
-    currentDayKey,
-  ]);
-
-  // Get user's display name prioritizing profile data, then falling back to metadata
-  // This will be "Pengguna" if no profile data exists, which should trigger our redirect
-  const rawName =
-    profileData?.full_name ??
-    user?.user_metadata?.full_name ??
-    user?.user_metadata?.name ??
-    "";
-
-  const displayName = rawName
-    ? rawName.split(" ").slice(0, 2).join(" ")
-    : "Pengguna";
-
-  // Get user's avatar URL prioritizing profile data and falling back to metadata
-  const avatarUrl =
-    profileData?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
-  const hasCustomAvatar = Boolean(avatarUrl);
-
-  // --- Navigation Handlers ---
-  const navigateToCheckIn = () => router.push("/attendance/AbsenceReport"); // Adjust route if needed
-  const navigateToHistory = async () => {
-    try {
-      // Force refresh current month cache before navigating
-      if (user?.id) {
-        await attendanceCache.forceRefreshCurrentMonth(user.id);
+  // Re-check server readiness whenever Dashboard comes back into focus.
+  useFocusEffect(
+    useCallback(() => {
+      const pendingSuccess = consumePendingAttendanceSuccess();
+      if (pendingSuccess) {
+        setAttendanceSuccess(pendingSuccess);
       }
-      router.push("/extra/riwayat");
-    } catch (error) {
-      console.error("Error preparing riwayat navigation:", error);
-      // Still navigate even if cache refresh fails
-      router.push("/extra/riwayat");
-    }
-  };
-  const navigateToSettings = () => router.push("/extra/pengaturan");
-  const navigateToPerizinan = () => router.push("/perizinan/izin"); // New handler for Perizinan
-  const navigateToEditProfile = () => router.push("/profile/EditProfile");
 
-  // Prevent back navigation
+      void Promise.all([
+        checkFaceApiRuntime(),
+        checkEnrollmentStatus(),
+        fetchAttendanceData(),
+        fetchAttendanceSchedule(),
+      ]);
+    }, [
+      checkFaceApiRuntime,
+      checkEnrollmentStatus,
+      fetchAttendanceData,
+      fetchAttendanceSchedule,
+    ]),
+  );
+
   useEffect(() => {
-    const backAction = () => {
-      // For Dashboard, show exit confirmation instead of navigating back
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        timeSync.syncWithServer().then((ok) => {
+          if (ok) setScheduleTime(timeSync.getSyncedTime());
+        });
+        fetchAttendanceData();
+        void checkFaceApiRuntime();
+        void checkEnrollmentStatus();
+      }
+    });
+    return () => sub.remove();
+  }, [fetchAttendanceData, checkFaceApiRuntime, checkEnrollmentStatus]);
+
+  // Back button
+  useEffect(() => {
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
       Alert.alert(
         "Keluar Aplikasi",
         "Apakah Anda yakin ingin keluar dari aplikasi?",
@@ -604,529 +432,573 @@ export default function Dashboard() {
           },
         ],
       );
-      return true; // Prevent default behavior
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
-
-    return () => backHandler.remove();
+      return true;
+    });
+    return () => handler.remove();
   }, []);
 
-  // Get status badge color and text
-  const getStatusBadge = () => {
-    switch (attendanceStatus.todayStatus) {
-      case "present":
-        if (attendanceStatus.checkInStatus === "Terlambat") {
-          return {
-            color: "bg-orange-500",
-            text: "Terlambat",
-            textColor: "text-white",
-          };
-        }
-        return {
-          color: "bg-green-500",
-          text: "Hadir",
-          textColor: "text-white",
-        };
-      case "leave":
-        return {
-          color: "bg-yellow-500",
-          text: "Izin",
-          textColor: "text-white",
-        };
-      case "absent":
-        return {
-          color: "bg-red-500",
-          text: "Tidak Hadir",
-          textColor: "text-white",
-        };
-      default:
-        return {
-          color: "bg-gray-500",
-          text: "Pending",
-          textColor: "text-white",
-        };
-    }
-  };
+  // Refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchAttendanceData(),
+      timeSync.forceSyncWithServer().then((ok) => {
+        if (ok) setScheduleTime(timeSync.getSyncedTime());
+      }),
+      fetchAttendanceSchedule(),
+      checkFaceApiRuntime(),
+      checkEnrollmentStatus(),
+    ]);
+    setRefreshing(false);
+  }, [
+    fetchAttendanceData,
+    fetchAttendanceSchedule,
+    checkFaceApiRuntime,
+    checkEnrollmentStatus,
+  ]);
 
-  const statusBadge = getStatusBadge();
+  // Computed values
+  const rawName =
+    userProfile?.full_name ??
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    "";
+  const displayName = rawName
+    ? rawName.split(" ").slice(0, 2).join(" ")
+    : "Pengguna";
+  const hasCustomAvatar = Boolean(avatarUrl);
+
+  const greeting = useMemo(() => {
+    const wibDate = toWIB(scheduleTime);
+    const h = wibDate.getUTCHours();
+    if (h >= 3 && h < 11) return "Selamat Pagi";
+    if (h >= 11 && h < 15) return "Selamat Siang";
+    if (h >= 15 && h < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  }, [scheduleTime]);
 
   const derivedActionType =
     attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
       ? "home"
-      : validationStatus.actionType;
+      : "present";
 
-  const normalizeTimeString = (
-    value: string | null | undefined,
-  ): string | null => {
-    if (!value) return null;
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    if (trimmed.length >= 5) {
-      const [hours, minutes] = trimmed.split(":");
-      if (typeof hours === "string" && typeof minutes === "string") {
-        return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
-      }
-    }
-    return trimmed;
-  };
+  const { isPrimaryActionDisabled } = useMemo(() => {
+    const parseTime = (t: string | null): Date | null => {
+      return parseScheduleTimeForWIBDate(t, scheduleTime);
+    };
 
-  const getDateForToday = useCallback(
-    (time: string | null | undefined): Date | null => {
-      const normalized = normalizeTimeString(time);
-      if (!normalized) return null;
+    const inWindow = (start: Date | null, end: Date | null) => {
+      if (!start) return false;
+      if (scheduleTime < start) return false;
+      if (end && scheduleTime > end) return false;
+      return true;
+    };
 
-      const [hours, minutes] = normalized
-        .split(":")
-        .map((part) => parseInt(part || "0", 10));
+    const checkInEnd = addMinutesToDate(
+      parseTime(attendanceSchedule?.selesai_masuk ?? null),
+      attendanceSchedule?.kompensasi_waktu,
+    );
 
-      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-        return null;
-      }
+    const presentOk = inWindow(
+      parseTime(attendanceSchedule?.mulai_masuk ?? null),
+      checkInEnd,
+    );
+    const pulangOk = inWindow(
+      parseTime(attendanceSchedule?.mulai_pulang ?? null),
+      parseTime(attendanceSchedule?.selesai_pulang ?? null),
+    );
 
-      const base = new Date(currentTime);
-      base.setHours(hours, minutes, 0, 0);
-      return base;
-    },
-    [currentTime],
-  );
+    const allows =
+      derivedActionType === "home"
+        ? pulangOk
+        : derivedActionType === "present"
+          ? presentOk
+          : true;
 
-  const presentScheduleText = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = normalizeTimeString(attendanceSchedule.mulai_masuk);
-    if (!start) return null;
-
-    const end = normalizeTimeString(attendanceSchedule.selesai_masuk);
-    const windowText = end ? `${start} - ${end}` : start;
-
-    let result = `Waktu presensi masuk: ${windowText}`;
-    if (attendanceSchedule.kompensasi_waktu) {
-      result += ` (kompensasi +${attendanceSchedule.kompensasi_waktu} menit).`;
-    } else {
-      result += ".";
-    }
-
-    return result;
-  }, [attendanceSchedule]);
-
-  const pulangScheduleText = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = normalizeTimeString(attendanceSchedule.mulai_pulang);
-    if (!start) return null;
-
-    const end = normalizeTimeString(attendanceSchedule.selesai_pulang);
-    const windowText = end ? `${start} - ${end}` : start;
-
-    return `Waktu presensi pulang: ${windowText} WIB.`;
-  }, [attendanceSchedule]);
-
-  const presentScheduleWindow = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = getDateForToday(attendanceSchedule.mulai_masuk);
-    if (!start) return null;
-
-    const end = getDateForToday(attendanceSchedule.selesai_masuk);
-
-    return { start, end } as const;
-  }, [attendanceSchedule, getDateForToday]);
-
-  const pulangScheduleWindow = useMemo(() => {
-    if (!attendanceSchedule) return null;
-
-    const start = getDateForToday(attendanceSchedule.mulai_pulang);
-    if (!start) return null;
-
-    const end = getDateForToday(attendanceSchedule.selesai_pulang);
-
-    return { start, end } as const;
-  }, [attendanceSchedule, getDateForToday]);
-
-  const isWithinPresentWindow = useMemo(() => {
-    if (!presentScheduleWindow) return true;
-
-    if (currentTime < presentScheduleWindow.start) {
-      return false;
-    }
-
-    if (presentScheduleWindow.end && currentTime > presentScheduleWindow.end) {
-      return false;
-    }
-
-    return true;
-  }, [currentTime, presentScheduleWindow]);
-
-  const isWithinPulangWindow = useMemo(() => {
-    if (!pulangScheduleWindow) return true;
-
-    if (currentTime < pulangScheduleWindow.start) {
-      return false;
-    }
-
-    if (pulangScheduleWindow.end && currentTime > pulangScheduleWindow.end) {
-      return false;
-    }
-
-    return true;
-  }, [currentTime, pulangScheduleWindow]);
-
-  const primaryActionMessage = useMemo(() => {
-    if (derivedActionType === "home") {
-      if (pulangScheduleText) {
-        return pulangScheduleText;
-      }
-
-      return validationStatus.message;
-    }
-
-    if (derivedActionType === "present") {
-      if (presentScheduleText) {
-        return presentScheduleText;
-      }
-
-      return validationStatus.message;
-    }
-
-    return validationStatus.message;
+    return {
+      scheduleAllowsAction: allows,
+      isPrimaryActionDisabled:
+        refreshing ||
+        isInitializing ||
+        isCheckingFaceApi ||
+        enrollmentStatus !== "enrolled" ||
+        !allows ||
+        faceApiRuntime?.state !== "healthy" ||
+        attendanceStatus.hasCheckedOut,
+    };
   }, [
+    scheduleTime,
+    attendanceSchedule,
     derivedActionType,
-    presentScheduleText,
-    pulangScheduleText,
-    validationStatus.message,
+    refreshing,
+    isInitializing,
+    isCheckingFaceApi,
+    enrollmentStatus,
+    faceApiRuntime?.state,
+    attendanceStatus.hasCheckedOut,
   ]);
 
-  const scheduleAllowsAction = useMemo(() => {
-    if (derivedActionType === "home") {
-      return isWithinPulangWindow;
+  const primaryActionLabel = useMemo(() => {
+    if (attendanceStatus.hasCheckedOut) {
+      return "SELESAI";
     }
 
-    if (derivedActionType === "present") {
-      return isWithinPresentWindow;
+    if (refreshing) {
+      return "MEMUAT...";
     }
 
-    return true;
-  }, [derivedActionType, isWithinPulangWindow, isWithinPresentWindow]);
+    if (isCheckingFaceApi) {
+      return "CEK SERVER...";
+    }
 
-  const isPrimaryActionDisabled =
-    refreshing || !validationStatus.canCheckIn || !scheduleAllowsAction;
+    if (faceApiRuntime?.state !== "healthy") {
+      return "SERVER BELUM SIAP";
+    }
 
+    if (enrollmentStatus === "loading") {
+      return "CEK STATUS WAJAH...";
+    }
+
+    if (enrollmentStatus === "not_enrolled") {
+      return "WAJAH BELUM TERDAFTAR";
+    }
+
+    if (enrollmentStatus === "error") {
+      return "CEK STATUS WAJAH";
+    }
+
+    return "PRESENSI";
+  }, [
+    attendanceStatus.hasCheckedOut,
+    refreshing,
+    isCheckingFaceApi,
+    faceApiRuntime?.state,
+    enrollmentStatus,
+  ]);
+
+  // Navigation
+  const navigateToCheckIn = useCallback(() => {
+    faceApiLog("dashboard:navigate-attendance", {
+      enrollmentStatus,
+      attendanceStatus,
+      derivedActionType,
+      isPrimaryActionDisabled,
+    });
+    router.push("/attendance/AbsenceReport");
+  }, [
+    router,
+    enrollmentStatus,
+    attendanceStatus,
+    derivedActionType,
+    isPrimaryActionDisabled,
+  ]);
+  const navigateToEnroll = useCallback(() => {
+    faceApiLog("dashboard:navigate-enroll", {
+      enrollmentStatus,
+      enrollmentError,
+      userId: user?.id ?? null,
+    });
+    router.push("/profile/enroll");
+  }, [router, enrollmentStatus, enrollmentError, user?.id]);
+  const navigateToHistory = useCallback(
+    () => router.push("/extra/riwayat"),
+    [router],
+  );
+  const navigateToPerizinan = useCallback(
+    () => router.push("/perizinan/status"),
+    [router],
+  );
+  const navigateToSettings = useCallback(
+    () => router.push("/extra/pengaturan"),
+    [router],
+  );
+  const navigateToEditProfile = useCallback(
+    () => router.push("/profile/ManageAccount"),
+    [router],
+  );
+
+  // Render
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-          gestureEnabled: false, // Disable swipe back on iOS
-        }}
-      />
-      {/* Apply dynamic background based on theme */}
-      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        {/* Main container with theme-based background */}
-        <ScrollView
-          className="flex-1 bg-background"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          {/* --- Header Section --- */}
-          <View className="px-6 pt-4 pb-6 bg-background">
-            <View className="flex-row items-center justify-between mb-4">
-              <TouchableOpacity
-                className="flex-row items-center flex-1"
-                onPress={navigateToEditProfile}
-                activeOpacity={0.85}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                {hasCustomAvatar ? (
-                  <Avatar
-                    size="md"
-                    fallback={displayName.charAt(0).toUpperCase() || "?"}
-                    className="mr-3"
-                    source={avatarUrl ?? undefined}
-                  />
-                ) : (
-                  <View className="mr-3">
-                    <View className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-border items-center justify-center">
-                      <Icon
-                        as={UserRound}
-                        className="size-6 text-blue-500 dark:text-blue-400"
-                      />
-                    </View>
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 bg-background">
+          <AttendanceSuccessPopup
+            visible={Boolean(attendanceSuccess)}
+            onClose={() => setAttendanceSuccess(null)}
+            attendanceType={attendanceSuccess?.attendanceType ?? "check_in"}
+            processingTime={attendanceSuccess?.processingTime}
+          />
+
+          <ScrollView
+            className="flex-1 bg-background"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 32 }}
+          >
+            {/* Header */}
+            <View className="px-6 pt-2 pb-6">
+              <View className="flex-row items-center justify-between mb-8">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
+                    <Image
+                      source={LogoImage}
+                      className="w-10 h-10"
+                      resizeMode="contain"
+                    />
                   </View>
-                )}
-                <View className="flex-1">
-                  <Text variant="large" className="text-foreground">
-                    {displayName}
-                  </Text>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {format(currentTime, "EEEE, dd MMM yyyy", { locale: id })}
+                  <Text className="text-2xl font-bold text-stone-700 dark:text-white tracking-tight">
+                    SKANIDA APPS
                   </Text>
                 </View>
-              </TouchableOpacity>
-
-              {/* Waktu Sekarang - In header row */}
-              <View className="flex-row items-center mr-3">
-                <View
-                  className={`px-3 py-2 rounded-lg ${
-                    syncStatus === "synced"
-                      ? "bg-gray-200 dark:bg-gray-800"
-                      : syncStatus === "syncing"
-                        ? "bg-blue-100 dark:bg-blue-900/30"
-                        : "bg-yellow-100 dark:bg-yellow-900/30"
-                  }`}
-                >
-                  <View className="flex-row items-center">
-                    {syncStatus === "synced" ? (
-                      <Icon as={Wifi} className="size-4 text-green-600" />
-                    ) : syncStatus === "syncing" ? (
-                      <Icon as={Clock} className="size-4 text-blue-600" />
-                    ) : (
-                      <Icon as={WifiOff} className="size-4 text-yellow-700" />
-                    )}
-                    <Text
-                      variant="small"
-                      className={`ml-1 font-medium ${
-                        syncStatus === "synced"
-                          ? "text-foreground"
-                          : syncStatus === "syncing"
-                            ? "text-blue-700 dark:text-blue-500"
-                            : "text-yellow-700 dark:text-yellow-500"
-                      }`}
-                    >
-                      Waktu{" "}
-                      {driftDetected && (
-                        <Text variant="small" className="text-red-600">
-                          (drift)
-                        </Text>
-                      )}
-                    </Text>
-                  </View>
-                  <Text
-                    variant="default"
-                    className="font-bold text-center mt-1 text-foreground"
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={navigateToSettings}
+                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
                   >
-                    {format(currentTime, "HH:mm:ss", { locale: id })}
-                  </Text>
-                  {syncSource !== "local" && (
-                    <Text
-                      variant="small"
-                      className="text-xs text-center text-muted-foreground"
-                    >
-                      {syncSource === "server" ? "Server" : "NTP"}
-                    </Text>
-                  )}
+                    <Icon as={Settings} className="size-5 text-foreground/70" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Sentry.showFeedbackWidget()}
+                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                  >
+                    <Icon as={Bug} className="size-5 text-foreground/70" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              <TouchableOpacity
-                onPress={() => {
-                  Sentry.showFeedbackWidget();
-                }}
-                className="p-2 rounded-full"
-              >
-                <Icon as={Bug} className="size-5 text-foreground" />
-              </TouchableOpacity>
-            </View>
-          </View>
+              {/* Greeting */}
+              <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
+                {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
+              </Text>
 
-          {/* --- Today's Status Card --- */}
-          <View className="px-6 mb-4">
-            <Card className="p-4 bg-card border-border">
-              <View className="flex-row items-center justify-between">
-                <Text variant="h4" className="text-foreground">
-                  Status Hari Ini
-                </Text>
-                <Badge
-                  className={`${statusBadge.color} ${statusBadge.textColor}`}
+              {/* Profile + Clock Hero Card */}
+              <View className="p-5 flex-row items-center bg-blue-600 rounded-[35px]">
+                <TouchableOpacity
+                  onPress={navigateToEditProfile}
+                  activeOpacity={0.8}
+                  className="mr-5 relative"
                 >
-                  <Text variant="default">{statusBadge.text}</Text>
-                </Badge>
+                  {hasCustomAvatar ? (
+                    <Avatar
+                      size="lg"
+                      fallback={displayName.charAt(0).toUpperCase() || "?"}
+                      className="border-2 border-white/30 w-20 h-20"
+                      source={avatarUrl ?? undefined}
+                    />
+                  ) : (
+                    <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center border border-white/30">
+                      <Icon as={UserRound} className="size-10 text-white" />
+                    </View>
+                  )}
+                  <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
+                </TouchableOpacity>
+                <View className="flex-1 justify-center">
+                  <DashboardClock />
+                </View>
               </View>
+            </View>
 
-              <View className="space-y-3">
-                {/* Check In Status */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    {attendanceStatus.hasCheckedIn ? (
+            {!isCheckingFaceApi &&
+              faceApiRuntime &&
+              faceApiRuntime.state !== "healthy" && (
+                <View className="px-6 mt-4">
+                  <Card
+                    className={`p-5 border rounded-3xl ${
+                      faceApiRuntime.state === "unhealthy"
+                        ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                        : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+                    }`}
+                  >
+                    <View className="flex-row items-center mb-3">
+                      <View
+                        className={`w-10 h-10 rounded-full items-center justify-center ${
+                          faceApiRuntime.state === "unhealthy"
+                            ? "bg-amber-500/20"
+                            : "bg-red-500/20"
+                        }`}
+                      >
+                        <Icon
+                          as={AlertCircle}
+                          className={`size-6 ${
+                            faceApiRuntime.state === "unhealthy"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        />
+                      </View>
+                      <View className="ml-3 flex-1">
+                        <Text className="text-foreground font-bold text-base">
+                          {faceApiRuntime.title}
+                        </Text>
+                        <Text className="text-xs text-muted-foreground">
+                          {faceApiRuntime.message}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onPress={checkFaceApiRuntime}
+                      className="w-full border-border"
+                    >
                       <Icon
-                        as={CheckCircle}
-                        className="size-5 text-green-600"
+                        as={Loader2}
+                        className="size-5 text-foreground mr-2"
                       />
-                    ) : (
-                      <Icon as={AlertCircle} className="size-5 text-red-600" />
-                    )}
-                    <Text variant="default" className="ml-2 text-foreground">
-                      Presensi Masuk
-                    </Text>
-                  </View>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {attendanceStatus.checkInTime
-                      ? format(new Date(attendanceStatus.checkInTime), "HH:mm")
-                      : "Belum presensi"}
-                  </Text>
+                      <Text className="text-foreground font-semibold">
+                        Cek Status Server
+                      </Text>
+                    </Button>
+                  </Card>
                 </View>
+              )}
 
-                {/* Check Out Status */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
+            {faceApiRuntime?.state === "healthy" &&
+              enrollmentStatus === "not_enrolled" && (
+                <View className="px-6 mt-4">
+                  <Card className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-3xl">
+                    <View className="flex-row items-center mb-3">
+                      <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
+                        <Icon
+                          as={AlertCircle}
+                          className="size-6 text-amber-600 dark:text-amber-400"
+                        />
+                      </View>
+                      <View className="ml-3 flex-1">
+                        <Text className="text-foreground font-bold text-base">
+                          Wajah Belum Terdaftar
+                        </Text>
+                        <Text className="text-xs text-muted-foreground">
+                          Daftarkan wajah terlebih dahulu sebelum melakukan
+                          presensi.
+                        </Text>
+                      </View>
+                    </View>
+                    <Button
+                      variant="default"
+                      size="default"
+                      onPress={navigateToEnroll}
+                      className="w-full bg-amber-500 active:bg-amber-600"
+                    >
+                      <Icon as={Scan} className="size-5 text-white mr-2" />
+                      <Text className="text-white font-semibold">
+                        Daftarkan Wajah
+                      </Text>
+                    </Button>
+                  </Card>
+                </View>
+              )}
+
+            {faceApiRuntime?.state === "healthy" &&
+              enrollmentStatus === "error" && (
+                <View className="px-6 mt-4">
+                  <Card className="p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl">
+                    <View className="flex-row items-center mb-3">
+                      <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                        <Icon
+                          as={AlertCircle}
+                          className="size-6 text-red-600 dark:text-red-400"
+                        />
+                      </View>
+                      <View className="ml-3 flex-1">
+                        <Text className="text-foreground font-bold text-base">
+                          Status Wajah Belum Terbaca
+                        </Text>
+                        <Text className="text-xs text-muted-foreground">
+                          {enrollmentError || "Silakan coba lagi."}
+                        </Text>
+                      </View>
+                    </View>
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onPress={checkEnrollmentStatus}
+                      className="w-full border-border"
+                    >
+                      <Icon
+                        as={Loader2}
+                        className="size-5 text-foreground mr-2"
+                      />
+                      <Text className="text-foreground font-semibold">
+                        Coba Lagi
+                      </Text>
+                    </Button>
+                  </Card>
+                </View>
+              )}
+
+            {/* Attendance Status Card */}
+            <View className="px-6 mt-4">
+              <Card className="p-0 overflow-hidden bg-card border border-border/50 rounded-3xl">
+                <View className="flex-row">
+                  {/* Masuk Column */}
+                  <View className="flex-1 items-center py-7 px-4">
+                    <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
+                      MASUK
+                    </Text>
+                    <Text className="text-foreground font-bold text-4xl tracking-tight">
+                      {attendanceStatus.checkInTime
+                        ? format(
+                            new Date(attendanceStatus.checkInTime),
+                            "HH:mm",
+                          )
+                        : "--:--"}
+                    </Text>
+                    {attendanceStatus.hasCheckedIn && (
+                      <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+                        <View
+                          className={`w-2 h-2 rounded-full mr-1.5 ${
+                            attendanceStatus.checkInStatus === "Terlambat"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                        />
+                        <Text
+                          className={`text-xs font-semibold ${
+                            attendanceStatus.checkInStatus === "Terlambat"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
+                          {attendanceStatus.checkInStatus}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Divider */}
+                  <View className="w-px bg-border/50 self-stretch my-5" />
+
+                  {/* Pulang Column */}
+                  <View className="flex-1 items-center py-7 px-4">
+                    <Text className="text-muted-foreground text-xs uppercase tracking-widest font-semibold mb-3">
+                      PULANG
+                    </Text>
+                    <Text className="text-foreground font-bold text-4xl tracking-tight">
+                      {attendanceStatus.checkOutTime
+                        ? format(
+                            new Date(attendanceStatus.checkOutTime),
+                            "HH:mm",
+                          )
+                        : "--:--"}
+                    </Text>
                     {attendanceStatus.hasCheckedOut ? (
-                      <Icon
-                        as={CheckCircle}
-                        className="size-5 text-green-600"
-                      />
-                    ) : (
-                      <Icon as={AlertCircle} className="size-5 text-red-600" />
-                    )}
-                    <Text variant="default" className="ml-2 text-foreground">
-                      Presensi Pulang
-                    </Text>
+                      <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
+                        <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
+                        <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                          Selesai
+                        </Text>
+                      </View>
+                    ) : attendanceStatus.hasCheckedIn &&
+                      attendanceSchedule?.mulai_pulang ? (
+                      <View className="mt-3 items-center">
+                        <Text className="text-xs text-muted-foreground">
+                          Jadwal: {attendanceSchedule.mulai_pulang?.slice(0, 5)}
+                          {attendanceSchedule.selesai_pulang
+                            ? ` - ${attendanceSchedule.selesai_pulang.slice(0, 5)}`
+                            : ""}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                  <Text variant="muted" className="text-muted-foreground">
-                    {attendanceStatus.checkOutTime
-                      ? format(new Date(attendanceStatus.checkOutTime), "HH:mm")
-                      : "Belum presensi"}
-                  </Text>
                 </View>
 
-                {/* Work Hours */}
-                {attendanceStatus.totalWorkHours && (
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                      <Icon as={Clock} className="size-5 text-blue-500" />
-                      <Text variant="default" className="ml-2 text-foreground">
-                        Total Jam Di Sekolah
+                {/* Divider */}
+                <View className="h-px bg-border/50 mx-5" />
+
+                {/* Action Button */}
+                <View className="p-5">
+                  <TouchableOpacity
+                    onPress={navigateToCheckIn}
+                    disabled={isPrimaryActionDisabled}
+                    activeOpacity={0.9}
+                    className="overflow-hidden rounded-2xl"
+                  >
+                    {isPrimaryActionDisabled ? (
+                      <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
+                        <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
+                          {primaryActionLabel}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View
+                        className={`py-5 items-center justify-center rounded-2xl ${
+                          derivedActionType === "home"
+                            ? "bg-amber-500"
+                            : "bg-blue-600"
+                        }`}
+                      >
+                        <Text className="font-bold text-white text-base uppercase tracking-wider">
+                          {derivedActionType === "home"
+                            ? "PRESENSI PULANG"
+                            : "PRESENSI MASUK"}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {attendanceStatus.totalWorkHours && (
+                    <View className="mt-3 items-center">
+                      <Text className="text-muted-foreground text-xs">
+                        Total waktu kerja:{" "}
+                        <Text className="font-bold text-foreground">
+                          {attendanceStatus.totalWorkHours}
+                        </Text>
                       </Text>
                     </View>
-                    <Text
-                      variant="small"
-                      className="font-medium text-foreground"
-                    >
-                      {attendanceStatus.totalWorkHours}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          </View>
-
-          {/* --- Quick Actions (Moved up from Statistics location) --- */}
-          <View className="px-6 mb-6">
-            <Text variant="h3" className="mb-4 text-foreground">
-              Halo, {displayName || "User"}
-            </Text>
-
-            {/* Large Square Primary Action - Attendance (Centered) */}
-            <View className="items-center mb-4">
-              <TouchableOpacity
-                onPress={navigateToCheckIn}
-                className="w-48"
-                activeOpacity={0.8}
-                disabled={isPrimaryActionDisabled}
-              >
-                <Card
-                  className={`aspect-square ${
-                    isPrimaryActionDisabled
-                      ? "bg-gray-400 dark:bg-gray-600"
-                      : "bg-blue-600 dark:bg-blue-700"
-                  }`}
-                >
-                  <View className="flex-1 items-center justify-center p-4">
-                    <Icon as={UserCheck} className="size-8 text-white" />
-                    <Text
-                      variant="small"
-                      className={`mt-3 px-3 text-center text-xs leading-snug ${
-                        isPrimaryActionDisabled
-                          ? "text-gray-200 dark:text-gray-300"
-                          : "text-white/90"
-                      }`}
-                    >
-                      {primaryActionMessage}
-                    </Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
+                  )}
+                </View>
+              </Card>
             </View>
 
-            {/* Secondary Actions Grid */}
-            <View className="flex-row gap-4">
+            {/* Navigation Buttons */}
+            <View className="flex-row mx-6 mt-10 mb-10 gap-3">
               <TouchableOpacity
                 onPress={navigateToHistory}
-                className="flex-1"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full border border-white/10"
               >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon as={History} className="size-6 text-blue-600" />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Riwayat
-                  </Text>
-                </Card>
+                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                  <Icon as={History} className="size-5 text-white" />
+                </View>
+                <Text className="text-base font-bold text-white tracking-wide">
+                  Riwayat
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={navigateToPerizinan}
-                className="flex-1"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full border border-white/10"
               >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon
-                    as={ClipboardPenLine}
-                    className="size-6 text-blue-600"
-                  />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Perizinan
-                  </Text>
-                </Card>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={navigateToSettings}
-                className="flex-1"
-                activeOpacity={0.8}
-              >
-                <Card className="py-3 px-4 bg-gray-100 dark:bg-gray-800">
-                  <Icon as={Settings} className="size-6 text-blue-600" />
-                  <Text
-                    variant="default"
-                    className="mt-1 font-medium text-foreground"
-                  >
-                    Setelan
-                  </Text>
-                </Card>
+                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
+                  <Icon as={ClipboardPenLine} className="size-5 text-white" />
+                </View>
+                <Text className="text-base font-bold text-white tracking-wide">
+                  Perizinan
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
 
-        {/* --- Footer Section --- */}
-        <View className="items-center px-6 py-3 border-t border-border bg-background">
-          <Text variant="small" className="font-bold text-foreground">
-            {Constants.expoConfig?.version}
-          </Text>
+          {/* Floating Version */}
+          <View className="absolute bottom-6 left-0 right-0 items-center pointer-events-none">
+            <View className="bg-secondary/90 px-4 py-1.5 rounded-full border border-border/30">
+              <Text
+                variant="small"
+                className="text-secondary-foreground font-medium text-xs"
+              >
+                Skanida v{Constants.expoConfig?.version}
+              </Text>
+            </View>
+          </View>
         </View>
       </SafeAreaView>
-
-      {/* Success Popup */}
-      {successData && (
-        <AttendanceSuccessPopup
-          visible={showSuccessPopup}
-          onClose={handleSuccessPopupClose}
-          attendanceType={successData.attendanceType}
-          time={successData.time}
-          processingTime={successData.processingTime}
-        />
-      )}
     </>
   );
 }

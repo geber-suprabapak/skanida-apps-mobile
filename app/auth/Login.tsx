@@ -6,12 +6,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useAuthStore from "~/store/authStore";
 import { supabase } from "~/utils/supabase";
+import { resolveUserRole } from "~/utils/authUtils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
@@ -68,41 +70,67 @@ export default function Login() {
       });
 
       if (error) {
-        console.error("Supabase login error:", error.message); // Keep console log for debugging
+        if (__DEV__) {
+          console.error(
+            "[Login] signInWithPassword error:",
+            error.message,
+            "| code:",
+            error.code ?? "n/a",
+            "| status:",
+            error.status ?? "n/a",
+          );
+        }
         if (error.message === "Email not confirmed") {
-          alert(
+          Alert.alert(
+            "Login Gagal",
             "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
           );
         } else {
-          alert("Login gagal. Periksa kembali email dan password Anda.");
+          Alert.alert(
+            "Login Gagal",
+            "Email atau password salah. Silakan coba lagi.",
+          );
         }
         return;
       }
 
       if (data?.user) {
-        // Cek metadata role user. Prioritaskan user_metadata lalu app_metadata sebagai fallback.
-        const userMetadata = data.user?.user_metadata;
-        const role = userMetadata?.role as string;
+        const role = resolveUserRole(
+          data.session?.access_token,
+          data.user.app_metadata as Record<string, unknown> | undefined,
+        );
 
-        if (role === "admin") {
-          // Sign out agar sesi tidak tersimpan di device
+        if (role !== "siswa") {
           try {
             await supabase.auth.signOut();
           } catch (signOutErr) {
-            console.warn(
-              "Gagal sign out setelah deteksi role tidak valid",
-              signOutErr,
-            );
+            if (__DEV__) {
+              console.error(
+                "[Login] Failed to sign out after role check:",
+                signOutErr,
+              );
+            }
           }
-          alert("Admin tidak bisa masuk.");
-          return; // Jangan lanjutkan login
+          Alert.alert(
+            "Login Gagal",
+            "Akun ini tidak memiliki akses. Hubungi administrator.",
+          );
+          return;
         }
 
         setUser(data.user);
         router.replace("/Dashboard");
+      } else {
+        Alert.alert("Login Gagal", "Terjadi kesalahan. Silakan coba lagi.");
       }
     } catch (error) {
-      console.error("Login error:", error);
+      if (__DEV__) {
+        console.error("[Login] Unexpected exception during login:", error);
+      }
+      Alert.alert(
+        "Login Gagal",
+        "Terjadi kesalahan tak terduga. Silakan coba lagi.",
+      );
     } finally {
       setLoading(false);
     }
