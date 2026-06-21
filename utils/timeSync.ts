@@ -1,13 +1,15 @@
 // utils/timeSync.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, AppStateStatus } from "react-native";
-import { supabase, ensureSupabaseInitialized } from "./supabase";
+import { ensureSupabaseInitialized } from "./supabase";
+import { getServerTime } from "~/utils/bffMobileApi";
 import useTimeSyncStore from "~/store/timeSyncStore";
 
 interface ServerTimeResponse {
-  serverTime: string;
-  serverTimeUTC7: string;
-  formattedUTC7: string;
+  now: string;
+  timezone: string;
+  source: "bff";
+  epoch_ms: number;
 }
 
 interface NTPResponse {
@@ -28,7 +30,7 @@ interface PersistedSyncData {
  * ensuring consistent and accurate time across the application.
  *
  * **Synchronization Strategy:**
- * 1. Primary: Supabase Edge Function (timesync) - Most reliable, uses app's own backend
+ * 1. Primary: Mobile BFF time endpoint - Most reliable, uses app's own backend
  * 2. Fallback: WorldTimeAPI (NTP alternative) - Public API when backend is unavailable
  * 3. Last Resort: Local device time - Used when all network sync methods fail
  *
@@ -323,32 +325,21 @@ class TimeSync {
   }
 
   /**
-   * Sync with Supabase Edge Function
+   * Sync with the BFF time endpoint.
    */
   private async _syncWithServerEdgeFunction(): Promise<void> {
     const requestTime = Date.now();
 
-    const { data, error } = await supabase.functions.invoke<ServerTimeResponse>(
-      "timesync",
-      {
-        method: "GET",
-      },
-    );
+    const data: ServerTimeResponse = await getServerTime();
 
     const responseTime = Date.now();
     const roundTripTime = responseTime - requestTime;
 
-    if (error) {
-      throw new Error(`Time sync error: ${error.message}`);
-    }
-
-    if (!data || !data.serverTime) {
+    if (!data?.now) {
       throw new Error("Invalid server time response");
     }
 
-    // Parse server time (UTC) - edge function returns both UTC and UTC+7
-    // We use UTC to avoid timezone confusion
-    const serverTime = new Date(data.serverTime).getTime();
+    const serverTime = new Date(data.now).getTime();
 
     // Estimate server time accounting for network delay (assume symmetric)
     const estimatedServerTime = serverTime + roundTripTime / 2;
@@ -380,7 +371,8 @@ class TimeSync {
       console.log("Server sync successful", {
         offset: newOffset,
         roundTripTime,
-        serverTime: data.serverTime,
+        serverTime: data.now,
+        timezone: data.timezone,
         localTime: new Date(responseTime).toISOString(),
       });
   }

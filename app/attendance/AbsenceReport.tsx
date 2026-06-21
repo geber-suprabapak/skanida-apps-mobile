@@ -14,10 +14,8 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
-import { supabase } from "~/utils/supabase";
 import useAuthStore from "~/store/authStore";
-import { formatDateWIB } from "~/lib/utils";
-import { timeSync } from "~/utils/timeSync";
+import { precheckAttendance } from "~/utils/bffMobileApi";
 import {
   elapsedMs,
   faceApiError,
@@ -165,61 +163,6 @@ export default function AbsenceReport() {
     return location;
   }, []);
 
-  const checkTodayPermit = useCallback(
-    async (userId: string): Promise<boolean> => {
-      const startedAt = startFaceApiTimer();
-      try {
-        // Use WIB-synced time for querying
-        const todayWIB = formatDateWIB(timeSync.getSyncedTime());
-        const startOfDayWIB = `${todayWIB}T00:00:00+07:00`;
-        const endOfDayWIB = `${todayWIB}T23:59:59.999+07:00`;
-        faceApiLog("attendance-report:permit-check:request", {
-          userId,
-          todayWIB,
-          startOfDayWIB,
-          endOfDayWIB,
-        });
-
-        const { data, error } = await supabase
-          .from("perizinan")
-          .select("id, approval_status")
-          .eq("user_id", userId)
-          .gte("tanggal", startOfDayWIB)
-          .lte("tanggal", endOfDayWIB);
-
-        if (error) {
-          faceApiWarn("attendance-report:permit-check:error", {
-            durationMs: elapsedMs(startedAt),
-            error,
-          });
-          return false;
-        }
-
-        // User memiliki izin aktif jika ada izin pending atau approved
-        const hasActivePermit = Boolean(
-          data?.some(
-            (record) =>
-              record.approval_status === "pending" ||
-              record.approval_status === "approved",
-          ),
-        );
-        faceApiLog("attendance-report:permit-check:result", {
-          durationMs: elapsedMs(startedAt),
-          count: data?.length ?? 0,
-          hasActivePermit,
-          data,
-        });
-        return hasActivePermit;
-      } catch {
-        faceApiWarn("attendance-report:permit-check:failed", {
-          durationMs: elapsedMs(startedAt),
-        });
-        return false;
-      }
-    },
-    [],
-  );
-
   const fetchAttendanceStatus = useCallback(async () => {
     if (!user) {
       faceApiWarn("attendance-report:status:missing-user", {});
@@ -239,46 +182,22 @@ export default function AbsenceReport() {
     setStatus(null);
 
     try {
-      // Check if user has active permit today
-      const hasActivePermit = await checkTodayPermit(user.id);
-      if (hasActivePermit) {
-        faceApiWarn("attendance-report:status:blocked-active-permit", {
-          userId: user.id,
-        });
-        throw new Error(
-          "Anda sudah mengajukan izin untuk hari ini. Tidak dapat melakukan absensi jika sudah ada izin aktif (pending/approved).",
-        );
-      }
-
       const location = await getCurrentLocation();
 
-      faceApiLog("attendance-report:status-rpc:request", {
-        rpc: "get_and_validate_attendance_action",
-        params: {
-          p_user_id: user.id,
-          p_user_lat: location.coords.latitude,
-          p_user_lon: location.coords.longitude,
-        },
+      faceApiLog("attendance-report:precheck:request", {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
       });
 
-      const { data, error } = await supabase.rpc(
-        "get_and_validate_attendance_action",
-        {
-          p_user_id: user.id,
-          p_user_lat: location.coords.latitude,
-          p_user_lon: location.coords.longitude,
-        },
-      );
+      const data = await precheckAttendance({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
 
-      faceApiLog("attendance-report:status-rpc:response", {
+      faceApiLog("attendance-report:precheck:response", {
         durationMs: elapsedMs(startedAt),
         data,
-        error,
       });
-
-      if (error) {
-        throw new Error(`Gagal memeriksa status: ${error.message}`);
-      }
 
       setStatus(data);
 
@@ -301,7 +220,7 @@ export default function AbsenceReport() {
       });
       setIsLoading(false);
     }
-  }, [user, getCurrentLocation, checkTodayPermit, navigateToCamera]);
+  }, [user, getCurrentLocation, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {

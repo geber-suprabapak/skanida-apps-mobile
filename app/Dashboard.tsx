@@ -24,7 +24,6 @@ import { Icon } from "~/components/ui/icon";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
 import { fetchEnrollmentStatus } from "~/utils/enrollment";
 import type { EnrollmentStatus } from "~/utils/enrollment";
 import {
@@ -35,10 +34,15 @@ import {
   consumePendingAttendanceSuccess,
   type PendingAttendanceSuccess,
 } from "~/utils/attendanceSuccess";
-import { formatDateWIB, getWIBDayBounds, toWIB } from "~/lib/utils";
+import { toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
-import { getAvatarSignedUrl } from "~/utils/avatar";
 import { faceApiLog } from "~/utils/faceApiDebug";
+import {
+  getDashboard,
+  toMobileAttendanceSchedule,
+  toMobileAttendanceStatus,
+  type BffDashboardPrimaryAction,
+} from "~/utils/bffMobileApi";
 import {
   AlertCircle,
   Bug,
@@ -70,21 +74,6 @@ interface AttendanceSchedule {
   selesai_pulang: string | null;
   kompensasi_waktu: number | null;
 }
-
-const DAY_KEY_MAP = [
-  "minggu",
-  "senin",
-  "selasa",
-  "rabu",
-  "kamis",
-  "jumat",
-  "sabtu",
-] as const;
-
-const getWIBDayKey = (date: Date) => {
-  const wibDate = toWIB(date);
-  return DAY_KEY_MAP[wibDate.getUTCDay()];
-};
 
 const parseScheduleTimeForWIBDate = (
   time: string | null,
@@ -153,15 +142,41 @@ const addMinutesToDate = (
 const isValidRemoteImageUrl = (url: string | null | undefined): boolean =>
   !!url && /^https?:\/\//.test(url);
 
-const calculateWorkHours = (checkIn: string, checkOut: string): string => {
-  try {
-    const diffMs = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-    const hours = Math.floor(diffMs / 3600000);
-    const minutes = Math.floor((diffMs % 3600000) / 60000);
-    return `${hours}j ${minutes}m`;
-  } catch {
-    return "0j 0m";
+const toRuntimeStatus = (
+  status: "healthy" | "unhealthy",
+  message?: string | null,
+): FaceApiRuntimeStatusResult => {
+  if (status === "healthy") {
+    return {
+      state: "healthy",
+      title: "Server siap digunakan",
+      message: "Layanan verifikasi siap digunakan.",
+      issues: [],
+    };
   }
+
+  return {
+    state: "unhealthy",
+    title: "Server belum siap",
+    message: "Server verifikasi sedang belum siap. Silakan coba lagi.",
+    issues: message ? [message] : [],
+    error: message ?? undefined,
+  };
+};
+
+const toOfflineRuntimeStatus = (error: unknown): FaceApiRuntimeStatusResult => {
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Dashboard belum dapat dimuat dari server.";
+
+  return {
+    state: "offline",
+    title: "Server tidak terhubung",
+    message: "Server verifikasi tidak dapat dihubungi.",
+    issues: [],
+    error: message,
+  };
 };
 
 // Isolated clock — only this re-renders every second
@@ -194,6 +209,7 @@ export default function Dashboard() {
   // State
   const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [dashboardName, setDashboardName] = useState("");
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>({
     hasCheckedIn: false,
     hasCheckedOut: false,
@@ -209,6 +225,8 @@ export default function Dashboard() {
   const [faceApiRuntime, setFaceApiRuntime] =
     useState<FaceApiRuntimeStatusResult | null>(null);
   const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
+  const [primaryAction, setPrimaryAction] =
+    useState<BffDashboardPrimaryAction | null>(null);
   const [attendanceSuccess, setAttendanceSuccess] =
     useState<PendingAttendanceSuccess | null>(null);
 
@@ -221,120 +239,40 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  // Avatar pipeline
-  const rawAvatarValue =
-    userProfile?.avatar_url ?? user?.user_metadata?.avatar_url ?? null;
-
-  useEffect(() => {
-    let active = true;
-    if (!rawAvatarValue || typeof rawAvatarValue !== "string") {
-      setAvatarUrl(null);
-      return;
-    }
-    getAvatarSignedUrl(rawAvatarValue)
-      .then((url) => {
-        if (active && isValidRemoteImageUrl(url)) setAvatarUrl(url!.trim());
-        else if (active) setAvatarUrl(null);
-      })
-      .catch(() => {
-        if (active) setAvatarUrl(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [rawAvatarValue]);
-
   // Data fetching
   const fetchAttendanceData = useCallback(async () => {
     if (!user) return;
+    setIsCheckingFaceApi(true);
     try {
-      const syncedNow = timeSync.getSyncedTime();
-      const today = formatDateWIB(syncedNow);
-      const { start, endExclusive } = getWIBDayBounds(syncedNow);
+      const data = await getDashboard();
+      const avatar = data.profile.avatar_url;
 
-      const { data: todayAttendance } = await supabase
-        .from("absences")
-        .select("status, created_at")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .order("created_at", { ascending: true });
-
-      const { data: leaveRequests } = await supabase
-        .from("perizinan")
-        .select("approval_status, kategori_izin")
-        .eq("user_id", user.id)
-        .in("approval_status", ["pending", "approved"])
-        .gte("tanggal", start)
-        .lt("tanggal", endExclusive);
-
-      let hasCheckedIn = false;
-      let hasCheckedOut = false;
-      let checkInTime = "";
-      let checkOutTime = "";
-      let checkInStatus: "Hadir" | "Terlambat" | undefined;
-      let todayStatus: AttendanceStatus["todayStatus"] = "pending";
-
-      if (leaveRequests && leaveRequests.length > 0) {
-        todayStatus = "leave";
-      } else if (todayAttendance && todayAttendance.length > 0) {
-        if (todayAttendance.some((r) => r.status === "Alpha")) {
-          todayStatus = "absent";
-        } else {
-          const inRec = todayAttendance.find(
-            (r) => r.status === "Hadir" || r.status === "Terlambat",
-          );
-          const outRec = todayAttendance.find((r) => r.status === "Pulang");
-          if (inRec) {
-            hasCheckedIn = true;
-            checkInTime = inRec.created_at;
-            checkInStatus = inRec.status as "Hadir" | "Terlambat";
-            todayStatus = "present";
-          }
-          if (outRec) {
-            hasCheckedOut = true;
-            checkOutTime = outRec.created_at;
-          }
-        }
-      }
-
-      const totalWorkHours =
-        hasCheckedIn && hasCheckedOut
-          ? calculateWorkHours(checkInTime, checkOutTime)
-          : undefined;
-
-      setAttendanceStatus({
-        hasCheckedIn,
-        hasCheckedOut,
-        checkInTime,
-        checkOutTime,
-        checkInStatus,
-        totalWorkHours,
-        todayStatus,
-      });
+      setAttendanceStatus(toMobileAttendanceStatus(data.attendance));
+      setAttendanceSchedule(toMobileAttendanceSchedule(data.schedule));
+      setAvatarUrl(isValidRemoteImageUrl(avatar) ? avatar!.trim() : null);
+      setDashboardName(data.profile.full_name ?? "");
+      setFaceApiRuntime(
+        toRuntimeStatus(data.face.server_status, data.face.message),
+      );
+      setEnrollmentStatus(data.face.enrollment_status);
+      setEnrollmentError(
+        data.face.enrollment_status === "not_enrolled" ? data.face.message : "",
+      );
+      setPrimaryAction(data.primary_action);
     } catch (error) {
       Sentry.captureException(error);
+      setFaceApiRuntime(toOfflineRuntimeStatus(error));
+      setEnrollmentStatus("error");
+      setEnrollmentError(
+        error instanceof Error
+          ? error.message
+          : "Gagal memuat dashboard dari server.",
+      );
+      setPrimaryAction(null);
+    } finally {
+      setIsCheckingFaceApi(false);
     }
   }, [user]);
-
-  const fetchAttendanceSchedule = useCallback(async () => {
-    try {
-      const dayKey = getWIBDayKey(timeSync.getSyncedTime());
-      const { data, error } = await supabase
-        .from("jadwal_absensi")
-        .select(
-          "mulai_masuk, selesai_masuk, mulai_pulang, selesai_pulang, kompensasi_waktu",
-        )
-        .eq("hari", dayKey)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (error) throw error;
-      setAttendanceSchedule(data as AttendanceSchedule | null);
-    } catch (error) {
-      Sentry.captureException(error);
-      setAttendanceSchedule(null);
-    }
-  }, []);
 
   const checkEnrollmentStatus = useCallback(async () => {
     faceApiLog("dashboard:enroll-status-check:start", {
@@ -371,17 +309,17 @@ export default function Dashboard() {
   const initializeDashboard = useCallback(async () => {
     try {
       setIsInitializing(true);
-      await Promise.all([fetchAttendanceData(), fetchAttendanceSchedule()]);
+      await fetchAttendanceData();
     } finally {
       setIsInitializing(false);
     }
-  }, [fetchAttendanceData, fetchAttendanceSchedule]);
+  }, [fetchAttendanceData]);
 
   useEffect(() => {
     initializeDashboard();
   }, [initializeDashboard]);
 
-  // Re-check server readiness whenever Dashboard comes back into focus.
+  // Refresh dashboard-owned readiness/enrollment/attendance whenever focus returns.
   useFocusEffect(
     useCallback(() => {
       const pendingSuccess = consumePendingAttendanceSuccess();
@@ -389,18 +327,8 @@ export default function Dashboard() {
         setAttendanceSuccess(pendingSuccess);
       }
 
-      void Promise.all([
-        checkFaceApiRuntime(),
-        checkEnrollmentStatus(),
-        fetchAttendanceData(),
-        fetchAttendanceSchedule(),
-      ]);
-    }, [
-      checkFaceApiRuntime,
-      checkEnrollmentStatus,
-      fetchAttendanceData,
-      fetchAttendanceSchedule,
-    ]),
+      void fetchAttendanceData();
+    }, [fetchAttendanceData]),
   );
 
   useEffect(() => {
@@ -410,12 +338,10 @@ export default function Dashboard() {
           if (ok) setScheduleTime(timeSync.getSyncedTime());
         });
         fetchAttendanceData();
-        void checkFaceApiRuntime();
-        void checkEnrollmentStatus();
       }
     });
     return () => sub.remove();
-  }, [fetchAttendanceData, checkFaceApiRuntime, checkEnrollmentStatus]);
+  }, [fetchAttendanceData]);
 
   // Back button
   useEffect(() => {
@@ -445,23 +371,16 @@ export default function Dashboard() {
       timeSync.forceSyncWithServer().then((ok) => {
         if (ok) setScheduleTime(timeSync.getSyncedTime());
       }),
-      fetchAttendanceSchedule(),
-      checkFaceApiRuntime(),
-      checkEnrollmentStatus(),
     ]);
     setRefreshing(false);
-  }, [
-    fetchAttendanceData,
-    fetchAttendanceSchedule,
-    checkFaceApiRuntime,
-    checkEnrollmentStatus,
-  ]);
+  }, [fetchAttendanceData]);
 
   // Computed values
   const rawName =
-    userProfile?.full_name ??
-    user?.user_metadata?.full_name ??
-    user?.user_metadata?.name ??
+    dashboardName ||
+    userProfile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
     "";
   const displayName = rawName
     ? rawName.split(" ").slice(0, 2).join(" ")
@@ -478,9 +397,13 @@ export default function Dashboard() {
   }, [scheduleTime]);
 
   const derivedActionType =
-    attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+    primaryAction?.type === "check_out"
       ? "home"
-      : "present";
+      : primaryAction?.type === "check_in"
+        ? "present"
+        : attendanceStatus.hasCheckedIn && !attendanceStatus.hasCheckedOut
+          ? "home"
+          : "present";
 
   const { isPrimaryActionDisabled } = useMemo(() => {
     const parseTime = (t: string | null): Date | null => {
@@ -514,6 +437,7 @@ export default function Dashboard() {
         : derivedActionType === "present"
           ? presentOk
           : true;
+    const serverAllowsAction = primaryAction?.allowed ?? allows;
 
     return {
       scheduleAllowsAction: allows,
@@ -521,8 +445,9 @@ export default function Dashboard() {
         refreshing ||
         isInitializing ||
         isCheckingFaceApi ||
+        attendanceStatus.todayStatus === "leave" ||
         enrollmentStatus !== "enrolled" ||
-        !allows ||
+        !serverAllowsAction ||
         faceApiRuntime?.state !== "healthy" ||
         attendanceStatus.hasCheckedOut,
     };
@@ -535,12 +460,18 @@ export default function Dashboard() {
     isCheckingFaceApi,
     enrollmentStatus,
     faceApiRuntime?.state,
+    primaryAction?.allowed,
     attendanceStatus.hasCheckedOut,
+    attendanceStatus.todayStatus,
   ]);
 
   const primaryActionLabel = useMemo(() => {
     if (attendanceStatus.hasCheckedOut) {
       return "SELESAI";
+    }
+
+    if (attendanceStatus.todayStatus === "leave") {
+      return "SUDAH ADA IZIN";
     }
 
     if (refreshing) {
@@ -567,13 +498,19 @@ export default function Dashboard() {
       return "CEK STATUS WAJAH";
     }
 
+    if (primaryAction && !primaryAction.allowed) {
+      return primaryAction.label.toUpperCase();
+    }
+
     return "PRESENSI";
   }, [
     attendanceStatus.hasCheckedOut,
+    attendanceStatus.todayStatus,
     refreshing,
     isCheckingFaceApi,
     faceApiRuntime?.state,
     enrollmentStatus,
+    primaryAction,
   ]);
 
   // Navigation
@@ -934,9 +871,11 @@ export default function Dashboard() {
                         }`}
                       >
                         <Text className="font-bold text-white text-base uppercase tracking-wider">
-                          {derivedActionType === "home"
-                            ? "PRESENSI PULANG"
-                            : "PRESENSI MASUK"}
+                          {primaryAction?.allowed
+                            ? primaryAction.label.toUpperCase()
+                            : derivedActionType === "home"
+                              ? "PRESENSI PULANG"
+                              : "PRESENSI MASUK"}
                         </Text>
                       </View>
                     )}

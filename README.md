@@ -1,23 +1,102 @@
-### Dependency
-  - Node.js LTS
-  - Android Studio + Android SDK, NDK
-  - Java JDK, use adoptium JDK
-  - PNPM Package Manager
-### Installation
-### Dependency
-  - Node.js LTS
-  - Android Studio + Android SDK, NDK
-  - Java JDK, use adoptium JDK
-  - PNPM Package Manager
-### Installation
+# Skanida Apps Mobile
+
+Expo React Native app for Skanida student workflows: authentication, dashboard, face-based attendance, face enrollment, permits, profile management, and time sync.
+
+## Runtime Architecture
+
+The app uses Project Astra as its mobile Backend-for-Frontend (BFF). Mobile business flows go through Astra, while Supabase Auth remains direct in v1 for login, signup/activation, reset password, logout, and session refresh.
+
+Main mobile BFF files:
+
+- `utils/bff.ts`: shared BFF transport, Supabase bearer token, request ID, timeout, envelope parsing, and normalized errors.
+- `utils/bffMobileApi.ts`: screen-facing API adapter for Astra endpoints.
+- `utils/faceApiRuntime.ts`: mobile-safe server readiness state.
+- `utils/enrollment.ts`: face enrollment status wrapper.
+
+Project Astra path in this workspace:
+
+```txt
+E:\project-astra
+```
+
+## BFF-Covered Flows
+
+- Dashboard: `GET /v1/mobile/dashboard`
+- Server health: `GET /v1/mobile/health`
+- Attendance precheck: `POST /v1/mobile/attendance/precheck`
+- Attendance submit: `POST /v1/mobile/attendance/submit`
+- Face enrollment status: `GET /v1/mobile/face/enrollment/status`
+- Face enrollment upload: `POST /v1/mobile/face/enrollment`
+- Permits: `GET /v1/mobile/permits`, `POST /v1/mobile/permits`
+- Profile: `GET /v1/mobile/profile`
+- Avatar: `PATCH /v1/mobile/profile/avatar`
+- Password: `PATCH /v1/mobile/profile/password`
+- Time sync: `GET /v1/mobile/time`
+
+Current documented v1 exception:
+
+- `app/auth/Activate.tsx` still uses Supabase RPC for activation data because Astra does not yet own that activation contract.
+
+## Environment
+
+Copy `.env.example` to `.env` and fill:
+
+```txt
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_BFF_API_URL=
+EXPO_PUBLIC_AUTH_CALLBACK_URL=
+EXPO_PUBLIC_SENTRY_DSN=
+```
+
+`EXPO_PUBLIC_BFF_API_URL` should point to the Astra base URL, without a trailing route. Example:
+
+```txt
+EXPO_PUBLIC_BFF_API_URL=http://localhost:3000
+```
+
+The mobile adapter appends `/v1/mobile/...`.
+
+## Dependencies
+
+- Node.js LTS
+- PNPM
+- Android Studio with Android SDK/NDK
+- Java JDK, preferably Adoptium JDK
+- Expo development build setup for native camera usage
+
+## Installation
 
 ```bash
 git clone https://github.com/geber-suprabapak/skanida-apps-mobile.git
 cd skanida-apps-mobile
 pnpm install
-pnpm android / pnpm start
-
-pnpm android / pnpm start
 ```
 
-> **Note:** Please configure ANDROID_HOME environment variable properly before running pnpm android
+Run Metro:
+
+```bash
+pnpm start
+```
+
+Run Android:
+
+```bash
+pnpm android
+```
+
+Configure `ANDROID_HOME` before running Android builds.
+
+## Validation
+
+```bash
+pnpm exec tsc --noEmit
+pnpm lint
+```
+
+Useful BFF references:
+
+- `docs/bff-integration.md`
+- `spec/bff/plan.md`
+- `spec/bff/handoff.md`
+- `spec/bff/tasks.md`

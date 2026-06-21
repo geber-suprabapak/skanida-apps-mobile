@@ -24,24 +24,20 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
-import axios, { isAxiosError, isCancel } from "axios";
 
-import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
-import { ensureFaceApiConfigured } from "~/utils/secureConfig";
 import {
-  axiosErrorDebugInfo,
   bytesInfo,
   elapsedMs,
   faceApiError,
   faceApiLog,
   faceApiWarn,
-  sessionDebugInfo,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
 import {
   fetchFaceApiRuntimeStatus,
   type FaceApiRuntimeStatusResult,
 } from "~/utils/faceApiRuntime";
+import { submitEnrollment } from "~/utils/bffMobileApi";
 import { Icon } from "~/components/ui/icon";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -75,13 +71,6 @@ interface EnrollmentSuccessResponse {
   images_processed: number;
   images_failed: number;
   total_embeddings: number;
-}
-
-interface EnrollmentErrorResponse {
-  status: "error";
-  error: string;
-  message: string;
-  detail?: string | { loc: (string | number)[]; msg: string; type: string }[];
 }
 
 type FormDataFilePart = {
@@ -385,7 +374,6 @@ const FaceEnrollment = () => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
   const permissionAttemptedRef = useRef(false);
-  const uploadController = useRef<AbortController | null>(null);
 
   // --- STATE ---
   const device = useCameraDevice("front");
@@ -621,26 +609,9 @@ const FaceEnrollment = () => {
         return;
       }
 
-      const controller = new AbortController();
-      uploadController.current = controller;
-
-      // Get JWT token
-      await ensureSupabaseInitialized();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      faceApiLog("enroll-upload:session", sessionDebugInfo(session));
-
-      if (!session) {
-        throw new Error("Sesi tidak valid. Silakan login ulang.");
-      }
-
-      const faceApiBaseUrl = await ensureFaceApiConfigured();
-      const enrollApiUrl = `${faceApiBaseUrl}/v1/enroll`;
       faceApiLog("enroll-upload:request-prep", {
         method: "POST",
-        url: enrollApiUrl,
+        url: "/v1/mobile/face/enrollment",
         headers: {
           Authorization: "[redacted bearer]",
           "Content-Type": "multipart/form-data",
@@ -649,18 +620,24 @@ const FaceEnrollment = () => {
 
       setUploadMessage("Mengunggah foto ke server...");
 
-      // Build FormData
-      const formData = new FormData();
-      for (let i = 0; i < capturedImages.length; i++) {
-        const img = capturedImages[i];
-        const filePart: FormDataFilePart = {
-          uri: img.uri,
-          type: "image/jpeg",
-          name: `face_${i}.jpg`,
-        };
+      const files: FormDataFilePart[] = capturedImages.map((img, index) => ({
+        uri: img.uri,
+        type: "image/jpeg",
+        name: `face_${index}.jpg`,
+      }));
 
-        formData.append("files", filePart as unknown as Blob);
+      for (let i = 0; i < files.length; i++) {
+        const filePart = files[i];
+        if (!filePart) continue;
+        faceApiLog("enroll-upload:file-ready", {
+          field: "files",
+          name: filePart.name,
+          type: filePart.type,
+          uri: filePart.uri,
+          size: bytesInfo(capturedImages[i]?.size ?? 0),
+        });
       }
+
       faceApiLog("enroll-upload:formdata-ready", {
         fileCount: capturedImages.length,
         files: capturedImages.map((img, index) => ({
@@ -674,55 +651,22 @@ const FaceEnrollment = () => {
 
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
 
-      const response = await axios.post<EnrollmentSuccessResponse>(
-        enrollApiUrl,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "multipart/form-data",
-          },
-          signal: controller.signal,
-        },
-      );
+      const response = await submitEnrollment(files);
 
       faceApiLog("enroll-upload:response", {
-        status: response.status,
-        statusText: response.statusText,
         durationMs: elapsedMs(startedAt),
-        data: response.data,
+        data: response,
       });
-      setSuccessResponse(response.data);
+      setSuccessResponse({
+        status: "success",
+        message: "Enrollment wajah berhasil.",
+        student_id: "",
+        images_processed: response.imagesProcessed,
+        images_failed: response.imagesFailed,
+        total_embeddings: response.totalEmbeddings,
+      });
       setStep("success");
     } catch (error) {
-      if (isCancel(error)) {
-        faceApiWarn("enroll-upload:cancelled", {
-          durationMs: elapsedMs(startedAt),
-        });
-        return;
-      }
-
-      if (isAxiosError(error) && error.response) {
-        faceApiError("enroll-upload:axios-failed", {
-          durationMs: elapsedMs(startedAt),
-          error: axiosErrorDebugInfo(error),
-        });
-        const errorData = error.response.data as EnrollmentErrorResponse;
-        let errorMsg =
-          errorData?.message ||
-          `Gagal mendaftarkan wajah (${error.response.status})`;
-
-        if (errorData?.detail && Array.isArray(errorData.detail)) {
-          errorMsg = errorData.detail.map((d: any) => d.msg).join(", ");
-        } else if (errorData?.detail && typeof errorData.detail === "string") {
-          errorMsg = errorData.detail;
-        }
-
-        setErrorMessage(errorMsg);
-        setStep("error");
-        return;
-      }
-
       faceApiError("enroll-upload:failed", {
         durationMs: elapsedMs(startedAt),
         error,
@@ -730,7 +674,6 @@ const FaceEnrollment = () => {
       setErrorMessage(getReadableError(error, "Gagal mendaftarkan wajah."));
       setStep("error");
     } finally {
-      uploadController.current = null;
       faceApiLog("enroll-upload:cleanup-temp-files", {
         capturedCount: capturedImages.length,
       });
@@ -759,7 +702,6 @@ const FaceEnrollment = () => {
               faceApiWarn("enroll-upload:abort-from-back", {
                 capturedCount: capturedImages.length,
               });
-              uploadController.current?.abort();
               router.back();
             },
           },

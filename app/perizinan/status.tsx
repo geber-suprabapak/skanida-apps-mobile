@@ -12,7 +12,6 @@ import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
 import { Icon } from "~/components/ui/icon";
 import {
   ChevronLeft,
@@ -25,6 +24,7 @@ import {
   Stethoscope,
 } from "lucide-react-native";
 import { cn, formatDateWIB } from "~/lib/utils";
+import { listPermits } from "~/utils/bffMobileApi";
 
 interface PerizinanRecord {
   id: string;
@@ -266,16 +266,8 @@ export default function StatusPerizinanScreen() {
     if (!user?.id) return;
 
     try {
-      const { data, error } = await supabase
-        .from("perizinan")
-        .select(
-          "id, kategori_izin, deskripsi, approval_status, tanggal, created_at, rejection_reason, rejected_at",
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setRecords(data || []);
+      const data = await listPermits();
+      setRecords(data);
     } catch (error) {
       if (__DEV__) console.error("Error fetching records:", error);
     } finally {

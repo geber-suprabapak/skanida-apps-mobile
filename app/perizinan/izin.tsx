@@ -2,7 +2,6 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { format } from "date-fns";
 import {
   View,
   TouchableOpacity,
@@ -19,10 +18,9 @@ import { StatusBar } from "expo-status-bar";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
-import { timeSync } from "~/utils/timeSync";
 import { Icon } from "~/components/ui/icon";
-import { cn, getWIBDayBounds } from "~/lib/utils";
+import { cn, formatDateWIB } from "~/lib/utils";
+import { createPermit, listPermits } from "~/utils/bffMobileApi";
 import {
   ChevronLeft,
   FileText,
@@ -55,7 +53,6 @@ interface UIState {
 }
 const IMAGE_QUALITY = 0.8;
 const IMAGE_FORMAT = "jpeg";
-const STORAGE_BUCKET = "perizinan";
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const MIN_DESCRIPTION_LENGTH = 10;
 const MAX_DESCRIPTION_LENGTH = 500;
@@ -69,11 +66,6 @@ const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
   sakit: "Kesehatan",
   pergi: "Urusan Pribadi",
 };
-const generateFileName = (
-  userId: string,
-  extension: string = IMAGE_FORMAT,
-): string => `${userId}/${Date.now()}.${extension}`;
-
 const getImageContentType = (uri: string): string => {
   const ext = uri.split(".").pop()?.toLowerCase();
   return ext === "png" ? "image/png" : "image/jpeg";
@@ -269,64 +261,53 @@ export default function PerizinanScreen() {
 
   // ---- Handler Functions (defined before effects) ----
 
-  const checkTodayIzin = useCallback(
-    async (
-      userId: string,
-    ): Promise<{ canSubmit: boolean; reason?: string }> => {
-      try {
-        const syncedNow = timeSync.getSyncedTime();
-        const { start, endExclusive } = getWIBDayBounds(syncedNow);
+  const checkTodayIzin = useCallback(async (): Promise<{
+    canSubmit: boolean;
+    reason?: string;
+  }> => {
+    try {
+      const today = formatDateWIB(new Date());
+      const data = (await listPermits()).filter(
+        (permit) => formatDateWIB(new Date(permit.tanggal)) === today,
+      );
 
-        const { data, error } = await supabase
-          .from("perizinan")
-          .select("id, tanggal, kategori_izin, approval_status")
-          .eq("user_id", userId)
-          .gte("tanggal", start)
-          .lt("tanggal", endExclusive);
-
-        if (error) {
-          return { canSubmit: false, reason: "Gagal memverifikasi status" };
-        }
-
-        if (!data || data.length === 0) {
-          return { canSubmit: true };
-        }
-
-        // Check if there's any pending or approved perizinan
-        const hasPending = data.some((p) => p.approval_status === "pending");
-        const hasApproved = data.some((p) => p.approval_status === "approved");
-
-        if (hasPending) {
-          return {
-            canSubmit: false,
-            reason:
-              "Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.",
-          };
-        }
-
-        if (hasApproved) {
-          return {
-            canSubmit: false,
-            reason:
-              "Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.",
-          };
-        }
-
-        // All are rejected, check count limit (max 3)
-        if (data.length >= 3) {
-          return {
-            canSubmit: false,
-            reason: "Batas maksimal 3 pengajuan per hari telah tercapai.",
-          };
-        }
-
+      if (data.length === 0) {
         return { canSubmit: true };
-      } catch {
-        return { canSubmit: false, reason: "Gagal memverifikasi status" };
       }
-    },
-    [],
-  );
+
+      // Check if there's any pending or approved perizinan
+      const hasPending = data.some((p) => p.approval_status === "pending");
+      const hasApproved = data.some((p) => p.approval_status === "approved");
+
+      if (hasPending) {
+        return {
+          canSubmit: false,
+          reason:
+            "Anda masih memiliki perizinan yang menunggu persetujuan. Harap tunggu hingga diproses.",
+        };
+      }
+
+      if (hasApproved) {
+        return {
+          canSubmit: false,
+          reason:
+            "Anda sudah memiliki perizinan yang disetujui hari ini. Tidak dapat mengajukan lagi.",
+        };
+      }
+
+      // All are rejected, check count limit (max 3)
+      if (data.length >= 3) {
+        return {
+          canSubmit: false,
+          reason: "Batas maksimal 3 pengajuan per hari telah tercapai.",
+        };
+      }
+
+      return { canSubmit: true };
+    } catch {
+      return { canSubmit: false, reason: "Gagal memverifikasi status" };
+    }
+  }, []);
 
   // ---- Effect Hooks ----
 
@@ -338,7 +319,7 @@ export default function PerizinanScreen() {
 
         try {
           setUIState((prev) => ({ ...prev, checking: true }));
-          const result = await checkTodayIzin(user.id);
+          const result = await checkTodayIzin();
           setHasSubmittedToday(!result.canSubmit);
           setBlockingReason(result.reason);
         } catch {
@@ -506,100 +487,6 @@ export default function PerizinanScreen() {
     }
   }, [pickFromCamera, pickFromLibrary]);
 
-  const uploadImageToStorage = useCallback(
-    async (imageData: ImageData, userId: string): Promise<string> => {
-      const contentType = getImageContentType(imageData.uri);
-      const extension = contentType.split("/").pop() || IMAGE_FORMAT;
-      const fileName = generateFileName(userId, extension);
-
-      let response: Response;
-      let arrayBuffer: ArrayBuffer;
-
-      try {
-        response = await fetch(imageData.uri);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        arrayBuffer = await response.arrayBuffer();
-      } catch (error: any) {
-        Alert.alert(
-          "Error Membaca File",
-          "File gambar tidak dapat diakses atau rusak. Silakan pilih gambar lain.",
-        );
-        throw new Error(
-          `Gagal membaca file gambar: ${error.message || "File tidak dapat diakses"}`,
-        );
-      }
-
-      const { data, error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(fileName, arrayBuffer, {
-          contentType,
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        if (
-          uploadError.message?.includes("network") ||
-          uploadError.message?.includes("connection") ||
-          uploadError.message?.toLowerCase().includes("timeout")
-        ) {
-          throw new Error(
-            "Koneksi internet bermasalah. Mohon periksa koneksi internet Anda.",
-          );
-        }
-        throw new Error(`Upload gagal: ${uploadError.message}`);
-      }
-
-      const { data: urlData, error: signedErr } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(data.path, 60 * 60 * 24 * 7);
-
-      if (signedErr) {
-        throw new Error(`Gagal membuat URL gambar: ${signedErr.message}`);
-      }
-
-      return urlData.signedUrl;
-    },
-    [],
-  );
-
-  const insertPermitToDatabase = useCallback(
-    async (permitData: {
-      userId: string;
-      category: PermitCategory;
-      description: string;
-      imageUrl?: string;
-    }): Promise<void> => {
-      // Final check before insert
-      const finalCheck = await checkTodayIzin(permitData.userId);
-      if (!finalCheck.canSubmit) {
-        throw new Error(
-          finalCheck.reason || "Tidak dapat mengajukan perizinan saat ini.",
-        );
-      }
-
-      const insertData = {
-        user_id: permitData.userId,
-        kategori_izin: permitData.category,
-        deskripsi: permitData.description,
-        status: false,
-        link_foto: permitData.imageUrl || null,
-        tanggal: timeSync.getSyncedTime().toISOString(),
-      };
-
-      const { error: insertError } = await supabase
-        .from("perizinan")
-        .insert(insertData);
-
-      if (insertError) {
-        throw new Error(`Gagal menyimpan data: ${insertError.message}`);
-      }
-    },
-    [checkTodayIzin],
-  );
-
   const uploadPermit = useCallback(async (): Promise<void> => {
     if (!user) {
       Alert.alert("Error", "User not authenticated");
@@ -622,16 +509,21 @@ export default function PerizinanScreen() {
     try {
       setUIState((prev) => ({ ...prev, uploading: true }));
 
-      let imageUrl: string | undefined;
-      if (formData.image) {
-        imageUrl = await uploadImageToStorage(formData.image, user.id);
+      const finalCheck = await checkTodayIzin();
+      if (!finalCheck.canSubmit) {
+        throw new Error(
+          finalCheck.reason || "Tidak dapat mengajukan perizinan saat ini.",
+        );
       }
 
-      await insertPermitToDatabase({
-        userId: user.id,
+      await createPermit({
         category: formData.category,
         description: formData.description,
-        imageUrl,
+        attachment: {
+          uri: formData.image.uri,
+          name: `permit_${Date.now()}.${IMAGE_FORMAT}`,
+          type: getImageContentType(formData.image.uri),
+        },
       });
 
       setHasSubmittedToday(true);
@@ -659,14 +551,7 @@ export default function PerizinanScreen() {
     } finally {
       setUIState((prev) => ({ ...prev, uploading: false }));
     }
-  }, [
-    user,
-    formData,
-    validation.description,
-    uploadImageToStorage,
-    insertPermitToDatabase,
-    router,
-  ]);
+  }, [user, formData, validation.description, checkTodayIzin, router]);
 
   // ---- Render ----
 
