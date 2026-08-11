@@ -72,7 +72,7 @@ class TimeSync {
   private readonly DRIFT_THRESHOLD = 5000; // 5 seconds
   private readonly STORAGE_KEY = "time_sync_data";
   private syncPromise: Promise<void> | null = null;
-  private backgroundSyncTimer: NodeJS.Timeout | null = null;
+  private backgroundSyncTimer: ReturnType<typeof setTimeout> | null = null;
   private appStateSubscription: any = null;
   private isInitialized: boolean = false;
 

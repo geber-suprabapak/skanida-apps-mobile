@@ -1,0 +1,26 @@
+allowBuilds:
+  '@sentry/cli': set this to true or false
+  unrs-resolver: set this to true or false
+minimumReleaseAgeExclude:
+  - '@expo/cli@57.0.14'
+  - '@expo/fingerprint@0.20.7'
+  - '@expo/inline-modules@0.1.5'
+  - '@expo/local-build-cache-provider@57.0.6'
+  - '@expo/metro-config@57.0.8'
+  - '@expo/prebuild-config@57.0.11'
+  - expo-asset@57.0.10
+  - expo-constants@57.0.10
+  - expo-server@57.0.2
+  - expo@57.0.12
+  - '@expo/metro-runtime@57.0.9'
+  - '@expo/ui@57.0.10'
+  - expo-build-properties@57.0.10
+  - expo-dev-client@57.0.11
+  - expo-dev-launcher@57.0.11
+  - expo-dev-menu@57.0.11
+  - expo-image-manipulator@57.0.9
+  - expo-image-picker@57.0.9
+  - expo-location@57.0.9
+  - expo-notifications@57.0.10
+  - expo-router@57.0.12
+  - expo-updates@57.0.13
