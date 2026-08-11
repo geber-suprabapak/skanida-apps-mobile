@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Skanida Apps",
   slug: "skanida-apps-mobile",
-  version: "1.2.0-astrayao",
+  version: "1.3.0",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -14,7 +14,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/favicon.png",
   },
-  newArchEnabled: true,
   updates: {
     url: "https://ota.hysilens.my.id/manifest",
     codeSigningMetadata: {
@@ -46,19 +45,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash.png",
+        resizeMode: "contain",
+        backgroundColor: "#ffffff",
+      },
+    ],
+    [
       "expo-build-properties",
       {
         android: {
           minSdkVersion: 24,
           enableBundleCompression: true,
           enableMinifyInReleaseBuilds: true,
-          enableProguardInReleaseBuilds: true,
           shrinkResources: true,
           useLegacyPackaging: false,
-          targetSdkVersion: 35,
+          targetSdkVersion: 36,
         },
         ios: {
-          deploymentTarget: "15.1",
+          deploymentTarget: "16.4",
         },
       },
     ],
@@ -77,11 +83,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
-  splash: {
-    image: "./assets/splash.png",
-    resizeMode: "contain",
-    backgroundColor: "#ffffff",
-  },
   // PERF-M06: Only bundle essential assets (was "**/*" which bundles everything)
   assetBundlePatterns: [
     "assets/images/*",
