@@ -19,7 +19,7 @@
     },
     "production": {
       "pnpm": "10.19.0",
-      "autoIncrement": false,
+      "autoIncrement": true,
       "channel": "production",
       "android": {
         "buildType": "apk",
@@ -32,7 +32,7 @@
     },
     "production-ci": {
       "pnpm": "10.19.0",
-      "autoIncrement": false,
+      "autoIncrement": true,
       "channel": "production",
       "android": {
         "buildType": "apk",
@@ -44,7 +44,7 @@
       }
     },
     "production-armv7a": {
-      "autoIncrement": false,
+      "autoIncrement": true,
       "channel": "production",
       "android": {
         "buildType": "apk",
