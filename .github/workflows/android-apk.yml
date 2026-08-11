@@ -14,8 +14,7 @@ concurrency:
 jobs:
   build:
     name: Build Android APK
-    runs-on:
-      group: big-boy
+    runs-on: ubuntu-latest
     timeout-minutes: 90
 
     env:
