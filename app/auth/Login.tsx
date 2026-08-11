@@ -137,7 +137,7 @@ export default function Login() {
   };
   return (
     <SafeAreaView className={`flex-1 bg-background`}>
-      <Stack.Screen name="auth/Login" options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">
