@@ -209,7 +209,7 @@ export default function Activate() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <Stack.Screen name="auth/Activate" options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header with Back Button */}
       <View className="flex-row items-center p-6 pt-4">

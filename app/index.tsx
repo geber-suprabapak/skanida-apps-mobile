@@ -103,7 +103,7 @@ export default function Index() {
 
   return (
     <>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 items-center justify-center p-4">
         <Text className="mb-4 text-xl font-bold">{loadingMessage}</Text>
         <ActivityIndicator size="large" color="#0000ff" />
