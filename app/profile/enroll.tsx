@@ -23,7 +23,7 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 import {
   bytesInfo,
