@@ -24,6 +24,7 @@ import * as Sentry from "@sentry/react-native";
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
+  enableTombstone: true,
   tracesSampleRate: 0.1,
   // Keep Hermes profiling off during the Expo 57 rollout to mitigate the
   // known Sentry/Hermes teardown SIGABRT race.
