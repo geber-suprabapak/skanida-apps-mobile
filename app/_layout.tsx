@@ -25,7 +25,9 @@ Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
   tracesSampleRate: 0.1,
-  profilesSampleRate: 0.05,
+  // Keep Hermes profiling off during the Expo 57 rollout to mitigate the
+  // known Sentry/Hermes teardown SIGABRT race.
+  profilesSampleRate: 0,
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 0.1,
 
