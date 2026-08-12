@@ -36,6 +36,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         url: "https://sentry.io/",
         project: "skanida-apps-mobile",
         organization: "geber-suprabapak",
+        experimental_android: {
+          enableAndroidGradlePlugin: true,
+        },
       },
     ],
     [
