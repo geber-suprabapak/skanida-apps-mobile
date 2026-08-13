@@ -12,12 +12,12 @@ import {
   TextInput,
   Platform,
   ActionSheetIOS,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
 import { Icon } from "~/components/ui/icon";
 import { cn, formatDateWIB } from "~/lib/utils";
 import { createPermit, listPermits } from "~/utils/bffMobileApi";
@@ -219,7 +219,7 @@ const AlertBanner: React.FC<{
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const theme = useThemeStore((state) => state.theme);
+  const isDark = useColorScheme() === "dark";
 
   // ---- State Management ----
   const [formData, setFormData] = useState<FormData>({
@@ -560,7 +560,7 @@ export default function PerizinanScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Simple Header */}
       <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">

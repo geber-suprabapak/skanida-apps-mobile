@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Image,
   AppState,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -23,7 +24,6 @@ import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
 import { fetchEnrollmentStatus } from "~/utils/enrollment";
 import type { EnrollmentStatus } from "~/utils/enrollment";
 import {
@@ -204,7 +204,7 @@ export default function Dashboard() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.userProfile);
-  const theme = useThemeStore((state) => state.theme);
+  const isDark = useColorScheme() === "dark";
 
   // State
   const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());
@@ -558,7 +558,7 @@ export default function Dashboard() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 bg-background">
           <AttendanceSuccessPopup

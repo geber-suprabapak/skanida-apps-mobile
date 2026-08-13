@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PortalHost } from "@rn-primitives/portal";
 import ConnectionChecker from "~/components/ConnectionChecker";
 import { useEffect, useState } from "react";
-import { colorScheme } from "nativewind";
+import { Uniwind } from "uniwind";
 import useThemeStore from "~/store/themeStore";
 import { timeSync } from "~/utils/timeSync";
 import {
@@ -52,11 +52,7 @@ export default Sentry.wrap(function RootLayout() {
   const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (theme === "system") {
-      colorScheme.set("light");
-    } else {
-      colorScheme.set(theme);
-    }
+    Uniwind.setTheme(theme);
   }, [theme]);
 
   // Initialize Supabase first — this gates rendering. TimeSync and
