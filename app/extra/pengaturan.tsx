@@ -8,12 +8,12 @@ import {
   Image,
   BackHandler,
   Switch,
+  useColorScheme,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
-import { colorScheme } from "nativewind";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
 import { Text } from "~/components/ui/text";
@@ -37,12 +37,17 @@ import {
   BellOff,
 } from "lucide-react-native";
 import { useNotificationSettings } from "~/hooks/useNotificationSettings";
+import { useUniwind } from "uniwind";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const { theme, setTheme } = useThemeStore();
+  const { setTheme } = useThemeStore();
+  const { theme } = useUniwind();
+  const deviceColorScheme = useColorScheme();
+  const isDeviceDark = deviceColorScheme === "dark";
+  const isDark = theme === "dark";
 
   const initialProfile = useMemo(
     () => ({
@@ -153,10 +158,9 @@ function Pengaturan() {
   }, [user?.id]);
 
   const toggleTheme = useCallback(() => {
-    const next = theme === "dark" ? "light" : "dark";
+    const next = isDark ? "light" : "dark";
     setTheme(next);
-    colorScheme.set(next);
-  }, [theme, setTheme]);
+  }, [isDark, setTheme]);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
@@ -195,7 +199,7 @@ function Pengaturan() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <StatusBar style={isDeviceDark ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
@@ -291,11 +295,11 @@ function Pengaturan() {
             {/* Dark Mode */}
             <View className="flex-row items-center p-4 border-b border-border/50">
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${theme === "dark" ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${isDark ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
               >
                 <Icon
-                  as={theme === "dark" ? Moon : Sun}
-                  className={`size-5 ${theme === "dark" ? "text-purple-500" : "text-yellow-500"}`}
+                  as={isDark ? Moon : Sun}
+                  className={`size-5 ${isDark ? "text-purple-500" : "text-yellow-500"}`}
                 />
               </View>
               <View className="flex-1 ml-4">
@@ -303,11 +307,11 @@ function Pengaturan() {
                   Mode Gelap
                 </Text>
                 <Text className="text-muted-foreground text-xs mt-0.5">
-                  {theme === "dark" ? "Tema gelap aktif" : "Tema terang aktif"}
+                  {isDark ? "Tema gelap aktif" : "Tema terang aktif"}
                 </Text>
               </View>
               <Switch
-                value={theme === "dark"}
+                value={isDark}
                 onValueChange={toggleTheme}
                 trackColor={{ false: "#e5e7eb", true: "#6366f1" }}
                 thumbColor="#ffffff"

@@ -5,6 +5,7 @@
     "strict": true,
     "jsx": "react-jsx",
     "ignoreDeprecations": "6.0",
+    "types": ["jest"],
     "baseUrl": ".",
     "paths": {
       "~/*": ["*"],
@@ -16,6 +17,6 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "nativewind-env.d.ts"
+    "uniwind-types.d.ts"
   ]
 }

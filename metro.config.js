@@ -1,16 +1,16 @@
-const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
 const { getSentryExpoConfig } = require("@sentry/react-native/metro");
+const { withUniwindConfig } = require("uniwind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = withNativeWind(getSentryExpoConfig(__dirname), {
-  input: "./global.css",
-  inlineRem: 16,
-});
+const config = getSentryExpoConfig(__dirname);
 
 // Configure path aliases
 config.resolver.alias = {
   "~": path.resolve(__dirname, "./"),
 };
 
-module.exports = config;
+module.exports = withUniwindConfig(config, {
+  cssEntryFile: "./global.css",
+  dtsFile: "./uniwind-types.d.ts",
+});

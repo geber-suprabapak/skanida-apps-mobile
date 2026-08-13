@@ -10,6 +10,7 @@ import {
   Modal,
   BackHandler,
   Image as RNImage,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -41,7 +42,6 @@ import {
   Loader2,
 } from "lucide-react-native";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
 import { supabase } from "~/utils/supabase";
 import {
   fetchEnrollmentStatus,
@@ -75,7 +75,7 @@ const clearProfileCache = async () => {
 export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  const theme = useThemeStore((state) => state.theme);
+  const isDark = useColorScheme() === "dark";
 
   // --- Profile State ---
   const [name, setName] = useState("");
@@ -421,7 +421,7 @@ export default function ManageAccount() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Simple Header */}

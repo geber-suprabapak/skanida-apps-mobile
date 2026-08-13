@@ -10,12 +10,12 @@ import {
 import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
 import { CheckCircle } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import {
   getFallbackQuote,
   type MotivationalQuote,
 } from "~/lib/motivationalQuotes";
 import { cn } from "~/lib/utils";
+import { useUniwind } from "uniwind";
 
 interface ConfettiPiece {
   id: number;
@@ -53,11 +53,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
   attendanceType,
   processingTime,
 }) => {
-  const { colorScheme } = useColorScheme();
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
   // PERF-L01: Use hook instead of module-scope Dimensions.get
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const backdropColor =
-    colorScheme === "dark" ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)";
+  const backdropColor = isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)";
   const [motivationalQuote, setMotivationalQuote] = useState<MotivationalQuote>(
     {
       quote: "",
@@ -324,7 +324,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               opacity: modalOpacity,
             }}
             className={`w-full max-w-sm rounded-3xl p-8 items-center ${
-              colorScheme === "dark" ? "bg-gray-800" : "bg-white"
+              isDark ? "bg-gray-800" : "bg-white"
             }`}
           >
             {/* Success Icon */}
@@ -356,7 +356,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
             >
               <Text
                 className={`text-2xl font-bold text-center mb-2 ${
-                  colorScheme === "dark" ? "text-white" : "text-gray-900"
+                  isDark ? "text-white" : "text-gray-900"
                 }`}
               >
                 {message.title}
@@ -364,7 +364,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
 
               <Text
                 className={`text-base text-center mb-4 ${
-                  colorScheme === "dark" ? "text-gray-300" : "text-gray-600"
+                  isDark ? "text-gray-300" : "text-gray-600"
                 }`}
               >
                 {motivationalMessage}
@@ -374,14 +374,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               {processingTime && (
                 <View
                   className={`px-3 py-1 rounded-full ${
-                    colorScheme === "dark" ? "bg-green-800/30" : "bg-green-100"
+                    isDark ? "bg-green-800/30" : "bg-green-100"
                   }`}
                 >
                   <Text
                     className={`text-xs font-medium ${
-                      colorScheme === "dark"
-                        ? "text-green-300"
-                        : "text-green-700"
+                      isDark ? "text-green-300" : "text-green-700"
                     }`}
                   >
                     {formatProcessingTime(processingTime)}
@@ -401,7 +399,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                 onPress={hideAnimation}
                 className={cn(
                   "py-4 px-8 rounded-2xl items-center",
-                  colorScheme === "dark"
+                  isDark
                     ? "bg-blue-700 active:bg-blue-800"
                     : "bg-blue-600 active:bg-blue-700",
                 )}

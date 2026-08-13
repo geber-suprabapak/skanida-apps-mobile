@@ -9,11 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     policy: "appVersion",
   },
   scheme: "skanida-apps-mobile",
-  web: {
-    bundler: "metro",
-    output: "static",
-    favicon: "./assets/favicon.png",
-  },
+  platforms: ["ios", "android"],
   updates: {
     url: "https://ota.hysilens.my.id/manifest",
     codeSigningMetadata: {
@@ -85,7 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   orientation: "portrait",
   icon: "./assets/icon.png",
-  userInterfaceStyle: "light",
+  userInterfaceStyle: "automatic",
   // PERF-M06: Only bundle essential assets (was "**/*" which bundles everything)
   assetBundlePatterns: [
     "assets/images/*",
