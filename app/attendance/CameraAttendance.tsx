@@ -21,7 +21,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system/legacy";
 

@@ -11,7 +11,7 @@ import {
   useColorScheme,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";

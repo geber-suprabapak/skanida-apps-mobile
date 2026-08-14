@@ -5,7 +5,7 @@
     "strict": true,
     "jsx": "react-jsx",
     "ignoreDeprecations": "6.0",
-    "types": ["jest"],
+    "types": ["jest", "node"],
     "baseUrl": ".",
     "paths": {
       "~/*": ["*"],
