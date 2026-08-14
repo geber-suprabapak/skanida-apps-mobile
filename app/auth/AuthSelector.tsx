@@ -10,7 +10,7 @@ import {
   Alert,
   TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";

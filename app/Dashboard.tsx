@@ -13,7 +13,7 @@ import {
   AppState,
   useColorScheme,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { StatusBar } from "expo-status-bar";
 import * as Sentry from "@sentry/react-native";
 

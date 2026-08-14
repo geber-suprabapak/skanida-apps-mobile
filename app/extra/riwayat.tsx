@@ -11,7 +11,7 @@ import {
   BackHandler,
   useColorScheme,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 
 import { Text } from "~/components/ui/text";

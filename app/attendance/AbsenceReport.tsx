@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import * as Location from "expo-location";
 import Animated, {
   useAnimatedStyle,

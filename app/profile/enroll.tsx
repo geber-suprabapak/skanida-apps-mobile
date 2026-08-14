@@ -22,7 +22,7 @@ import Animated, {
   withTiming,
   FadeIn,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import * as FileSystem from "expo-file-system/legacy";
 
 import {

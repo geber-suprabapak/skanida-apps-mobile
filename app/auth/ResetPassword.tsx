@@ -10,7 +10,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 
 import { supabase } from "~/utils/supabase";
 import { Button } from "~/components/ui/button";
