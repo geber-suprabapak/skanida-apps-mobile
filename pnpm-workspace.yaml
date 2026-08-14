@@ -1,6 +1,8 @@
 allowBuilds:
   '@sentry/cli': true
-  unrs-resolver: set this to true or false
+  unrs-resolver: true
+virtualStoreDir: s
+virtualStoreDirMaxLength: 60
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.14'
   - '@expo/fingerprint@0.20.7'
