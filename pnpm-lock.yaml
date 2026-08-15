@@ -162,6 +162,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.32.1
         version: 8.66.0(eslint@9.39.4(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      babel-preset-expo:
+        specifier: ~57.0.7
+        version: 57.0.7(@babel/core@7.29.0(supports-color@8.1.1))(@babel/runtime@7.29.2)(expo@57.0.13)(react-refresh@0.14.2)(supports-color@8.1.1)
       eslint:
         specifier: ^9.27.0
         version: 9.39.4(jiti@2.7.0)(supports-color@8.1.1)

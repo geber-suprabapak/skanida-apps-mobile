@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PortalHost } from "@rn-primitives/portal";
 import ConnectionChecker from "~/components/ConnectionChecker";
 import { useEffect, useState } from "react";
-import { Uniwind } from "uniwind";
+import { Uniwind, useUniwind } from "uniwind";
 import useThemeStore from "~/store/themeStore";
 import { timeSync } from "~/utils/timeSync";
 import {
@@ -46,6 +46,7 @@ export { ErrorBoundary } from "expo-router";
 
 export default Sentry.wrap(function RootLayout() {
   const { theme } = useThemeStore();
+  const { theme: resolvedTheme } = useUniwind();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
@@ -159,7 +160,7 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider>
       <ConnectionChecker>
-        <StatusBar style="auto" />
+        <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
         <Stack />
         <PortalHost />
       </ConnectionChecker>
