@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
-import * as Location from "expo-location";
+import {
+  cancelUpayaPresensi,
+  prepareUpayaPresensi,
+  type PrepareOutcome,
+} from "~/features/upaya-presensi";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import useAuthStore from "~/store/authStore";
-import { precheckAttendance } from "~/utils/bffMobileApi";
+import type { MobileAttendanceAction } from "~/utils/bffMobileApi";
 import {
   elapsedMs,
   faceApiError,
@@ -35,16 +39,7 @@ import {
   Clock,
 } from "lucide-react-native";
 
-// Definisikan tipe data untuk respons dari RPC kita
-type AttendanceActionResponse = {
-  actionable: boolean;
-  action_type: "check_in" | "check_out" | "none";
-  message: string;
-  details?: {
-    location_name?: string;
-    status?: "Hadir" | "Terlambat";
-  };
-};
+type AttendanceActionResponse = MobileAttendanceAction;
 
 export default function AbsenceReport() {
   const user = useAuthStore((state) => state.user);
@@ -76,92 +71,27 @@ export default function AbsenceReport() {
 
   // Navigasi ke halaman kamera
   const navigateToCamera = useCallback(
-    (
-      statusData: AttendanceActionResponse,
-      locationCoords: Location.LocationObjectCoords,
-    ) => {
-      // Prevent navigation if component is unmounted
+    (statusData: AttendanceActionResponse, attemptId: string) => {
       if (!isMountedRef.current) {
         faceApiWarn("attendance-report:navigate-camera:blocked-unmounted", {
           statusData,
-          location: {
-            latitude: locationCoords.latitude,
-            longitude: locationCoords.longitude,
-          },
+          attemptId,
         });
         return;
       }
 
-      const params: Record<string, string> = {
-        actionType: statusData.action_type,
-      };
-
-      if (statusData.details?.location_name) {
-        params.locationName = statusData.details.location_name;
-      }
-
-      params.latitude = locationCoords.latitude.toString();
-      params.longitude = locationCoords.longitude.toString();
-
       faceApiLog("attendance-report:navigate-camera", {
         statusData,
-        params,
+        attemptId,
       });
 
       router.push({
         pathname: "/attendance/CameraAttendance",
-        params,
+        params: { attemptId },
       });
     },
     [router],
   );
-
-  // Fungsi inti untuk memeriksa status absensi
-  const getCurrentLocation = useCallback(async () => {
-    const startedAt = startFaceApiTimer();
-    faceApiLog("attendance-report:location:start", {});
-    let { status: permissionStatus } =
-      await Location.getForegroundPermissionsAsync();
-    faceApiLog("attendance-report:location:permission-current", {
-      permissionStatus,
-    });
-    if (permissionStatus !== "granted") {
-      permissionStatus = (await Location.requestForegroundPermissionsAsync())
-        .status;
-      faceApiLog("attendance-report:location:permission-request", {
-        permissionStatus,
-      });
-    }
-    if (permissionStatus !== "granted") {
-      faceApiWarn("attendance-report:location:permission-denied", {
-        durationMs: elapsedMs(startedAt),
-      });
-      throw new Error("Izin lokasi ditolak. Absensi tidak dapat dilanjutkan.");
-    }
-
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-
-    faceApiLog("attendance-report:location:result", {
-      durationMs: elapsedMs(startedAt),
-      mocked: location.mocked,
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      accuracy: location.coords.accuracy,
-      altitude: location.coords.altitude,
-      heading: location.coords.heading,
-      speed: location.coords.speed,
-    });
-
-    if (location.mocked) {
-      throw new Error(
-        "Terdeteksi lokasi palsu. Matikan pengaturan lokasi palsu untuk melanjutkan.",
-      );
-    }
-
-    return location;
-  }, []);
 
   const fetchAttendanceStatus = useCallback(async () => {
     if (!user) {
@@ -180,47 +110,43 @@ export default function AbsenceReport() {
     setIsLoading(true);
     setErrorMessage(null);
     setStatus(null);
+    const outcome: PrepareOutcome = await prepareUpayaPresensi({
+      userId: user.id,
+    });
 
-    try {
-      const location = await getCurrentLocation();
+    if (!isMountedRef.current) {
+      if (outcome.status === "ready") cancelUpayaPresensi(outcome.attemptId);
+      return;
+    }
 
-      faceApiLog("attendance-report:precheck:request", {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-
-      const data = await precheckAttendance({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-
-      faceApiLog("attendance-report:precheck:response", {
-        durationMs: elapsedMs(startedAt),
-        data,
-      });
-
-      setStatus(data);
-
-      const isActionable = Boolean(
-        data?.actionable && data.action_type !== "none",
-      );
-
-      if (isActionable) {
-        navigateToCamera(data, location.coords);
+    if (outcome.status === "ready") {
+      setStatus(outcome.precheck);
+      navigateToCamera(outcome.precheck, outcome.attemptId);
+    } else if (outcome.status === "blocked") {
+      if (outcome.precheck) {
+        setStatus(outcome.precheck);
+      } else if (outcome.reason === "permission_denied") {
+        setErrorMessage(
+          "Izin lokasi ditolak. Absensi tidak dapat dilanjutkan.",
+        );
+      } else {
+        setErrorMessage(
+          "Terdeteksi lokasi palsu. Matikan pengaturan lokasi palsu untuk melanjutkan.",
+        );
       }
-    } catch (e: any) {
+    } else {
       faceApiError("attendance-report:status:failed", {
         durationMs: elapsedMs(startedAt),
-        error: e,
+        code: outcome.code,
       });
-      setErrorMessage(e.message || "Terjadi kesalahan tidak diketahui.");
-    } finally {
-      faceApiLog("attendance-report:status:finish", {
-        durationMs: elapsedMs(startedAt),
-      });
-      setIsLoading(false);
+      setErrorMessage("Terjadi kesalahan tidak diketahui.");
     }
-  }, [user, getCurrentLocation, navigateToCamera]);
+
+    faceApiLog("attendance-report:status:finish", {
+      durationMs: elapsedMs(startedAt),
+    });
+    setIsLoading(false);
+  }, [user, navigateToCamera]);
 
   // Jalankan pengecekan saat komponen pertama kali dimuat
   useEffect(() => {

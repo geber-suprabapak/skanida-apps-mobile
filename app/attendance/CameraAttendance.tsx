@@ -4,7 +4,7 @@ import {
   useCameraPermission,
 } from "react-native-vision-camera";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useRef, useState, useEffect, useCallback, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -22,8 +22,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
-import * as Location from "expo-location";
-import * as FileSystem from "expo-file-system/legacy";
 
 import { Icon } from "~/components/ui/icon";
 import {
@@ -32,28 +30,22 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react-native";
-import useAuthStore from "~/store/authStore";
 import {
-  bytesInfo,
+  cancelUpayaPresensi,
+  completeUpayaPresensi,
+  type CompleteOutcome,
+} from "~/features/upaya-presensi";
+import {
   elapsedMs,
   faceApiError,
   faceApiLog,
   faceApiWarn,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
-import { setPendingAttendanceSuccess } from "~/utils/attendanceSuccess";
-import { submitAttendance } from "~/utils/bffMobileApi";
 
-// --- CONSTANTS ---
-const MAX_BASE64_SIZE_MB = 5;
-const MAX_BASE64_SIZE_BYTES = MAX_BASE64_SIZE_MB * 1024 * 1024;
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
 type ProcessStage = "verifying" | "saving";
-type Coordinates = {
-  latitude: number;
-  longitude: number;
-};
 
 interface ProcessProgress {
   stage: ProcessStage;
@@ -142,34 +134,21 @@ const CameraReadyOverlay = memo(() => (
 ));
 CameraReadyOverlay.displayName = "CameraReadyOverlay";
 
-const getReadableError = (error: unknown, fallback = "Terjadi kesalahan.") => {
-  if (error instanceof Error) {
-    return error.message;
+const messageForOutcome = (
+  outcome: Extract<CompleteOutcome, { status: "failed" }>,
+): string => {
+  switch (outcome.code) {
+    case "capture_missing":
+      return "Failed to capture photo - no file path returned";
+    case "payload_too_large":
+      return "Ukuran data foto melebihi 5MB. Silakan ambil ulang foto.";
+    case "fallback_mock_location":
+      return "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.";
+    case "attempt_not_found":
+      return "Data absensi tidak valid. Silakan coba lagi.";
+    default:
+      return "Gagal memproses absensi.";
   }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string") {
-      return message;
-    }
-  }
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return fallback;
-  }
-};
-
-const sanitizeBase64 = (value: string) => value.replace(/[^A-Za-z0-9+/=]/g, "");
-
-const getBase64ByteSize = (base64: string) => {
-  const paddingLength = base64.match(/=+$/)?.[0]?.length ?? 0;
-  return (base64.length * 3) / 4 - paddingLength;
 };
 
 // --- MAIN COMPONENT ---
@@ -177,13 +156,14 @@ const CameraAttendance = () => {
   // --- HOOKS ---
   const router = useRouter();
   const params = useLocalSearchParams<{
-    actionType?: string | string[];
-    latitude?: string | string[];
-    longitude?: string | string[];
+    attemptId?: string | string[];
   }>();
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
   const permissionAttemptedRef = useRef(false);
+  const attemptId = Array.isArray(params.attemptId)
+    ? params.attemptId[0]
+    : params.attemptId;
 
   // --- STATE ---
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>("front");
@@ -215,184 +195,65 @@ const CameraAttendance = () => {
     transform: [{ rotate: `${spinnerRotation.value}deg` }],
   }));
 
-  // --- STORE & PARAMS ---
-  const user = useAuthStore((state) => state.user);
-
-  const actionType = useMemo<"check_in" | "check_out">(() => {
-    const value = params.actionType;
-    const candidate = Array.isArray(value) ? value[0] : value;
-    if (candidate === "check_in" || candidate === "check_out") {
-      return candidate;
-    }
-    return "check_in";
-  }, [params.actionType]);
-
-  const preFetchedLocation = useMemo<Coordinates | null>(() => {
-    const resolveValue = (val?: string | string[]) =>
-      Array.isArray(val) ? val[0] : val;
-
-    const latString = resolveValue(params.latitude);
-    const lonString = resolveValue(params.longitude);
-
-    if (!latString || !lonString) {
-      return null;
-    }
-
-    const latitude = Number(latString);
-    const longitude = Number(lonString);
-
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      return null;
-    }
-
-    return { latitude, longitude };
-  }, [params.latitude, params.longitude]);
-
   useEffect(() => {
     faceApiLog("attendance-camera:params", {
-      actionType,
-      rawParams: params,
-      preFetchedLocation,
-      userId: user?.id ?? null,
+      attemptId: attemptId ?? null,
       cameraFacing,
     });
-  }, [actionType, cameraFacing, params, preFetchedLocation, user?.id]);
+  }, [attemptId, cameraFacing]);
+
+  useEffect(
+    () => () => {
+      cancelUpayaPresensi(attemptId);
+    },
+    [attemptId],
+  );
 
   // --- MAIN PROCESS ---
   const processAttendance = useCallback(
-    async (base64Image: string): Promise<void> => {
-      if (!user) {
-        faceApiWarn("attendance-process:missing-user", {
-          actionType,
-        });
-        Alert.alert("Error", "Sesi pengguna tidak valid.");
+    async (snapshotPath: string | null | undefined): Promise<void> => {
+      if (!attemptId) {
+        Alert.alert("Error", "Data absensi tidak valid. Silakan coba lagi.");
         return;
       }
 
-      if (!actionType) {
-        faceApiWarn("attendance-process:missing-action-type", {
-          userId: user.id,
-        });
-        Alert.alert("Error", "Data absensi tidak valid.");
-        return;
-      }
-
-      const sanitizedBase64 = sanitizeBase64(base64Image);
-      const payloadSizeBytes = getBase64ByteSize(sanitizedBase64);
       const startedAt = startFaceApiTimer();
-
-      faceApiLog("attendance-process:start", {
-        userId: user.id,
-        actionType,
-        rawBase64Chars: base64Image.length,
-        sanitizedBase64Chars: sanitizedBase64.length,
-        payloadSize: bytesInfo(payloadSizeBytes),
-        hasPreFetchedLocation: Boolean(preFetchedLocation),
-        preFetchedLocation,
+      setIsProcessing(true);
+      setProcessProgress({
+        stage: "verifying",
+        percentage: 30,
+        message: "Memverifikasi wajah...",
       });
 
-      if (payloadSizeBytes > MAX_BASE64_SIZE_BYTES) {
-        faceApiWarn("attendance-process:payload-too-large", {
-          maxSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
-          payloadSize: bytesInfo(payloadSizeBytes),
-        });
-        Alert.alert(
-          "Error",
-          `Ukuran data foto melebihi batas ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto dengan pencahayaan lebih baik atau jarak lebih dekat.`,
-        );
-        return;
-      }
+      const outcome = await completeUpayaPresensi({
+        attemptId,
+        snapshotPath,
+      });
 
-      setIsProcessing(true);
-      const startTime = Date.now();
-
-      try {
-        let resolvedLocation = preFetchedLocation;
-
-        if (!resolvedLocation) {
-          faceApiLog("attendance-process:location-fetch:start", {
-            reason: "no-prefetched-location",
-          });
-          const latestLocation = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-          });
-
-          faceApiLog("attendance-process:location-fetch:result", {
-            mocked: latestLocation.mocked,
-            latitude: latestLocation.coords.latitude,
-            longitude: latestLocation.coords.longitude,
-            accuracy: latestLocation.coords.accuracy,
-          });
-
-          if (latestLocation.mocked) {
-            throw new Error(
-              "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.",
-            );
-          }
-
-          resolvedLocation = {
-            latitude: latestLocation.coords.latitude,
-            longitude: latestLocation.coords.longitude,
-          };
-        } else {
-          faceApiLog("attendance-process:location-prefetched", {
-            latitude: resolvedLocation.latitude,
-            longitude: resolvedLocation.longitude,
-          });
-        }
-
-        // BFF verifies face through Robin and persists attendance server-side.
-        setProcessProgress({
-          stage: "verifying",
-          percentage: 30,
-          message: "Memverifikasi wajah...",
-        });
-
-        const submitResult = await submitAttendance({
-          action_type: actionType,
-          image_base64: sanitizedBase64,
-          latitude: resolvedLocation.latitude,
-          longitude: resolvedLocation.longitude,
-        });
-
-        faceApiLog("attendance-process:bff-submit-result", {
-          durationMs: elapsedMs(startedAt),
-          submitResult,
-        });
-
+      if (outcome.status === "submitted") {
         setProcessProgress({
           stage: "saving",
           percentage: 100,
           message: "Berhasil!",
         });
-
-        const totalTime = Date.now() - startTime;
         faceApiLog("attendance-process:success", {
-          totalTimeMs: totalTime,
-          fullDurationMs: elapsedMs(startedAt),
-          actionType,
-          submitResult,
-        });
-        setPendingAttendanceSuccess({
-          attendanceType: submitResult.attendance_type,
-          processingTime: submitResult.processed_ms || totalTime,
+          durationMs: elapsedMs(startedAt),
+          attemptId,
+          outcome,
         });
         router.replace("/Dashboard");
-      } catch (error: any) {
+      } else if (outcome.status !== "cancelled") {
         faceApiError("attendance-process:failed", {
           durationMs: elapsedMs(startedAt),
-          actionType,
-          error,
+          attemptId,
+          code: outcome.code,
         });
-        Alert.alert(
-          "Error",
-          getReadableError(error, "Gagal memproses absensi."),
-        );
-      } finally {
-        setIsProcessing(false);
+        Alert.alert("Error", messageForOutcome(outcome));
       }
+
+      setIsProcessing(false);
     },
-    [user, actionType, preFetchedLocation, router],
+    [attemptId, router],
   );
 
   // --- EVENT HANDLERS ---
@@ -455,17 +316,14 @@ const CameraAttendance = () => {
     }
 
     setIsCapturingPhoto(true);
-
-    let photoUri: string | null = null;
     const startedAt = startFaceApiTimer();
     faceApiLog("attendance-capture:start", {
       cameraFacing,
-      actionType,
+      attemptId: attemptId ?? null,
       snapshotQuality: 70,
     });
 
     try {
-      // Use takeSnapshot for faster capture
       const snapshot = await cameraRef.current.takeSnapshot({
         quality: 70,
       });
@@ -476,48 +334,7 @@ const CameraAttendance = () => {
         path: snapshot?.path,
       });
 
-      if (!snapshot?.path) {
-        throw new Error("Failed to capture photo - no file path returned");
-      }
-
-      photoUri = snapshot.path.startsWith("file://")
-        ? snapshot.path
-        : `file://${snapshot.path}`;
-
-      const fileInfo = await FileSystem.getInfoAsync(photoUri);
-      faceApiLog("attendance-capture:file-info", {
-        exists: fileInfo.exists,
-        uri: photoUri,
-        size: fileInfo.exists ? bytesInfo(fileInfo.size || 0) : null,
-      });
-
-      // Read file as base64 directly (no compression)
-      const rawBase64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const sanitizedBase64 = sanitizeBase64(rawBase64);
-      const base64SizeBytes = getBase64ByteSize(sanitizedBase64);
-      faceApiLog("attendance-capture:base64-ready", {
-        rawChars: rawBase64.length,
-        sanitizedChars: sanitizedBase64.length,
-        payloadSize: bytesInfo(base64SizeBytes),
-        maxPayloadSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
-      });
-
-      if (base64SizeBytes > MAX_BASE64_SIZE_BYTES) {
-        faceApiWarn("attendance-capture:base64-too-large", {
-          payloadSize: bytesInfo(base64SizeBytes),
-          maxPayloadSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
-        });
-        Alert.alert(
-          "Error",
-          `Ukuran data foto melebihi ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto.`,
-        );
-        return;
-      }
-
-      await processAttendance(sanitizedBase64);
+      await processAttendance(snapshot?.path);
     } catch (error) {
       faceApiError("attendance-capture:failed", {
         durationMs: elapsedMs(startedAt),
@@ -530,13 +347,16 @@ const CameraAttendance = () => {
           : "Terjadi kesalahan saat mengambil foto. Silakan coba lagi.",
       );
     } finally {
-      if (photoUri) {
-        faceApiLog("attendance-capture:cleanup-temp-file", { photoUri });
-        FileSystem.deleteAsync(photoUri, { idempotent: true }).catch(() => {});
-      }
       setIsCapturingPhoto(false);
     }
-  }, [isCameraReady, isCapturingPhoto, processAttendance, isProcessing]);
+  }, [
+    attemptId,
+    cameraFacing,
+    isCameraReady,
+    isCapturingPhoto,
+    isProcessing,
+    processAttendance,
+  ]);
 
   const handleToggleCameraFacing = useCallback(() => {
     faceApiLog("attendance-camera:toggle-facing", {
@@ -556,7 +376,10 @@ const CameraAttendance = () => {
           {
             text: "Kembali",
             style: "destructive",
-            onPress: () => router.back(),
+            onPress: () => {
+              cancelUpayaPresensi(attemptId);
+              router.back();
+            },
           },
         ],
       );
@@ -564,16 +387,16 @@ const CameraAttendance = () => {
     }
 
     return false;
-  }, [isProcessing, router]);
+  }, [attemptId, isProcessing, router]);
 
   // --- EFFECTS ---
   useEffect(() => {
-    if (!actionType) {
+    if (!attemptId) {
       Alert.alert("Error", "Data absensi tidak valid. Silakan coba lagi.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     }
-  }, [actionType, router]);
+  }, [attemptId, router]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
