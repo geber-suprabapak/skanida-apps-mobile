@@ -33,7 +33,7 @@ import {
 import {
   consumePendingAttendanceSuccess,
   type PendingAttendanceSuccess,
-} from "~/utils/attendanceSuccess";
+} from "~/features/attendance-workflow";
 import { toWIB } from "~/lib/utils";
 import { timeSync } from "~/utils/timeSync";
 import { faceApiLog } from "~/utils/faceApiDebug";

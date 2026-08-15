@@ -1,25 +1,25 @@
 # Skanida Student Attendance
 
-Bahasa domain untuk aplikasi kehadiran dan perizinan siswa Skanida.
+Domain language for Skanida's student attendance and leave application.
 
 ## Language
 
-### Presensi
-Catatan kehadiran siswa untuk tindakan masuk atau pulang pada tanggal WIB.
-_Avoid_: Absensi sebagai nama konsep domain.
+### Attendance
+A student's attendance record for a check-in or check-out action on a WIB date.
+_Avoid_: Absence as the primary domain concept.
 
-### Upaya Presensi
-Satu alur yang dimulai siswa untuk meminta dan menyelesaikan presensi; upaya ini dapat ditolak oleh lokasi, jadwal, perizinan, kesiapan verifikasi wajah, atau kegagalan pengambilan data.
-_Avoid_: Attendance attempt sebagai istilah utama.
+### Attendance Workflow
+A two-phase workflow a student uses to prepare and complete attendance; location, schedule, permission, face-verification readiness, or capture failures may block it.
+_Avoid_: Attendance Attempt as the primary domain term; use Attendance Workflow.
 
-### Pendaftaran Wajah
-Proses mendaftarkan kumpulan foto wajah siswa agar dapat digunakan untuk verifikasi presensi.
-_Avoid_: Face enrollment sebagai istilah utama.
+### Face Enrollment
+The process of registering a student's face photos for attendance verification.
+_Avoid_: Face Readiness as the primary domain term.
 
-### Kesiapan Verifikasi Wajah
-Kondisi gabungan yang menyatakan apakah layanan verifikasi tersedia dan wajah siswa sudah terdaftar untuk digunakan.
-_Avoid_: Face readiness sebagai istilah utama.
+### Face Verification Readiness
+The combined state indicating that verification is available and the student's face is enrolled.
+_Avoid_: A binary readiness flag without the combined verification state.
 
-### Perizinan
-Pengajuan siswa untuk tidak mengikuti presensi pada tanggal tertentu, dengan kategori, deskripsi, dan lampiran.
-_Avoid_: Leave request sebagai istilah utama.
+### Leave Request
+A student's request to skip attendance on a specific date, with a category, description, and attachment.
+_Avoid_: Permit as the primary domain term.
