@@ -31,10 +31,10 @@ import {
   Loader2,
 } from "lucide-react-native";
 import {
-  cancelUpayaPresensi,
-  completeUpayaPresensi,
+  cancelAttendance,
+  completeAttendance,
   type CompleteOutcome,
-} from "~/features/upaya-presensi";
+} from "~/features/attendance-workflow";
 import {
   elapsedMs,
   faceApiError,
@@ -204,7 +204,7 @@ const CameraAttendance = () => {
 
   useEffect(
     () => () => {
-      cancelUpayaPresensi(attemptId);
+      cancelAttendance(attemptId);
     },
     [attemptId],
   );
@@ -225,7 +225,7 @@ const CameraAttendance = () => {
         message: "Memverifikasi wajah...",
       });
 
-      const outcome = await completeUpayaPresensi({
+      const outcome = await completeAttendance({
         attemptId,
         snapshotPath,
       });
@@ -377,7 +377,7 @@ const CameraAttendance = () => {
             text: "Kembali",
             style: "destructive",
             onPress: () => {
-              cancelUpayaPresensi(attemptId);
+              cancelAttendance(attemptId);
               router.back();
             },
           },

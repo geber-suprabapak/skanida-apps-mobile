@@ -3,10 +3,10 @@ import { View, TouchableOpacity, BackHandler } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import {
-  cancelUpayaPresensi,
-  prepareUpayaPresensi,
+  cancelAttendance,
+  prepareAttendance,
   type PrepareOutcome,
-} from "~/features/upaya-presensi";
+} from "~/features/attendance-workflow";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -45,7 +45,7 @@ export default function AbsenceReport() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
 
-  // Hanya butuh beberapa state sederhana
+  // Keep the screen state intentionally small.
   const [status, setStatus] = useState<AttendanceActionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function AbsenceReport() {
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  // Navigasi ke halaman kamera
+  // Navigate to the camera route with the opaque attempt identity.
   const navigateToCamera = useCallback(
     (statusData: AttendanceActionResponse, attemptId: string) => {
       if (!isMountedRef.current) {
@@ -110,12 +110,12 @@ export default function AbsenceReport() {
     setIsLoading(true);
     setErrorMessage(null);
     setStatus(null);
-    const outcome: PrepareOutcome = await prepareUpayaPresensi({
+    const outcome: PrepareOutcome = await prepareAttendance({
       userId: user.id,
     });
 
     if (!isMountedRef.current) {
-      if (outcome.status === "ready") cancelUpayaPresensi(outcome.attemptId);
+      if (outcome.status === "ready") cancelAttendance(outcome.attemptId);
       return;
     }
 
@@ -148,12 +148,12 @@ export default function AbsenceReport() {
     setIsLoading(false);
   }, [user, navigateToCamera]);
 
-  // Jalankan pengecekan saat komponen pertama kali dimuat
+  // Start the eligibility check when the screen first loads.
   useEffect(() => {
     fetchAttendanceStatus();
   }, [fetchAttendanceStatus]);
 
-  // Handle hardware back button
+  // Handle the hardware back button.
   useEffect(() => {
     const backAction = () => {
       if (router.canGoBack()) {
@@ -193,15 +193,14 @@ export default function AbsenceReport() {
     }
 
     if (status?.actionable) {
-      // Cek apakah statusnya terlambat
+      // Show the late status when the server reports it.
       if (status.details?.status === "Terlambat") {
         return {
-          icon: Clock, // Icon baru untuk terlambat
-          color: "text-orange-500 dark:text-orange-400", // Warna oranye untuk peringatan
+          icon: Clock, // Use the clock icon for late attendance.
           message: status.message,
         };
       }
-      // Jika tidak, berarti hadir tepat waktu
+      // Otherwise the attendance is on time.
       return {
         icon: CheckCircle2,
         color: "text-green-600 dark:text-green-500",

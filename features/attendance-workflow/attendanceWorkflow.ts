@@ -6,7 +6,9 @@ import type {
 const MAX_BASE64_SIZE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_ATTEMPT_TTL_MS = 10 * 60 * 1000;
 
-type AttemptId = string & { readonly __upayaPresensiAttempt: unique symbol };
+type AttemptId = string & {
+  readonly __attendanceWorkflowAttempt: unique symbol;
+};
 type AttemptState = "ready" | "submitting" | "submitted" | "cancelled";
 
 export type Coordinates = {
@@ -20,7 +22,7 @@ export type LocationResult = {
   coordinates?: Coordinates;
 };
 
-export type UpayaPresensiErrorCode =
+export type AttendanceWorkflowErrorCode =
   | "missing_user"
   | "location_unavailable"
   | "precheck_unavailable"
@@ -44,7 +46,7 @@ export type PrepareOutcome =
       reason: "permission_denied" | "mock_location" | "precheck_rejected";
       precheck?: MobileAttendanceAction;
     }
-  | { status: "failed"; code: UpayaPresensiErrorCode };
+  | { status: "failed"; code: AttendanceWorkflowErrorCode };
 
 export type CompleteOutcome =
   | {
@@ -54,7 +56,7 @@ export type CompleteOutcome =
     }
   | {
       status: "failed";
-      code: UpayaPresensiErrorCode;
+      code: AttendanceWorkflowErrorCode;
       retryable: boolean;
     }
   | {
@@ -67,7 +69,7 @@ export type PendingAttendanceSuccess = {
   processingTime: number;
 };
 
-export type UpayaPresensiAdapters = {
+export type AttendanceWorkflowAdapters = {
   location: {
     getCurrentPosition(): Promise<LocationResult>;
   };
@@ -85,7 +87,7 @@ export type UpayaPresensiAdapters = {
   };
 };
 
-export type UpayaPresensiWorkflow = {
+export type AttendanceWorkflow = {
   prepare(input: {
     userId: string | null | undefined;
   }): Promise<PrepareOutcome>;
@@ -136,12 +138,12 @@ const base64ByteSize = (base64: string) => {
 };
 
 const newAttemptId = (): AttemptId =>
-  `upaya-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}` as AttemptId;
+  `attendance-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}` as AttemptId;
 
-export const createUpayaPresensi = (
-  adapters: UpayaPresensiAdapters,
+export const createAttendanceWorkflow = (
+  adapters: AttendanceWorkflowAdapters,
   options: { attemptTtlMs?: number; now?: () => number } = {},
-): UpayaPresensiWorkflow => {
+): AttendanceWorkflow => {
   const attempts = new Map<AttemptId, Attempt>();
   const activeAttemptByUser = new Map<string, AttemptId>();
   const ttlMs = options.attemptTtlMs ?? DEFAULT_ATTEMPT_TTL_MS;
@@ -182,7 +184,7 @@ export const createUpayaPresensi = (
     attempt.generation === generation &&
     attempt.expiresAt > now();
 
-  const prepare: UpayaPresensiWorkflow["prepare"] = async ({ userId }) => {
+  const prepare: AttendanceWorkflow["prepare"] = async ({ userId }) => {
     purgeExpired();
     if (!userId) return { status: "failed", code: "missing_user" };
 
@@ -235,7 +237,7 @@ export const createUpayaPresensi = (
     return { status: "ready", attemptId: id, precheck };
   };
 
-  const complete: UpayaPresensiWorkflow["complete"] = async ({
+  const complete: AttendanceWorkflow["complete"] = async ({
     attemptId,
     snapshotPath,
   }) => {

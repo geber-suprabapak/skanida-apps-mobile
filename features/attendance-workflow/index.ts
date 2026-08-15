@@ -8,17 +8,17 @@ import {
 } from "~/utils/bffMobileApi";
 
 import {
-  createUpayaPresensi,
+  createAttendanceWorkflow,
   type PendingAttendanceSuccess,
-  type UpayaPresensiWorkflow,
-} from "./upayaPresensi";
+  type AttendanceWorkflow,
+} from "./attendanceWorkflow";
 
-export * from "./upayaPresensi";
+export * from "./attendanceWorkflow";
 
 const normalizeFileUri = (path: string) =>
   path.startsWith("file://") ? path : `file://${path}`;
 
-const workflow: UpayaPresensiWorkflow = createUpayaPresensi({
+const attendanceWorkflow: AttendanceWorkflow = createAttendanceWorkflow({
   location: {
     async getCurrentPosition() {
       let { status } = await Location.getForegroundPermissionsAsync();
@@ -74,8 +74,9 @@ const workflow: UpayaPresensiWorkflow = createUpayaPresensi({
   },
 });
 
-export const prepareUpayaPresensi = workflow.prepare;
-export const completeUpayaPresensi = workflow.complete;
-export const cancelUpayaPresensi = workflow.cancel;
-export const consumePendingAttendanceSuccess = workflow.consumeSuccessHandoff;
+export const prepareAttendance = attendanceWorkflow.prepare;
+export const completeAttendance = attendanceWorkflow.complete;
+export const cancelAttendance = attendanceWorkflow.cancel;
+export const consumePendingAttendanceSuccess =
+  attendanceWorkflow.consumeSuccessHandoff;
 export type { PendingAttendanceSuccess };

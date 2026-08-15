@@ -1,10 +1,10 @@
 import {
-  createUpayaPresensi,
+  createAttendanceWorkflow,
   type LocationResult,
   type Coordinates,
   type PendingAttendanceSuccess,
-  type UpayaPresensiWorkflow,
-} from "~/features/upaya-presensi/upayaPresensi";
+  type AttendanceWorkflow,
+} from "~/features/attendance-workflow/attendanceWorkflow";
 import type {
   BffAttendanceAction,
   MobileAttendanceAction,
@@ -14,7 +14,7 @@ const coordinates = { latitude: -7.4503, longitude: 110.2241 };
 const actionablePrecheck = {
   actionable: true,
   action_type: "check_in" as const,
-  message: "Silakan presensi.",
+  message: "Please continue with attendance.",
 };
 
 type TestAdapters = {
@@ -65,21 +65,21 @@ const createAdapters = (): TestAdapters => ({
   },
 });
 
-const prepareReadyAttempt = async (workflow: UpayaPresensiWorkflow) => {
+const prepareReadyAttempt = async (workflow: AttendanceWorkflow) => {
   const outcome = await workflow.prepare({ userId: "student-1" });
   expect(outcome.status).toBe("ready");
   if (outcome.status !== "ready") throw new Error("Expected ready outcome");
   return outcome.attemptId;
 };
 
-describe("Upaya Presensi contract", () => {
+describe("Attendance workflow contract", () => {
   it("blocks denied permission and mocked positions before precheck", async () => {
     const deniedAdapters = createAdapters();
     deniedAdapters.location.getCurrentPosition.mockResolvedValue({
       permissionGranted: false,
       mocked: false,
     });
-    const denied = await createUpayaPresensi(deniedAdapters).prepare({
+    const denied = await createAttendanceWorkflow(deniedAdapters).prepare({
       userId: "student-1",
     });
 
@@ -92,7 +92,7 @@ describe("Upaya Presensi contract", () => {
       mocked: true,
       coordinates,
     });
-    const mocked = await createUpayaPresensi(mockedAdapters).prepare({
+    const mocked = await createAttendanceWorkflow(mockedAdapters).prepare({
       userId: "student-1",
     });
 
@@ -105,9 +105,9 @@ describe("Upaya Presensi contract", () => {
     adapters.gateway.precheck.mockResolvedValue({
       actionable: false,
       action_type: "none",
-      message: "Presensi belum tersedia.",
+      message: "Attendance is not available yet.",
     });
-    const workflow = createUpayaPresensi(adapters);
+    const workflow = createAttendanceWorkflow(adapters);
 
     await expect(workflow.prepare({ userId: "student-1" })).resolves.toEqual({
       status: "blocked",
@@ -115,7 +115,7 @@ describe("Upaya Presensi contract", () => {
       precheck: {
         actionable: false,
         action_type: "none",
-        message: "Presensi belum tersedia.",
+        message: "Attendance is not available yet.",
       },
     });
     expect(adapters.capture.readBase64).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe("Upaya Presensi contract", () => {
 
   it("submits one valid capture, cleans it, and hands success off once", async () => {
     const adapters = createAdapters();
-    const workflow = createUpayaPresensi(adapters);
+    const workflow = createAttendanceWorkflow(adapters);
     const attemptId = await prepareReadyAttempt(workflow);
 
     await expect(
@@ -161,7 +161,7 @@ describe("Upaya Presensi contract", () => {
         "A".repeat(7 * 1024 * 1024),
       );
     }
-    const workflow = createUpayaPresensi(adapters);
+    const workflow = createAttendanceWorkflow(adapters);
     const attemptId = await prepareReadyAttempt(workflow);
 
     await expect(
@@ -185,7 +185,7 @@ describe("Upaya Presensi contract", () => {
         attendanceType: "check_in",
         processingTime: 80,
       });
-    const workflow = createUpayaPresensi(adapters);
+    const workflow = createAttendanceWorkflow(adapters);
     const attemptId = await prepareReadyAttempt(workflow);
 
     await expect(
@@ -209,7 +209,7 @@ describe("Upaya Presensi contract", () => {
     const adapters = createAdapters();
     const submit = Promise.withResolvers<PendingAttendanceSuccess>();
     adapters.gateway.submit.mockReturnValue(submit.promise);
-    const workflow = createUpayaPresensi(adapters);
+    const workflow = createAttendanceWorkflow(adapters);
     const attemptId = await prepareReadyAttempt(workflow);
 
     const first = workflow.complete({
@@ -242,7 +242,7 @@ describe("Upaya Presensi contract", () => {
   it("expires opaque attempts and keeps a successful result successful when cleanup fails", async () => {
     let currentTime = 1_000;
     const adapters = createAdapters();
-    const workflow = createUpayaPresensi(adapters, {
+    const workflow = createAttendanceWorkflow(adapters, {
       attemptTtlMs: 100,
       now: () => currentTime,
     });
