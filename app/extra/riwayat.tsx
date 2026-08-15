@@ -5,12 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import {
-  View,
-  TouchableOpacity,
-  BackHandler,
-  useColorScheme,
-} from "react-native";
+import { View, TouchableOpacity, BackHandler } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 
@@ -25,12 +20,13 @@ import { ChevronLeft, Calendar } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
 import { AttendanceMap } from "~/components/attendance-calendar/types";
+import { useUniwind } from "uniwind";
 
 export default function Riwayat() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const colorScheme = useColorScheme();
-  const isDarkColorScheme = colorScheme === "dark";
+  const { theme } = useUniwind();
+  const isDarkColorScheme = theme === "dark";
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());

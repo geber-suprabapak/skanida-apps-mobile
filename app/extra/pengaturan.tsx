@@ -8,7 +8,6 @@ import {
   Image,
   BackHandler,
   Switch,
-  useColorScheme,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
@@ -45,8 +44,6 @@ function Pengaturan() {
   const router = useRouter();
   const { setTheme } = useThemeStore();
   const { theme } = useUniwind();
-  const deviceColorScheme = useColorScheme();
-  const isDeviceDark = deviceColorScheme === "dark";
   const isDark = theme === "dark";
 
   const initialProfile = useMemo(
@@ -199,7 +196,7 @@ function Pengaturan() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style={isDeviceDark ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}

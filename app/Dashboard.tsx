@@ -11,11 +11,11 @@ import {
   RefreshControl,
   Image,
   AppState,
-  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { StatusBar } from "expo-status-bar";
 import * as Sentry from "@sentry/react-native";
+import { useUniwind } from "uniwind";
 
 import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
@@ -204,7 +204,8 @@ export default function Dashboard() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.userProfile);
-  const isDark = useColorScheme() === "dark";
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
 
   // State
   const [scheduleTime, setScheduleTime] = useState(timeSync.getSyncedTime());

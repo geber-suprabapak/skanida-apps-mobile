@@ -12,7 +12,6 @@ import {
   TextInput,
   Platform,
   ActionSheetIOS,
-  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { StatusBar } from "expo-status-bar";
@@ -21,6 +20,7 @@ import useAuthStore from "~/store/authStore";
 import { Icon } from "~/components/ui/icon";
 import { cn, formatDateWIB } from "~/lib/utils";
 import { createPermit, listPermits } from "~/utils/bffMobileApi";
+import { useUniwind } from "uniwind";
 import {
   ChevronLeft,
   FileText,
@@ -219,7 +219,8 @@ const AlertBanner: React.FC<{
 export default function PerizinanScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isDark = useColorScheme() === "dark";
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
 
   // ---- State Management ----
   const [formData, setFormData] = useState<FormData>({

@@ -10,12 +10,12 @@ import {
   Modal,
   BackHandler,
   Image as RNImage,
-  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { StatusBar } from "expo-status-bar";
+import { useUniwind } from "uniwind";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -75,7 +75,8 @@ const clearProfileCache = async () => {
 export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  const isDark = useColorScheme() === "dark";
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
 
   // --- Profile State ---
   const [name, setName] = useState("");
