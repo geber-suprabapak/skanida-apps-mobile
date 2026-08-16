@@ -197,7 +197,7 @@ const formatIsoAsWIBTime = (value: string | null) => {
 };
 
 const formatWorkHours = (hours: number | null) => {
-  if (typeof hours !== "number" || !Number.isFinite(hours)) return undefined;
+  if (hours === null || !Number.isFinite(hours)) return undefined;
   return `${Number.isInteger(hours) ? hours : hours.toFixed(2)} jam`;
 };
 
@@ -244,7 +244,7 @@ export async function getMobileHealth() {
 }
 
 export async function getServerTime() {
-  return bffRequest<BffServerTime>("/v1/mobile/time");
+  return bffRequest<{ server_time: string }>("/v1/mobile/time");
 }
 
 export async function precheckAttendance(params: {
@@ -290,9 +290,9 @@ export async function getEnrollmentStatus() {
 }
 
 export async function submitEnrollment(files: FilePart[]) {
-  const form = new FormData();
+  const form: ReactNativeFormData = new FormData();
   files.forEach((file) => {
-    form.append("files", file as unknown as Blob);
+    form.append("files", file);
   });
 
   return bffRequest<BffEnrollmentResult>("/v1/mobile/face/enrollment", {
@@ -306,7 +306,12 @@ export async function listPermits(): Promise<MobilePermit[]> {
   const result = await bffRequest<{ items: BffPermit[] }>("/v1/mobile/permits");
   return result.items.map((permit) => ({
     id: permit.id,
-    kategori_izin: permit.category as MobilePermit["kategori_izin"],
+    kategori_izin:
+      permit.category === "sakit" ||
+      permit.category === "pergi" ||
+      permit.category === "cuti"
+        ? permit.category
+        : "izin",
     deskripsi: permit.description,
     approval_status: permit.approval_status,
     tanggal: permit.date,
@@ -321,12 +326,12 @@ export async function createPermit(params: {
   description: string;
   attachment?: FilePart | null;
 }) {
-  const form = new FormData();
+  const form: ReactNativeFormData = new FormData();
   form.append("category", params.category);
   form.append("description", params.description);
   form.append("date", formatDateWIB(new Date()));
   if (params.attachment) {
-    form.append("attachment", params.attachment as unknown as Blob);
+    form.append("attachment", params.attachment);
   }
 
   return bffRequest<BffPermit>("/v1/mobile/permits", {
@@ -359,8 +364,8 @@ export async function updateAvatar(
     throw new Error("File avatar tidak valid.");
   }
 
-  const form = new FormData();
-  form.append("file", file as unknown as Blob);
+  const form: ReactNativeFormData = new FormData();
+  form.append("file", file);
   const result = await bffRequest<{ avatar_url: string | null }>(
     "/v1/mobile/profile/avatar",
     {

@@ -2,6 +2,11 @@
 module.exports = {
   preset: "jest-expo",
   moduleNameMapper: {
+    "^@react-native-async-storage/async-storage$":
+      "@react-native-async-storage/async-storage/jest/async-storage-mock",
+    "^uniwind$": "<rootDir>/__mocks__/uniwind.tsx",
+    "^react-native-safe-area-context$":
+      "<rootDir>/__mocks__/react-native-safe-area-context.tsx",
     "^@/(.*)$": "<rootDir>/$1",
     "^~/(.*)$": "<rootDir>/$1",
   },

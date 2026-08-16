@@ -57,15 +57,15 @@ const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const MIN_DESCRIPTION_LENGTH = 10;
 const MAX_DESCRIPTION_LENGTH = 500;
 
-const CATEGORY_LABELS: Record<PermitCategory, string> = {
+const CATEGORY_LABELS = {
   sakit: "Sakit",
   pergi: "Pergi",
-};
+} satisfies Record<PermitCategory, string>;
 
-const CATEGORY_DESCRIPTIONS: Record<PermitCategory, string> = {
+const CATEGORY_DESCRIPTIONS = {
   sakit: "Kesehatan",
   pergi: "Urusan Pribadi",
-};
+} satisfies Record<PermitCategory, string>;
 const getImageContentType = (uri: string): string => {
   const ext = uri.split(".").pop()?.toLowerCase();
   return ext === "png" ? "image/png" : "image/jpeg";
@@ -376,13 +376,17 @@ export default function PerizinanScreen() {
 
   const resolveAssetFileSize = useCallback(
     async (asset: ImagePicker.ImagePickerAsset): Promise<number> => {
-      if (typeof asset.fileSize === "number") {
+      if (
+        asset.fileSize !== undefined &&
+        asset.fileSize !== null &&
+        Number.isFinite(asset.fileSize)
+      ) {
         return asset.fileSize;
       }
 
       try {
         const info = await FileSystem.getInfoAsync(asset.uri);
-        if (info.exists && typeof info.size === "number") {
+        if (info.exists && Number.isFinite(info.size)) {
           return info.size;
         }
       } catch (error: any) {
@@ -467,7 +471,7 @@ export default function PerizinanScreen() {
     const options = [
       { text: "Ambil Foto (Kamera)", onPress: pickFromCamera },
       { text: "Pilih dari Galeri", onPress: pickFromLibrary },
-      { text: "Batal", style: "cancel", onPress: () => {} },
+      { text: "Batal", style: "cancel" as const, onPress: () => {} },
     ];
 
     if (Platform.OS === "ios") {
@@ -482,7 +486,7 @@ export default function PerizinanScreen() {
         },
       );
     } else {
-      Alert.alert("Upload Foto", "Pilih sumber foto", options as any, {
+      Alert.alert("Upload Foto", "Pilih sumber foto", options, {
         cancelable: true,
       });
     }

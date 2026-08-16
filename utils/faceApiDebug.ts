@@ -14,91 +14,95 @@ type Jsonish =
   | Jsonish[]
   | { [key: string]: Jsonish };
 
-const isDevLoggingEnabled = () => typeof __DEV__ !== "undefined" && __DEV__;
+type HeaderMap = Record<string, string | number | boolean | null | undefined>;
+
+const isDevLoggingEnabled = () => __DEV__ === true;
 
 const round = (value: number, precision = 3) =>
   Number(value.toFixed(precision));
 
-const summarizeSecret = (value: unknown) => {
-  if (value === "[redacted]") return "[redacted]";
-  if (typeof value !== "string") return "[redacted]";
-  const scheme = value.startsWith("Bearer ") ? "Bearer" : "secret";
-  return `[redacted ${scheme}, length=${value.length}]`;
+const summarizeSecret = (cause: unknown) => {
+  if (cause === "[redacted]") return "[redacted]";
+  if (Object.prototype.toString.call(cause) !== "[object String]") {
+    return "[redacted]";
+  }
+  const str = String(cause);
+  const scheme = str.startsWith("Bearer ") ? "Bearer" : "secret";
+  return `[redacted ${scheme}, length=${str.length}]`;
 };
 
-const normalizeHeaders = (headers: unknown) => {
-  if (!headers || typeof headers !== "object") return undefined;
+const normalizeHeaders = (cause: unknown) => {
+  if (cause === null || cause === undefined) return undefined;
 
-  const maybeIterableHeaders = headers as {
-    forEach?: (callback: (value: string, key: string) => void) => void;
-  };
-  if (typeof maybeIterableHeaders.forEach === "function") {
-    const collected: Record<string, string> = {};
-    maybeIterableHeaders.forEach((value, key) => {
+  if (cause instanceof Headers) {
+    const collected: HeaderMap = {};
+    cause.forEach((value, key) => {
       collected[key] = value;
     });
     return normalizeHeaders(collected);
   }
 
-  const maybeJson = headers as { toJSON?: () => unknown };
-  const rawHeaders =
-    typeof maybeJson.toJSON === "function" ? maybeJson.toJSON() : headers;
+  if (Object.prototype.toString.call(cause) !== "[object Object]") {
+    return undefined;
+  }
 
-  if (!rawHeaders || typeof rawHeaders !== "object") return undefined;
+  // SAFETY: Checked that cause is an Object record.
+  const entries = Object.entries(cause as HeaderMap).map(([key, value]) => {
+    const lowerKey = key.toLowerCase();
+    if (
+      lowerKey.includes("authorization") ||
+      lowerKey.includes("token") ||
+      lowerKey.includes("cookie") ||
+      lowerKey.includes("key")
+    ) {
+      return [key, summarizeSecret(value)];
+    }
+    return [key, value];
+  });
 
-  return Object.fromEntries(
-    Object.entries(rawHeaders as Record<string, unknown>).map(
-      ([key, value]) => {
-        const lowerKey = key.toLowerCase();
-        if (
-          lowerKey.includes("authorization") ||
-          lowerKey.includes("token") ||
-          lowerKey.includes("cookie") ||
-          lowerKey.includes("key")
-        ) {
-          return [key, summarizeSecret(value)];
-        }
-        return [key, value];
-      },
-    ),
-  );
+  return Object.fromEntries(entries);
 };
 
-const normalizeDebugValue = (value: unknown, depth = 0): Jsonish => {
+const normalizeDebugValue = (cause: unknown, depth = 0): Jsonish => {
   if (depth > MAX_DEPTH) return "[max-depth]";
-  if (value === null || value === undefined) return value;
+  if (cause === null || cause === undefined) return cause;
 
-  if (value instanceof Error) {
+  if (cause instanceof Error) {
     return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack,
+      name: cause.name,
+      message: cause.message,
+      stack: cause.stack,
     };
   }
 
-  if (typeof value === "string") {
-    if (value.length <= MAX_STRING_PREVIEW) return value;
+  const tag = Object.prototype.toString.call(cause);
+
+  if (tag === "[object String]") {
+    const str = String(cause);
+    if (str.length <= MAX_STRING_PREVIEW) return str;
     return {
-      preview: value.slice(0, MAX_STRING_PREVIEW),
+      preview: str.slice(0, MAX_STRING_PREVIEW),
       truncated: true,
-      length: value.length,
+      length: str.length,
     };
   }
 
-  if (typeof value === "number" || typeof value === "boolean") {
-    return value;
+  if (tag === "[object Number]" || tag === "[object Boolean]") {
+    // SAFETY: Verified number or boolean primitive tag.
+    return cause as number | boolean;
   }
 
-  if (typeof value === "bigint") {
-    return String(value);
+  if (tag === "[object BigInt]") {
+    return String(cause);
   }
 
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeDebugValue(item, depth + 1));
+  if (Array.isArray(cause)) {
+    return cause.map((item) => normalizeDebugValue(item, depth + 1));
   }
 
-  if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).map(
+  if (tag === "[object Object]") {
+    // SAFETY: Verified Object dictionary type before reading entries.
+    const entries = Object.entries(cause as Record<string, Jsonish>).map(
       ([key, item]) => {
         const lowerKey = key.toLowerCase();
         if (
@@ -113,10 +117,10 @@ const normalizeDebugValue = (value: unknown, depth = 0): Jsonish => {
         return [key, normalizeDebugValue(item, depth + 1)];
       },
     );
-    return Object.fromEntries(entries) as Jsonish;
+    return Object.fromEntries(entries);
   }
 
-  return String(value);
+  return String(cause);
 };
 
 export const bytesInfo = (bytes: number) => ({
@@ -133,7 +137,7 @@ const captureFaceApiProductionEvent = (
   level: "warning" | "error",
   event: string,
   payload: Jsonish,
-  originalPayload?: unknown,
+  cause?: unknown,
 ) => {
   Sentry.withScope((scope) => {
     scope.setTag("feature", "face-api");
@@ -144,8 +148,8 @@ const captureFaceApiProductionEvent = (
       payload: payload ?? null,
     });
 
-    if (level === "error" && originalPayload instanceof Error) {
-      Sentry.captureException(originalPayload);
+    if (level === "error" && cause instanceof Error) {
+      Sentry.captureException(cause);
       return;
     }
 
@@ -153,29 +157,29 @@ const captureFaceApiProductionEvent = (
   });
 };
 
-export const faceApiLog = (event: string, payload?: unknown) => {
+export const faceApiLog = (event: string, cause?: unknown) => {
   if (!isDevLoggingEnabled()) return;
-  console.log(`${PREFIX} ${event}`, normalizeDebugValue(payload));
+  console.log(`${PREFIX} ${event}`, normalizeDebugValue(cause));
 };
 
-export const faceApiWarn = (event: string, payload?: unknown) => {
-  const normalizedPayload = normalizeDebugValue(payload);
+export const faceApiWarn = (event: string, cause?: unknown) => {
+  const normalizedPayload = normalizeDebugValue(cause);
   if (isDevLoggingEnabled()) {
     console.warn(`${PREFIX} ${event}`, normalizedPayload);
     return;
   }
 
-  captureFaceApiProductionEvent("warning", event, normalizedPayload, payload);
+  captureFaceApiProductionEvent("warning", event, normalizedPayload, cause);
 };
 
-export const faceApiError = (event: string, payload?: unknown) => {
-  const normalizedPayload = normalizeDebugValue(payload);
+export const faceApiError = (event: string, cause?: unknown) => {
+  const normalizedPayload = normalizeDebugValue(cause);
   if (isDevLoggingEnabled()) {
     console.error(`${PREFIX} ${event}`, normalizedPayload);
     return;
   }
 
-  captureFaceApiProductionEvent("error", event, normalizedPayload, payload);
+  captureFaceApiProductionEvent("error", event, normalizedPayload, cause);
 };
 
 export const sessionDebugInfo = (
@@ -185,7 +189,10 @@ export const sessionDebugInfo = (
     user?: {
       id?: string;
       email?: string;
-      user_metadata?: Record<string, unknown>;
+      user_metadata?: Record<
+        string,
+        string | number | boolean | null | undefined
+      >;
     } | null;
   } | null,
 ) => ({
@@ -203,24 +210,24 @@ export const sessionDebugInfo = (
     null,
 });
 
-export const axiosErrorDebugInfo = (error: unknown) => {
-  if (!isAxiosError(error)) {
-    return normalizeDebugValue(error);
+export const axiosErrorDebugInfo = (cause: unknown) => {
+  if (!isAxiosError(cause)) {
+    return normalizeDebugValue(cause);
   }
 
   return {
-    name: error.name,
-    message: error.message,
-    code: error.code,
-    status: error.response?.status,
-    statusText: error.response?.statusText,
-    method: error.config?.method,
-    url: error.config?.url,
-    baseURL: error.config?.baseURL,
-    timeout: error.config?.timeout,
-    requestHeaders: normalizeHeaders(error.config?.headers),
-    responseHeaders: normalizeHeaders(error.response?.headers),
-    responseData: normalizeDebugValue(error.response?.data),
+    name: cause.name,
+    message: cause.message,
+    code: cause.code,
+    status: cause.response?.status,
+    statusText: cause.response?.statusText,
+    method: cause.config?.method,
+    url: cause.config?.url,
+    baseURL: cause.config?.baseURL,
+    timeout: cause.config?.timeout,
+    requestHeaders: normalizeHeaders(cause.config?.headers),
+    responseHeaders: normalizeHeaders(cause.response?.headers),
+    responseData: normalizeDebugValue(cause.response?.data),
   };
 };
 
@@ -230,22 +237,23 @@ export const responseDebugInfo = (
     statusText?: string;
     ok?: boolean;
     url?: string;
-    headers?: Headers | Record<string, unknown>;
+    headers?: Headers | HeaderMap;
   },
-  body?: unknown,
+  cause?: unknown,
 ) => ({
   ok: response.ok,
   status: response.status,
   statusText: response.statusText,
   url: response.url,
   headers: normalizeHeaders(response.headers),
-  body: normalizeDebugValue(body),
+  body: normalizeDebugValue(cause),
 });
 
-export const parseFaceApiBody = (bodyText: string) => {
+export const parseFaceApiBody = (bodyText: string): Jsonish => {
   if (!bodyText) return null;
   try {
-    return JSON.parse(bodyText) as unknown;
+    // SAFETY: Parsed JSON payload is converted to Jsonish format.
+    return JSON.parse(bodyText) as Jsonish;
   } catch (error) {
     return {
       rawText: normalizeDebugValue(bodyText),

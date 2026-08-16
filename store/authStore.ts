@@ -97,6 +97,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
         // If data is found, profile exists. Set it and exit the loop.
         if (data) {
+          // SAFETY: Query selected all expected UserProfile columns.
           set({ userProfile: data as UserProfile });
           return; // Success, exit the function
         }

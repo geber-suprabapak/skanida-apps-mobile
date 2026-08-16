@@ -81,14 +81,23 @@ type FormDataFilePart = {
 
 // --- UTILITY FUNCTIONS ---
 const getReadableError = (
-  error: unknown,
+  cause: unknown,
   fallback = "Terjadi kesalahan.",
 ): string => {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string") return message;
+  if (cause instanceof Error) return cause.message;
+  if (Object.prototype.toString.call(cause) === "[object String]") {
+    return String(cause);
+  }
+  if (
+    cause !== null &&
+    cause !== undefined &&
+    Object.prototype.hasOwnProperty.call(cause, "message")
+  ) {
+    // SAFETY: Verified property existence before reading message property.
+    const message = (cause as { message?: unknown }).message;
+    if (Object.prototype.toString.call(message) === "[object String]") {
+      return String(message);
+    }
   }
   return fallback;
 };
@@ -836,7 +845,7 @@ const FaceEnrollment = () => {
   }
 
   // Permission check
-  const permissionResolved = typeof hasPermission === "boolean";
+  const permissionResolved = hasPermission === true || hasPermission === false;
 
   if (!permissionResolved) {
     return (

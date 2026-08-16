@@ -60,7 +60,7 @@ const AttendanceCalendar = forwardRef<
       ref,
       () => ({
         refetch: (forceRefresh: boolean = false) => {
-          if (user?.id && typeof refetch === "function") {
+          if (user?.id) {
             return refetch(forceRefresh);
           }
           return Promise.resolve();
@@ -77,13 +77,13 @@ const AttendanceCalendar = forwardRef<
     }, [displayYear, displayMonth, monthlyAttendance.data]);
     // PERF-C05: Use stable refetch reference, remove monthlyAttendance from deps
     useEffect(() => {
-      if (user?.id && typeof refetch === "function") {
+      if (user?.id) {
         refetch(false);
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [displayYear, displayMonth, user?.id]);
     const handleRefresh = useCallback(() => {
-      if (user?.id && typeof refetch === "function") {
+      if (user?.id) {
         refetch(true);
       }
     }, [user?.id, refetch]);

@@ -12,12 +12,18 @@ type BffSuccessEnvelope<T> = {
   };
 };
 
+export type BffErrorDetails =
+  | Record<string, string | number | boolean | null | undefined>
+  | string
+  | null
+  | undefined;
+
 type BffErrorEnvelope = {
   success: false;
   error?: {
     code?: string;
     message?: string;
-    details?: unknown;
+    details?: BffErrorDetails;
   };
   meta?: {
     request_id?: string;
@@ -27,10 +33,12 @@ type BffErrorEnvelope = {
 
 type BffEnvelope<T> = BffSuccessEnvelope<T> | BffErrorEnvelope;
 
+type BffHeaderMap = Record<string, string>;
+
 type BffRequestOptions = {
   method?: "GET" | "POST" | "PATCH";
   body?: unknown;
-  headers?: Record<string, string>;
+  headers?: BffHeaderMap;
   timeoutMs?: number;
 };
 
@@ -39,7 +47,7 @@ export class BffRequestError extends Error {
     message: string,
     readonly status?: number,
     readonly code?: string,
-    readonly details?: unknown,
+    readonly details?: BffErrorDetails,
   ) {
     super(message);
     this.name = "BffRequestError";
@@ -47,7 +55,7 @@ export class BffRequestError extends Error {
 }
 
 const getBffBaseUrl = () => {
-  const url = process.env.EXPO_PUBLIC_BFF_API_URL as string | undefined;
+  const url = process.env.EXPO_PUBLIC_BFF_API_URL;
   if (!url) {
     throw new Error(
       "Server aplikasi belum dikonfigurasi. Hubungi administrator.",
@@ -59,32 +67,52 @@ const getBffBaseUrl = () => {
 const createRequestId = () =>
   `mobile-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const parseJson = (text: string): unknown => {
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+const parseJson = (text: string): JsonValue => {
   if (!text) return null;
   try {
-    return JSON.parse(text);
+    // SAFETY: JSON.parse result conforms to JsonValue shape.
+    return JSON.parse(text) as JsonValue;
   } catch {
     return text;
   }
 };
 
-const isFormData = (value: unknown): value is FormData =>
-  typeof FormData !== "undefined" && value instanceof FormData;
+const isFormData = (
+  candidate: FormData | RequestInit["body"] | null | undefined,
+): candidate is FormData => candidate instanceof FormData;
 
-const getErrorMessage = (body: unknown, status: number) => {
+const getErrorMessage = (cause: unknown, status: number) => {
   if (
-    body &&
-    typeof body === "object" &&
-    "success" in body &&
-    (body as BffErrorEnvelope).success === false
+    cause !== null &&
+    cause !== undefined &&
+    Object.prototype.hasOwnProperty.call(cause, "success")
   ) {
-    const message = (body as BffErrorEnvelope).error?.message;
-    if (message) return message;
+    // SAFETY: Verified property existence before reading error envelope.
+    const envelope = cause as BffErrorEnvelope;
+    if (envelope.success === false) {
+      const message = envelope.error?.message;
+      if (message) return message;
+    }
   }
 
-  if (body && typeof body === "object" && "message" in body) {
-    const message = (body as { message?: unknown }).message;
-    if (typeof message === "string") return message;
+  if (
+    cause !== null &&
+    cause !== undefined &&
+    Object.prototype.hasOwnProperty.call(cause, "message")
+  ) {
+    // SAFETY: Verified property existence before reading message property.
+    const message = (cause as { message?: unknown }).message;
+    if (Object.prototype.toString.call(message) === "[object String]") {
+      return String(message);
+    }
   }
 
   return `Permintaan server gagal (${status}).`;
@@ -109,7 +137,7 @@ export async function bffRequest<T>(
     options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
   const body = options.body;
-  const headers: Record<string, string> = {
+  const headers = {
     Accept: "application/json",
     Authorization: `Bearer ${session.access_token}`,
     "X-Request-Id": createRequestId(),
@@ -133,16 +161,23 @@ export async function bffRequest<T>(
 
   try {
     const response = await fetch(`${getBffBaseUrl()}${path}`, requestInit);
-    const parsed = parseJson(await response.text()) as BffEnvelope<T> | unknown;
+    const parsedText = parseJson(await response.text());
+    // SAFETY: Network response parsed from JSON into expected envelope contract.
+    const parsed = parsedText as BffEnvelope<T> | null;
 
     if (!response.ok) {
-      const envelope =
-        parsed &&
-        typeof parsed === "object" &&
-        "success" in parsed &&
-        (parsed as BffErrorEnvelope).success === false
-          ? (parsed as BffErrorEnvelope)
-          : null;
+      let envelope: BffErrorEnvelope | null = null;
+      if (
+        parsed !== null &&
+        parsed !== undefined &&
+        Object.prototype.hasOwnProperty.call(parsed, "success")
+      ) {
+        // SAFETY: Envelope verified before narrowing to BffErrorEnvelope.
+        const candidate = parsed as BffErrorEnvelope;
+        if (candidate.success === false) {
+          envelope = candidate;
+        }
+      }
       throw new BffRequestError(
         getErrorMessage(parsed, response.status),
         response.status,
@@ -152,23 +187,26 @@ export async function bffRequest<T>(
     }
 
     if (
-      parsed &&
-      typeof parsed === "object" &&
-      "success" in parsed &&
-      (parsed as BffSuccessEnvelope<T>).success === true
+      parsed !== null &&
+      parsed !== undefined &&
+      Object.prototype.hasOwnProperty.call(parsed, "success")
     ) {
-      return (parsed as BffSuccessEnvelope<T>).data;
+      // SAFETY: Verified envelope shape before checking success flag.
+      const candidate = parsed as BffSuccessEnvelope<T>;
+      if (candidate.success === true) {
+        return candidate.data;
+      }
     }
 
     throw new BffRequestError("Respons server tidak valid.", response.status);
-  } catch (error: any) {
-    if (error?.name === "AbortError") {
+  } catch (cause: unknown) {
+    if (cause instanceof Error && cause.name === "AbortError") {
       throw new BffRequestError(
         "Permintaan server melebihi batas waktu. Silakan coba lagi.",
         408,
       );
     }
-    throw error;
+    throw cause;
   } finally {
     clearTimeout(timeoutId);
   }

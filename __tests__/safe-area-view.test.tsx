@@ -3,42 +3,12 @@ import { join } from "node:path";
 
 import { render } from "@testing-library/react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import * as mockReact from "react";
 import { View as mockView } from "react-native";
 import { withUniwind } from "uniwind";
 
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 
 const MockView = mockView;
-
-jest.mock("react-native-safe-area-context", () => ({
-  SafeAreaView: function MockSafeAreaView({
-    children,
-    ...props
-  }: mockReact.PropsWithChildren<object>) {
-    return <MockView {...props}>{children}</MockView>;
-  },
-}));
-
-jest.mock("uniwind", () => ({
-  withUniwind: jest.fn(
-    <Props extends { className?: string; style?: unknown }>(
-      Component: mockReact.ComponentType<Props>,
-    ) => {
-      function UniwindBoundSafeAreaView({ className, style, ...props }: Props) {
-        const classNameStyle = className?.includes("bg-red-500")
-          ? { backgroundColor: "#ef4444" }
-          : undefined;
-
-        return (
-          <Component {...(props as Props)} style={[style, classNameStyle]} />
-        );
-      }
-
-      return UniwindBoundSafeAreaView;
-    },
-  ),
-}));
 
 function collectScreenFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

@@ -3,10 +3,6 @@ import { join } from "node:path";
 import getAppConfig from "../app.config";
 import useThemeStore from "../store/themeStore";
 
-jest.mock("@react-native-async-storage/async-storage", () =>
-  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
-);
-
 describe("Release candidate v1.3.0 invariants", () => {
   const rootDir = process.cwd();
   const mockContext = {
@@ -31,17 +27,20 @@ describe("Release candidate v1.3.0 invariants", () => {
       const config = getAppConfig(mockContext);
       const plugins = config.plugins || [];
 
+      type BuildPropsOptions = {
+        android?: {
+          targetSdkVersion?: number;
+          minSdkVersion?: number;
+        };
+        ios?: {
+          deploymentTarget?: string;
+        };
+      };
+
+      // SAFETY: Expo build properties plugin configuration tuple.
       const buildPropsPlugin = plugins.find(
         (p) => Array.isArray(p) && p[0] === "expo-build-properties",
-      ) as
-        | [
-            string,
-            {
-              android?: Record<string, unknown>;
-              ios?: Record<string, unknown>;
-            },
-          ]
-        | undefined;
+      ) as [string, BuildPropsOptions] | undefined;
 
       expect(buildPropsPlugin).toBeDefined();
       expect(buildPropsPlugin?.[1]?.android?.targetSdkVersion).toBe(36);

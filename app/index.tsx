@@ -31,9 +31,7 @@ export default function Index() {
           let activeSession = session;
           let role = resolveUserRole(
             activeSession.access_token,
-            activeSession.user.app_metadata as
-              | Record<string, unknown>
-              | undefined,
+            activeSession.user.app_metadata,
           );
 
           if (!role) {
@@ -62,9 +60,7 @@ export default function Index() {
               activeSession = refreshedSession;
               role = resolveUserRole(
                 activeSession.access_token,
-                activeSession.user.app_metadata as
-                  | Record<string, unknown>
-                  | undefined,
+                activeSession.user.app_metadata,
               );
             }
           }

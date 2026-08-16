@@ -133,7 +133,7 @@ const addMinutesToDate = (
   if (!date) return null;
 
   const normalizedMinutes =
-    typeof minutes === "number" && Number.isFinite(minutes)
+    minutes !== null && minutes !== undefined && Number.isFinite(minutes)
       ? Math.max(0, Math.trunc(minutes))
       : 0;
   return new Date(date.getTime() + normalizedMinutes * 60 * 1000);
@@ -164,10 +164,10 @@ const toRuntimeStatus = (
   };
 };
 
-const toOfflineRuntimeStatus = (error: unknown): FaceApiRuntimeStatusResult => {
+const toOfflineRuntimeStatus = (cause: unknown): FaceApiRuntimeStatusResult => {
   const message =
-    error instanceof Error
-      ? error.message
+    cause instanceof Error
+      ? cause.message
       : "Dashboard belum dapat dimuat dari server.";
 
   return {

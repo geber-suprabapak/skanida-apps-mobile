@@ -1,6 +1,23 @@
-export function decodeJwtPayload(
-  token: string,
-): Record<string, unknown> | null {
+export type UserAppMetadata = {
+  role?: string;
+  provider?: string;
+  providers?: string[];
+  [key: string]: string | number | boolean | string[] | undefined;
+};
+
+export type JwtPayload = {
+  app_metadata?: UserAppMetadata;
+  role?: string;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | string[]
+    | UserAppMetadata
+    | undefined;
+};
+
+export function decodeJwtPayload(token: string): JwtPayload | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
@@ -9,7 +26,8 @@ export function decodeJwtPayload(
       base64.length + ((4 - (base64.length % 4)) % 4),
       "=",
     );
-    return JSON.parse(atob(padded)) as Record<string, unknown>;
+    // SAFETY: Base64 payload parses into standard JWT claims format.
+    return JSON.parse(atob(padded)) as JwtPayload;
   } catch {
     return null;
   }
@@ -17,15 +35,9 @@ export function decodeJwtPayload(
 
 export function resolveUserRole(
   accessToken: string | null | undefined,
-  appMetadata: Record<string, unknown> | undefined,
+  appMetadata: UserAppMetadata | undefined,
 ): string | undefined {
   const jwtPayload = accessToken ? decodeJwtPayload(accessToken) : null;
-  const jwtAppMetadata = jwtPayload?.app_metadata as
-    | Record<string, unknown>
-    | undefined;
-
-  return (
-    (jwtAppMetadata?.role as string | undefined) ??
-    (appMetadata?.role as string | undefined)
-  );
+  const jwtRole = jwtPayload?.app_metadata?.role ?? jwtPayload?.role;
+  return jwtRole ?? appMetadata?.role;
 }

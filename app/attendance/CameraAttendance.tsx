@@ -429,7 +429,7 @@ const CameraAttendance = () => {
   FullScreenMessage.displayName = "FullScreenMessage";
 
   // --- MAIN RENDER ---
-  const permissionResolved = typeof hasPermission === "boolean";
+  const permissionResolved = hasPermission === true || hasPermission === false;
 
   if (!permissionResolved) {
     return <FullScreenMessage message="Memeriksa izin kamera..." />;

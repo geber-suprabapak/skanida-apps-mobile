@@ -97,7 +97,7 @@ export default function Login() {
       if (data?.user) {
         const role = resolveUserRole(
           data.session?.access_token,
-          data.user.app_metadata as Record<string, unknown> | undefined,
+          data.user.app_metadata,
         );
 
         if (role !== "siswa") {

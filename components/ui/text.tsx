@@ -52,21 +52,23 @@ type TextVariantProps = VariantProps<typeof textVariants>;
 
 type TextVariant = NonNullable<TextVariantProps["variant"]>;
 
-const ROLE: Partial<Record<TextVariant, Role>> = {
+const ROLE = {
   h1: "heading",
   h2: "heading",
   h3: "heading",
   h4: "heading",
+  // SAFETY: React Native Web accepts blockquote accessibility role.
   blockquote: Platform.select({ web: "blockquote" as Role }),
+  // SAFETY: React Native Web accepts code accessibility role.
   code: Platform.select({ web: "code" as Role }),
-};
+} satisfies Partial<Record<TextVariant, Role>>;
 
-const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
+const ARIA_LEVEL = {
   h1: "1",
   h2: "2",
   h3: "3",
   h4: "4",
-};
+} satisfies Partial<Record<TextVariant, string>>;
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
 

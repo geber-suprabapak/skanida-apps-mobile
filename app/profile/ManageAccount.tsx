@@ -90,13 +90,21 @@ export default function ManageAccount() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isAvatarOptionsVisible, setIsAvatarOptionsVisible] = useState(false);
 
+  type InitialProfileData = {
+    name: string;
+    absenceNumber: string;
+    className: string;
+    nis: string;
+    avatarPath: string | null;
+  };
+
   // Initial values for change detection
-  const [initialData, setInitialData] = useState({
+  const [initialData, setInitialData] = useState<InitialProfileData>({
     name: "",
     absenceNumber: "",
     className: "",
     nis: "",
-    avatarPath: null as string | null,
+    avatarPath: null,
   });
 
   // --- Password State ---

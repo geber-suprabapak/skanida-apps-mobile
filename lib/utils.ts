@@ -25,13 +25,15 @@ export function formatDateWIB(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export type WIBDayBounds = {
+  start: string;
+  endExclusive: string;
+};
+
 /**
  * Build an inclusive-exclusive UTC range that matches a calendar day in WIB.
  */
-export function getWIBDayBounds(date: Date): {
-  start: string;
-  endExclusive: string;
-} {
+export function getWIBDayBounds(date: Date): WIBDayBounds {
   const wibDate = toWIB(date);
   const year = wibDate.getUTCFullYear();
   const month = wibDate.getUTCMonth();

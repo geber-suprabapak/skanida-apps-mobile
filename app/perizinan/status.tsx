@@ -37,10 +37,7 @@ interface PerizinanRecord {
   rejected_at?: string | null;
 }
 
-const CATEGORY_CONFIG: Record<
-  string,
-  { label: string; icon: any; color: string }
-> = {
+const CATEGORY_CONFIG = {
   sakit: { label: "Sakit", icon: Stethoscope, color: "text-red-500" },
   pergi: { label: "Pergi", icon: FileText, color: "text-blue-500" },
   izin: { label: "Izin", icon: FileText, color: "text-blue-500" },
@@ -73,6 +70,7 @@ const STATUS_CONFIG = {
 };
 
 function StatusBadge({ status }: { status: string | null }) {
+  // SAFETY: Unknown or missing status strings fall back to STATUS_CONFIG.pending.
   const config =
     STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ||
     STATUS_CONFIG.pending;

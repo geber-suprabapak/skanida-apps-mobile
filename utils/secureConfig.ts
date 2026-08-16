@@ -79,10 +79,8 @@ export async function getSupabaseConfig(): Promise<SupabaseConfig | null> {
   }
 
   // 3) Env fallback
-  const envUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined;
-  const envAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as
-    | string
-    | undefined;
+  const envUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const envAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   if (envUrl && envAnon) {
     // Persist for future OTA runs
     await Promise.all([

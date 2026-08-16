@@ -93,10 +93,18 @@ async function retryAsync<T>(
   return { result: null, lastError };
 }
 
+type ConstantsWithEas = typeof Constants & {
+  easConfig?: {
+    projectId?: string;
+  };
+};
+
 function getProjectId(): string | undefined {
+  // SAFETY: In standalone EAS builds, easConfig may be present on Constants.
+  const constants = Constants as ConstantsWithEas;
   return (
     Constants.expoConfig?.extra?.eas?.projectId ??
-    (Constants as Record<string, Record<string, unknown>>).easConfig?.projectId
+    constants.easConfig?.projectId
   );
 }
 

@@ -18,5 +18,6 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "uniwind-types.d.ts"
-  ]
+  ],
+  "exclude": ["tools/oxlint/anti-slop/**"]
 }

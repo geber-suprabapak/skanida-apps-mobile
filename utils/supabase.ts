@@ -55,9 +55,14 @@ function getSupabaseClientSync(): SupabaseClient {
 }
 
 // Proxy to keep existing usage, but requires ensureSupabaseInitialized() before use.
-export const supabase = new Proxy({} as SupabaseClient, {
-  get: (_, prop) => {
-    const client = getSupabaseClientSync();
-    return client[prop as keyof SupabaseClient];
+export const supabase = new Proxy(
+  // SAFETY: Proxy intercepts all SupabaseClient member accesses at runtime.
+  {} as SupabaseClient,
+  {
+    get: (_, prop) => {
+      const client = getSupabaseClientSync();
+      // SAFETY: Dynamic property lookup on underlying SupabaseClient instance.
+      return client[prop as keyof SupabaseClient];
+    },
   },
-});
+);
