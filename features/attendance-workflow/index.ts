@@ -60,6 +60,7 @@ const attendanceWorkflow: AttendanceWorkflow = createAttendanceWorkflow({
   gateway: {
     precheck: precheckAttendance,
     async submit({ actionType, imageBase64, coordinates }) {
+      // SAFETY: The UI action is constrained to the gateway's supported attendance action union.
       const result = await submitAttendance({
         action_type: actionType as BffAttendanceAction,
         image_base64: imageBase64,

@@ -80,7 +80,6 @@ export default function AbsenceReport() {
         return;
       }
 
-
       faceApiLog("attendance-report:navigate-camera", {
         statusData,
         attemptId,

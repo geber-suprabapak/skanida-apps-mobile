@@ -137,8 +137,10 @@ const base64ByteSize = (base64: string) => {
   return (base64.length * 3) / 4 - paddingLength;
 };
 
-const newAttemptId = (): AttemptId =>
-  `attendance-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}` as AttemptId;
+const newAttemptId = (): AttemptId => {
+  // SAFETY: The generated value is opaque and only created at this trusted workflow boundary.
+  return `attendance-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}` as AttemptId;
+};
 
 export const createAttendanceWorkflow = (
   adapters: AttendanceWorkflowAdapters,
@@ -246,6 +248,7 @@ export const createAttendanceWorkflow = (
       return { status: "failed", code: "attempt_not_found", retryable: false };
     }
 
+    // SAFETY: Attempt IDs are opaque strings created by this workflow and validated by presence in the map.
     const attempt = attempts.get(attemptId as AttemptId);
     if (!attempt) {
       return { status: "cancelled", reason: "attempt_expired" };
@@ -384,6 +387,7 @@ export const createAttendanceWorkflow = (
     complete,
     cancel: (attemptId) => {
       if (!attemptId) return;
+      // SAFETY: Attempt IDs are opaque strings created by this workflow and validated by presence in the map.
       const attempt = attempts.get(attemptId as AttemptId);
       if (attempt) cancelAttempt(attempt);
     },
