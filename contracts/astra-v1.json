@@ -1,0 +1,48 @@
+{
+  "contract": "skanida-astra",
+  "version": "v1",
+  "published_at": "2026-08-21",
+  "request": {
+    "required_headers": ["Authorization", "X-Request-ID", "X-Astra-Contract-Version"],
+    "contract_header": {"name": "X-Astra-Contract-Version", "value": "v1"},
+    "authorization": "Logto OIDC access token"
+  },
+  "response": {
+    "content_type": "application/json",
+    "envelope": {"success": "boolean", "data": "object|null", "message": "string", "meta": "object"},
+    "contract_header": {"name": "X-Astra-Contract-Version", "value": "v1"}
+  },
+  "mobile_routes": [
+    "GET /v1/mobile/health",
+    "GET /v1/mobile/time",
+    "GET /v1/mobile/dashboard",
+    "POST /v1/mobile/attendance/precheck",
+    "POST /v1/mobile/attendance/submit",
+    "GET /v1/mobile/attendance",
+    "GET /v1/mobile/face/enrollment/status",
+    "POST /v1/mobile/face/enrollment",
+    "DELETE /v1/mobile/face/enrollment",
+    "GET /v1/mobile/permits",
+    "POST /v1/mobile/permits",
+    "GET /v1/mobile/profile",
+    "PATCH /v1/mobile/profile/avatar",
+    "PATCH /v1/mobile/profile/password",
+    "GET /v1/mobile/notifications/token",
+    "PATCH /v1/mobile/notifications/token",
+    "POST /v1/mobile/files/upload-intent",
+    "POST /v1/mobile/files/{file_id}/confirm",
+    "GET /v1/mobile/files/{file_id}"
+  ],
+  "identity_routes": [
+    "POST /v1/auth/student/signup",
+    "POST /v1/auth/student/reset-password",
+    "POST /v1/auth/password"
+  ],
+  "ownership": {
+    "domain_state": "Astra PostgreSQL",
+    "object_metadata": "Astra",
+    "object_bytes": "S3-compatible storage through Astra",
+    "face_artifacts": "Robin through Astra",
+    "clients": "must not access PostgreSQL, storage, Robin, or Logto Management API"
+  }
+}
