@@ -160,6 +160,14 @@ export async function bffRequest<T>(
 
   try {
     const response = await fetch(`${getBffBaseUrl()}${path}`, requestInit);
+    const contractVersion = response.headers.get("X-Astra-Contract-Version");
+    if (contractVersion !== "v1") {
+      throw new BffRequestError(
+        "Versi kontrak server tidak kompatibel. Silakan perbarui aplikasi.",
+        502,
+        "CONTRACT_VERSION_UNSUPPORTED",
+      );
+    }
     const parsedText = parseJson(await response.text());
     // SAFETY: Network response parsed from JSON into expected envelope contract.
     const parsed = parsedText as BffEnvelope<T> | null;

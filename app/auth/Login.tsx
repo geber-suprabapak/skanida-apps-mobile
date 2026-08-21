@@ -13,7 +13,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import useAuthStore from "~/store/authStore";
-import { exchangeLogtoCode, getLogtoRedirectUri } from "~/utils/logto";
+import {
+  clearLogtoSession,
+  exchangeLogtoCode,
+  getLogtoRedirectUri,
+} from "~/utils/logto";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
@@ -63,11 +67,12 @@ export default function Login() {
       Alert.alert("Login Gagal", "Login identity dibatalkan atau gagal.");
       return;
     }
-    if (
-      response.type !== "success" ||
-      !request?.codeVerifier ||
-      !response.params.code
-    ) {
+    if (response.type !== "success") {
+      setLoading(false);
+      return;
+    }
+    if (!request?.codeVerifier || !response.params.code) {
+      setLoading(false);
       return;
     }
     const code = response.params.code;
@@ -80,6 +85,7 @@ export default function Login() {
           (role) => role === "student" || role === "siswa",
         );
         if (!isStudent) {
+          await clearLogtoSession();
           Alert.alert(
             "Login Gagal",
             "Akun ini tidak memiliki akses. Hubungi administrator.",

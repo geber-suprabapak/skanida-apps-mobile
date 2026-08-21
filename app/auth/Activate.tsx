@@ -156,7 +156,6 @@ export default function Activate() {
           nis: userProfile.nis,
           email: email.trim(),
           password,
-          full_name: userProfile.nama || null,
         },
       });
       Alert.alert(
@@ -297,11 +296,11 @@ export default function Activate() {
                           variant="p"
                           className="font-semibold text-emerald-700"
                         >
-                          NIS ditemukan!
+                          NIS siap diperiksa
                         </Text>
                         <Text className="text-muted-foreground">
-                          Silakan lengkapi email dan password untuk aktivasi
-                          akun Anda.
+                          Astra akan memvalidasi NIS terhadap roster saat
+                          pendaftaran dikirim.
                         </Text>
                       </View>
                     </View>
