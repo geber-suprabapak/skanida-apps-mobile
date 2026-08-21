@@ -42,6 +42,29 @@
     "POST /v1/mobile/files/{file_id}/confirm",
     "GET /v1/mobile/files/{file_id}"
   ],
+  "admin_routes": [
+    "GET /v1/admin/students",
+    "GET /v1/admin/students/{user_id}",
+    "GET /v1/admin/staff",
+    "GET /v1/admin/staff/{user_id}",
+    "GET /v1/admin/classes",
+    "GET /v1/admin/locations",
+    "POST /v1/admin/locations",
+    "PATCH /v1/admin/locations/{id}",
+    "DELETE /v1/admin/locations/{id}",
+    "GET /v1/admin/schedules",
+    "POST /v1/admin/schedules",
+    "PATCH /v1/admin/schedules/{id}",
+    "DELETE /v1/admin/schedules/{id}",
+    "GET /v1/admin/leave-requests",
+    "POST /v1/admin/leave-requests",
+    "PATCH /v1/admin/leave-requests/{id}",
+    "POST /v1/admin/leave-requests/{id}/approve",
+    "POST /v1/admin/leave-requests/{id}/reject",
+    "GET /v1/admin/attendance",
+    "POST /v1/admin/attendance/manual",
+    "GET /v1/admin/attendance/attempts"
+  ],
   "identity_routes": [
     "POST /v1/auth/student/signup",
     "POST /v1/auth/student/reset-password",
@@ -50,7 +73,6 @@
   "ownership": {
     "domain_state": "Astra PostgreSQL",
     "object_metadata": "Astra",
-    "object_bytes": "S3-compatible storage through Astra",
     "face_artifacts": "Robin through Astra",
     "clients": "must not access PostgreSQL, storage, Robin, or Logto Management API"
   }
