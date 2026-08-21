@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import useAuthStore from "~/store/authStore";
 import {
-  clearLogtoSession,
+  logoutLogtoSession,
   exchangeLogtoCode,
   getLogtoRedirectUri,
 } from "~/utils/logto";
@@ -41,7 +41,7 @@ export default function Login() {
     {
       clientId: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
       redirectUri,
-      scopes: ["openid", "profile", "email", "roles"],
+      scopes: ["openid", "profile", "email", "roles", "offline_access"],
       usePKCE: true,
       extraParams: email ? { login_hint: email } : undefined,
     },
@@ -85,7 +85,7 @@ export default function Login() {
           (role) => role === "student" || role === "siswa",
         );
         if (!isStudent) {
-          await clearLogtoSession();
+          await logoutLogtoSession();
           Alert.alert(
             "Login Gagal",
             "Akun ini tidak memiliki akses. Hubungi administrator.",

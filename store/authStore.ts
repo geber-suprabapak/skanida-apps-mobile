@@ -1,7 +1,7 @@
 // store/authStore.ts
 import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
-import { clearLogtoSession, type MobileAuthUser } from "~/utils/logto";
+import { logoutLogtoSession, type MobileAuthUser } from "~/utils/logto";
 import { registerAndSaveNotificationToken } from "~/utils/notifications";
 import { getProfile } from "~/utils/bffMobileApi";
 
@@ -146,7 +146,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController.abort();
       activeFetchController = null;
     }
-    await clearLogtoSession();
+    await logoutLogtoSession();
     set({ user: null, userProfile: null });
   },
 }));

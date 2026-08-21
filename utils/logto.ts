@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 
 export type MobileAuthUser = {
   id: string;
@@ -41,7 +42,8 @@ const getEndpoint = () => {
 
 export const getLogtoRedirectUri = () =>
   process.env.EXPO_PUBLIC_LOGTO_REDIRECT_URI ?? "skanida://auth/callback";
-
+export const getLogtoLogoutUri = () =>
+  process.env.EXPO_PUBLIC_LOGTO_LOGOUT_URI ?? getLogtoRedirectUri();
 function decodeClaims(token: string): JwtClaims {
   const payload = token.split(".")[1];
   if (!payload) throw new Error("Token identity tidak valid.");
@@ -169,4 +171,24 @@ async function refreshLogtoSession(
 
 export async function clearLogtoSession() {
   await SecureStore.deleteItemAsync(SESSION_KEY);
+}
+
+export async function logoutLogtoSession() {
+  const session = await getLogtoSession();
+  try {
+    if (session?.id_token) {
+      const logoutUrl = new URL(`${getEndpoint()}/oidc/session/end`);
+      logoutUrl.searchParams.set("id_token_hint", session.id_token);
+      logoutUrl.searchParams.set(
+        "post_logout_redirect_uri",
+        getLogtoLogoutUri(),
+      );
+      await WebBrowser.openAuthSessionAsync(
+        logoutUrl.toString(),
+        getLogtoLogoutUri(),
+      );
+    }
+  } finally {
+    await clearLogtoSession();
+  }
 }
