@@ -1,7 +1,6 @@
 // utils/timeSync.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, AppStateStatus } from "react-native";
-import { ensureSupabaseInitialized } from "./supabase";
 import { getServerTime } from "~/utils/bffMobileApi";
 import useTimeSyncStore from "~/store/timeSyncStore";
 
@@ -85,9 +84,6 @@ class TimeSync {
     if (this.isInitialized) return;
 
     try {
-      // Ensure Supabase is initialized first
-      await ensureSupabaseInitialized();
-
       // Load persisted offset
       await this.loadPersistedOffset();
 

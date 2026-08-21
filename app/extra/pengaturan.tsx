@@ -100,7 +100,9 @@ function Pengaturan() {
           user.email ||
           "Pengguna Skanida",
       );
-      setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
+      setProfileAvatar(
+        data.avatar_url || user.user_metadata?.avatar_url || null,
+      );
     } catch (error) {
       if (__DEV__) console.error("Error fetching settings profile:", error);
     }

@@ -1,4 +1,4 @@
-import { ensureSupabaseInitialized, supabase } from "~/utils/supabase";
+import { getLogtoAccessToken } from "~/utils/logto";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -37,9 +37,10 @@ type BffHeaderMap = Record<string, string>;
 
 type BffRequestOptions = {
   method?: "GET" | "POST" | "PATCH";
-  body?: unknown;
+  body?: JsonValue | FormData;
   headers?: BffHeaderMap;
   timeoutMs?: number;
+  requireAuth?: boolean;
 };
 
 export class BffRequestError extends Error {
@@ -86,7 +87,7 @@ const parseJson = (text: string): JsonValue => {
 };
 
 const isFormData = (
-  candidate: FormData | RequestInit["body"] | null | undefined,
+  candidate: BffRequestOptions["body"],
 ): candidate is FormData => candidate instanceof FormData;
 
 const getErrorMessage = (cause: unknown, status: number) => {
@@ -122,27 +123,25 @@ export async function bffRequest<T>(
   path: string,
   options: BffRequestOptions = {},
 ): Promise<T> {
-  await ensureSupabaseInitialized();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.access_token) {
+  const accessToken =
+    options.requireAuth === false ? null : await getLogtoAccessToken();
+  if (options.requireAuth !== false && !accessToken) {
     throw new BffRequestError("Sesi tidak valid. Silakan login ulang.", 401);
   }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(
     () => controller.abort(),
     options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
   const body = options.body;
-  const headers = {
-    Accept: "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-    "X-Request-Id": createRequestId(),
-    ...options.headers,
-  };
+  const headers = new Headers();
+  headers.set("Accept", "application/json");
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  headers.set("X-Request-Id", createRequestId());
+  headers.set("X-Astra-Contract-Version", "v1");
+  for (const [name, value] of Object.entries(options.headers ?? {})) {
+    headers.set(name, value);
+  }
 
   const requestInit: RequestInit = {
     method: options.method ?? "GET",
@@ -154,7 +153,7 @@ export async function bffRequest<T>(
     if (isFormData(body)) {
       requestInit.body = body;
     } else {
-      headers["Content-Type"] = "application/json";
+      headers.set("Content-Type", "application/json");
       requestInit.body = JSON.stringify(body);
     }
   }

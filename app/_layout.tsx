@@ -14,7 +14,7 @@ import {
   setupNotificationChannel,
 } from "~/utils/notifications";
 import { useNotificationSync } from "~/hooks/useNotificationSync";
-import { ensureSupabaseInitialized, supabase } from "~/utils/supabase";
+import { getLogtoUser } from "~/utils/logto";
 import { View, ActivityIndicator } from "react-native";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
@@ -49,38 +49,35 @@ export default Sentry.wrap(function RootLayout() {
   const { theme: resolvedTheme } = useUniwind();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const [isSupabaseReady, setIsSupabaseReady] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     Uniwind.setTheme(theme);
   }, [theme]);
 
-  // Initialize Supabase first — this gates rendering. TimeSync and
-  // notifications are initialized afterwards without blocking auth.
+  // Restore the Logto session before rendering routes.
   useEffect(() => {
     let mounted = true;
 
     async function initializeApp() {
       try {
-        await ensureSupabaseInitialized();
+        const restoredUser = await getLogtoUser();
         if (!mounted) return;
-        // Unblock auth routing immediately after Supabase is ready.
-        setIsSupabaseReady(true);
+        setUser(restoredUser);
+        setIsAuthReady(true);
       } catch (error) {
-        if (__DEV__) {
-          console.error("Supabase initialization failed:", error);
-        }
+        if (__DEV__) console.error("Identity initialization failed:", error);
         Sentry.captureException(error);
         if (mounted) {
           setInitError(
             error instanceof Error ? error.message : "Failed to initialize app",
           );
+          setIsAuthReady(true);
         }
         return;
       }
 
-      // Non-blocking: failures here don't affect auth or routing.
       try {
         await timeSync.initialize();
       } catch (error) {
@@ -89,7 +86,6 @@ export default Sentry.wrap(function RootLayout() {
       }
 
       if (!mounted) return;
-
       try {
         setupNotificationHandler();
         await setupNotificationChannel();
@@ -105,30 +101,12 @@ export default Sentry.wrap(function RootLayout() {
       mounted = false;
       timeSync.cleanup();
     };
-  }, []);
+  }, [setUser]);
 
-  // Keep Zustand auth store in sync with Supabase auth state changes
-  // (token refresh, sign-out, sign-in from another tab/device, etc.)
-  // INITIAL_SESSION is intentionally skipped — index.tsx handles the first
-  // routing decision via getSession() to avoid a double fetchUserProfile call.
-  useEffect(() => {
-    if (!isSupabaseReady) return;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return;
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [isSupabaseReady, setUser]);
-
-  // Reconcile notification state on mount & app resume
-  useNotificationSync({ userId: user?.id, enabled: isSupabaseReady });
+  useNotificationSync({ userId: user?.id, enabled: isAuthReady });
 
   // Show loading screen while initializing
-  if (!isSupabaseReady) {
+  if (!isAuthReady) {
     return (
       <SafeAreaProvider>
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950">

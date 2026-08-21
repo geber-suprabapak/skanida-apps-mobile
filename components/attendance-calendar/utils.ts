@@ -180,7 +180,7 @@ export const processAttendanceData = (
       leaveType: leave.kategori_izin,
       description: leave.deskripsi,
       photo_url: leave.link_foto,
-      approval_status: leave.approval_status,
+      approval_status: leave.approval_status ?? undefined,
     };
   });
 

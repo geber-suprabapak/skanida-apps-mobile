@@ -3,7 +3,7 @@ import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
-import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { bffRequest } from "~/utils/bff";
 import * as Sentry from "@sentry/react-native";
 
 // ---------------------------------------------------------------------------
@@ -144,27 +144,15 @@ async function setNotificationOptOut(userId: string, isOptedOut: boolean) {
 }
 
 // ---------------------------------------------------------------------------
-// Token persistence (Supabase)
+// Token persistence through Astra
 // ---------------------------------------------------------------------------
 
 async function hasStoredNotificationToken(userId: string) {
   try {
-    await ensureSupabaseInitialized();
-
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("notification_token")
-      .eq("user_id", userId)
-      .single();
-
-    if (error) {
-      Sentry.captureException(new Error(`Read token error: ${error.message}`), {
-        extra: { userId, scope: "notification-token-read" },
-      });
-      return false;
-    }
-
-    return Boolean(data?.notification_token);
+    const data = await bffRequest<{ notification_token?: string | null }>(
+      "/v1/mobile/notifications/token",
+    );
+    return Boolean(data.notification_token);
   } catch (error) {
     Sentry.captureException(error, {
       extra: { userId, scope: "notification-token-read" },
@@ -173,16 +161,11 @@ async function hasStoredNotificationToken(userId: string) {
   }
 }
 
-async function updateStoredNotificationToken(
-  userId: string,
-  notificationToken: string | null,
-) {
-  await ensureSupabaseInitialized();
-
-  return supabase
-    .from("user_profiles")
-    .update({ notification_token: notificationToken })
-    .eq("user_id", userId);
+async function updateStoredNotificationToken(notificationToken: string | null) {
+  return bffRequest("/v1/mobile/notifications/token", {
+    method: "PATCH",
+    body: { token: notificationToken },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -248,12 +231,7 @@ async function saveTokenToDatabase(userId: string): Promise<PermissionResult> {
       return { ...FAIL_RESULT, canAskAgain: true, isGranted: true };
     }
 
-    const { error } = await updateStoredNotificationToken(userId, token);
-
-    if (error) {
-      Sentry.captureException(new Error(`Save error: ${error.message}`));
-      return FAIL_RESULT;
-    }
+    await updateStoredNotificationToken(token);
 
     await setNotificationOptOut(userId, false);
 
@@ -363,11 +341,7 @@ export async function clearNotificationToken(
       });
     }
 
-    const { error } = await updateStoredNotificationToken(userId, null);
-    if (error) {
-      Sentry.captureException(new Error(`Clear token error: ${error.message}`));
-      return false;
-    }
+    await updateStoredNotificationToken(null);
 
     await setNotificationOptOut(userId, options.setOptOut ?? true);
     return true;

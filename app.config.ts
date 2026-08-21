@@ -8,7 +8,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   runtimeVersion: {
     policy: "appVersion",
   },
-  scheme: "skanida-apps-mobile",
+  scheme: "skanida",
   platforms: ["ios", "android"],
   updates: {
     url: "https://ota.hysilens.my.id/manifest",

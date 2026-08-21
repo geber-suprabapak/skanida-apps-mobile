@@ -19,7 +19,7 @@ import {
 } from "lucide-react-native";
 import { Icon } from "~/components/ui/icon";
 
-import { supabase } from "~/utils/supabase";
+import { bffRequest } from "~/utils/bff";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
@@ -81,32 +81,12 @@ export default function Activate() {
     try {
       setCheckingNis(true);
       setNisError(false);
-
-      const { data, error } = await supabase.rpc("get_biodata_siswa", {
-        p_nis: nis.trim(),
-      });
-
-      if (error) {
-        Alert.alert("Error", "Terjadi kesalahan saat memproses data.");
-        return;
-      }
-
-      const profile = Array.isArray(data) ? data[0] : data;
-
-      if (!profile) {
-        Alert.alert("Error", "NIS tidak ditemukan. Hubungi administrator.");
-        return;
-      }
-
-      if (profile.activated) {
-        Alert.alert("Error", "NIS sudah diaktivasi. Silakan login.");
-        return;
-      }
-
       setNisExists(true);
-      setUserProfile(profile);
-    } catch {
-      Alert.alert("Error", "Terjadi kesalahan tak terduga");
+      setUserProfile({
+        nama: "",
+        nis: nis.trim(),
+        activated: false,
+      });
     } finally {
       setCheckingNis(false);
     }
@@ -169,34 +149,19 @@ export default function Activate() {
 
     try {
       setLoading(true);
-
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: userProfile.nama,
-            nis: userProfile.nis,
-          },
+      await bffRequest("/v1/auth/student/signup", {
+        method: "POST",
+        requireAuth: false,
+        body: {
+          nis: userProfile.nis,
+          email: email.trim(),
+          password,
+          full_name: userProfile.nama || null,
         },
       });
-
-      if (error) {
-        if (__DEV__) console.error("Supabase signup error:", error.message);
-        if (error.message.includes("already registered")) {
-          Alert.alert("Error", "Email sudah terdaftar");
-        } else {
-          Alert.alert("Error", "Gagal membuat akun. Silakan coba lagi.");
-        }
-        setLoading(false); // Pastikan loading berhenti jika ada error
-        return;
-      }
-
-      // Jika pendaftaran berhasil, arahkan pengguna untuk verifikasi email.
-      // Logika aktivasi profil akan ditangani setelah login pertama.
       Alert.alert(
-        "Verifikasi Diperlukan",
-        "Akun berhasil dibuat. Silakan verifikasi email Anda, lalu login untuk menyelesaikan aktivasi.",
+        "Pendaftaran Dikirim",
+        "Pendaftaran berhasil dikirim dan menunggu persetujuan sekolah.",
         [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
       );
     } catch (error) {

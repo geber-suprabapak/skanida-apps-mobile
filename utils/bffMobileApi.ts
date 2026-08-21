@@ -193,6 +193,19 @@ type FilePart = {
   name: string;
   type: string;
 };
+type NativeFormData = FormData & {
+  append(
+    name: string,
+    value: Blob | FilePart | string,
+    filename?: string,
+  ): void;
+};
+
+function appendNativeFile(form: FormData, field: string, file: FilePart) {
+  // SAFETY: React Native's FormData accepts { uri, name, type } file parts.
+  const nativeForm = form as NativeFormData;
+  nativeForm.append(field, file);
+}
 
 const formatIsoAsWIBTime = (value: string | null) => {
   if (!value) return null;
@@ -255,7 +268,7 @@ export async function getMobileHealth() {
 }
 
 export async function getServerTime() {
-  return bffRequest<{ server_time: string }>("/v1/mobile/time");
+  return bffRequest<BffServerTime>("/v1/mobile/time");
 }
 
 export async function precheckAttendance(params: {
@@ -320,9 +333,10 @@ export async function getEnrollmentStatus() {
 }
 
 export async function submitEnrollment(files: FilePart[]) {
-  const form: ReactNativeFormData = new FormData();
+  const form = new FormData();
   files.forEach((file) => {
-    form.append("files", file);
+    // SAFETY: React Native FormData supports object payload with uri, name, and type.
+    appendNativeFile(form, "files", file);
   });
 
   return bffRequest<BffEnrollmentResult>("/v1/mobile/face/enrollment", {
@@ -356,12 +370,13 @@ export async function createPermit(params: {
   description: string;
   attachment?: FilePart | null;
 }) {
-  const form: ReactNativeFormData = new FormData();
+  const form = new FormData();
   form.append("category", params.category);
   form.append("description", params.description);
   form.append("date", formatDateWIB(new Date()));
   if (params.attachment) {
-    form.append("attachment", params.attachment);
+    // SAFETY: React Native FormData supports object payload with uri, name, and type.
+    appendNativeFile(form, "attachment", params.attachment);
   }
 
   return bffRequest<BffPermit>("/v1/mobile/permits", {
@@ -394,8 +409,9 @@ export async function updateAvatar(
     throw new Error("File avatar tidak valid.");
   }
 
-  const form: ReactNativeFormData = new FormData();
-  form.append("file", file);
+  const form = new FormData();
+  // SAFETY: React Native FormData supports object payload with uri, name, and type.
+  appendNativeFile(form, "file", file);
   const result = await bffRequest<{ avatar_url: string | null }>(
     "/v1/mobile/profile/avatar",
     {

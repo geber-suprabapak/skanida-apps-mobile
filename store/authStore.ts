@@ -1,8 +1,7 @@
 // store/authStore.ts
 import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
-import type { User } from "@supabase/supabase-js";
-import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { clearLogtoSession, type MobileAuthUser } from "~/utils/logto";
 import { registerAndSaveNotificationToken } from "~/utils/notifications";
 import { getProfile } from "~/utils/bffMobileApi";
 
@@ -22,9 +21,9 @@ export interface UserProfile {
 }
 
 interface AuthState {
-  user: User | null;
+  user: MobileAuthUser | null;
   userProfile: UserProfile | null;
-  setUser: (user: User | null) => void;
+  setUser: (user: MobileAuthUser | null) => void;
   fetchUserProfile: (userId: string, signal: AbortSignal) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -50,9 +49,6 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController = controller;
 
       (async () => {
-        // Ensure Supabase is initialized before making any calls
-        await ensureSupabaseInitialized();
-
         await Promise.all([
           get().fetchUserProfile(user.id, controller.signal),
           registerAndSaveNotificationToken(user.id, {
@@ -150,7 +146,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController.abort();
       activeFetchController = null;
     }
-    await supabase.auth.signOut();
+    await clearLogtoSession();
     set({ user: null, userProfile: null });
   },
 }));

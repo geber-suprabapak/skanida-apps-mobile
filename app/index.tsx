@@ -5,8 +5,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 import * as Sentry from "@sentry/react-native";
 
 import useAuthStore from "../store/authStore";
-import { supabase } from "../utils/supabase";
-import { resolveUserRole } from "~/utils/authUtils";
+import { clearLogtoSession, getLogtoUser } from "~/utils/logto";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -16,77 +15,24 @@ export default function Index() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          if (__DEV__)
-            console.error("[Index] getSession error:", error.message);
-          Sentry.captureException(error);
+        const user = await getLogtoUser();
+        if (!user) {
+          router.replace("/auth/AuthSelector");
+          return;
         }
 
-        if (session?.user) {
-          let activeSession = session;
-          let role = resolveUserRole(
-            activeSession.access_token,
-            activeSession.user.app_metadata,
-          );
-
-          if (!role) {
-            setLoadingMessage("Refreshing session");
-
-            const {
-              data: { session: refreshedSession },
-              error: refreshError,
-            } = await supabase.auth.refreshSession();
-
-            if (refreshError) {
-              if (__DEV__)
-                console.error(
-                  "[Index] refreshSession error:",
-                  refreshError.message,
-                );
-              Sentry.captureException(refreshError, {
-                tags: { feature: "auth-startup", reason: "missing-role" },
-                extra: { userId: activeSession.user.id },
-              });
-              router.replace("/auth/AuthSelector");
-              return;
-            }
-
-            if (refreshedSession?.user) {
-              activeSession = refreshedSession;
-              role = resolveUserRole(
-                activeSession.access_token,
-                activeSession.user.app_metadata,
-              );
-            }
-          }
-
-          if (role === "siswa") {
-            setLoadingMessage("Session found");
-            setUser(activeSession.user);
-            router.replace("/Dashboard");
-            return;
-          }
-
-          if (role) {
-            await supabase.auth.signOut();
-            router.replace("/auth/AuthSelector");
-            return;
-          }
-
-          Sentry.captureMessage("Missing user role after session refresh", {
-            level: "warning",
-            tags: { feature: "auth-startup", reason: "missing-role" },
-            extra: { userId: activeSession.user.id },
-          });
+        const isStudent = user.roles.some(
+          (role) => role === "student" || role === "siswa",
+        );
+        if (!isStudent) {
+          await clearLogtoSession();
           router.replace("/auth/AuthSelector");
-        } else {
-          router.replace("/auth/AuthSelector");
+          return;
         }
+
+        setLoadingMessage("Session found");
+        setUser(user);
+        router.replace("/Dashboard");
       } catch (err) {
         if (__DEV__) console.error("[Index] checkAuth error:", err);
         Sentry.captureException(err);

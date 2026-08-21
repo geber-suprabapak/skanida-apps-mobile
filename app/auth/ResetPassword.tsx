@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   TouchableOpacity,
@@ -8,27 +8,24 @@ import {
   Platform,
   BackHandler,
   Alert,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 
-import { supabase } from "~/utils/supabase";
+import { bffRequest } from "~/utils/bff";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
-import { ChevronLeft, Lock, Mail } from "lucide-react-native";
+import { ChevronLeft, Lock } from "lucide-react-native";
 
 export default function ResetPassword() {
-  const [email, setEmail] = useState("");
+  const [nis, setNis] = useState("");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [emailError, setEmailError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
-
-  // Email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const isValidEmail = email.trim().length > 0 && emailRegex.test(email);
 
   // Handle hardware back button for Android
   useEffect(() => {
@@ -45,124 +42,40 @@ export default function ResetPassword() {
     return () => backHandler.remove();
   }, [router]);
 
-  /**
-   * Open default email application
-   * Strategy: Try Android Intent for APP_EMAIL, then known email client schemes, then fallback
-   */
-  const openEmailApp = useCallback(async () => {
-    try {
-      // List of email client URL schemes to try (in order of popularity)
-      const emailSchemes = [
-        // Gmail
-        "googlegmail://",
-        "com.google.android.gm://",
-        // Outlook
-        "ms-outlook://",
-        "com.microsoft.office.outlook://",
-        // Spark
-        "readdle-spark://",
-        // Airmail
-        "airmail://",
-        // Edison Mail
-        "edisonmail://",
-        // Yahoo Mail
-        "ymail://",
-        "yahoo://",
-      ];
-
-      let opened = false;
-
-      // Try known email client schemes
-      for (const scheme of emailSchemes) {
-        try {
-          const canOpen = await Linking.canOpenURL(scheme);
-          if (canOpen) {
-            await Linking.openURL(scheme);
-            opened = true;
-            break;
-          }
-        } catch {
-          // Continue to next scheme
-          continue;
-        }
-      }
-
-      // If no scheme worked, show fallback instruction
-      if (!opened) {
-        Alert.alert(
-          "Buka Email Manual",
-          "Tidak dapat membuka aplikasi email secara otomatis. Silakan buka aplikasi email Anda secara manual.",
-          [{ text: "OK" }],
-        );
-      }
-    } catch (err) {
-      if (__DEV__) console.error("Error opening email app:", err);
-      Alert.alert(
-        "Buka Email Manual",
-        "Tidak dapat membuka aplikasi email secara otomatis. Silakan buka aplikasi email Anda secara manual.",
-        [{ text: "OK" }],
-      );
-    }
-  }, []);
-
-  /**
-   * Handle password reset request
-   */
-  const handleResetPassword = useCallback(async () => {
-    setEmailError(false);
+  const handleResetPassword = async () => {
     setErrorMessage("");
-
-    if (!isValidEmail) {
-      setEmailError(true);
+    if (!nis.trim() || !code.trim() || newPassword.length < 8) {
+      setErrorMessage("NIS, kode pemulihan, dan password baru wajib diisi.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setErrorMessage("Konfirmasi password tidak cocok.");
       return;
     }
 
     try {
       setLoading(true);
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: process.env.EXPO_PUBLIC_AUTH_CALLBACK_URL,
+      await bffRequest("/v1/auth/student/reset-password", {
+        method: "POST",
+        requireAuth: false,
+        body: {
+          nis: nis.trim(),
+          code: code.trim(),
+          new_password: newPassword,
+        },
       });
-
-      if (error) {
-        if (__DEV__) console.error("Reset password error:", error.message);
-        setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
-        Alert.alert("Gagal", "Terjadi kesalahan, coba lagi nanti.");
-        return;
-      }
-
-      // Success: Show modal with two buttons
       Alert.alert(
-        "Terkirim",
-        "Permintaan reset password berhasil. Silakan periksa email Anda.",
-        [
-          {
-            text: "Buka Email",
-            onPress: async () => {
-              await openEmailApp();
-              // Clear form after opening email app
-              setEmail("");
-            },
-          },
-          {
-            text: "Kembali",
-            onPress: () => {
-              // Clear form and navigate back to Auth Selector
-              setEmail("");
-              router.replace("/auth/AuthSelector");
-            },
-          },
-        ],
-        { cancelable: false },
+        "Password Diperbarui",
+        "Password berhasil diperbarui. Silakan login kembali.",
+        [{ text: "OK", onPress: () => router.replace("/auth/Login") }],
       );
-    } catch (err) {
-      if (__DEV__) console.error("Reset password exception:", err);
-      setErrorMessage("Terjadi kesalahan. Silakan coba lagi nanti.");
-      Alert.alert("Gagal", "Terjadi kesalahan. Silakan coba lagi nanti.");
+    } catch (error) {
+      if (__DEV__) console.error("Reset password error:", error);
+      setErrorMessage("Kode tidak valid atau sudah kedaluwarsa.");
     } finally {
       setLoading(false);
     }
-  }, [email, isValidEmail, openEmailApp, router]);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -203,45 +116,69 @@ export default function ResetPassword() {
               </Text>
 
               <Text className="text-center text-base leading-relaxed max-w-sm text-foreground">
-                Masukkan email Anda untuk menerima link reset password
+                Masukkan NIS, kode pemulihan dari administrator, dan password
+                baru.
               </Text>
             </View>
 
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
               <View className="rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800">
-                {/* Email Field */}
-                <View className="mb-6">
-                  <Text
-                    variant="small"
-                    className="mb-3 font-medium text-foreground"
-                  >
-                    Email
-                  </Text>
-                  <View className="relative">
-                    <Input
-                      placeholder="Masukkan email Anda"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      value={email}
-                      onChangeText={(text) => {
-                        setEmail(text);
-                        if (emailError) setEmailError(false);
-                        if (errorMessage) setErrorMessage("");
-                      }}
-                      editable={!loading}
-                      className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                    />
-                    <View className="absolute right-4 top-1/2 -translate-y-1/2">
-                      <Icon as={Mail} className="size-5 text-foreground" />
-                    </View>
-                  </View>
-                  {emailError && (
-                    <Text variant="small" className="mt-2 text-red-500">
-                      Email tidak valid
-                    </Text>
-                  )}
-                </View>
+                <Text
+                  variant="small"
+                  className="mb-3 font-medium text-foreground"
+                >
+                  NIS
+                </Text>
+                <Input
+                  placeholder="Masukkan NIS"
+                  keyboardType="number-pad"
+                  value={nis}
+                  onChangeText={setNis}
+                  editable={!loading}
+                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+                <Text
+                  variant="small"
+                  className="mb-3 font-medium text-foreground"
+                >
+                  Kode pemulihan
+                </Text>
+                <Input
+                  placeholder="Kode dari administrator"
+                  value={code}
+                  onChangeText={setCode}
+                  editable={!loading}
+                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+                <Text
+                  variant="small"
+                  className="mb-3 font-medium text-foreground"
+                >
+                  Password baru
+                </Text>
+                <Input
+                  placeholder="Minimal 8 karakter"
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  editable={!loading}
+                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+                <Text
+                  variant="small"
+                  className="mb-3 font-medium text-foreground"
+                >
+                  Konfirmasi password
+                </Text>
+                <Input
+                  placeholder="Ulangi password baru"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  editable={!loading}
+                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
 
                 {/* Error Message */}
                 {errorMessage && (
@@ -260,13 +197,13 @@ export default function ResetPassword() {
                   variant="default"
                   size="lg"
                   onPress={handleResetPassword}
-                  disabled={!isValidEmail || loading}
+                  disabled={loading}
                 >
                   <Text
                     variant="h3"
                     className="font-semibold text-lg text-primary-foreground"
                   >
-                    {loading ? "Mengirim..." : "Kirim Link Reset"}
+                    {loading ? "Menyimpan..." : "Ganti Password"}
                   </Text>
                 </Button>
               </View>

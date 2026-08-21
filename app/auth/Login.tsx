@@ -1,5 +1,7 @@
 import { Stack, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
+import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
 import {
   View,
   TouchableOpacity,
@@ -10,130 +12,103 @@ import {
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
-
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
-import { resolveUserRole } from "~/utils/authUtils";
+import { exchangeLogtoCode, getLogtoRedirectUri } from "~/utils/logto";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
-import { ChevronLeft, Eye, EyeOff, Key } from "lucide-react-native";
+import { ChevronLeft, Key } from "lucide-react-native";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function Login() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
-  // Handle hardware back button for Android
+  const redirectUri = makeRedirectUri({ native: getLogtoRedirectUri() });
+  const discovery = {
+    authorizationEndpoint: `${process.env.EXPO_PUBLIC_LOGTO_ENDPOINT}/oidc/auth`,
+    tokenEndpoint: `${process.env.EXPO_PUBLIC_LOGTO_ENDPOINT}/oidc/token`,
+  };
+  const [request, response, promptAsync] = useAuthRequest(
+    {
+      clientId: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
+      redirectUri,
+      scopes: ["openid", "profile", "email", "roles"],
+      usePKCE: true,
+      extraParams: email ? { login_hint: email } : undefined,
+    },
+    discovery,
+  );
+
   useEffect(() => {
     const backAction = () => {
       router.back();
-      return true; // Prevent default behavior
+      return true;
     };
-
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
       backAction,
     );
-
     return () => backHandler.remove();
   }, [router]);
 
-  const handleLogin = async () => {
-    setEmailError(false);
-    setPasswordError(false);
-
-    let hasError = false;
-    if (!email) {
-      setEmailError(true);
-      hasError = true;
-    }
-    if (!password) {
-      setPasswordError(true);
-      hasError = true;
-    }
-
-    if (hasError) {
+  useEffect(() => {
+    if (!response) return;
+    if (response.type === "error") {
+      setLoading(false);
+      Alert.alert("Login Gagal", "Login identity dibatalkan atau gagal.");
       return;
     }
+    if (
+      response.type !== "success" ||
+      !request?.codeVerifier ||
+      !response.params.code
+    ) {
+      return;
+    }
+    const code = response.params.code;
+    const codeVerifier = request.codeVerifier;
 
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        if (__DEV__) {
-          console.error(
-            "[Login] signInWithPassword error:",
-            error.message,
-            "| code:",
-            error.code ?? "n/a",
-            "| status:",
-            error.status ?? "n/a",
-          );
-        }
-        if (error.message === "Email not confirmed") {
-          Alert.alert(
-            "Login Gagal",
-            "Email belum dikonfirmasi. Silakan periksa email Anda untuk verifikasi.",
-          );
-        } else {
-          Alert.alert(
-            "Login Gagal",
-            "Email atau password salah. Silakan coba lagi.",
-          );
-        }
-        return;
-      }
-
-      if (data?.user) {
-        const role = resolveUserRole(
-          data.session?.access_token,
-          data.user.app_metadata,
+    void (async () => {
+      try {
+        const user = await exchangeLogtoCode(code, codeVerifier, redirectUri);
+        const isStudent = user.roles.some(
+          (role) => role === "student" || role === "siswa",
         );
-
-        if (role !== "siswa") {
-          try {
-            await supabase.auth.signOut();
-          } catch (signOutErr) {
-            if (__DEV__) {
-              console.error(
-                "[Login] Failed to sign out after role check:",
-                signOutErr,
-              );
-            }
-          }
+        if (!isStudent) {
           Alert.alert(
             "Login Gagal",
             "Akun ini tidak memiliki akses. Hubungi administrator.",
           );
           return;
         }
-
-        setUser(data.user);
+        setUser(user);
         router.replace("/Dashboard");
-      } else {
-        Alert.alert("Login Gagal", "Terjadi kesalahan. Silakan coba lagi.");
+      } catch (error) {
+        if (__DEV__) console.error("[Login] Identity login failed:", error);
+        Alert.alert("Login Gagal", "Email/NIS atau password salah.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      if (__DEV__) {
-        console.error("[Login] Unexpected exception during login:", error);
-      }
-      Alert.alert(
-        "Login Gagal",
-        "Terjadi kesalahan tak terduga. Silakan coba lagi.",
-      );
-    } finally {
-      setLoading(false);
+    })();
+  }, [request, response, redirectUri, router, setUser]);
+
+  const handleLogin = async () => {
+    setEmailError(false);
+    if (!email.trim()) {
+      setEmailError(true);
+      return;
     }
+    if (!request) {
+      Alert.alert("Login Gagal", "Layanan identity belum siap.");
+      return;
+    }
+    setLoading(true);
+    await promptAsync();
   };
   return (
     <SafeAreaView className={`flex-1 bg-background`}>
@@ -192,7 +167,7 @@ export default function Login() {
                     variant="small"
                     className="mb-3 font-medium text-foreground"
                   >
-                    Email
+                    NIS atau Email
                   </Text>
                   <Input
                     placeholder="Masukkan email Anda"
@@ -205,37 +180,6 @@ export default function Login() {
                     }}
                     className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   />
-                </View>
-                {/* Password Field */}
-                <View className="mb-8">
-                  <Text
-                    variant="small"
-                    className="mb-3 font-medium text-foreground"
-                  >
-                    Password
-                  </Text>
-                  <View className="relative">
-                    <Input
-                      placeholder="Masukkan password Anda"
-                      secureTextEntry={!showPassword}
-                      value={password}
-                      onChangeText={(text) => {
-                        setPassword(text);
-                        if (passwordError) setPasswordError(false);
-                      }}
-                      className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                    />
-                    <TouchableOpacity
-                      className="absolute right-4 top-1/2 -translate-y-1/2"
-                      onPress={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <Icon as={EyeOff} className="size-5 text-foreground" />
-                      ) : (
-                        <Icon as={Eye} className="size-5 text-foreground" />
-                      )}
-                    </TouchableOpacity>
-                  </View>
                 </View>
                 {/* Login Button */}
                 <Button

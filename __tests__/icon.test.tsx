@@ -11,7 +11,9 @@ const TestIcon = (({ size, ...props }: LucideProps) => (
     {...props}
     style={[
       props.style,
-      size !== undefined ? { height: size, width: size } : undefined,
+      size !== undefined
+        ? { height: Number(size), width: Number(size) }
+        : undefined,
     ]}
   />
 )) as LucideIcon;

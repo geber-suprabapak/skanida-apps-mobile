@@ -23,7 +23,6 @@ export interface FaceApiReadinessInfo {
   model_loaded: boolean;
   face_detector_ready: boolean;
   gpu_available: boolean;
-  supabase_connected: boolean;
   qdrant_connected: boolean;
 }
 
