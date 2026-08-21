@@ -42,7 +42,6 @@ import {
   Loader2,
 } from "lucide-react-native";
 import useAuthStore from "~/store/authStore";
-import { supabase } from "~/utils/supabase";
 import {
   fetchEnrollmentStatus,
   type EnrollmentStatus,
@@ -373,7 +372,7 @@ export default function ManageAccount() {
           {
             text: "OK",
             onPress: async () => {
-              await supabase.auth.signOut();
+              await useAuthStore.getState().logout();
               router.replace("/auth/Login");
             },
           },

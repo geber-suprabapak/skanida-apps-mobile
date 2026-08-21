@@ -18,7 +18,6 @@ import * as Updates from "expo-updates";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
 import { getProfile } from "~/utils/bffMobileApi";
 import { faceApiLog } from "~/utils/faceApiDebug";
 import { Card } from "~/components/ui/card";
@@ -133,9 +132,8 @@ function Pengaturan() {
         style: "destructive",
         onPress: async () => {
           try {
-            await supabase.auth.signOut();
+            await useAuthStore.getState().logout();
             await AsyncStorage.clear();
-            setUser(null);
             router.replace("/auth/AuthSelector");
           } catch (error) {
             if (__DEV__) console.error("Logout error:", error);

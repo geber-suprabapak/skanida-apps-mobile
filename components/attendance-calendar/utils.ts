@@ -93,7 +93,7 @@ interface RawLeaveRecord {
   kategori_izin: string;
   deskripsi?: string;
   link_foto?: string;
-  approval_status?: "pending" | "approved" | "rejected";
+  approval_status?: "pending" | "approved" | "rejected" | null;
 }
 
 const ABSENT_STATUSES = new Set(["Alpha", "absent"]);

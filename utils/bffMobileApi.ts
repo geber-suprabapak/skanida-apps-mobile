@@ -45,6 +45,17 @@ export type BffAttendanceSubmitResult = {
   processed_ms: number;
 };
 
+export type BffAttendanceRecord = {
+  id: string;
+  user_id: string;
+  date: string;
+  status: string;
+  action_type?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at: string;
+};
+
 export type BffEnrollmentStatus = {
   status: "enrolled" | "not_enrolled";
   embeddingCount: number;
@@ -283,6 +294,25 @@ export async function submitAttendance(params: {
     body: params,
     timeoutMs: 45_000,
   });
+}
+
+export async function listAttendances(params?: {
+  startDate?: string;
+  endDate?: string;
+  date?: string;
+}): Promise<BffAttendanceRecord[]> {
+  const queryParams = new URLSearchParams();
+  if (params?.startDate) queryParams.append("start_date", params.startDate);
+  if (params?.endDate) queryParams.append("end_date", params.endDate);
+  if (params?.date) queryParams.append("date", params.date);
+
+  const query = queryParams.toString();
+  const path = query
+    ? `/v1/mobile/attendance?${query}`
+    : "/v1/mobile/attendance";
+
+  const result = await bffRequest<{ items: BffAttendanceRecord[] }>(path);
+  return result.items;
 }
 
 export async function getEnrollmentStatus() {
