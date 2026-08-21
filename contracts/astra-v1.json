@@ -3,14 +3,23 @@
   "version": "v1",
   "published_at": "2026-08-21",
   "request": {
-    "required_headers": ["Authorization", "X-Request-ID", "X-Astra-Contract-Version"],
-    "contract_header": {"name": "X-Astra-Contract-Version", "value": "v1"},
+    "required_headers": [
+      "Authorization",
+      "X-Request-ID",
+      "X-Astra-Contract-Version"
+    ],
+    "contract_header": { "name": "X-Astra-Contract-Version", "value": "v1" },
     "authorization": "Logto OIDC access token"
   },
   "response": {
     "content_type": "application/json",
-    "envelope": {"success": "boolean", "data": "object|null", "message": "string", "meta": "object"},
-    "contract_header": {"name": "X-Astra-Contract-Version", "value": "v1"}
+    "envelope": {
+      "success": "boolean",
+      "data": "object|null",
+      "message": "string",
+      "meta": "object"
+    },
+    "contract_header": { "name": "X-Astra-Contract-Version", "value": "v1" }
   },
   "mobile_routes": [
     "GET /v1/mobile/health",
