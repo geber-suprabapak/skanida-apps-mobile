@@ -41,9 +41,27 @@ export default function Login() {
     {
       clientId: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
       redirectUri,
-      scopes: ["openid", "profile", "email", "roles", "offline_access"],
+      scopes: [
+        "openid",
+        "profile",
+        "email",
+        "roles",
+        "offline_access",
+        "mobile:access",
+      ],
       usePKCE: true,
-      extraParams: email ? { login_hint: email } : undefined,
+      extraParams: email
+        ? {
+            resource:
+              process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??
+              "https://api.skanida.sch.id",
+            login_hint: email,
+          }
+        : {
+            resource:
+              process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??
+              "https://api.skanida.sch.id",
+          },
     },
     discovery,
   );

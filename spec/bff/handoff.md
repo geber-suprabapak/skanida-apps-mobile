@@ -196,20 +196,16 @@ toMobileRuntime()
 toMobileAttendanceStatus()
 ```
 
-## Direct Supabase Rules
+## Identity and Backend Rules
 
-Allowed in v1:
-
-- Auth login/signup/reset/logout/session.
-- `utils/bff.ts` token retrieval.
-- Activation RPC until a separate BFF activation contract exists.
+Logto owns login, logout, session refresh, and RBAC claims. Astra owns activation and all business workflows. `utils/bff.ts` may retrieve the Logto access token for Astra requests.
 
 Not allowed after this integration:
 
 - Dashboard data direct from Supabase.
 - Attendance business data direct from Supabase.
 - Permit business data direct from Supabase.
-- Profile business data direct from Supabase, except auth/session refresh if still needed.
+- Profile business data direct from Supabase.
 - Enrollment business data direct from Supabase.
 
 ## Commands
@@ -241,7 +237,7 @@ Scope:
 2. Fix utils/faceApiRuntime.ts to use health.status.
 3. Update app/Dashboard.tsx to consume Astra dashboard shape and reduce duplicate health/enrollment fetches.
 4. Verify attendance, enrollment, permit, profile, and time screens against adapter exports.
-5. Keep Supabase Auth direct in v1.
+5. Use Logto for identity/RBAC and keep all business flows behind Astra.
 6. Keep user-facing copy generic. Do not expose internal backend names.
 7. Run pnpm exec tsc --noEmit and pnpm lint.
 

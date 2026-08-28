@@ -43,12 +43,16 @@ import {
   toMobileAttendanceStatus,
   type BffDashboardPrimaryAction,
 } from "~/utils/bffMobileApi";
+import { BffRequestError } from "~/utils/bff";
 import {
   AlertCircle,
   Bug,
+  Clock,
   History,
   ClipboardPenLine,
   Loader2,
+  LogOut,
+  RefreshCw,
   Scan,
   Settings,
   UserRound,
@@ -230,6 +234,7 @@ export default function Dashboard() {
     useState<BffDashboardPrimaryAction | null>(null);
   const [attendanceSuccess, setAttendanceSuccess] =
     useState<PendingAttendanceSuccess | null>(null);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
 
   // 60-second interval for schedule computations
   useEffect(() => {
@@ -246,6 +251,11 @@ export default function Dashboard() {
     setIsCheckingFaceApi(true);
     try {
       const data = await getDashboard();
+      if (data.profile.lifecycle_status === "pending") {
+        setIsPendingApproval(true);
+        return;
+      }
+      setIsPendingApproval(false);
       const avatar = data.profile.avatar_url;
 
       setAttendanceStatus(toMobileAttendanceStatus(data.attendance));
@@ -261,6 +271,17 @@ export default function Dashboard() {
       );
       setPrimaryAction(data.primary_action);
     } catch (error) {
+      if (
+        (error instanceof BffRequestError &&
+          (error.status === 403 || error.code === "FORBIDDEN")) ||
+        (error instanceof Error &&
+          /pending|menunggu|persetujuan|access denied|forbidden/i.test(
+            error.message,
+          ))
+      ) {
+        setIsPendingApproval(true);
+        return;
+      }
       Sentry.captureException(error);
       setFaceApiRuntime(toOfflineRuntimeStatus(error));
       setEnrollmentStatus("error");
@@ -556,6 +577,98 @@ export default function Dashboard() {
   );
 
   // Render
+  if (isPendingApproval) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <SafeAreaView className="flex-1 bg-background">
+          <ScrollView
+            className="flex-1 bg-background"
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingHorizontal: 24,
+              paddingVertical: 32,
+            }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="w-full max-w-sm items-center">
+              <View className="w-24 h-24 rounded-full bg-amber-500/10 dark:bg-amber-500/20 items-center justify-center mb-6 border border-amber-500/30">
+                <Icon as={Clock} className="size-12 text-amber-500" />
+              </View>
+
+              <Text
+                variant="h2"
+                className="text-2xl font-bold text-center mb-3 text-foreground"
+              >
+                Akun Menunggu Persetujuan
+              </Text>
+
+              <Text className="text-center text-sm text-muted-foreground leading-relaxed mb-6">
+                Pendaftaran akun Anda sedang ditinjau oleh administrator
+                sekolah. Silakan tunggu hingga akun diverifikasi dan disetujui
+                untuk dapat mengakses layanan absensi.
+              </Text>
+
+              <Card className="w-full p-4 mb-6 bg-card border border-border/50 rounded-2xl">
+                <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  Status Akun
+                </Text>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base font-bold text-foreground">
+                    {displayName || "Siswa"}
+                  </Text>
+                  <View className="bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/30">
+                    <Text className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      Pending
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+
+              <View className="w-full gap-3">
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="w-full bg-blue-600 active:bg-blue-700"
+                  onPress={onRefresh}
+                  disabled={refreshing}
+                >
+                  <Icon as={RefreshCw} className="size-5 text-white mr-2" />
+                  <Text className="text-white font-semibold">
+                    {refreshing
+                      ? "Memeriksa Status..."
+                      : "Cek Status Persetujuan"}
+                  </Text>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full border-border"
+                  onPress={async () => {
+                    await useAuthStore.getState().logout();
+                    router.replace("/auth/AuthSelector");
+                  }}
+                >
+                  <Icon as={LogOut} className="size-5 text-foreground mr-2" />
+                  <Text className="text-foreground font-semibold">
+                    Keluar / Ganti Akun
+                  </Text>
+                </Button>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />

@@ -80,14 +80,15 @@ Status: automated implementation done. Manual device smoke still pending because
 - [x] Check `app/extra/pengaturan.tsx` uses `getProfile()`.
 - [x] Check `utils/timeSync.ts` uses `getServerTime()`.
 
-## P1 - Supabase Boundary Audit
+## P1 - Identity/Backend Boundary Audit
 
 - [x] Run search for `supabase.from`.
 - [x] Run search for `supabase.rpc`.
 - [x] Run search for `supabase.storage`.
 - [x] Confirm business flows do not bypass BFF.
-- [x] Document allowed auth/session direct calls.
-- [x] Keep `app/auth/Activate.tsx` RPC as known v1 exception unless new BFF activation endpoint exists.
+- [x] Confirm Logto owns login, logout, session refresh, and RBAC claims.
+- [x] Confirm `app/auth/Activate.tsx` submits to Astra `/v1/auth/student/signup`.
+- [x] Confirm no production mobile screen calls Supabase Auth, PostgREST, storage, or RPC directly.
 
 ## P2 - Validation
 
@@ -127,7 +128,7 @@ Status: automated implementation done. Manual device smoke still pending because
 - [x] Dashboard stale fields removed.
 - [x] Health status fixed.
 - [x] Permit `{ items }` unwrap fixed.
-- [x] Supabase business leftovers documented or removed.
+- [x] Supabase business and auth leftovers removed from the production mobile boundary.
 - [x] Typecheck result recorded.
 - [x] Lint result recorded.
 - [ ] Manual smoke result recorded.

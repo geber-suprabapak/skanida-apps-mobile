@@ -2,13 +2,13 @@
 
 ## Objective
 
-Integrate `E:\skanida-apps-mobile` with Project Astra (`E:\project-astra`) as the mobile Backend-for-Frontend. Astra owns mobile business flows for dashboard, attendance, enrollment, permits, profile, and time. Supabase Auth may stay direct in mobile for v1.
+Integrate `E:\skanida-apps-mobile` with Project Astra (`E:\project-astra`) as the mobile Backend-for-Frontend. Astra owns mobile business flows for dashboard, attendance, enrollment, permits, profile, activation, and time. Logto owns identity and RBAC; the client does not call Supabase directly.
 
 ## Current State
 
 Mobile already has a BFF transport layer:
 
-- `utils/bff.ts` handles base URL, Supabase session token, `Authorization: Bearer`, `X-Request-Id`, timeout, envelope parsing, and normalized errors.
+- `utils/bff.ts` handles base URL, Logto access token, `Authorization: Bearer`, `X-Request-Id`, timeout, envelope parsing, and normalized errors.
 - `utils/bffMobileApi.ts` is the intended screen-facing adapter.
 - Screens already call BFF helpers for dashboard, attendance submit/precheck, enrollment, permits, profile, avatar, password, and time.
 
@@ -30,16 +30,7 @@ Mobile talks to Astra through this base:
 EXPO_PUBLIC_BFF_API_URL + /v1/mobile
 ```
 
-Mobile keeps direct Supabase only for:
-
-- login
-- signup/activation for now
-- reset password
-- session refresh/listener
-- logout
-- getting the session token inside `utils/bff.ts`
-
-All non-auth business flows should go through Astra.
+Mobile uses Logto for login, logout, session refresh, and RBAC claims. Activation and all non-auth business flows go through Astra. No direct Supabase calls are allowed in the production mobile boundary.
 
 ## Astra Route Surface
 
@@ -155,24 +146,16 @@ Expected behavior:
 - Profile/avatar/password use BFF.
 - Time sync uses `GET /v1/mobile/time`.
 
-### Phase 4 - Supabase Boundary Audit
+### Phase 4 - Backend Boundary Audit
 
 Status: done.
 
-Allowed direct Supabase:
+Verified identity boundary:
 
-- `app/auth/Login.tsx`
-- `app/auth/ResetPassword.tsx`
-- `app/auth/Activate.tsx` for current activation/signup flow
-- `app/index.tsx`
-- `app/_layout.tsx`
-- `store/authStore.ts`
-- `utils/bff.ts`
-
-Flag for future migration:
-
-- `app/auth/Activate.tsx` still calls `supabase.rpc("get_biodata_siswa")` as the known v1 activation exception.
-- `app/profile/ManageAccount.tsx` no longer calls `supabase.auth.getUser()` after avatar changes.
+- `app/auth/Login.tsx`, `app/index.tsx`, and `app/_layout.tsx` use Logto.
+- `utils/bff.ts` retrieves the Logto bearer token for Astra requests.
+- `app/auth/Activate.tsx` submits to Astra and has no direct Supabase call.
+- Business screens use Astra adapters only.
 
 ### Phase 5 - Validation
 
@@ -212,6 +195,6 @@ Manual device smoke:
 - [x] Dashboard no longer reads stale fields.
 - [x] Health uses `status`.
 - [x] Permit list unwraps `{ items }`.
-- [x] Direct Supabase business leftovers are documented or removed.
+- [x] Direct Supabase business and auth leftovers are removed from the production mobile boundary.
 - [x] Typecheck and lint pass.
 - [ ] Manual flow checklist passes against running Astra.

@@ -18,6 +18,7 @@ export interface UserProfile {
   role: string | null;
   gender: string | null;
   notification_token: string | null;
+  lifecycle_status?: "pending" | "approved" | "rejected" | "disabled" | null;
 }
 
 interface AuthState {
@@ -101,6 +102,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
               role: data.role ?? null,
               gender: data.gender ?? null,
               notification_token: null,
+              lifecycle_status: data.lifecycle_status ?? null,
             },
           });
           return; // Success, exit the function

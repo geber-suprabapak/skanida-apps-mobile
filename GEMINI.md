@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a React Native mobile application for "Skanida Apps", built using Expo. It appears to be an application for a school, for student attendance and other school-related activities. The application uses a modern stack including TypeScript, Tailwind CSS for styling (via NativeWind), and Expo Router for navigation. It connects to a Supabase backend for database and authentication services. The application also includes features like time synchronization, offline connection checking, and error reporting with Sentry.
+This is a React Native mobile application for "Skanida Apps", built using Expo. It is an application for school attendance and leave workflows. The application uses TypeScript, Tailwind CSS (via NativeWind), and Expo Router, with time synchronization, offline connection checking, and Sentry error reporting.
 
 ### Key Technologies
 
@@ -11,9 +11,15 @@ This is a React Native mobile application for "Skanida Apps", built using Expo. 
 * **UI:** Tailwind CSS (NativeWind), React Native Primitives
 * **Navigation:** Expo Router
 * **State Management:** Zustand
-* **Backend:** Supabase
+* **Backend:** Project Astra BFF with Logto OIDC identity/RBAC
 * **Error Monitoring:** Sentry
 * **Package Manager:** pnpm
+
+**Current production boundary:** Logto owns identity, sessions, and RBAC; Astra
+owns activation and business workflows. The mobile client must not call
+Supabase Auth, PostgREST, storage, or RPC directly. Supabase references in the
+historical notes below describe the pre-cutover implementation and are not
+current production guidance.
 
 ## Building and Running
 
@@ -65,17 +71,17 @@ pnpm install
 * **File Structure:**
   * `app`: Contains the application screens and routes, following the Expo Router file-based routing convention.
   * `components`: Reusable UI components.
-  * `utils`: Utility functions, including Supabase client setup and time synchronization logic.
+  * `utils`: Utility functions, including Logto identity, Astra BFF transport, and time synchronization logic.
   * `store`: Zustand stores for global state management.
   * `services`: Likely for API calls and other services (currently empty).
-* **Environment Variables:** The application uses environment variables for Supabase configuration (e.g., `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`). These should be defined in a `.env` file.
+* **Environment Variables:** The application uses `EXPO_PUBLIC_LOGTO_ENDPOINT`, `EXPO_PUBLIC_LOGTO_APP_ID`, `EXPO_PUBLIC_LOGTO_REDIRECT_URI`, and `EXPO_PUBLIC_BFF_API_URL`; define them in a local `.env` file.
 * **Linting & Formatting:** The project is configured with ESLint and Prettier to enforce a consistent code style. It's recommended to run `pnpm format` before committing changes.
 
 ---
 
 ## Gemini Context Guide for Skanida Apps Mobile
 
-**Skanida Apps Mobile** is a React Native attendance & leave management system for Indonesian schools (WIB timezone). Key tech: Expo SDK 53, TypeScript, NativeWind (Tailwind), Zustand, Supabase v2.
+**Skanida Apps Mobile** is a React Native attendance & leave management system for Indonesian schools (WIB timezone). Key tech: Expo SDK 53, TypeScript, NativeWind (Tailwind), Zustand, Logto OIDC, and the Astra BFF.
 
 ---
 

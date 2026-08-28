@@ -116,4 +116,66 @@ describe("Release candidate v1.3.0 invariants", () => {
       expect(useThemeStore.getState().theme).toBe("system");
     });
   });
+
+  describe("Ecosystem release remediation invariants (ISS-02, ISS-06, ISS-10, ISS-15, ISS-16)", () => {
+    it("ISS-02: ensures Login.tsx requests mobile:access scope and includes resource parameter", () => {
+      const loginPath = join(rootDir, "app/auth/Login.tsx");
+      const content = readFileSync(loginPath, "utf8");
+
+      expect(content).toContain('"mobile:access"');
+      expect(content).toContain("resource:");
+      expect(content).toContain("EXPO_PUBLIC_LOGTO_RESOURCE");
+    });
+
+    it("ISS-06: ensures bffMobileApi.ts normalizes both camelCase and snake_case query params", () => {
+      const bffPath = join(rootDir, "utils/bffMobileApi.ts");
+      const content = readFileSync(bffPath, "utf8");
+
+      expect(content).toContain('queryParams.append("startDate", startDate)');
+      expect(content).toContain('queryParams.append("start_date", startDate)');
+      expect(content).toContain('queryParams.append("endDate", endDate)');
+      expect(content).toContain('queryParams.append("end_date", endDate)');
+    });
+
+    it("ISS-10: ensures Dashboard.tsx handles pending profile lifecycle status gracefully", () => {
+      const dashboardPath = join(rootDir, "app/Dashboard.tsx");
+      const content = readFileSync(dashboardPath, "utf8");
+
+      expect(content).toContain("isPendingApproval");
+      expect(content).toContain("Akun Menunggu Persetujuan");
+      expect(content).toContain("Cek Status Persetujuan");
+      expect(content).toContain("lifecycle_status");
+    });
+
+    it("ISS-15: ensures eas.json contains only relative ./artifacts build artifact paths", () => {
+      const easPath = join(rootDir, "eas.json");
+      const eas = JSON.parse(readFileSync(easPath, "utf8"));
+
+      type ProfileKey =
+        | "preview"
+        | "production"
+        | "production-ci"
+        | "production-armv7a";
+      const profiles: ProfileKey[] = [
+        "preview",
+        "production",
+        "production-ci",
+        "production-armv7a",
+      ];
+      for (const profile of profiles) {
+        const artifactDir =
+          eas.build?.[profile]?.env?.EAS_LOCAL_BUILD_ARTIFACTS_DIR;
+        expect(artifactDir).toBe("./artifacts");
+      }
+    });
+
+    it("ISS-16: ensures timeSync.ts has resilient NTP timeout and fallback", () => {
+      const timeSyncPath = join(rootDir, "utils/timeSync.ts");
+      const content = readFileSync(timeSyncPath, "utf8");
+
+      expect(content).toContain("new AbortController()");
+      expect(content).toContain("controller.abort()");
+      expect(content).toContain("WorldTimeAPI");
+    });
+  });
 });

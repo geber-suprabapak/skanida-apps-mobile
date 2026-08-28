@@ -4,11 +4,11 @@ Expo React Native app for Skanida student workflows: authentication, dashboard, 
 
 ## Runtime Architecture
 
-The app uses Project Astra as its mobile Backend-for-Frontend (BFF). Mobile business flows go through Astra, while Supabase Auth remains direct in v1 for login, signup/activation, reset password, logout, and session refresh.
+The app uses Project Astra as its mobile Backend-for-Frontend (BFF). Logto owns mobile identity and RBAC; authenticated business flows go through Astra with a Logto access token.
 
 Main mobile BFF files:
 
-- `utils/bff.ts`: shared BFF transport, Supabase bearer token, request ID, timeout, envelope parsing, and normalized errors.
+- `utils/bff.ts`: shared BFF transport, Logto bearer token, request ID, timeout, envelope parsing, and normalized errors.
 - `utils/bffMobileApi.ts`: screen-facing API adapter for Astra endpoints.
 - `utils/faceApiRuntime.ts`: mobile-safe server readiness state.
 - `utils/enrollment.ts`: face enrollment status wrapper.
@@ -33,19 +33,17 @@ E:\project-astra
 - Password: `PATCH /v1/mobile/profile/password`
 - Time sync: `GET /v1/mobile/time`
 
-Current documented v1 exception:
-
-- `app/auth/Activate.tsx` still uses Supabase RPC for activation data because Astra does not yet own that activation contract.
+Activation is submitted to Astra with `POST /v1/auth/student/signup`; the mobile client does not call Supabase directly.
 
 ## Environment
 
 Copy `.env.example` to `.env` and fill:
 
 ```txt
-EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_LOGTO_ENDPOINT=
+EXPO_PUBLIC_LOGTO_APP_ID=
+EXPO_PUBLIC_LOGTO_REDIRECT_URI=
 EXPO_PUBLIC_BFF_API_URL=
-EXPO_PUBLIC_AUTH_CALLBACK_URL=
 EXPO_PUBLIC_SENTRY_DSN=
 ```
 

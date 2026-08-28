@@ -78,6 +78,7 @@ export type BffDashboard = {
     absence_number: string | null;
     avatar_url: string | null;
     role?: string | null;
+    lifecycle_status?: "pending" | "approved" | "rejected" | "disabled" | null;
   };
   attendance: {
     today_status: "pending" | "present" | "absent" | "leave";
@@ -179,6 +180,7 @@ export type BffProfile = {
   gender?: string | null;
   role?: string | null;
   avatar_url: string | null;
+  lifecycle_status?: "pending" | "approved" | "rejected" | "disabled" | null;
 };
 
 export type BffServerTime = {
@@ -313,10 +315,21 @@ export async function listAttendances(params?: {
   startDate?: string;
   endDate?: string;
   date?: string;
+  start_date?: string;
+  end_date?: string;
 }): Promise<BffAttendanceRecord[]> {
   const queryParams = new URLSearchParams();
-  if (params?.startDate) queryParams.append("start_date", params.startDate);
-  if (params?.endDate) queryParams.append("end_date", params.endDate);
+  const startDate = params?.startDate ?? params?.start_date;
+  const endDate = params?.endDate ?? params?.end_date;
+
+  if (startDate) {
+    queryParams.append("startDate", startDate);
+    queryParams.append("start_date", startDate);
+  }
+  if (endDate) {
+    queryParams.append("endDate", endDate);
+    queryParams.append("end_date", endDate);
+  }
   if (params?.date) queryParams.append("date", params.date);
 
   const query = queryParams.toString();

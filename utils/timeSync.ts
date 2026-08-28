@@ -378,60 +378,69 @@ class TimeSync {
    */
   private async _syncWithNTP(): Promise<void> {
     const requestTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    // Using WorldTimeAPI as NTP alternative
-    const response = await fetch(
-      "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
-    );
+    try {
+      // Using WorldTimeAPI as NTP alternative
+      const response = await fetch(
+        "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
+        {
+          signal: controller.signal,
+        },
+      );
 
-    const responseTime = Date.now();
-    const roundTripTime = responseTime - requestTime;
+      const responseTime = Date.now();
+      const roundTripTime = responseTime - requestTime;
 
-    if (!response.ok) {
-      throw new Error(`NTP request failed: ${response.status}`);
-    }
+      if (!response.ok) {
+        throw new Error(`NTP request failed: ${response.status}`);
+      }
 
-    const data: NTPResponse = await response.json();
+      const data: NTPResponse = await response.json();
 
-    if (!data.datetime) {
-      throw new Error("Invalid NTP response");
-    }
+      if (!data.datetime) {
+        throw new Error("Invalid NTP response");
+      }
 
-    // Parse NTP time
-    const ntpTime = new Date(data.datetime).getTime();
+      // Parse NTP time
+      const ntpTime = new Date(data.datetime).getTime();
 
-    // Estimate NTP time accounting for network delay
-    const estimatedNtpTime = ntpTime + roundTripTime / 2;
+      // Estimate NTP time accounting for network delay
+      const estimatedNtpTime = ntpTime + roundTripTime / 2;
 
-    // Calculate new offset
-    const newOffset = estimatedNtpTime - responseTime;
+      // Calculate new offset
+      const newOffset = estimatedNtpTime - responseTime;
 
-    // Detect drift
-    this.detectDrift(newOffset);
+      // Detect drift
+      this.detectDrift(newOffset);
 
-    // Update offset
-    this.timeOffset = newOffset;
-    this.lastSyncTime = Date.now();
+      // Update offset
+      this.timeOffset = newOffset;
+      this.lastSyncTime = Date.now();
 
-    // Update store
-    // PERF-H03: Batch store update (was 5 separate calls = 5 re-renders)
-    useTimeSyncStore.setState({
-      offset: newOffset,
-      syncSource: "ntp",
-      status: "synced",
-      lastSyncTime: Date.now(),
-      error: null,
-    });
-
-    // Persist
-    await this.persistOffset(newOffset, "ntp");
-
-    if (__DEV__)
-      console.log("NTP sync successful", {
+      // Update store
+      // PERF-H03: Batch store update (was 5 separate calls = 5 re-renders)
+      useTimeSyncStore.setState({
         offset: newOffset,
-        roundTripTime,
-        ntpTime: data.datetime,
+        syncSource: "ntp",
+        status: "synced",
+        lastSyncTime: Date.now(),
+        error: null,
       });
+
+      // Persist
+      await this.persistOffset(newOffset, "ntp");
+
+      if (__DEV__)
+        console.log("NTP sync successful", {
+          offset: newOffset,
+          roundTripTime,
+          ntpTime: data.datetime,
+        });
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**

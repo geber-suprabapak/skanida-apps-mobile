@@ -17,7 +17,7 @@
       "node": "24.19.0",
       "pnpm": "11.21.0",
       "distribution": "internal",
-      "env": { "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/mnt/banter/artifact" }
+      "env": { "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "./artifacts" }
     },
     "production": {
       "node": "24.19.0",
@@ -29,7 +29,7 @@
         "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a --daemon --parallel --configure-on-demand --build-cache"
       },
       "env": {
-        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts",
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "./artifacts",
         "RELEASE_CHANNEL": "production"
       }
     },
@@ -57,7 +57,7 @@
         "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a --daemon --parallel --configure-on-demand --build-cache"
       },
       "env": {
-        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "/home/evernight/artifacts",
+        "EAS_LOCAL_BUILD_ARTIFACTS_DIR": "./artifacts",
         "RELEASE_CHANNEL": "production"
       }
     }
