@@ -17,7 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       alg: "rsa-v1_5-sha256",
     },
     codeSigningCertificate: "./certs/certificate.pem",
-    enabled: true,
+    enabled: false,
     requestHeaders: {
       "expo-channel-name": process.env.RELEASE_CHANNEL || "production",
     },

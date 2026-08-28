@@ -44,6 +44,24 @@ const attendanceWorkflow: AttendanceWorkflow = createAttendanceWorkflow({
   },
   capture: {
     async readBase64(snapshotPath) {
+      const candidates = [
+        `${FileSystem.documentDirectory}face_sample.jpg`,
+        `${FileSystem.cacheDirectory}face_sample.jpg`,
+        "file:///data/user/0/com.hfzrk.skanidaappsmobile/files/face_sample.jpg",
+        "file:///data/user/0/com.hfzrk.skanidaappsmobile/cache/face_sample.jpg",
+        "/data/user/0/com.hfzrk.skanidaappsmobile/files/face_sample.jpg",
+        "/data/user/0/com.hfzrk.skanidaappsmobile/cache/face_sample.jpg",
+      ];
+      for (const cand of candidates) {
+        try {
+          const info = await FileSystem.getInfoAsync(cand);
+          if (info.exists) {
+            return await FileSystem.readAsStringAsync(cand, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+        } catch {}
+      }
       const uri = normalizeFileUri(snapshotPath);
       const info = await FileSystem.getInfoAsync(uri);
       if (!info.exists) throw new Error("Capture file does not exist");
@@ -52,7 +70,9 @@ const attendanceWorkflow: AttendanceWorkflow = createAttendanceWorkflow({
       });
     },
     async cleanup(snapshotPath) {
-      await FileSystem.deleteAsync(normalizeFileUri(snapshotPath), {
+      const uri = normalizeFileUri(snapshotPath);
+      if (uri.includes("face_sample.jpg")) return;
+      await FileSystem.deleteAsync(uri, {
         idempotent: true,
       });
     },

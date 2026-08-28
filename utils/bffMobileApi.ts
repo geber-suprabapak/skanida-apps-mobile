@@ -195,6 +195,7 @@ type FilePart = {
   name: string;
   type: string;
 };
+
 type NativeFormData = FormData & {
   append(
     name: string,
@@ -204,7 +205,7 @@ type NativeFormData = FormData & {
 };
 
 function appendNativeFile(form: FormData, field: string, file: FilePart) {
-  // SAFETY: React Native's FormData accepts { uri, name, type } file parts.
+  // SAFETY: React Native's FormData accepts { uri, name, type } file parts for XMLHttpRequest.
   const nativeForm = form as NativeFormData;
   nativeForm.append(field, file);
 }
@@ -266,7 +267,9 @@ export async function getDashboard() {
 }
 
 export async function getMobileHealth() {
-  return bffRequest<{ status: BffHealthStatus }>("/v1/mobile/health");
+  return bffRequest<{ status: BffHealthStatus }>("/v1/mobile/health", {
+    requireAuth: false,
+  });
 }
 
 export async function getServerTime() {
@@ -347,10 +350,9 @@ export async function getEnrollmentStatus() {
 
 export async function submitEnrollment(files: FilePart[]) {
   const form = new FormData();
-  files.forEach((file) => {
-    // SAFETY: React Native FormData supports object payload with uri, name, and type.
-    appendNativeFile(form, "files", file);
-  });
+  for (const file of files) {
+    await appendNativeFile(form, "files", file);
+  }
 
   return bffRequest<BffEnrollmentResult>("/v1/mobile/face/enrollment", {
     method: "POST",
@@ -388,8 +390,7 @@ export async function createPermit(params: {
   form.append("description", params.description);
   form.append("date", formatDateWIB(new Date()));
   if (params.attachment) {
-    // SAFETY: React Native FormData supports object payload with uri, name, and type.
-    appendNativeFile(form, "attachment", params.attachment);
+    await appendNativeFile(form, "attachment", params.attachment);
   }
 
   return bffRequest<BffPermit>("/v1/mobile/permits", {
@@ -423,8 +424,7 @@ export async function updateAvatar(
   }
 
   const form = new FormData();
-  // SAFETY: React Native FormData supports object payload with uri, name, and type.
-  appendNativeFile(form, "file", file);
+  await appendNativeFile(form, "file", file);
   const result = await bffRequest<{ avatar_url: string | null }>(
     "/v1/mobile/profile/avatar",
     {

@@ -108,16 +108,20 @@ export async function exchangeLogtoCode(
   codeVerifier: string,
   redirectUri = getLogtoRedirectUri(),
 ) {
+  const params = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
+    code,
+    code_verifier: codeVerifier,
+    redirect_uri: redirectUri,
+  });
+  if (process.env.EXPO_PUBLIC_LOGTO_RESOURCE) {
+    params.set("resource", process.env.EXPO_PUBLIC_LOGTO_RESOURCE);
+  }
   const response = await fetch(`${getEndpoint()}/oidc/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
-      code,
-      code_verifier: codeVerifier,
-      redirect_uri: redirectUri,
-    }).toString(),
+    body: params.toString(),
   });
   if (!response.ok) throw new Error("Login identity gagal.");
   // SAFETY: The identity token endpoint returned a successful JSON response; required fields are checked below.
@@ -141,14 +145,18 @@ async function refreshLogtoSession(
   session: LogtoSession,
 ): Promise<LogtoSession> {
   if (!session.refresh_token) return session;
+  const params = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
+    refresh_token: session.refresh_token,
+  });
+  if (process.env.EXPO_PUBLIC_LOGTO_RESOURCE) {
+    params.set("resource", process.env.EXPO_PUBLIC_LOGTO_RESOURCE);
+  }
   const response = await fetch(`${getEndpoint()}/oidc/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
-      refresh_token: session.refresh_token,
-    }).toString(),
+    body: params.toString(),
   });
   if (!response.ok) throw new Error("Sesi identity kedaluwarsa.");
   // SAFETY: The refresh endpoint returned a successful JSON response; required fields are checked below.

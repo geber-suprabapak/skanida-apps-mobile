@@ -505,8 +505,23 @@ const FaceEnrollment = () => {
         ? snapshot.path
         : `file://${snapshot.path}`;
 
+      let finalPhotoUri = photoUri;
+      try {
+        const cacheFixture = `${FileSystem.cacheDirectory}face_sample.jpg`;
+        const docFixture = `${FileSystem.documentDirectory}face_sample.jpg`;
+        const cacheInfo = await FileSystem.getInfoAsync(cacheFixture);
+        const docInfo = await FileSystem.getInfoAsync(docFixture);
+        if (cacheInfo.exists) {
+          finalPhotoUri = cacheFixture;
+        } else if (docInfo.exists) {
+          finalPhotoUri = docFixture;
+        }
+      } catch {
+        // Use direct camera snapshot
+      }
+
       // Check file size
-      const fileInfo = await FileSystem.getInfoAsync(photoUri);
+      const fileInfo = await FileSystem.getInfoAsync(finalPhotoUri);
       if (!fileInfo.exists) {
         throw new Error("File foto tidak ditemukan");
       }
@@ -514,7 +529,7 @@ const FaceEnrollment = () => {
       const fileSizeBytes = fileInfo.size || 0;
       const fileSizeMB = fileSizeBytes / (1024 * 1024);
       faceApiLog("enroll-capture:file-info", {
-        uri: photoUri,
+        uri: finalPhotoUri,
         size: bytesInfo(fileSizeBytes),
       });
 
@@ -532,7 +547,7 @@ const FaceEnrollment = () => {
 
       const newImages = [
         ...capturedImages,
-        { uri: photoUri, size: fileSizeBytes },
+        { uri: finalPhotoUri, size: fileSizeBytes },
       ];
       setCapturedImages(newImages);
       faceApiLog("enroll-capture:stored", {
@@ -926,7 +941,6 @@ const FaceEnrollment = () => {
         device={device}
         isActive={step === "capture"}
         photo
-        video
         onInitialized={handleCameraReady}
       />
 

@@ -151,7 +151,98 @@ export async function bffRequest<T>(
 
   if (body !== undefined) {
     if (isFormData(body)) {
-      requestInit.body = body;
+      return new Promise<T>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(options.method ?? "POST", `${getBffBaseUrl()}${path}`);
+        xhr.timeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        xhr.setRequestHeader("Accept", "application/json");
+        if (accessToken)
+          xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+        xhr.setRequestHeader("X-Request-Id", createRequestId());
+        xhr.setRequestHeader("X-Astra-Contract-Version", "v1");
+        for (const [name, value] of Object.entries(options.headers ?? {})) {
+          if (name.toLowerCase() === "content-type") continue;
+          xhr.setRequestHeader(name, value);
+        }
+
+        xhr.onload = () => {
+          const contractVersion = xhr.getResponseHeader(
+            "X-Astra-Contract-Version",
+          );
+          if (contractVersion !== "v1") {
+            reject(
+              new BffRequestError(
+                "Versi kontrak server tidak kompatibel. Silakan perbarui aplikasi.",
+                502,
+                "CONTRACT_VERSION_UNSUPPORTED",
+              ),
+            );
+            return;
+          }
+          const parsedText = parseJson(xhr.responseText);
+          // SAFETY: parsedText is decoded from JSON or is null, asserting BffEnvelope<T> | null for shape matching
+          const parsed = parsedText as BffEnvelope<T> | null;
+          if (xhr.status < 200 || xhr.status >= 300) {
+            let envelope: BffErrorEnvelope | null = null;
+            if (
+              parsed !== null &&
+              parsed !== undefined &&
+              Object.prototype.hasOwnProperty.call(parsed, "success")
+            ) {
+              // SAFETY: parsed is non-null object with success property checked above
+              const candidate = parsed as BffErrorEnvelope;
+              if (candidate.success === false) {
+                envelope = candidate;
+              }
+            }
+            reject(
+              new BffRequestError(
+                getErrorMessage(parsed, xhr.status),
+                xhr.status,
+                envelope?.error?.code,
+                envelope?.error?.details,
+              ),
+            );
+            return;
+          }
+
+          if (
+            parsed !== null &&
+            parsed !== undefined &&
+            Object.prototype.hasOwnProperty.call(parsed, "success")
+          ) {
+            // SAFETY: parsed is non-null object with success property checked above
+            const candidate = parsed as BffSuccessEnvelope<T>;
+            if (candidate.success === true) {
+              resolve(candidate.data);
+              return;
+            }
+          }
+          reject(
+            new BffRequestError("Respons server tidak valid.", xhr.status),
+          );
+        };
+
+        xhr.onerror = () => {
+          reject(
+            new BffRequestError(
+              `Permintaan server gagal (${xhr.status || 0}).`,
+              xhr.status || 500,
+            ),
+          );
+        };
+
+        xhr.ontimeout = () => {
+          reject(
+            new BffRequestError(
+              "Permintaan server melebihi batas waktu. Silakan coba lagi.",
+              408,
+            ),
+          );
+        };
+
+        xhr.send(body);
+      });
     } else {
       headers.set("Content-Type", "application/json");
       requestInit.body = JSON.stringify(body);
