@@ -120,17 +120,10 @@ const isCoordinates = (value: Coordinates | undefined): value is Coordinates =>
   );
 
 const normalizeBase64 = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (
-    trimmed.length === 0 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      trimmed,
-    )
-  ) {
+  if (!value || typeof value !== "string" || value.length === 0) {
     return null;
   }
-
-  return trimmed;
+  return value.trim();
 };
 
 const base64ByteSize = (base64: string) => {
