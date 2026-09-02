@@ -1,16 +1,8 @@
 import { Stack, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
-import {
-  View,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  BackHandler,
-} from "react-native";
+import { View, TouchableOpacity, Alert, BackHandler } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import useAuthStore from "~/store/authStore";
 import {
@@ -19,7 +11,6 @@ import {
   getLogtoRedirectUri,
 } from "~/utils/logto";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import { ChevronLeft, Key } from "lucide-react-native";
@@ -27,9 +18,8 @@ import { ChevronLeft, Key } from "lucide-react-native";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function Login() {
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [emailError, setEmailError] = useState(false);
+  const hasStartedAuth = useRef(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
   const redirectUri = makeRedirectUri({ native: getLogtoRedirectUri() });
@@ -50,21 +40,26 @@ export default function Login() {
         "mobile:access",
       ],
       usePKCE: true,
-      extraParams: email
-        ? {
-            resource:
-              process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??
-              "https://api.skanida.sch.id",
-            login_hint: email,
-          }
-        : {
-            resource:
-              process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??
-              "https://api.skanida.sch.id",
-          },
+      extraParams: {
+        resource:
+          process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??
+          "https://api.skanida.sch.id",
+      },
     },
     discovery,
   );
+
+  useEffect(() => {
+    if (!request || hasStartedAuth.current) return;
+
+    hasStartedAuth.current = true;
+    setLoading(true);
+    void promptAsync().catch(() => {
+      hasStartedAuth.current = false;
+      setLoading(false);
+      Alert.alert("Login Gagal", "Layanan identity belum siap.");
+    });
+  }, [promptAsync, request]);
 
   useEffect(() => {
     const backAction = () => {
@@ -114,23 +109,22 @@ export default function Login() {
         router.replace("/Dashboard");
       } catch (error) {
         if (__DEV__) console.error("[Login] Identity login failed:", error);
-        Alert.alert("Login Gagal", "Email/NIS atau password salah.");
+        Alert.alert(
+          "Login Gagal",
+          "Autentikasi identity gagal. Silakan coba lagi.",
+        );
       } finally {
         setLoading(false);
       }
     })();
   }, [request, response, redirectUri, router, setUser]);
 
-  const handleLogin = async () => {
-    setEmailError(false);
-    if (!email.trim()) {
-      setEmailError(true);
-      return;
-    }
+  const retryLogin = async () => {
     if (!request) {
       Alert.alert("Login Gagal", "Layanan identity belum siap.");
       return;
     }
+    hasStartedAuth.current = true;
     setLoading(true);
     await promptAsync();
   };
@@ -148,114 +142,41 @@ export default function Login() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View className="flex-1 justify-center items-center px-8 py-8">
-            {/* Logo and Title Section */}
-            <View className="items-center mb-12">
-              <View
-                className={`w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800`}
-              >
-                <Icon as={Key} className="size-12 text-foreground" />
-              </View>
-
-              <Text
-                variant={"h3"}
-                className={`text-3xl font-bold text-center mb-3 text-foreground`}
-              >
-                Selamat Datang Kembali
-              </Text>
-
-              <Text
-                className={`text-center text-base leading-relaxed max-w-sm text-foreground`}
-              >
-                Masuk ke akun Anda untuk melanjutkan
-              </Text>
-            </View>
-            {/* Form Section */}
-            <View className="w-full max-w-sm space-y-6">
-              <View
-                className={`rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800`}
-              >
-                {/* Email Field */}
-                <View className="mb-6">
-                  <Text
-                    variant="small"
-                    className="mb-3 font-medium text-foreground"
-                  >
-                    NIS atau Email
-                  </Text>
-                  <Input
-                    placeholder="Masukkan email Anda"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={email}
-                    onChangeText={(text) => {
-                      setEmail(text);
-                      if (emailError) setEmailError(false);
-                    }}
-                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  />
-                </View>
-                {/* Login Button */}
-                <Button
-                  variant="default"
-                  size="lg"
-                  onPress={handleLogin}
-                  disabled={loading}
-                >
-                  <Text
-                    variant="h3"
-                    className={`font-semibold text-lg text-primary-foreground`}
-                  >
-                    {loading ? "Sedang masuk..." : "Masuk"}
-                  </Text>
-                </Button>
-              </View>
-
-              {/* Register Link */}
-              <View className="flex-row justify-center items-center mt-6">
-                <Text variant="default" className="text-foreground">
-                  Belum memiliki akun?
-                </Text>
-                <TouchableOpacity onPress={() => router.push("/auth/Activate")}>
-                  <Text
-                    variant="default"
-                    className="font-semibold text-primary ml-1"
-                  >
-                    Aktivasi sekarang
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Reset Password Link */}
-              <View className="flex-row justify-center items-center mt-4">
-                <Text variant="default" className="text-foreground">
-                  Lupa password?
-                </Text>
-                <TouchableOpacity
-                  onPress={() => router.push("/auth/ResetPassword")}
-                >
-                  <Text
-                    variant="default"
-                    className="font-semibold text-primary ml-1"
-                  >
-                    Reset di sini
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+      <View className="flex-1 justify-center items-center px-8 py-8">
+        <View className="items-center mb-12">
+          <View
+            className={`w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800`}
+          >
+            <Icon as={Key} className="size-12 text-foreground" />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          <Text
+            variant={"h3"}
+            className={`text-3xl font-bold text-center mb-3 text-foreground`}
+          >
+            Menghubungkan ke Login
+          </Text>
+
+          <Text
+            className={`text-center text-base leading-relaxed max-w-sm text-foreground`}
+          >
+            {loading
+              ? "Membuka halaman autentikasi..."
+              : "Halaman autentikasi tidak terbuka? Coba lagi."}
+          </Text>
+        </View>
+
+        {!loading && (
+          <Button variant="default" size="lg" onPress={retryLogin}>
+            <Text
+              variant="h3"
+              className={`font-semibold text-lg text-primary-foreground`}
+            >
+              Coba lagi
+            </Text>
+          </Button>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
