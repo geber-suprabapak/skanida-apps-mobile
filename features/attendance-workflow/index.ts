@@ -9,7 +9,6 @@ import {
 
 import {
   createAttendanceWorkflow,
-  type PendingAttendanceSuccess,
   type AttendanceWorkflow,
 } from "./attendanceWorkflow";
 
@@ -100,4 +99,3 @@ export const completeAttendance = attendanceWorkflow.complete;
 export const cancelAttendance = attendanceWorkflow.cancel;
 export const consumePendingAttendanceSuccess =
   attendanceWorkflow.consumeSuccessHandoff;
-export type { PendingAttendanceSuccess };
