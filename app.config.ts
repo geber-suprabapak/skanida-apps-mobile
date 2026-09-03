@@ -1,4 +1,19 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
+import { ConfigPlugin, withGradleProperties } from "expo/config-plugins";
+
+const withSizeOptimizations: ConfigPlugin = (c) => {
+  return withGradleProperties(c, (mod) => {
+    const keysToRemove = new Set(["expo.gif.enabled", "expo.webp.enabled"]);
+    mod.modResults = mod.modResults.filter(
+      (item) => !(item.type === "property" && keysToRemove.has(item.key)),
+    );
+    mod.modResults.push(
+      { type: "property", key: "expo.gif.enabled", value: "false" },
+      { type: "property", key: "expo.webp.enabled", value: "false" },
+    );
+    return mod;
+  });
+};
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -58,15 +73,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           minSdkVersion: 24,
           enableBundleCompression: true,
           enableMinifyInReleaseBuilds: true,
-          shrinkResources: true,
-          useLegacyPackaging: false,
+          enableShrinkResourcesInReleaseBuilds: true,
+          useLegacyPackaging: true,
+          networkInspector: false,
           targetSdkVersion: 36,
+          packagingOptions: {
+            exclude: [
+              "org/bouncycastle/pqc/**",
+              "org/bouncycastle/x509/**",
+              "META-INF/INDEX.LIST",
+              "META-INF/*.version",
+            ],
+          },
         },
         ios: {
           deploymentTarget: "16.4",
         },
       },
     ],
+    withSizeOptimizations,
     [
       "expo-notifications",
       {
@@ -82,13 +107,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "automatic",
-  // PERF-M06: Only bundle essential assets (was "**/*" which bundles everything)
-  assetBundlePatterns: [
-    "assets/images/*",
-    "assets/fonts/*",
-    "assets/*.png",
-    "assets/*.jpg",
-  ],
+  // PERF-M06: Only bundle essential assets (only *.png needed by runtime)
+  assetBundlePatterns: ["assets/*.png"],
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.hfzrk.skanidaappsmobile",

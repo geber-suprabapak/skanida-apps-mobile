@@ -1,4 +1,3 @@
-import { isAxiosError } from "axios";
 import * as Sentry from "@sentry/react-native";
 
 const PREFIX = "[FaceAPI DEV]";
@@ -210,8 +209,35 @@ export const sessionDebugInfo = (
     null,
 });
 
+interface AxiosLikeError {
+  name?: string;
+  message?: string;
+  code?: string;
+  response?: {
+    status?: number;
+    statusText?: string;
+    headers?: HeaderMap;
+    data?: Jsonish;
+  };
+  config?: {
+    method?: string;
+    url?: string;
+    baseURL?: string;
+    timeout?: number;
+    headers?: HeaderMap;
+  };
+  isAxiosError: boolean;
+}
+
+const isAxiosLikeError = (cause: unknown): cause is AxiosLikeError => {
+  if (cause === null || cause === undefined) return false;
+  if (Object.prototype.toString.call(cause) !== "[object Object]") return false;
+  // SAFETY: Verified plain Object before checking isAxiosError property.
+  return (cause as Record<string, Jsonish>).isAxiosError === true;
+};
+
 export const axiosErrorDebugInfo = (cause: unknown) => {
-  if (!isAxiosError(cause)) {
+  if (!isAxiosLikeError(cause)) {
     return normalizeDebugValue(cause);
   }
 
