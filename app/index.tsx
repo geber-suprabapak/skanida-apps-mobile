@@ -13,34 +13,51 @@ export default function Index() {
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
+    let active = true;
+
     const checkAuth = async () => {
       try {
-        const user = await getLogtoUser();
-        if (!user) {
+        // Avoid redundant parallel session restoration if already populated by _layout.tsx
+        const initialUser = useAuthStore.getState().user;
+        const currentUser = initialUser ?? (await getLogtoUser());
+        if (!active) return;
+        if (!currentUser) {
           router.replace("/auth/AuthSelector");
           return;
         }
 
-        const isStudent = user.roles.some(
+        const isStudent = currentUser.roles.some(
           (role) => role === "student" || role === "siswa",
         );
         if (!isStudent) {
           await clearLogtoSession();
+          if (!active) return;
+          setUser(null);
           router.replace("/auth/AuthSelector");
           return;
         }
 
         setLoadingMessage("Session found");
-        setUser(user);
-        router.replace("/Dashboard");
+        if (!useAuthStore.getState().user) {
+          setUser(currentUser);
+        }
+        if (active) {
+          router.replace("/Dashboard");
+        }
       } catch (err) {
         if (__DEV__) console.error("[Index] checkAuth error:", err);
         Sentry.captureException(err);
-        router.replace("/auth/AuthSelector");
+        if (active) {
+          router.replace("/auth/AuthSelector");
+        }
       }
     };
 
-    checkAuth();
+    void checkAuth();
+
+    return () => {
+      active = false;
+    };
   }, [router, setUser]);
 
   return (
