@@ -72,25 +72,108 @@ function sessionToUser(session: LogtoSession): MobileAuthUser {
     mustChangePassword,
   };
 }
+export class LogtoPermanentAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LogtoPermanentAuthError";
+  }
+}
+
+let sessionVersion = 0;
+let activeRefreshPromise: Promise<LogtoSession | null> | null = null;
+
 export async function saveLogtoSession(session: LogtoSession) {
+  sessionVersion++;
+  activeRefreshPromise = null;
   await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
   return sessionToUser(session);
 }
 
 export async function getLogtoSession(): Promise<LogtoSession | null> {
+  if (activeRefreshPromise) {
+    return await activeRefreshPromise;
+  }
+
   const raw = await SecureStore.getItemAsync(SESSION_KEY);
   if (!raw) return null;
+
+  let session: LogtoSession;
   try {
     // SAFETY: SecureStore contains only sessions written by saveLogtoSession.
-    const session = JSON.parse(raw) as LogtoSession;
-    if (!session.access_token || !session.expires_at) return null;
-    if (session.expires_at > Date.now() + 30_000) return session;
-    if (!session.refresh_token) return null;
-    return await refreshLogtoSession(session);
+    session = JSON.parse(raw) as LogtoSession;
   } catch {
     await clearLogtoSession();
     return null;
   }
+
+  if (!session.access_token || !session.expires_at) {
+    await clearLogtoSession();
+    return null;
+  }
+
+  if (session.expires_at > Date.now() + 30_000) {
+    return session;
+  }
+
+  if (!session.refresh_token) {
+    if (session.expires_at <= Date.now()) {
+      await clearLogtoSession();
+      return null;
+    }
+    return session;
+  }
+
+  if (activeRefreshPromise) {
+    return await activeRefreshPromise;
+  }
+
+  const currentVersion = sessionVersion;
+  activeRefreshPromise = (async () => {
+    try {
+      // Re-read latest session from SecureStore to avoid redundant network refresh
+      // if another concurrent call already refreshed and saved it.
+      const latestRaw = await SecureStore.getItemAsync(SESSION_KEY);
+      if (!latestRaw || sessionVersion !== currentVersion) {
+        return null;
+      }
+      if (latestRaw !== raw) {
+        try {
+          // SAFETY: SecureStore contains only sessions written by saveLogtoSession.
+          const latestSession = JSON.parse(latestRaw) as LogtoSession;
+          if (
+            latestSession.access_token &&
+            latestSession.expires_at > Date.now() + 30_000
+          ) {
+            return latestSession;
+          }
+          if (latestSession.refresh_token) {
+            session = latestSession;
+          }
+        } catch {
+          // ignore parsing error
+        }
+      }
+
+      return await refreshLogtoSession(session, currentVersion);
+    } catch (error) {
+      if (error instanceof LogtoPermanentAuthError) {
+        await clearLogtoSession();
+        return null;
+      }
+      if (sessionVersion !== currentVersion) {
+        return null;
+      }
+      // On network errors or transient refresh failures, preserve the stored
+      // session so offline users are not unnecessarily forced to re-login.
+      return session;
+    } finally {
+      if (sessionVersion === currentVersion) {
+        activeRefreshPromise = null;
+      }
+    }
+  })();
+
+  return await activeRefreshPromise;
 }
 
 export async function getLogtoUser(): Promise<MobileAuthUser | null> {
@@ -143,8 +226,11 @@ export async function exchangeLogtoCode(
 
 async function refreshLogtoSession(
   session: LogtoSession,
+  expectedVersion?: number,
 ): Promise<LogtoSession> {
-  if (!session.refresh_token) return session;
+  if (!session.refresh_token) {
+    throw new LogtoPermanentAuthError("Tidak ada refresh token.");
+  }
   const params = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: process.env.EXPO_PUBLIC_LOGTO_APP_ID ?? "skanida-mobile",
@@ -158,7 +244,35 @@ async function refreshLogtoSession(
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
-  if (!response.ok) throw new Error("Sesi identity kedaluwarsa.");
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 401) {
+      let errorType: string | undefined;
+      let errorDesc: string | undefined;
+      try {
+        // SAFETY: Logto OIDC token error response payload format.
+        const errorJson = (await response.json()) as {
+          error?: string;
+          error_description?: string;
+        };
+        errorType = errorJson.error;
+        errorDesc = errorJson.error_description ?? errorJson.error;
+      } catch {
+        // Non-JSON response indicates a proxy/gateway failure rather than OIDC rejection.
+      }
+      if (
+        errorType === "invalid_grant" ||
+        errorType === "unauthorized_client" ||
+        errorType === "invalid_client"
+      ) {
+        throw new LogtoPermanentAuthError(
+          errorDesc ?? "Sesi identity kedaluwarsa atau tidak valid.",
+        );
+      }
+    }
+    throw new Error(
+      `Refresh sesi identity gagal dengan status ${response.status}.`,
+    );
+  }
   // SAFETY: The refresh endpoint returned a successful JSON response; required fields are checked below.
   const token = (await response.json()) as {
     access_token?: string;
@@ -166,18 +280,25 @@ async function refreshLogtoSession(
     expires_in?: number;
     id_token?: string;
   };
-  if (!token.access_token) throw new Error("Refresh sesi identity gagal.");
-  const refreshed = {
+  if (!token.access_token) {
+    throw new Error("Refresh sesi identity gagal: tidak ada access token.");
+  }
+  const refreshed: LogtoSession = {
     access_token: token.access_token,
     refresh_token: token.refresh_token ?? session.refresh_token,
     expires_at: Date.now() + (token.expires_in ?? 600) * 1000,
     id_token: token.id_token ?? session.id_token,
   };
+  if (expectedVersion !== undefined && sessionVersion !== expectedVersion) {
+    throw new Error("Sesi diubah selama proses refresh.");
+  }
   await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(refreshed));
   return refreshed;
 }
 
 export async function clearLogtoSession() {
+  sessionVersion++;
+  activeRefreshPromise = null;
   await SecureStore.deleteItemAsync(SESSION_KEY);
 }
 
