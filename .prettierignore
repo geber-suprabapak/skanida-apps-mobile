@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist/
+android/
+ios/
+web-build/
+artifacts/
+*.md
+**/*.md
