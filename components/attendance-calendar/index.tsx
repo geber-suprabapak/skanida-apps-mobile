@@ -6,12 +6,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import {
-  View,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 
 import { Text } from "~/components/ui/text";
 import MonthYearPicker from "~/components/ui/month-year-picker";
@@ -100,31 +95,21 @@ const AttendanceCalendar = forwardRef<
     const maximumDate = useMemo(() => new Date(), []);
 
     return (
-      <ScrollView className="flex-1 px-4">
+      <View className="w-full">
         {isUsingPicker && (
-          <View
-            className={`mb-4 ${isDarkColorScheme ? "bg-gray-800" : "bg-gray-100"} rounded-lg p-4`}
-          >
+          <View className="mb-4 bg-muted rounded-lg p-4">
             <View className="flex-row items-center justify-between mb-3">
-              <Text
-                className={`text-lg font-semibold ${
-                  isDarkColorScheme ? "text-white" : "text-foreground"
-                }`}
-              >
+              <Text className="text-lg font-semibold text-foreground">
                 Pilih Periode
               </Text>
               <TouchableOpacity
                 onPress={handleRefresh}
-                className={`p-2 rounded-lg ${
-                  isDarkColorScheme ? "bg-gray-700" : "bg-white"
-                }`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                className="p-2 rounded-lg bg-card min-h-12 min-w-12 items-center justify-center"
+                accessibilityRole="button"
+                accessibilityLabel="Perbarui kalender kehadiran"
               >
-                <Icon
-                  as={RefreshCw}
-                  className={`size-5 ${
-                    isDarkColorScheme ? "text-white" : "text-black"
-                  }`}
-                />
+                <Icon as={RefreshCw} className="size-5 text-foreground" />
               </TouchableOpacity>
             </View>
 
@@ -139,9 +124,7 @@ const AttendanceCalendar = forwardRef<
         )}
 
         <View
-          className={`rounded-3xl p-5 border border-border shadow-sm ${
-            isDarkColorScheme ? "bg-card" : "bg-white"
-          }`}
+          className={`rounded-3xl p-5 border border-border shadow-sm ${"bg-card"}`}
         >
           <View className="flex-row mb-4">
             {DAY_NAMES.map((dayName) => (
@@ -152,7 +135,7 @@ const AttendanceCalendar = forwardRef<
                       ? "text-rose-500"
                       : isDarkColorScheme
                         ? "text-muted-foreground"
-                        : "text-gray-400"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {dayName}
@@ -165,9 +148,7 @@ const AttendanceCalendar = forwardRef<
             <View className="items-center justify-center py-20">
               <ActivityIndicator size="large" color="#3b82f6" />
               <Text
-                className={`mt-4 text-sm font-medium ${
-                  isDarkColorScheme ? "text-muted-foreground" : "text-gray-500"
-                }`}
+                className={`mt-4 text-sm font-medium ${"text-muted-foreground"}`}
               >
                 Memuat data...
               </Text>
@@ -196,7 +177,7 @@ const AttendanceCalendar = forwardRef<
             </View>
           )}
         </View>
-      </ScrollView>
+      </View>
     );
   },
 );

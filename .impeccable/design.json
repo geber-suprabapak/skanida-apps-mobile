@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-03T07:31:00Z",
+  "title": "Design System: Skanida Apps Mobile",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Electric Blue",
+        "canonical": "#0066ff",
+        "tonalRamp": [
+          "#001a40",
+          "#002966",
+          "#003d99",
+          "#0052cc",
+          "#0066ff",
+          "#3385ff",
+          "#80b3ff",
+          "#e6f0ff"
+        ]
+      },
+      "slate-dark": {
+        "role": "neutral",
+        "displayName": "Midnight Slate",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f8fafc"
+        ]
+      },
+      "neutral-dark": {
+        "role": "neutral",
+        "displayName": "Onyx Dark",
+        "canonical": "#171717",
+        "tonalRamp": [
+          "#0a0a0a",
+          "#171717",
+          "#262626",
+          "#404040",
+          "#737373",
+          "#a3a3a3",
+          "#d4d4d4",
+          "#fafafa"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Canvas White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0a0a0a",
+          "#262626",
+          "#525252",
+          "#a3a3a3",
+          "#d4d4d4",
+          "#e5e5e5",
+          "#f5f5f5",
+          "#ffffff"
+        ]
+      },
+      "destructive": {
+        "role": "destructive",
+        "displayName": "Crimson Destructive",
+        "canonical": "#ef4444",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#dc2626",
+          "#ef4444",
+          "#f87171",
+          "#fca5a5",
+          "#fef2f2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Live clock and primary attendance status headline."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Screen titles and section headers."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles and modal headers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Standard student info and instructions."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Punctuality tags and metadata chips."
+      }
+    },
+    "shadows": [
+      {
+        "name": "subtle-resting",
+        "value": "0 1px 2px rgba(0,0,0,0.05)",
+        "purpose": "Gentle resting elevation on cards and buttons."
+      },
+      {
+        "name": "elevated-modal",
+        "value": "0 10px 15px -3px rgba(0,0,0,0.1)",
+        "purpose": "Floating sheets and attendance verification dialogs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Standard UI transition and press feedback."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "360px"
+      },
+      {
+        "name": "standard",
+        "value": "390px"
+      },
+      {
+        "name": "tablet",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Attendance Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "48px primary action button reserved for gate attendance and verification.",
+      "html": "<button class=\"ds-btn-primary\">Catat Kehadiran</button>",
+      "css": ".ds-btn-primary { background: #0066ff; color: #ffffff; height: 48px; min-height: 48px; padding: 0 24px; border-radius: 8px; font-weight: 600; font-size: 16px; border: none; display: flex; align-items: center; justify-content: center; width: 100%; cursor: pointer; transition: background 0.15s ease, opacity 0.15s ease; } .ds-btn-primary:active, .ds-btn-primary:hover { background: #0052cc; opacity: 0.95; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral secondary button for form actions and dismissal.",
+      "html": "<button class=\"ds-btn-secondary\">Lihat Riwayat</button>",
+      "css": ".ds-btn-secondary { background: #f5f5f5; color: #171717; height: 48px; min-height: 48px; padding: 0 24px; border-radius: 8px; font-weight: 500; font-size: 15px; border: 1px solid #e5e5e5; display: flex; align-items: center; justify-content: center; width: 100%; cursor: pointer; transition: background 0.15s ease; } .ds-btn-secondary:active, .ds-btn-secondary:hover { background: #e5e5e5; }"
+    },
+    {
+      "name": "Dashboard Card",
+      "kind": "card",
+      "refersTo": "card-base",
+      "description": "Standard card container with 1px border and subtle resting shadow.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Jadwal Hari Ini</h3><p class=\"ds-card-desc\">Senin, 07:00 - 15:30 WIB</p></div>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; } .ds-card-title { font-size: 18px; font-weight: 600; color: #0a0a0a; margin: 0; } .ds-card-desc { font-size: 14px; color: #737373; margin: 0; }"
+    },
+    {
+      "name": "Status Badge Hadir",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "Success chip indicating verified on-time attendance.",
+      "html": "<span class=\"ds-badge ds-badge-success\">Hadir Tepat Waktu</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; } .ds-badge-success { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }"
+    },
+    {
+      "name": "Status Badge Terlambat",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "Warning chip indicating attendance recorded past entry threshold.",
+      "html": "<span class=\"ds-badge ds-badge-warning\">Terlambat</span>",
+      "css": ".ds-badge-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }"
+    },
+    {
+      "name": "Form Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "48px form input with clear border and touch spacing.",
+      "html": "<input class=\"ds-input\" placeholder=\"Keterangan izin atau alasan...\" />",
+      "css": ".ds-input { height: 48px; min-height: 48px; padding: 0 16px; border: 1px solid #e5e5e5; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-size: 15px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input:focus { border-color: #0066ff; box-shadow: 0 0 0 3px rgba(0,102,255,0.15); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Digital Student Pass",
+    "overview": "Skanida Apps Mobile is a modern, tactile school passport designed for vocational high school students at SMK Negeri 2 Magelang. The visual language balances institutional dependability with the effortless speed required for daily morning and afternoon attendance rituals. It rejects ornate flourishes, frivolous animations, and decorative color fills in favor of a crisp, high-contrast, card-based interface that remains immediately legible under harsh morning outdoor sunlight.",
+    "keyCharacteristics": [
+      "High-Contrast Clarity: Pure white and deep neutrals guarantee immediate outdoor legibility at campus gates.",
+      "Touch-Prioritized Ergonomics: Generous tap targets (48x48 dp minimum) built for rapid, reliable single-handed operation.",
+      "Biometric Focus: Color is disciplined; Electric Blue is reserved specifically to guide students through the face verification and submission workflow.",
+      "Tonal Structure: Surfaces are defined by crisp 1px borders and subtle tonal layering rather than heavy drop shadows."
+    ],
+    "rules": [
+      {
+        "name": "The Biometric Blue Rule",
+        "body": "Electric Blue (#0066FF) is reserved strictly for primary attendance actions, camera viewfinder indicators, face enrollment progress, and active verification state. It is never spent on decorative iconography, generic links, or background cards.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sunlight Legibility Rule",
+        "body": "Foreground text and critical status indicators must maintain a minimum contrast ratio of 4.5:1 (AAA preferred for status badges) against their immediate background surface to ensure legibility in outdoor morning sunlight.",
+        "section": "colors"
+      },
+      {
+        "name": "The One-Glance Time Rule",
+        "body": "The live clock and attendance status badge must render at least two typographic scale steps larger than surrounding schedule metadata, enabling students to verify their check-in eligibility in a single glance.",
+        "section": "typography"
+      },
+      {
+        "name": "The Border-First Elevation Rule",
+        "body": "Surfaces establish elevation through 1px borders (border border-border) and surface contrast rather than multi-layered drop shadows. Shadows serve only as a faint tactile response to touch or modal presentation.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do maintain a minimum 48x48 dp touch target for all tappable elements to support rapid gate check-in.",
+      "Do isolate Electric Blue (#0066FF) to biometric verification, camera actions, and primary attendance submit buttons.",
+      "Do display time strictly in Western Indonesia Time (WIB, UTC+7) synchronized with server time.",
+      "Do provide immediate, actionable feedback on geofence check failure (e.g., distance to campus perimeter).",
+      "Do use native platform dialogs, sheets, and system back navigation."
+    ],
+    "donts": [
+      "Don't use Electric Blue for decorative illustrations, secondary card borders, or inactive tabs.",
+      "Don't apply heavy, multi-colored drop shadows or complex skeuomorphic gradients.",
+      "Don't trap the user or override the native Android back gesture or iOS swipe-back navigation.",
+      "Don't hide critical attendance statuses or error details behind nested submenus.",
+      "Don't use ambiguous or bureaucratic jargon; keep copy in direct, student-friendly Bahasa Indonesia."
+    ]
+  }
+}

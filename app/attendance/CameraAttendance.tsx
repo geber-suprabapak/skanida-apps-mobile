@@ -3,7 +3,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { useRouter, useLocalSearchParams, Stack } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack, type Href } from "expo-router";
 import { useRef, useState, useEffect, useCallback, memo } from "react";
 import {
   View,
@@ -13,8 +13,9 @@ import {
   StatusBar,
   BackHandler,
   StyleSheet,
+  Linking,
+  AccessibilityInfo,
 } from "react-native";
-import * as FileSystem from "expo-file-system/legacy";
 import { Text } from "~/components/ui/text";
 import Animated, {
   useAnimatedStyle,
@@ -23,6 +24,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "~/components/ui/icon";
 import {
@@ -30,6 +32,7 @@ import {
   SwitchCamera,
   ArrowLeft,
   Loader2,
+  Settings,
 } from "lucide-react-native";
 import {
   cancelAttendance,
@@ -67,7 +70,7 @@ const ProgressBar = memo<{ percentage: number }>(({ percentage }) => {
   }));
 
   return (
-    <View className="w-full h-2 bg-gray-700 rounded-full">
+    <View className="w-full h-2 bg-white/20 rounded-full">
       <Animated.View
         className="h-full bg-[#0066FF] rounded-full"
         style={animatedStyle}
@@ -89,6 +92,13 @@ const CaptureButton = memo<{
       onPress={onPress}
       disabled={isCapturing || !isReady || isProcessing}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Ambil foto presensi"
+      accessibilityHint="Ketuk dua kali untuk mengambil foto dan mencatat presensi"
+      accessibilityState={{
+        disabled: isCapturing || !isReady || isProcessing,
+        busy: isCapturing || isProcessing,
+      }}
     >
       {isCapturing ? (
         <ActivityIndicator size="large" color="#0066FF" />
@@ -156,6 +166,7 @@ const messageForOutcome = (
 const CameraAttendance = () => {
   // --- HOOKS ---
   const router = useRouter();
+  const safeAreaInsets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     attemptId?: string | string[];
   }>();
@@ -237,19 +248,28 @@ const CameraAttendance = () => {
           percentage: 100,
           message: "Berhasil!",
         });
+        AccessibilityInfo.announceForAccessibility(
+          "Presensi berhasil dicatat.",
+        );
         faceApiLog("attendance-process:success", {
           durationMs: elapsedMs(startedAt),
           attemptId,
           outcome,
         });
-        router.replace("/Dashboard");
+        // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+        // generated typed-route cache is refreshed by Metro after file changes.
+        router.replace("/home" as Href);
       } else if (outcome.status !== "cancelled") {
+        const errorMsg = messageForOutcome(outcome);
+        AccessibilityInfo.announceForAccessibility(
+          `Presensi gagal: ${errorMsg}`,
+        );
         faceApiError("attendance-process:failed", {
           durationMs: elapsedMs(startedAt),
           attemptId,
           code: outcome.code,
         });
-        Alert.alert("Error", messageForOutcome(outcome));
+        Alert.alert("Error", errorMsg);
       }
 
       setIsProcessing(false);
@@ -297,6 +317,9 @@ const CameraAttendance = () => {
         : null,
       cameraFacing,
     });
+    AccessibilityInfo.announceForAccessibility(
+      "Kamera siap. Posisikan wajah Anda di dalam bingkai.",
+    );
     setIsCameraReady(true);
   }, [cameraFacing, device]);
 
@@ -317,6 +340,7 @@ const CameraAttendance = () => {
     }
 
     setIsCapturingPhoto(true);
+    AccessibilityInfo.announceForAccessibility("Mengambil foto presensi...");
     const startedAt = startFaceApiTimer();
     faceApiLog("attendance-capture:start", {
       cameraFacing,
@@ -329,26 +353,7 @@ const CameraAttendance = () => {
         quality: 70,
       });
 
-      let finalPhotoPath = snapshot?.path;
-      if (finalPhotoPath) {
-        try {
-          const docFixture = `${FileSystem.documentDirectory}face_sample.jpg`;
-          const cacheFixture = `${FileSystem.cacheDirectory}face_sample.jpg`;
-          const docInfo = await FileSystem.getInfoAsync(docFixture);
-          const cacheInfo = await FileSystem.getInfoAsync(cacheFixture);
-          const source = docInfo.exists
-            ? docFixture
-            : cacheInfo.exists
-              ? cacheFixture
-              : null;
-          if (source) {
-            const target = finalPhotoPath.startsWith("file://")
-              ? finalPhotoPath
-              : `file://${finalPhotoPath}`;
-            await FileSystem.copyAsync({ from: source, to: target });
-          }
-        } catch {}
-      }
+      const finalPhotoPath = snapshot?.path;
 
       faceApiLog("attendance-capture:snapshot", {
         durationMs: elapsedMs(startedAt),
@@ -381,11 +386,17 @@ const CameraAttendance = () => {
   ]);
 
   const handleToggleCameraFacing = useCallback(() => {
+    const nextFacing = cameraFacing === "front" ? "back" : "front";
+    AccessibilityInfo.announceForAccessibility(
+      nextFacing === "front"
+        ? "Beralih ke kamera depan"
+        : "Beralih ke kamera belakang",
+    );
     faceApiLog("attendance-camera:toggle-facing", {
       from: cameraFacing,
-      to: cameraFacing === "front" ? "back" : "front",
+      to: nextFacing,
     });
-    setCameraFacing((current) => (current === "front" ? "back" : "front"));
+    setCameraFacing(nextFacing);
   }, [cameraFacing]);
 
   const handleBackPress = useCallback(() => {
@@ -465,8 +476,19 @@ const CameraAttendance = () => {
       >
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <View className="px-4 py-2">
+          <TouchableOpacity
+            className="w-10 h-10 rounded-full bg-neutral-800 justify-center items-center shadow-lg"
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali"
+          >
+            <Icon as={ArrowLeft} className="size-6 text-white" />
+          </TouchableOpacity>
+        </View>
         <View className="flex-1 items-center justify-center px-10">
-          <Animated.View className="items-center justify-center">
+          <Animated.View className="items-center justify-center w-full">
             <Icon as={CameraIcon} className="size-20 text-[#0066FF]" />
             <Text variant="h2" className="text-white text-center mt-4 mb-2">
               Izinkan akses kamera
@@ -475,9 +497,31 @@ const CameraAttendance = () => {
               Kami membutuhkan izin kamera untuk mengambil foto absensi Anda.
             </Text>
             <TouchableOpacity
-              className="bg-[#0066FF] px-8 py-4 rounded-lg flex-row items-center"
+              className="bg-[#0066FF] px-8 py-4 rounded-lg flex-row items-center mb-3 w-full justify-center"
+              activeOpacity={0.7}
+              onPress={() => {
+                Linking.openSettings().catch(() => {
+                  Alert.alert(
+                    "Pengaturan tidak dapat dibuka",
+                    "Buka pengaturan perangkat secara manual untuk mengaktifkan izin kamera.",
+                  );
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Buka Pengaturan Aplikasi"
+              accessibilityHint="Membuka menu pengaturan perangkat untuk mengaktifkan izin kamera"
+            >
+              <Icon as={Settings} className="size-6 text-white" />
+              <Text variant="default" className="text-white font-bold ml-2">
+                Buka Pengaturan Aplikasi
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="bg-neutral-800 px-8 py-4 rounded-lg flex-row items-center w-full justify-center"
               activeOpacity={0.7}
               onPress={requestCameraAccess}
+              accessibilityRole="button"
+              accessibilityLabel="Beri izin kamera"
             >
               <Icon as={CameraIcon} className="size-6 text-white" />
               <Text variant="default" className="text-white font-bold ml-2">
@@ -520,8 +564,12 @@ const CameraAttendance = () => {
 
             <View className="flex-row items-center justify-between px-4">
               <TouchableOpacity
-                className="w-10 h-10 rounded-full bg-[#0066FF] justify-center items-center shadow-lg"
+                className="w-12 h-12 rounded-full bg-[#0066FF] justify-center items-center shadow-lg"
                 onPress={() => router.back()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Kembali"
+                accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
                 activeOpacity={0.7}
                 disabled={isProcessing}
               >
@@ -529,10 +577,17 @@ const CameraAttendance = () => {
               </TouchableOpacity>
             </View>
 
-            <View className="absolute bottom-12 left-0 right-0 flex-row justify-around items-center px-5">
+            <View
+              className="absolute left-0 right-0 flex-row justify-around items-center px-5"
+              style={{ bottom: Math.max(24, safeAreaInsets.bottom + 12) }}
+            >
               <TouchableOpacity
                 className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
                 onPress={handleToggleCameraFacing}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel="Ganti kamera"
+                accessibilityHint="Ketuk dua kali untuk beralih antara kamera depan dan belakang"
                 activeOpacity={0.7}
                 disabled={isProcessing}
               >

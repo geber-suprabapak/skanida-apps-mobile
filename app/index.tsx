@@ -1,5 +1,5 @@
 // filepath: app/index.tsx
-import { useRouter, Stack } from "expo-router";
+import { useRouter, Stack, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import * as Sentry from "@sentry/react-native";
@@ -42,7 +42,9 @@ export default function Index() {
           setUser(currentUser);
         }
         if (active) {
-          router.replace("/Dashboard");
+          // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+          // generated typed-route cache is refreshed by Metro after file changes.
+          router.replace("/home" as Href);
         }
       } catch (err) {
         if (__DEV__) console.error("[Index] checkAuth error:", err);

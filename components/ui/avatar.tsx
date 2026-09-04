@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Image, View, Text } from "react-native";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 
 import { cn } from "~/lib/utils";
 import { Icon } from "~/components/ui/icon";
@@ -48,7 +49,9 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
         {source ? (
           <Image
             source={{ uri: source }}
-            className="h-full w-full rounded-full object-cover"
+            className="h-full w-full rounded-full"
+            contentFit="cover"
+            cachePolicy="memory-disk"
           />
         ) : (
           <View className="flex h-full w-full items-center justify-center bg-muted">

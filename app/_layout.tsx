@@ -109,7 +109,7 @@ export default Sentry.wrap(function RootLayout() {
   if (!isAuthReady) {
     return (
       <SafeAreaProvider>
-        <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <View className="flex-1 items-center justify-center bg-background">
           {initError ? (
             <View className="items-center px-8">
               <Text
@@ -118,14 +118,14 @@ export default Sentry.wrap(function RootLayout() {
               >
                 Initialization Error
               </Text>
-              <Text className="text-center text-gray-600 dark:text-gray-400">
+              <Text className="text-center text-muted-foreground">
                 {initError}
               </Text>
             </View>
           ) : (
             <View className="items-center">
               <ActivityIndicator size="large" color="#0066FF" />
-              <Text className="mt-4 text-gray-600 dark:text-gray-400">
+              <Text className="mt-4 text-muted-foreground">
                 Initializing...
               </Text>
             </View>
@@ -139,7 +139,35 @@ export default Sentry.wrap(function RootLayout() {
     <SafeAreaProvider>
       <ConnectionChecker>
         <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-        <Stack />
+        <Stack
+          screenOptions={{ gestureEnabled: true, headerBackTitle: "Kembali" }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="attendance/AbsenceReport"
+            options={{ title: "Lapor Absensi" }}
+          />
+          <Stack.Screen
+            name="attendance/CameraAttendance"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="profile/ManageAccount"
+            options={{ title: "Kelola Akun" }}
+          />
+          <Stack.Screen
+            name="profile/enroll"
+            options={{ title: "Pendaftaran Wajah" }}
+          />
+          <Stack.Screen
+            name="perizinan/izin"
+            options={{ title: "Pengajuan Izin" }}
+          />
+          <Stack.Screen
+            name="perizinan/status"
+            options={{ title: "Status Perizinan" }}
+          />
+        </Stack>
         <PortalHost />
       </ConnectionChecker>
     </SafeAreaProvider>

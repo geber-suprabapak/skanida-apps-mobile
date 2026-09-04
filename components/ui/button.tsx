@@ -1,3 +1,4 @@
+import * as React from "react";
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -41,18 +42,18 @@ const buttonVariants = cva(
       },
       size: {
         default: cn(
-          "h-10 px-4 py-2 sm:h-9",
+          "min-h-12 px-4 py-2",
           Platform.select({ web: "has-[>svg]:px-3" }),
         ),
         sm: cn(
-          "h-9 gap-1.5 rounded-md px-3 sm:h-8",
+          "min-h-12 gap-1.5 rounded-md px-3",
           Platform.select({ web: "has-[>svg]:px-2.5" }),
         ),
         lg: cn(
-          "h-11 rounded-md px-6 sm:h-10",
+          "min-h-12 rounded-md px-6",
           Platform.select({ web: "has-[>svg]:px-4" }),
         ),
-        icon: "h-10 w-10 sm:h-9 sm:w-9",
+        icon: "h-12 w-12",
       },
     },
     defaultVariants: {
@@ -103,21 +104,43 @@ type ButtonProps = React.ComponentProps<typeof Pressable> &
   React.RefAttributes<typeof Pressable> &
   VariantProps<typeof buttonVariants>;
 
-function Button({ className, variant, size, ...props }: ButtonProps) {
+const Button = React.forwardRef<
+  React.ElementRef<typeof Pressable>,
+  ButtonProps
+>(({ className, variant, size, ...props }, ref) => {
+  const rippleConfig = Platform.select({
+    android: {
+      color:
+        variant === "destructive"
+          ? "rgba(255, 255, 255, 0.2)"
+          : variant === "default"
+            ? "rgba(255, 255, 255, 0.2)"
+            : "rgba(0, 0, 0, 0.12)",
+      borderless: false,
+    },
+    default: undefined,
+  });
+
   return (
     <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
       <Pressable
+        ref={ref}
         className={cn(
           props.disabled && "opacity-50",
           buttonVariants({ variant, size }),
           className,
         )}
         role="button"
+        accessibilityRole={props.accessibilityRole ?? "button"}
+        hitSlop={props.hitSlop ?? { top: 4, bottom: 4, left: 4, right: 4 }}
+        android_ripple={props.android_ripple ?? rippleConfig}
         {...props}
       />
     </TextClassContext.Provider>
   );
-}
+});
+
+Button.displayName = "Button";
 
 export { Button, buttonTextVariants, buttonVariants };
 export type { ButtonProps };

@@ -13,6 +13,8 @@ import {
   StatusBar,
   BackHandler,
   StyleSheet,
+  AccessibilityInfo,
+  Linking,
 } from "react-native";
 import { Text } from "~/components/ui/text";
 import Animated, {
@@ -23,6 +25,7 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system/legacy";
 
 import {
@@ -49,6 +52,7 @@ import {
   AlertCircle,
   RefreshCw,
   Upload,
+  Settings,
 } from "lucide-react-native";
 
 // --- CONSTANTS ---
@@ -126,6 +130,13 @@ const CaptureButton = memo<{
       onPress={onPress}
       disabled={isCapturing || !isReady || disabled}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Ambil foto wajah"
+      accessibilityHint="Ketuk dua kali untuk mengambil satu sampel foto wajah"
+      accessibilityState={{
+        disabled: isCapturing || !isReady || disabled,
+        busy: isCapturing,
+      }}
     >
       {isCapturing ? (
         <ActivityIndicator size="large" color="#0066FF" />
@@ -161,7 +172,7 @@ const ConfirmationScreen = memo<{
   onRetry: () => void;
   isUploading: boolean;
 }>(({ onConfirm, onRetry, isUploading }) => (
-  <SafeAreaView className="flex-1 bg-gray-900" edges={["top", "bottom"]}>
+  <SafeAreaView className="flex-1 bg-slate-900" edges={["top", "bottom"]}>
     <View className="flex-1 px-4 py-6">
       <View className="items-center mb-6">
         <Icon as={CheckCircle} className="size-16 text-green-500 mb-4" />
@@ -236,7 +247,7 @@ const SuccessScreen = memo<{
   response: EnrollmentSuccessResponse;
   onDone: () => void;
 }>(({ response, onDone }) => (
-  <SafeAreaView className="flex-1 bg-gray-900" edges={["top", "bottom"]}>
+  <SafeAreaView className="flex-1 bg-slate-900" edges={["top", "bottom"]}>
     <View className="flex-1 justify-center items-center px-8">
       <Animated.View entering={FadeIn.duration(500)} className="items-center">
         <View className="w-24 h-24 rounded-full bg-green-500/20 items-center justify-center mb-6">
@@ -292,7 +303,7 @@ const ErrorScreen = memo<{
   onRetry: () => void;
   onBack: () => void;
 }>(({ errorMessage, onRetry, onBack }) => (
-  <SafeAreaView className="flex-1 bg-gray-900" edges={["top", "bottom"]}>
+  <SafeAreaView className="flex-1 bg-slate-900" edges={["top", "bottom"]}>
     <View className="flex-1 justify-center items-center px-8">
       <Animated.View entering={FadeIn.duration(500)} className="items-center">
         <View className="w-24 h-24 rounded-full bg-red-500/20 items-center justify-center mb-6">
@@ -335,7 +346,7 @@ const FaceApiStatusScreen = memo<{
   onRetry: () => void;
   onBack: () => void;
 }>(({ status, isLoading, onRetry, onBack }) => (
-  <SafeAreaView className="flex-1 bg-gray-900" edges={["top", "bottom"]}>
+  <SafeAreaView className="flex-1 bg-slate-900" edges={["top", "bottom"]}>
     <View className="flex-1 justify-center items-center px-8">
       <Animated.View entering={FadeIn.duration(500)} className="items-center">
         <View className="w-24 h-24 rounded-full bg-amber-500/20 items-center justify-center mb-6">
@@ -380,6 +391,7 @@ FaceApiStatusScreen.displayName = "FaceApiStatusScreen";
 // --- MAIN COMPONENT ---
 const FaceEnrollment = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
   const permissionAttemptedRef = useRef(false);
@@ -457,6 +469,9 @@ const FaceEnrollment = () => {
           }
         : null,
     });
+    AccessibilityInfo.announceForAccessibility(
+      "Kamera pendaftaran siap. Posisikan wajah Anda di dalam lingkaran.",
+    );
     setIsCameraReady(true);
   }, [device]);
 
@@ -505,20 +520,7 @@ const FaceEnrollment = () => {
         ? snapshot.path
         : `file://${snapshot.path}`;
 
-      let finalPhotoUri = photoUri;
-      try {
-        const cacheFixture = `${FileSystem.cacheDirectory}face_sample.jpg`;
-        const docFixture = `${FileSystem.documentDirectory}face_sample.jpg`;
-        const cacheInfo = await FileSystem.getInfoAsync(cacheFixture);
-        const docInfo = await FileSystem.getInfoAsync(docFixture);
-        if (cacheInfo.exists) {
-          finalPhotoUri = cacheFixture;
-        } else if (docInfo.exists) {
-          finalPhotoUri = docFixture;
-        }
-      } catch {
-        // Use direct camera snapshot
-      }
+      const finalPhotoUri = photoUri;
 
       // Check file size
       const fileInfo = await FileSystem.getInfoAsync(finalPhotoUri);
@@ -550,6 +552,9 @@ const FaceEnrollment = () => {
         { uri: finalPhotoUri, size: fileSizeBytes },
       ];
       setCapturedImages(newImages);
+      AccessibilityInfo.announceForAccessibility(
+        `Foto ke-${newImages.length} dari ${REQUIRED_IMAGES} berhasil diambil.`,
+      );
       faceApiLog("enroll-capture:stored", {
         capturedCount: newImages.length,
         requiredImages: REQUIRED_IMAGES,
@@ -560,6 +565,9 @@ const FaceEnrollment = () => {
 
       // Check if we have enough images
       if (newImages.length >= REQUIRED_IMAGES) {
+        AccessibilityInfo.announceForAccessibility(
+          "Sepuluh foto berhasil diambil. Siap untuk konfirmasi pendaftaran.",
+        );
         faceApiLog("enroll-capture:ready-to-confirm", {
           capturedCount: newImages.length,
         });
@@ -689,13 +697,20 @@ const FaceEnrollment = () => {
         images_failed: response.imagesFailed,
         total_embeddings: response.totalEmbeddings,
       });
+      AccessibilityInfo.announceForAccessibility(
+        "Pendaftaran wajah berhasil disimpan.",
+      );
       setStep("success");
     } catch (error) {
       faceApiError("enroll-upload:failed", {
         durationMs: elapsedMs(startedAt),
         error,
       });
-      setErrorMessage(getReadableError(error, "Gagal mendaftarkan wajah."));
+      const errText = getReadableError(error, "Gagal mendaftarkan wajah.");
+      AccessibilityInfo.announceForAccessibility(
+        `Pendaftaran wajah gagal: ${errText}`,
+      );
+      setErrorMessage(errText);
       setStep("error");
     } finally {
       faceApiLog("enroll-upload:cleanup-temp-files", {
@@ -888,6 +903,19 @@ const FaceEnrollment = () => {
       >
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <View className="px-4 py-2">
+          <TouchableOpacity
+            className="w-12 h-12 rounded-full bg-neutral-800 justify-center items-center shadow-lg"
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali"
+            accessibilityHint="Ketuk dua kali untuk kembali ke menu sebelumnya"
+          >
+            <Icon as={ArrowLeft} className="size-6 text-white" />
+          </TouchableOpacity>
+        </View>
         <View className="flex-1 items-center justify-center px-10">
           <Icon as={CameraIcon} className="size-20 text-[#0066FF]" />
           <Text variant="h2" className="text-white text-center mt-4 mb-2">
@@ -897,9 +925,31 @@ const FaceEnrollment = () => {
             Kami membutuhkan izin kamera untuk mengambil foto wajah Anda.
           </Text>
           <TouchableOpacity
-            className="bg-[#0066FF] px-8 py-4 rounded-lg flex-row items-center"
+            className="bg-[#0066FF] px-8 py-4 rounded-lg flex-row items-center mb-3 w-full justify-center min-h-[48px]"
+            activeOpacity={0.7}
+            onPress={() => {
+              Linking.openSettings().catch(() => {
+                Alert.alert(
+                  "Pengaturan tidak dapat dibuka",
+                  "Buka pengaturan perangkat secara manual untuk mengaktifkan izin kamera.",
+                );
+              });
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Buka Pengaturan Aplikasi"
+            accessibilityHint="Membuka menu pengaturan perangkat untuk mengaktifkan izin kamera"
+          >
+            <Icon as={Settings} className="size-6 text-white" />
+            <Text variant="default" className="text-white font-bold ml-2">
+              Buka Pengaturan Aplikasi
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="bg-neutral-800 px-8 py-4 rounded-lg flex-row items-center w-full justify-center min-h-[48px]"
             activeOpacity={0.7}
             onPress={requestCameraAccess}
+            accessibilityRole="button"
+            accessibilityLabel="Beri izin kamera"
           >
             <Icon as={CameraIcon} className="size-6 text-white" />
             <Text variant="default" className="text-white font-bold ml-2">
@@ -954,8 +1004,12 @@ const FaceEnrollment = () => {
             {/* Header */}
             <View className="flex-row items-center justify-between px-4 pt-4">
               <TouchableOpacity
-                className="w-10 h-10 rounded-full bg-black/50 justify-center items-center"
+                className="w-12 h-12 rounded-full bg-black/50 justify-center items-center"
                 onPress={() => handleBackPress() || router.back()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Kembali"
+                accessibilityHint="Ketuk dua kali untuk kembali ke menu sebelumnya"
                 activeOpacity={0.7}
               >
                 <Icon as={ArrowLeft} className="size-6 text-white" />
@@ -987,7 +1041,10 @@ const FaceEnrollment = () => {
             </View>
 
             {/* Capture button */}
-            <View className="items-center pb-12">
+            <View
+              className="items-center"
+              style={{ paddingBottom: Math.max(24, insets.bottom + 12) }}
+            >
               <CaptureButton
                 isCapturing={isCapturing}
                 isReady={isCameraReady}

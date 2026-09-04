@@ -91,12 +91,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
     ],
-    withSizeOptimizations,
+    withSizeOptimizations as any,
     [
       "expo-notifications",
       {
         icon: "./assets/icon.png",
-        color: "#3B82F6",
+        color: "#0066FF",
       },
     ],
   ],

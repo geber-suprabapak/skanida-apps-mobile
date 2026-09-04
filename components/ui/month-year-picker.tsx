@@ -287,13 +287,9 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
               ${
                 isSelected
                   ? "text-white"
-                  : isDarkColorScheme
-                    ? isDisabled
-                      ? "text-gray-500"
-                      : "text-white"
-                    : isDisabled
-                      ? "text-gray-400"
-                      : "text-gray-900"
+                  : isDisabled
+                    ? "text-muted-foreground"
+                    : "text-foreground"
               }
             `}
           >
@@ -311,15 +307,14 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
         <TouchableOpacity
           onPress={() => navigateMonth("prev")}
           disabled={!canNavigatePrev()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Bulan sebelumnya"
+          accessibilityHint="Ketuk dua kali untuk berpindah ke bulan sebelumnya"
+          accessibilityState={{ disabled: !canNavigatePrev() }}
           className={`
-            p-3 rounded-full mr-3
-            ${
-              canNavigatePrev()
-                ? isDarkColorScheme
-                  ? "bg-gray-700"
-                  : "bg-gray-100"
-                : "opacity-30"
-            }
+            w-12 h-12 rounded-full mr-3 items-center justify-center
+            ${canNavigatePrev() ? "bg-secondary" : "opacity-30"}
           `}
           style={{
             shadowColor: "#000000",
@@ -339,9 +334,12 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
 
         <TouchableOpacity
           onPress={openPicker}
+          accessibilityRole="button"
+          accessibilityLabel={`Pilih bulan dan tahun, saat ini ${formatDisplayDate()}`}
+          accessibilityHint="Ketuk dua kali untuk membuka dialog pemilih bulan dan tahun"
           className={`
-            flex-1 flex-row items-center justify-between p-4 rounded-xl
-            ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-50"}
+            flex-1 min-h-[48px] flex-row items-center justify-between p-4 rounded-xl
+            bg-secondary
             ${buttonStyle || ""}
           `}
           style={{
@@ -362,7 +360,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
             <Text
               className={`
                 text-base font-semibold
-                ${isDarkColorScheme ? "text-white" : "text-gray-900"}
+                text-foreground
                 ${textStyle || ""}
               `}
             >
@@ -380,15 +378,14 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
         <TouchableOpacity
           onPress={() => navigateMonth("next")}
           disabled={!canNavigateNext()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Bulan berikutnya"
+          accessibilityHint="Ketuk dua kali untuk berpindah ke bulan berikutnya"
+          accessibilityState={{ disabled: !canNavigateNext() }}
           className={`
-            p-3 rounded-full ml-3
-            ${
-              canNavigateNext()
-                ? isDarkColorScheme
-                  ? "bg-gray-700"
-                  : "bg-gray-100"
-                : "opacity-30"
-            }
+            w-12 h-12 rounded-full ml-3 items-center justify-center
+            ${canNavigateNext() ? "bg-secondary" : "opacity-30"}
           `}
           style={{
             shadowColor: "#000000",
@@ -443,7 +440,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
             }}
             className={`
               rounded-3xl p-6 mx-4
-              ${isDarkColorScheme ? "bg-gray-800" : "bg-white"}
+              bg-card
             `}
           >
             {/* Header */}
@@ -457,7 +454,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
               <Text
                 className={`
                   text-xl font-bold
-                  ${isDarkColorScheme ? "text-white" : "text-gray-900"}
+                  text-foreground
                 `}
               >
                 Pilih Bulan & Tahun
@@ -471,14 +468,12 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                 <View className="flex-row items-center justify-center mb-4">
                   <Icon
                     as={Clock}
-                    className={`size-4 mr-2 ${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
+                    className={`size-4 mr-2 ${"text-muted-foreground"}`}
                   />
                   <Text
                     className={`
                       text-sm font-medium text-center
-                      ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}
+                      text-muted-foreground
                     `}
                   >
                     Bulan
@@ -513,14 +508,12 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                 <View className="flex-row items-center justify-center mb-4">
                   <Icon
                     as={History}
-                    className={`size-4 mr-2 ${
-                      isDarkColorScheme ? "text-gray-300" : "text-gray-600"
-                    }`}
+                    className={`size-4 mr-2 ${"text-muted-foreground"}`}
                   />
                   <Text
                     className={`
                       text-sm font-medium text-center
-                      ${isDarkColorScheme ? "text-gray-300" : "text-gray-600"}
+                      text-muted-foreground
                     `}
                   >
                     Tahun
@@ -557,13 +550,13 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                 onPress={handleCancel}
                 className={`
                   flex-1 p-4 rounded-xl mr-3
-                  ${isDarkColorScheme ? "bg-gray-700" : "bg-gray-200"}
+                  bg-secondary
                 `}
               >
                 <Text
                   className={`
                     text-center font-semibold
-                    ${isDarkColorScheme ? "text-gray-300" : "text-gray-700"}
+                    text-secondary-foreground
                   `}
                 >
                   Batal

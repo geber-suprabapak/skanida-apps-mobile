@@ -2,14 +2,8 @@
 // app/login.tsx
 import { useRouter, Stack } from "expo-router";
 import { useEffect } from "react";
-import {
-  View,
-  ScrollView,
-  Image,
-  BackHandler,
-  Alert,
-  TouchableOpacity,
-} from "react-native";
+import { View, ScrollView, BackHandler, Alert } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 
 import { Button } from "~/components/ui/button";
@@ -46,7 +40,7 @@ export default function LoginScreen() {
     return () => backHandler.remove();
   }, []);
   return (
-    <SafeAreaView className={`flex-1 bg-background`}>
+    <SafeAreaView className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -57,26 +51,21 @@ export default function LoginScreen() {
         <View className="flex-1 justify-center items-center px-8 py-16">
           {/* Logo Section */}
           <View className="items-center mb-16">
-            <TouchableOpacity
-              onPress={() => {}}
-              className={`w-52 h-52 rounded-full shadow-lg mb-10 items-center justify-center bg-card dark:bg-gray-800`}
-              activeOpacity={0.8}
-            >
+            <View className="w-52 h-52 rounded-full shadow-lg mb-10 items-center justify-center bg-card">
               <Image
                 source={SkanidaLogo}
                 className="w-36 h-36"
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="memory-disk"
               />
-            </TouchableOpacity>
+            </View>
             <Text
               variant="h1"
-              className={`text-4xl font-bold text-center mb-4 text-foreground`}
+              className="text-4xl font-bold text-center mb-4 text-foreground"
             >
               Skanida Apps
             </Text>
-            <Text
-              className={`text-center text-lg leading-relaxed max-w-sm px-4 text-foreground`}
-            >
+            <Text className="text-center text-lg leading-relaxed max-w-sm px-4 text-foreground">
               Sistem Absensi SMKN2 Magelang
             </Text>
           </View>
@@ -85,20 +74,26 @@ export default function LoginScreen() {
             <Button
               variant="default"
               size="lg"
-              className={`w-full h-16 rounded-xl shadow-lg`}
+              className="w-full h-16 rounded-xl shadow-lg"
+              accessibilityRole="button"
+              accessibilityLabel="Masuk"
+              accessibilityHint="Ketuk dua kali untuk masuk ke akun Anda"
               onPress={() => router.push("/auth/Login")}
             >
-              <Text variant="h3" className={`font-semibold text-lg `}>
+              <Text className="font-semibold text-lg text-primary-foreground">
                 Masuk
               </Text>
             </Button>
             <Button
               variant="outline"
               size="lg"
-              className={`w-full h-16 rounded-xl border-2 border-border dark:border-gray-700`}
+              className="w-full h-16 rounded-xl border-2 border-border"
+              accessibilityRole="button"
+              accessibilityLabel="Daftar"
+              accessibilityHint="Ketuk dua kali untuk mendaftarkan akun baru"
               onPress={() => router.push("/auth/Activate")}
             >
-              <Text variant="h3" className={`font-semibold text-lg `}>
+              <Text className="font-semibold text-lg text-foreground">
                 Daftar
               </Text>
             </Button>

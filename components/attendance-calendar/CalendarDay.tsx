@@ -15,7 +15,7 @@ const getDayStatusClasses = (day: CalendarDay, isDark: boolean) => {
   if (!day.isCurrentMonth) return `${baseDayClass} opacity-0`;
 
   if (day.isCurrentMonth && day.isFuture) {
-    return `${baseDayClass} ${isDark ? "bg-gray-800/50" : "bg-gray-50"}`;
+    return `${baseDayClass} ${isDark ? "bg-muted/50" : "bg-muted"}`;
   }
 
   if (!day.attendance) return baseDayClass;
@@ -44,7 +44,7 @@ const getDayTextClasses = (day: CalendarDay, isDark: boolean) => {
   if (!day.isCurrentMonth) return "text-transparent";
 
   if (day.isFuture) {
-    return isDark ? "text-muted-foreground" : "text-gray-300";
+    return "text-muted-foreground";
   }
 
   const baseText = "text-sm font-semibold";
@@ -53,8 +53,8 @@ const getDayTextClasses = (day: CalendarDay, isDark: boolean) => {
     const todayClass = day.isToday
       ? "text-blue-600 dark:text-blue-400 font-bold"
       : isDark
-        ? "text-gray-300"
-        : "text-gray-700";
+        ? "text-muted-foreground"
+        : "text-foreground";
     return `${baseText} ${todayClass}`;
   }
 

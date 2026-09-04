@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Image,
   BackHandler,
   Switch,
 } from "react-native";
+import { Image } from "expo-image";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -64,13 +64,15 @@ function Pengaturan() {
   const notif = useNotificationSettings(user?.id);
 
   // Hardware back button
-  useEffect(() => {
-    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
-      router.back();
-      return true;
-    });
-    return () => handler.remove();
-  }, [router]);
+  useFocusEffect(
+    useCallback(() => {
+      const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+        router.back();
+        return true;
+      });
+      return () => handler.remove();
+    }, [router]),
+  );
 
   useEffect(() => {
     if (!profileAvatar) {
@@ -187,6 +189,10 @@ function Pengaturan() {
   const EditButton = ({ onPress }: { onPress: () => void }) => (
     <TouchableOpacity
       onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityRole="button"
+      accessibilityLabel="Ubah foto profil"
+      accessibilityHint="Ketuk dua kali untuk mengedit foto profil"
       activeOpacity={0.8}
       className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
     >
@@ -195,31 +201,35 @@ function Pengaturan() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-background">
+    <SafeAreaView className="flex-1 bg-background">
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-border">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Kembali"
+          accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
+          className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border"
         >
-          <Icon
-            as={ChevronLeft}
-            className="size-6 text-gray-900 dark:text-gray-100"
-          />
+          <Icon as={ChevronLeft} className="size-6 text-secondary-foreground" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
-          Pengaturan
-        </Text>
+        <Text className="text-lg font-bold text-foreground">Pengaturan</Text>
         <View className="w-10" />
       </View>
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{
+          paddingBottom: 32,
+          width: "100%",
+          maxWidth: 672,
+          alignSelf: "center",
+        }}
       >
         {/* Profile Card */}
         <View className="px-5 mt-4">
@@ -231,6 +241,8 @@ function Pengaturan() {
                     source={{ uri: avatarUrl }}
                     style={{ width: 72, height: 72 }}
                     className="rounded-2xl"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                   />
                 ) : (
                   <View
@@ -263,6 +275,10 @@ function Pengaturan() {
                 </Text>
                 <TouchableOpacity
                   onPress={handleCopyId}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Salin ID Siswa"
+                  accessibilityHint="Ketuk dua kali untuk menyalin ID siswa ke papan klip"
                   className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${copiedId ? "bg-green-500/10" : "bg-muted"}`}
                   activeOpacity={0.7}
                 >
@@ -310,6 +326,9 @@ function Pengaturan() {
               <Switch
                 value={isDark}
                 onValueChange={toggleTheme}
+                accessibilityRole="switch"
+                accessibilityLabel="Mode Gelap"
+                accessibilityState={{ checked: isDark }}
                 trackColor={{ false: "#e5e7eb", true: "#6366f1" }}
                 thumbColor="#ffffff"
               />
@@ -323,11 +342,11 @@ function Pengaturan() {
               activeOpacity={0.7}
             >
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${notif.isEnabled ? "bg-blue-500/10" : "bg-gray-500/10"}`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${notif.isEnabled ? "bg-primary/10" : "bg-muted"}`}
               >
                 <Icon
                   as={notif.isEnabled ? Bell : BellOff}
-                  className={`size-5 ${notif.isEnabled ? "text-blue-500" : "text-gray-500"}`}
+                  className={`size-5 ${notif.isEnabled ? "text-primary" : "text-muted-foreground"}`}
                 />
               </View>
               <View className="flex-1 ml-4">

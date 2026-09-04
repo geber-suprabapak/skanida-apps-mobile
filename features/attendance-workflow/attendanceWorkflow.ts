@@ -119,23 +119,59 @@ const isCoordinates = (value: Coordinates | undefined): value is Coordinates =>
     Number.isFinite(value.longitude),
   );
 
-const normalizeBase64 = (value: string): string | null => {
+const BASE64_LOOKUP = new Uint8Array(128);
+for (let i = 0; i < 26; i++) {
+  BASE64_LOOKUP[65 + i] = 1; // A-Z
+  BASE64_LOOKUP[97 + i] = 1; // a-z
+}
+for (let i = 0; i < 10; i++) {
+  BASE64_LOOKUP[48 + i] = 1; // 0-9
+}
+BASE64_LOOKUP[43] = 1; // +
+BASE64_LOOKUP[47] = 1; // /
+
+export const isValidBase64 = (str: string): boolean => {
+  const len = str.length;
+  if (len === 0 || len % 4 !== 0) return false;
+
+  let padding = 0;
+  if (str.charCodeAt(len - 1) === 61) {
+    padding++;
+    if (str.charCodeAt(len - 2) === 61) {
+      padding++;
+    }
+  }
+
+  const contentLen = len - padding;
+  for (let i = 0; i < contentLen; i++) {
+    const code = str.charCodeAt(i);
+    if (code >= 128 || BASE64_LOOKUP[code] !== 1) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+export const normalizeBase64 = (value: string): string | null => {
   const trimmed = value.trim();
-  if (
-    trimmed.length === 0 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      trimmed,
-    )
-  ) {
+  if (!isValidBase64(trimmed)) {
     return null;
   }
 
   return trimmed;
 };
 
-const base64ByteSize = (base64: string) => {
-  const paddingLength = base64.match(/=+$/)?.[0]?.length ?? 0;
-  return (base64.length * 3) / 4 - paddingLength;
+export const base64ByteSize = (base64: string): number => {
+  const len = base64.length;
+  let padding = 0;
+  if (len >= 1 && base64.charCodeAt(len - 1) === 61) {
+    padding++;
+    if (len >= 2 && base64.charCodeAt(len - 2) === 61) {
+      padding++;
+    }
+  }
+  return (len * 3) / 4 - padding;
 };
 
 const newAttemptId = (): AttemptId => {

@@ -48,8 +48,8 @@ export const TimeSyncIndicator: React.FC<TimeSyncIndicatorProps> = ({
       default:
         return {
           icon: Clock,
-          color: "text-gray-600",
-          bgColor: "bg-gray-100 dark:bg-gray-900/30",
+          color: "text-muted-foreground",
+          bgColor: "bg-muted",
           label: "Idle",
         };
     }

@@ -39,10 +39,10 @@ interface PerizinanRecord {
 
 const CATEGORY_CONFIG = {
   sakit: { label: "Sakit", icon: Stethoscope, color: "text-red-500" },
-  pergi: { label: "Pergi", icon: FileText, color: "text-blue-500" },
-  izin: { label: "Izin", icon: FileText, color: "text-blue-500" },
+  pergi: { label: "Pergi", icon: FileText, color: "text-indigo-500" },
+  izin: { label: "Izin", icon: FileText, color: "text-indigo-500" },
   cuti: { label: "Cuti", icon: Calendar, color: "text-purple-500" },
-  default: { label: "Izin", icon: FileText, color: "text-gray-500" },
+  default: { label: "Izin", icon: FileText, color: "text-muted-foreground" },
 };
 
 const STATUS_CONFIG = {
@@ -191,7 +191,7 @@ function TopStatusCard({
 
       <View className="space-y-4">
         <View className="flex-row items-center">
-          <Text className="text-gray-400 text-xs font-bold w-20">STATUS</Text>
+          <Text className="text-white/60 text-xs font-bold w-20">STATUS</Text>
           <View
             className={cn(
               "px-3 py-1 rounded-full",
@@ -213,14 +213,14 @@ function TopStatusCard({
         </View>
 
         <View className="flex-row items-center">
-          <Text className="text-gray-400 text-xs font-bold w-20">WAKTU</Text>
+          <Text className="text-white/60 text-xs font-bold w-20">WAKTU</Text>
           <Text className="text-white font-semibold text-sm">
             {formattedDate}
           </Text>
         </View>
 
         <View className="flex-row items-start">
-          <Text className="text-gray-400 text-xs font-bold w-20 mt-0.5">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
             ALASAN
           </Text>
           <Text
@@ -233,7 +233,7 @@ function TopStatusCard({
 
         {item.approval_status === "rejected" && item.rejection_reason && (
           <View className="flex-row items-start">
-            <Text className="text-gray-400 text-xs font-bold w-20 mt-0.5">
+            <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
               DITOLAK
             </Text>
             <Text
@@ -342,18 +342,22 @@ export default function StatusPerizinanScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-background">
         {/* Header - Consistent with other pages */}
-        <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">
+        <View className="px-6 py-4 flex-row items-center justify-between bg-background border-b border-border">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali"
+            accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
+            className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border"
           >
             <Icon
               as={ChevronLeft}
-              className="size-6 text-gray-900 dark:text-gray-100"
+              className="size-6 text-secondary-foreground"
             />
           </TouchableOpacity>
 
-          <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          <Text className="text-lg font-bold text-foreground">
             Status Perizinan
           </Text>
 
@@ -362,7 +366,7 @@ export default function StatusPerizinanScreen() {
             className={cn(
               "px-3 py-1.5 rounded-full min-w-[40px] items-center",
               canSubmitMore
-                ? "bg-blue-100 dark:bg-blue-900/30"
+                ? "bg-indigo-100 dark:bg-indigo-900/30"
                 : "bg-red-100 dark:bg-red-900/30",
             )}
           >
@@ -370,7 +374,7 @@ export default function StatusPerizinanScreen() {
               className={cn(
                 "text-xs font-bold",
                 canSubmitMore
-                  ? "text-blue-600 dark:text-blue-400"
+                  ? "text-indigo-600 dark:text-indigo-400"
                   : "text-red-600 dark:text-red-400",
               )}
             >
@@ -386,10 +390,20 @@ export default function StatusPerizinanScreen() {
           maxToRenderPerBatch={8}
           windowSize={5}
           initialNumToRender={6}
+          getItemLayout={(_data, index) => ({
+            length: 120,
+            offset: 120 * index,
+            index,
+          })}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{
+            paddingBottom: 100,
+            width: "100%",
+            maxWidth: 672,
+            alignSelf: "center",
+          }}
           data={records}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -421,9 +435,13 @@ export default function StatusPerizinanScreen() {
           <TouchableOpacity
             onPress={() => router.push("/perizinan/izin")}
             disabled={!canSubmitMore}
+            accessibilityRole="button"
+            accessibilityLabel="Ajukan Perizinan Baru"
+            accessibilityHint="Ketuk dua kali untuk membuka form pengajuan izin baru"
+            accessibilityState={{ disabled: !canSubmitMore }}
             className={cn(
-              "flex-row items-center justify-center py-4 rounded-xl shadow-lg",
-              canSubmitMore ? "bg-[#0F172A]" : "bg-gray-400",
+              "flex-row items-center justify-center py-4 min-h-[48px] rounded-xl shadow-lg",
+              canSubmitMore ? "bg-slate-900" : "bg-muted",
             )}
             activeOpacity={0.8}
           >

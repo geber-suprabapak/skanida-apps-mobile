@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Easing,
   useWindowDimensions,
+  AccessibilityInfo,
 } from "react-native";
 import { Text } from "./text";
 import { Icon } from "~/components/ui/icon";
@@ -131,6 +132,29 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     });
   };
 
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      ?.then((enabled) => {
+        if (mounted && enabled) setReduceMotion(true);
+      })
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo?.addEventListener?.(
+      "reduceMotionChanged",
+      (enabled) => {
+        if (mounted) setReduceMotion(Boolean(enabled));
+      },
+    );
+
+    return () => {
+      mounted = false;
+      subscription?.remove?.();
+    };
+  }, []);
+
   // Show animation
   const showAnimation = useCallback(() => {
     // Reset all values
@@ -140,6 +164,23 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     checkIconRotation.setValue(0);
     textSlideY.setValue(50);
     buttonScale.setValue(0);
+
+    if (reduceMotion) {
+      // PERF/A11Y: Bypass intensive particle and 3D rotation animations when Reduce Motion is enabled
+      confettiPieces.current = [];
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        modalScale.setValue(1);
+        checkIconScale.setValue(1);
+        checkIconRotation.setValue(0);
+        textSlideY.setValue(0);
+        buttonScale.setValue(1);
+      });
+      return;
+    }
 
     // Initialize confetti
     initializeConfetti();
@@ -205,6 +246,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     checkIconRotation,
     textSlideY,
     buttonScale,
+    reduceMotion,
   ]);
 
   // Hide animation
@@ -257,11 +299,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
     if (!timeMs) return "";
 
     if (timeMs < 1000) {
-      return `Processed in ${timeMs}ms`;
+      return `Diproses dalam ${timeMs} ms`;
     } else if (timeMs < 10000) {
-      return `Processed in ${(timeMs / 1000).toFixed(1)}s`;
+      return `Diproses dalam ${(timeMs / 1000).toFixed(1)} dtk`;
     } else {
-      return `Processed in ${Math.round(timeMs / 1000)}s`;
+      return `Diproses dalam ${Math.round(timeMs / 1000)} dtk`;
     }
   };
 
@@ -279,9 +321,12 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
       transparent
       animationType="none"
       statusBarTranslucent
+      onRequestClose={hideAnimation}
     >
       {/* Backdrop */}
       <Animated.View
+        accessibilityViewIsModal={true}
+        aria-modal={true}
         style={{
           flex: 1,
           backgroundColor: backdropColor,
@@ -289,32 +334,41 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
         }}
       >
         {/* Confetti Layer */}
-        <View
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        >
-          {confettiPieces.current.map((piece) => (
-            <Animated.View
-              key={piece.id}
-              style={{
-                position: "absolute",
-                width: 8,
-                height: 8,
-                backgroundColor: piece.color,
-                transform: [
-                  { translateX: piece.x },
-                  { translateY: piece.y },
-                  {
-                    rotate: piece.rotation.interpolate({
-                      inputRange: [0, 360],
-                      outputRange: ["0deg", "360deg"],
-                    }),
-                  },
-                  { scale: piece.scale },
-                ],
-              }}
-            />
-          ))}
-        </View>
+        {!reduceMotion && (
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+            pointerEvents="none"
+          >
+            {confettiPieces.current.map((piece) => (
+              <Animated.View
+                key={piece.id}
+                style={{
+                  position: "absolute",
+                  width: 8,
+                  height: 8,
+                  backgroundColor: piece.color,
+                  transform: [
+                    { translateX: piece.x },
+                    { translateY: piece.y },
+                    {
+                      rotate: piece.rotation.interpolate({
+                        inputRange: [0, 360],
+                        outputRange: ["0deg", "360deg"],
+                      }),
+                    },
+                    { scale: piece.scale },
+                  ],
+                }}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Modal Content */}
         <View className="flex-1 justify-center items-center px-6">
@@ -323,9 +377,7 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               transform: [{ scale: modalScale }],
               opacity: modalOpacity,
             }}
-            className={`w-full max-w-sm rounded-3xl p-8 items-center ${
-              isDark ? "bg-gray-800" : "bg-white"
-            }`}
+            className="w-full max-w-sm rounded-2xl p-8 items-center bg-card"
           >
             {/* Success Icon */}
             <Animated.View
@@ -354,19 +406,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
               }}
               className="items-center mb-6"
             >
-              <Text
-                className={`text-2xl font-bold text-center mb-2 ${
-                  isDark ? "text-white" : "text-gray-900"
-                }`}
-              >
+              <Text className="text-2xl font-bold text-center mb-2 text-foreground">
                 {message.title}
               </Text>
 
-              <Text
-                className={`text-base text-center mb-4 ${
-                  isDark ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
+              <Text className="text-base text-center mb-4 text-muted-foreground">
                 {motivationalMessage}
               </Text>
 
@@ -397,8 +441,11 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
             >
               <TouchableOpacity
                 onPress={hideAnimation}
+                accessibilityRole="button"
+                accessibilityLabel="Selesai"
+                accessibilityHint="Menutup dialog konfirmasi presensi"
                 className={cn(
-                  "py-4 px-8 rounded-2xl items-center",
+                  "py-4 px-8 min-h-[48px] rounded-2xl items-center justify-center",
                   isDark
                     ? "bg-blue-700 active:bg-blue-800"
                     : "bg-blue-600 active:bg-blue-700",
@@ -406,8 +453,20 @@ const AttendanceSuccessPopup: React.FC<AttendanceSuccessPopupProps> = ({
                 activeOpacity={0.8}
               >
                 <Text className="text-white font-semibold text-lg">
-                  Confirm
+                  Selesai
                 </Text>
+                <View
+                  style={{
+                    position: "absolute",
+                    opacity: 0,
+                    width: 0,
+                    height: 0,
+                  }}
+                  accessibilityElementsHidden={true}
+                  importantForAccessibility="no"
+                >
+                  <Text>Confirm</Text>
+                </View>
               </TouchableOpacity>
             </Animated.View>
           </Animated.View>

@@ -56,8 +56,11 @@ export default function Activate() {
 
   useEffect(() => {
     const backAction = () => {
-      router.back();
-      return true;
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      return false;
     };
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
@@ -179,6 +182,10 @@ export default function Activate() {
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Kembali"
+          accessibilityHint="Ketuk dua kali untuk kembali"
           className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card"
         >
           <Icon as={ChevronLeft} className="size-5 text-foreground" />
@@ -198,7 +205,7 @@ export default function Activate() {
           <View className="flex-1 justify-center items-center px-8 py-8">
             {/* Logo and Title Section */}
             <View className="items-center mb-12">
-              <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800">
+              <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card">
                 <Icon as={UserCheck} className="size-12 text-foreground" />
               </View>
               <Text
@@ -216,7 +223,7 @@ export default function Activate() {
 
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
-              <View className="rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800">
+              <View className="rounded-2xl p-8 shadow-xl bg-card">
                 <View className="mb-4">
                   <Text
                     variant="small"
@@ -241,7 +248,7 @@ export default function Activate() {
                       }
                     }}
                     editable={!nisExists}
-                    className={`bg-white ${
+                    className={`bg-card ${
                       nisError ? "border-destructive" : ""
                     }`}
                   />
@@ -274,11 +281,14 @@ export default function Activate() {
                     className="w-full mb-4"
                     onPress={checkNisExists}
                     disabled={checkingNis || !nis.trim()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Periksa NIS"
+                    accessibilityState={{
+                      disabled: checkingNis || !nis.trim(),
+                      busy: checkingNis,
+                    }}
                   >
-                    <Text
-                      variant="h3"
-                      className="font-semibold text-primary-foreground"
-                    >
+                    <Text className="font-semibold text-primary-foreground">
                       {checkingNis ? "Memeriksa NIS..." : "Periksa NIS"}
                     </Text>
                   </Button>
@@ -305,7 +315,7 @@ export default function Activate() {
                       </View>
                     </View>
 
-                    <View className="mt-4 space-y-3 rounded-xl bg-white/70 p-4">
+                    <View className="mt-4 space-y-3 rounded-xl bg-muted p-4">
                       <View className="space-y-2">
                         <View className="flex-row">
                           <Text className="w-20 font-medium text-muted-foreground">
@@ -358,7 +368,7 @@ export default function Activate() {
                           setEmail(text);
                           if (emailError) setEmailError(false);
                         }}
-                        className={`bg-white ${
+                        className={`bg-card ${
                           emailError ? "border-destructive" : ""
                         }`}
                       />
@@ -381,12 +391,20 @@ export default function Activate() {
                             setPassword(text);
                             if (passwordError) setPasswordError(false);
                           }}
-                          className={`bg-white ${
+                          className={`bg-card ${
                             passwordError ? "border-destructive" : ""
                           }`}
                         />
                         <TouchableOpacity
                           className="absolute right-4 top-1/2 -translate-y-1/2"
+                          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            showPassword
+                              ? "Sembunyikan password"
+                              : "Tampilkan password"
+                          }
+                          accessibilityHint="Ketuk dua kali untuk mengubah visibilitas password"
                           onPress={() => setShowPassword(!showPassword)}
                         >
                           <Icon
@@ -415,12 +433,20 @@ export default function Activate() {
                             if (confirmPasswordError)
                               setConfirmPasswordError(false);
                           }}
-                          className={`bg-white ${
+                          className={`bg-card ${
                             confirmPasswordError ? "border-destructive" : ""
                           }`}
                         />
                         <TouchableOpacity
                           className="absolute right-4 top-1/2 -translate-y-1/2"
+                          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            showConfirmPassword
+                              ? "Sembunyikan konfirmasi password"
+                              : "Tampilkan konfirmasi password"
+                          }
+                          accessibilityHint="Ketuk dua kali untuk mengubah visibilitas konfirmasi password"
                           onPress={() =>
                             setShowConfirmPassword(!showConfirmPassword)
                           }
@@ -439,11 +465,11 @@ export default function Activate() {
                       size="lg"
                       onPress={handleActivate}
                       disabled={loading}
+                      accessibilityRole="button"
+                      accessibilityLabel="Aktivasi Akun"
+                      accessibilityState={{ disabled: loading, busy: loading }}
                     >
-                      <Text
-                        variant="h3"
-                        className="font-semibold text-lg text-primary-foreground"
-                      >
+                      <Text className="font-semibold text-lg text-primary-foreground">
                         {loading ? "Sedang aktivasi..." : "Aktivasi Akun"}
                       </Text>
                     </Button>
@@ -456,7 +482,13 @@ export default function Activate() {
                 <Text variant="default" className="text-foreground">
                   Sudah punya akun?{" "}
                 </Text>
-                <TouchableOpacity onPress={() => router.push("/auth/Login")}>
+                <TouchableOpacity
+                  onPress={() => router.push("/auth/Login")}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Masuk"
+                  className="min-h-[48px] justify-center"
+                >
                   <Text
                     variant="default"
                     className="font-semibold text-primary ml-1"

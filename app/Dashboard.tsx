@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter, type Href } from "expo-router";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -9,9 +9,9 @@ import {
   BackHandler,
   Alert,
   RefreshControl,
-  Image,
   AppState,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { StatusBar } from "expo-status-bar";
 import * as Sentry from "@sentry/react-native";
@@ -197,7 +197,10 @@ const DashboardClock = React.memo(function DashboardClock() {
       <Text className="text-blue-100 text-xs font-medium mb-1">
         {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
       </Text>
-      <Text className="text-white text-4xl font-bold tracking-tighter leading-tight">
+      <Text
+        maxFontSizeMultiplier={1.3}
+        className="text-white text-4xl font-bold tracking-tighter leading-tight"
+      >
         {format(time, "HH:mm:ss")}
       </Text>
     </>
@@ -559,16 +562,20 @@ export default function Dashboard() {
     });
     router.push("/profile/enroll");
   }, [router, enrollmentStatus, enrollmentError, user?.id]);
+  // SAFETY: These paths are supplied by the `(tabs)` route group; Metro refreshes
+  // Expo Router's generated route cache after discovering the new route files.
   const navigateToHistory = useCallback(
-    () => router.push("/extra/riwayat"),
+    () => router.navigate("/riwayat" as Href),
     [router],
   );
   const navigateToPerizinan = useCallback(
-    () => router.push("/perizinan/status"),
+    // SAFETY: `/perizinan` is supplied by `(tabs)/perizinan.tsx`.
+    () => router.navigate("/perizinan" as Href),
     [router],
   );
   const navigateToSettings = useCallback(
-    () => router.push("/extra/pengaturan"),
+    // SAFETY: `/pengaturan` is supplied by `(tabs)/pengaturan.tsx`.
+    () => router.navigate("/pengaturan" as Href),
     [router],
   );
   const navigateToEditProfile = useCallback(
@@ -635,12 +642,15 @@ export default function Dashboard() {
                 <Button
                   variant="default"
                   size="lg"
-                  className="w-full bg-blue-600 active:bg-blue-700"
+                  className="w-full bg-secondary active:bg-secondary/80"
                   onPress={onRefresh}
                   disabled={refreshing}
                 >
-                  <Icon as={RefreshCw} className="size-5 text-white mr-2" />
-                  <Text className="text-white font-semibold">
+                  <Icon
+                    as={RefreshCw}
+                    className="size-5 text-secondary-foreground mr-2"
+                  />
+                  <Text className="text-secondary-foreground font-semibold">
                     {refreshing
                       ? "Memeriksa Status..."
                       : "Cek Status Persetujuan"}
@@ -688,33 +698,47 @@ export default function Dashboard() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 32 }}
+            contentContainerStyle={{
+              paddingBottom: 32,
+              width: "100%",
+              maxWidth: 672,
+              alignSelf: "center",
+            }}
           >
             {/* Header */}
             <View className="px-6 pt-2 pb-6">
               <View className="flex-row items-center justify-between mb-8">
                 <View className="flex-row items-center gap-3">
-                  <View className="w-12 h-12 rounded-lg border-2 border-white items-center justify-center bg-white">
+                  <View className="w-12 h-12 rounded-lg border border-border items-center justify-center bg-card">
                     <Image
                       source={LogoImage}
                       className="w-10 h-10"
-                      resizeMode="contain"
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
                     />
                   </View>
-                  <Text className="text-2xl font-bold text-stone-700 dark:text-white tracking-tight">
+                  <Text className="text-2xl font-bold text-foreground tracking-tight">
                     SKANIDA APPS
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-2">
                   <TouchableOpacity
                     onPress={navigateToSettings}
-                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Pengaturan"
+                    accessibilityHint="Ketuk dua kali untuk membuka pengaturan aplikasi"
+                    className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border/40"
                   >
                     <Icon as={Settings} className="size-5 text-foreground/70" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => Sentry.showFeedbackWidget()}
-                    className="w-10 h-10 rounded-full bg-secondary items-center justify-center border border-border/40"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Laporkan Masalah"
+                    accessibilityHint="Ketuk dua kali untuk mengirim umpan balik atau laporan kendala"
+                    className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border/40"
                   >
                     <Icon as={Bug} className="size-5 text-foreground/70" />
                   </TouchableOpacity>
@@ -722,16 +746,19 @@ export default function Dashboard() {
               </View>
 
               {/* Greeting */}
-              <Text className="text-stone-600 dark:text-white font-semibold text-base mb-3 ml-1">
+              <Text className="text-muted-foreground font-semibold text-base mb-3 ml-1">
                 {greeting}, {rawName ? rawName.toUpperCase() : "PENGGUNA"}
               </Text>
 
               {/* Profile + Clock Hero Card */}
-              <View className="p-5 flex-row items-center bg-blue-600 rounded-[35px]">
+              <View className="p-5 flex-row items-center bg-slate-900 rounded-2xl">
                 <TouchableOpacity
                   onPress={navigateToEditProfile}
+                  accessibilityRole="button"
+                  accessibilityLabel="Profil Siswa"
+                  accessibilityHint="Ketuk dua kali untuk mengelola profil dan foto"
                   activeOpacity={0.8}
-                  className="mr-5 relative"
+                  className="mr-5 relative min-h-[48px] min-w-[48px]"
                 >
                   {hasCustomAvatar ? (
                     <Avatar
@@ -745,7 +772,7 @@ export default function Dashboard() {
                       <Icon as={UserRound} className="size-10 text-white" />
                     </View>
                   )}
-                  <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-[3px] border-blue-600" />
+                  <View className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-slate-900" />
                 </TouchableOpacity>
                 <View className="flex-1 justify-center">
                   <DashboardClock />
@@ -758,7 +785,7 @@ export default function Dashboard() {
               faceApiRuntime.state !== "healthy" && (
                 <View className="px-6 mt-4">
                   <Card
-                    className={`p-5 border rounded-3xl ${
+                    className={`p-5 border rounded-2xl ${
                       faceApiRuntime.state === "unhealthy"
                         ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
                         : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
@@ -812,7 +839,7 @@ export default function Dashboard() {
             {faceApiRuntime?.state === "healthy" &&
               enrollmentStatus === "not_enrolled" && (
                 <View className="px-6 mt-4">
-                  <Card className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-3xl">
+                  <Card className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl">
                     <View className="flex-row items-center mb-3">
                       <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
                         <Icon
@@ -848,7 +875,7 @@ export default function Dashboard() {
             {faceApiRuntime?.state === "healthy" &&
               enrollmentStatus === "error" && (
                 <View className="px-6 mt-4">
-                  <Card className="p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl">
+                  <Card className="p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-2xl">
                     <View className="flex-row items-center mb-3">
                       <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
                         <Icon
@@ -885,7 +912,7 @@ export default function Dashboard() {
 
             {/* Attendance Status Card */}
             <View className="px-6 mt-4">
-              <Card className="p-0 overflow-hidden bg-card border border-border/50 rounded-3xl">
+              <Card className="p-0 overflow-hidden bg-card border border-border/50 rounded-2xl">
                 <View className="flex-row">
                   {/* Masuk Column */}
                   <View className="flex-1 items-center py-7 px-4">
@@ -940,8 +967,8 @@ export default function Dashboard() {
                     </Text>
                     {attendanceStatus.hasCheckedOut ? (
                       <View className="mt-3 flex-row items-center bg-secondary/50 px-3 py-1 rounded-full">
-                        <View className="w-2 h-2 rounded-full mr-1.5 bg-blue-500" />
-                        <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                        <View className="w-2 h-2 rounded-full mr-1.5 bg-primary" />
+                        <Text className="text-xs font-semibold text-primary">
                           Selesai
                         </Text>
                       </View>
@@ -967,21 +994,25 @@ export default function Dashboard() {
                   <TouchableOpacity
                     onPress={navigateToCheckIn}
                     disabled={isPrimaryActionDisabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={primaryActionLabel}
+                    accessibilityHint="Ketuk dua kali untuk mencatat presensi"
+                    accessibilityState={{ disabled: isPrimaryActionDisabled }}
                     activeOpacity={0.9}
-                    className="overflow-hidden rounded-2xl"
+                    className="overflow-hidden rounded-2xl min-h-[48px]"
                   >
                     {isPrimaryActionDisabled ? (
-                      <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50">
+                      <View className="py-5 items-center justify-center bg-secondary rounded-2xl border border-border/50 min-h-[48px]">
                         <Text className="font-bold text-secondary-foreground text-base uppercase tracking-wider">
                           {primaryActionLabel}
                         </Text>
                       </View>
                     ) : (
                       <View
-                        className={`py-5 items-center justify-center rounded-2xl ${
+                        className={`py-5 items-center justify-center rounded-2xl min-h-[48px] ${
                           derivedActionType === "home"
                             ? "bg-amber-500"
-                            : "bg-blue-600"
+                            : "bg-primary"
                         }`}
                       >
                         <Text className="font-bold text-white text-base uppercase tracking-wider">
@@ -1013,26 +1044,38 @@ export default function Dashboard() {
             <View className="flex-row mx-6 mt-10 mb-10 gap-3">
               <TouchableOpacity
                 onPress={navigateToHistory}
+                accessibilityRole="button"
+                accessibilityLabel="Riwayat Presensi"
+                accessibilityHint="Ketuk dua kali untuk melihat kalender riwayat presensi"
                 activeOpacity={0.7}
-                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full border border-white/10"
+                className="flex-1 bg-secondary flex-row items-center justify-center py-4 min-h-[48px] rounded-2xl border border-border"
               >
-                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
-                  <Icon as={History} className="size-5 text-white" />
+                <View className="w-10 h-10 rounded-full bg-background items-center justify-center mr-3 border border-border">
+                  <Icon
+                    as={History}
+                    className="size-5 text-secondary-foreground"
+                  />
                 </View>
-                <Text className="text-base font-bold text-white tracking-wide">
+                <Text className="text-base font-bold text-secondary-foreground tracking-wide">
                   Riwayat
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={navigateToPerizinan}
+                accessibilityRole="button"
+                accessibilityLabel="Perizinan Siswa"
+                accessibilityHint="Ketuk dua kali untuk membuka status dan pengajuan izin"
                 activeOpacity={0.7}
-                className="flex-1 bg-blue-600 flex-row items-center justify-center py-4 rounded-full border border-white/10"
+                className="flex-1 bg-secondary flex-row items-center justify-center py-4 min-h-[48px] rounded-2xl border border-border"
               >
-                <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center mr-3 border border-white/20">
-                  <Icon as={ClipboardPenLine} className="size-5 text-white" />
+                <View className="w-10 h-10 rounded-full bg-background items-center justify-center mr-3 border border-border">
+                  <Icon
+                    as={ClipboardPenLine}
+                    className="size-5 text-secondary-foreground"
+                  />
                 </View>
-                <Text className="text-base font-bold text-white tracking-wide">
+                <Text className="text-base font-bold text-secondary-foreground tracking-wide">
                   Perizinan
                 </Text>
               </TouchableOpacity>

@@ -1,4 +1,4 @@
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
@@ -63,8 +63,11 @@ export default function Login() {
 
   useEffect(() => {
     const backAction = () => {
-      router.back();
-      return true;
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      return false;
     };
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
@@ -106,7 +109,9 @@ export default function Login() {
           return;
         }
         setUser(user);
-        router.replace("/Dashboard");
+        // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+        // generated typed-route cache is refreshed by Metro after file changes.
+        router.replace("/home" as Href);
       } catch (error) {
         if (__DEV__) console.error("[Login] Identity login failed:", error);
         Alert.alert(
@@ -136,7 +141,11 @@ export default function Login() {
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card dark:bg-gray-800`}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Kembali"
+          accessibilityHint="Ketuk dua kali untuk kembali"
+          className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card"
         >
           <Icon as={ChevronLeft} className="size-5 text-foreground" />
         </TouchableOpacity>
@@ -144,9 +153,7 @@ export default function Login() {
 
       <View className="flex-1 justify-center items-center px-8 py-8">
         <View className="items-center mb-12">
-          <View
-            className={`w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800`}
-          >
+          <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card">
             <Icon as={Key} className="size-12 text-foreground" />
           </View>
 
@@ -168,10 +175,7 @@ export default function Login() {
 
         {!loading && (
           <Button variant="default" size="lg" onPress={retryLogin}>
-            <Text
-              variant="h3"
-              className={`font-semibold text-lg text-primary-foreground`}
-            >
+            <Text className="font-semibold text-lg text-primary-foreground">
               Coba lagi
             </Text>
           </Button>

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { View, ActivityIndicator, Image } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { View, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
+import { Stack, useRouter, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { Text } from "~/components/ui/text";
@@ -23,7 +24,9 @@ export default function AuthCallback() {
         const user = await getLogtoUser();
         if (user) {
           setUser(user);
-          router.replace("/Dashboard");
+          // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+          // generated typed-route cache is refreshed by Metro after file changes.
+          router.replace("/home" as Href);
         } else {
           router.replace("/auth/AuthSelector");
         }
@@ -40,11 +43,12 @@ export default function AuthCallback() {
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 items-center justify-center px-8">
         <View className="items-center mb-8">
-          <View className="w-28 h-28 rounded-full shadow-lg mb-6 items-center justify-center bg-card dark:bg-gray-800">
+          <View className="w-28 h-28 rounded-full shadow-lg mb-6 items-center justify-center bg-card">
             <Image
               source={SkanidaLogo}
               className="w-20 h-20"
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="memory-disk"
             />
           </View>
           <Text
