@@ -162,12 +162,15 @@ const ImagePreview: React.FC<{
   imageData: ImageData;
   onRemove: () => void;
 }> = ({ imageData, onRemove }) => (
-  <View className="relative w-full h-56 rounded-2xl overflow-hidden bg-muted">
+  <View className="relative w-full h-56 rounded-2xl overflow-hidden bg-muted items-center justify-center">
     <Image
       source={{ uri: imageData.uri }}
+      style={{ width: "100%", height: "100%" }}
       className="w-full h-full"
-      contentFit="cover"
+      contentFit="contain"
       cachePolicy="memory-disk"
+      accessibilityRole="image"
+      accessibilityLabel="Pratinjau surat bukti perizinan"
     />
     <View className="absolute top-0 left-0 right-0 p-4 flex-row justify-end items-start bg-black/20">
       <TouchableOpacity
@@ -790,8 +793,10 @@ export default function PerizinanScreen() {
               />
             )}
           </View>
+        </ScrollView>
 
-          {/* Submit Button */}
+        {/* Sticky Submit Button Container */}
+        <View className="px-6 py-4 bg-background border-t border-border">
           <TouchableOpacity
             onPress={uploadPermit}
             disabled={!canSubmit}
@@ -804,14 +809,16 @@ export default function PerizinanScreen() {
             }}
             activeOpacity={0.9}
             className={cn(
-              "w-full py-4 min-h-[48px] rounded-2xl flex-row items-center justify-center shadow-lg shadow-blue-500/30",
-              canSubmit ? "bg-slate-900" : "bg-secondary shadow-none",
+              "w-full py-4 min-h-[48px] rounded-2xl flex-row items-center justify-center shadow-lg",
+              canSubmit
+                ? "bg-primary shadow-primary/30 active:opacity-90"
+                : "bg-secondary shadow-none opacity-60",
             )}
           >
             {uiState.uploading ? (
               <>
-                <View className="w-5 h-5 border-2 border-t-transparent border-white rounded-full mr-3 animate-spin" />
-                <Text className="text-white font-bold text-lg">
+                <View className="w-5 h-5 border-2 border-t-transparent border-primary-foreground rounded-full mr-3 animate-spin" />
+                <Text className="text-primary-foreground font-bold text-lg">
                   Mengirim...
                 </Text>
               </>
@@ -821,13 +828,13 @@ export default function PerizinanScreen() {
                   as={Send}
                   className={cn(
                     "size-5 mr-2",
-                    canSubmit ? "text-white" : "text-muted-foreground",
+                    canSubmit ? "text-primary-foreground" : "text-muted-foreground",
                   )}
                 />
                 <Text
                   className={cn(
                     "font-bold text-lg",
-                    canSubmit ? "text-white" : "text-muted-foreground",
+                    canSubmit ? "text-primary-foreground" : "text-muted-foreground",
                   )}
                 >
                   Kirim Pengajuan
@@ -835,7 +842,7 @@ export default function PerizinanScreen() {
               </>
             )}
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

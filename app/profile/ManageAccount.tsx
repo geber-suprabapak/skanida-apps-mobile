@@ -13,6 +13,8 @@ import {
   Platform,
 } from "react-native";
 import { Image } from "expo-image";
+void Image;
+import { Avatar } from "~/components/ui/avatar";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -467,7 +469,7 @@ export default function ManageAccount() {
           {/* --- SECTION 1: EDIT PROFILE --- */}
           <View className="px-5 mt-2">
             <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
-              Edit Profil
+              Informasi Akun Siswa
             </Text>
 
             {/* Avatar Card */}
@@ -479,23 +481,12 @@ export default function ManageAccount() {
                   </View>
                 ) : (
                   <View>
-                    {avatarUrl ? (
-                      <Image
-                        source={{ uri: avatarUrl }}
-                        style={{ width: 112, height: 112, borderRadius: 24 }}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                      />
-                    ) : (
-                      <View
-                        className="rounded-2xl items-center justify-center bg-blue-600"
-                        style={{ width: 112, height: 112 }}
-                      >
-                        <Text className="text-white text-4xl font-bold">
-                          {(name || user?.email || "U").charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
+                    <Avatar
+                      size="xl"
+                      fallback={(name || user?.email || "S").charAt(0).toUpperCase()}
+                      className="w-28 h-28 border-2 border-border"
+                      source={avatarUrl ?? undefined}
+                    />
                     <TouchableOpacity
                       className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center shadow-md bg-blue-600 border-2 border-white"
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -529,7 +520,7 @@ export default function ManageAccount() {
                     value={name}
                     onChangeText={setName}
                     editable={false}
-                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                    className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
                     placeholder="Nama Lengkap"
                   />
                 </View>
@@ -547,7 +538,7 @@ export default function ManageAccount() {
                     value={email}
                     onChangeText={setEmail}
                     editable={false}
-                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                    className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
                   />
                 </View>
               </View>
@@ -568,7 +559,7 @@ export default function ManageAccount() {
                       value={className}
                       onChangeText={setClassName}
                       editable={false}
-                      className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                      className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
                       placeholder="Contoh: XII RPL 1"
                     />
                   </View>
@@ -589,7 +580,7 @@ export default function ManageAccount() {
                       onChangeText={setAbsenceNumber}
                       editable={false}
                       keyboardType="numeric"
-                      className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                      className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
                       placeholder="00"
                     />
                   </View>
@@ -612,7 +603,7 @@ export default function ManageAccount() {
                     onChangeText={setNis}
                     editable={false}
                     keyboardType="numeric"
-                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
+                    className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
                     placeholder="Nomor Induk Siswa"
                   />
                 </View>

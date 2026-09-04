@@ -43,12 +43,14 @@ export default function AuthCallback() {
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 items-center justify-center px-8">
         <View className="items-center mb-8">
-          <View className="w-28 h-28 rounded-full shadow-lg mb-6 items-center justify-center bg-card">
+          <View className="w-28 h-28 rounded-full border border-border shadow-lg mb-6 items-center justify-center bg-card">
             <Image
               source={SkanidaLogo}
-              className="w-20 h-20"
+              style={{ width: 96, height: 96 }}
+              className="w-24 h-24"
               contentFit="contain"
               cachePolicy="memory-disk"
+              accessibilityLabel="Logo SMKN 2 Magelang"
             />
           </View>
           <Text

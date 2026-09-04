@@ -198,11 +198,11 @@ export default function Activate() {
       >
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 48 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-1 justify-center items-center px-8 py-8">
+          <View className="w-full items-center px-8 py-8">
             {/* Logo and Title Section */}
             <View className="items-center mb-12">
               <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card">
@@ -309,8 +309,8 @@ export default function Activate() {
                           NIS siap diperiksa
                         </Text>
                         <Text className="text-muted-foreground">
-                          Astra akan memvalidasi NIS terhadap roster saat
-                          pendaftaran dikirim.
+                          Sistem sekolah akan memvalidasi NIS terhadap data siswa
+                          saat pendaftaran dikirim.
                         </Text>
                       </View>
                     </View>

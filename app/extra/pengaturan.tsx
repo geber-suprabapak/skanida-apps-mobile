@@ -1,4 +1,4 @@
-import { Stack, useRouter, useFocusEffect, type Href } from "expo-router";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
@@ -9,6 +9,8 @@ import {
   Switch,
 } from "react-native";
 import { Image } from "expo-image";
+
+void Image;
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,6 +18,7 @@ import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
 import { Text } from "~/components/ui/text";
+import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
 import { getProfile } from "~/utils/bffMobileApi";
@@ -23,7 +26,6 @@ import { faceApiLog } from "~/utils/faceApiDebug";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
-  ChevronLeft,
   CircleFadingArrowUp,
   LogOut,
   Moon,
@@ -58,6 +60,9 @@ function Pengaturan() {
     initialProfile.avatar,
   );
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [studentNis, setStudentNis] = useState<string>(
+    user?.user_metadata?.nis || "",
+  );
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
@@ -90,12 +95,14 @@ function Pengaturan() {
     if (!user) {
       setProfileName("Pengguna Skanida");
       setProfileAvatar(null);
+      setStudentNis("");
       return;
     }
     setProfileName(
       user.user_metadata?.name || user.email || "Pengguna Skanida",
     );
     setProfileAvatar(user.user_metadata?.avatar_url || null);
+    setStudentNis(user.user_metadata?.nis || "");
 
     try {
       const data = await getProfile();
@@ -108,6 +115,9 @@ function Pengaturan() {
       setProfileAvatar(
         data.avatar_url || user.user_metadata?.avatar_url || null,
       );
+      if (data.nis) {
+        setStudentNis(data.nis);
+      }
     } catch (error) {
       if (__DEV__) console.error("Error fetching settings profile:", error);
     }
@@ -152,12 +162,13 @@ function Pengaturan() {
   }, [setUser, router]);
 
   const handleCopyId = useCallback(async () => {
-    if (user?.id) {
-      await Clipboard.setStringAsync(user.id);
+    const val = studentNis || user?.id;
+    if (val) {
+      await Clipboard.setStringAsync(val);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
-  }, [user?.id]);
+  }, [studentNis, user?.id]);
 
   const toggleTheme = useCallback(() => {
     const next = isDark ? "light" : "dark";
@@ -209,26 +220,8 @@ function Pengaturan() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-border">
-        <TouchableOpacity
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              // SAFETY: `/home` is supplied by `(tabs)/home.tsx`.
-              router.navigate("/home" as Href);
-            }
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Kembali"
-          accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
-          className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border"
-        >
-          <Icon as={ChevronLeft} className="size-6 text-secondary-foreground" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-foreground">Pengaturan</Text>
-        <View className="w-10" />
+      <View className="px-6 py-4 border-b border-border">
+        <Text className="text-xl font-bold text-foreground">Pengaturan</Text>
       </View>
 
       <ScrollView
@@ -246,25 +239,12 @@ function Pengaturan() {
           <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
             <View className="p-5 flex-row items-center">
               <View className="relative">
-                {avatarUrl ? (
-                  <Image
-                    source={{ uri: avatarUrl }}
-                    style={{ width: 72, height: 72 }}
-                    className="rounded-2xl"
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                  />
-                ) : (
-                  <View
-                    className="rounded-2xl items-center justify-center bg-indigo-500"
-                    style={{ width: 72, height: 72 }}
-                  >
-                    <Text className="text-white text-2xl font-bold">
-                      {(profileName || user?.email)?.charAt(0).toUpperCase() ||
-                        "U"}
-                    </Text>
-                  </View>
-                )}
+                <Avatar
+                  size="lg"
+                  fallback={(profileName || user?.email)?.charAt(0).toUpperCase() || "S"}
+                  className="w-20 h-20"
+                  source={avatarUrl ?? undefined}
+                />
                 <EditButton
                   onPress={() => {
                     faceApiLog("settings-page:navigate-manage-account", {
@@ -285,10 +265,11 @@ function Pengaturan() {
                 </Text>
                 <TouchableOpacity
                   onPress={handleCopyId}
+                  disabled={!studentNis}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityRole="button"
-                  accessibilityLabel="Salin ID Siswa"
-                  accessibilityHint="Ketuk dua kali untuk menyalin ID siswa ke papan klip"
+                  accessibilityLabel="Salin NIS Siswa"
+                  accessibilityHint="Ketuk dua kali untuk menyalin NIS siswa ke papan klip"
                   className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${copiedId ? "bg-green-500/10" : "bg-muted"}`}
                   activeOpacity={0.7}
                 >
@@ -300,8 +281,10 @@ function Pengaturan() {
                     className={`text-xs font-medium ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
                   >
                     {copiedId
-                      ? "ID Tersalin!"
-                      : `${user?.id?.substring(0, 8) || "Unknown"}...`}
+                      ? "NIS Tersalin!"
+                      : studentNis
+                        ? `NIS: ${studentNis}`
+                        : "NIS Belum Terdaftar"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -431,23 +414,25 @@ function Pengaturan() {
         </View>
 
         {/* Logout */}
-        <View className="px-5 mt-6">
-          <TouchableOpacity
-            onPress={handleLogout}
-            activeOpacity={0.9}
-            className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
-          >
-            <Icon as={LogOut} className="size-5 text-white mr-3" />
-            <Text className="font-bold text-white text-base">
-              Keluar dari Akun
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {Boolean(user) && (
+          <View className="px-5 mt-6">
+            <TouchableOpacity
+              onPress={handleLogout}
+              activeOpacity={0.9}
+              className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
+            >
+              <Icon as={LogOut} className="size-5 text-white mr-3" />
+              <Text className="font-bold text-white text-base">
+                Keluar dari Akun
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Footer */}
         <View className="items-center mt-8 px-5">
           <Text className="text-muted-foreground text-xs">
-            © 2025 Skanida Apps
+            © {new Date().getFullYear()} Skanida Apps
           </Text>
           <Text className="text-muted-foreground/50 text-xs mt-1">
             Semua hak dilindungi undang-undang

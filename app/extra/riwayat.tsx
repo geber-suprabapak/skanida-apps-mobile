@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo } from "react";
-import { View, TouchableOpacity, BackHandler, FlatList } from "react-native";
+import { View, BackHandler, FlatList } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 
@@ -11,7 +11,7 @@ import AttendanceCalendar, {
 import MonthYearPicker from "~/components/ui/month-year-picker";
 import { Icon } from "~/components/ui/icon";
 import { Badge } from "~/components/ui/badge";
-import { ChevronLeft, Calendar } from "lucide-react-native";
+import { Calendar } from "lucide-react-native";
 
 import useAuthStore from "~/store/authStore";
 import {
@@ -274,23 +274,10 @@ export default function Riwayat() {
       <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
 
       {/* Simple Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-border">
-        <TouchableOpacity
-          onPress={() => router.canGoBack() && router.back()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Kembali"
-          accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
-          className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border"
-        >
-          <Icon as={ChevronLeft} className="size-6 text-secondary-foreground" />
-        </TouchableOpacity>
-
-        <Text className="text-lg font-bold text-foreground">
+      <View className="px-6 py-4 border-b border-border">
+        <Text className="text-xl font-bold text-foreground">
           Riwayat Kehadiran
         </Text>
-
-        <View className="w-10" />
       </View>
 
       <FlatList
@@ -306,7 +293,7 @@ export default function Riwayat() {
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 40,
+          paddingBottom: 100,
           width: "100%",
           maxWidth: 672,
           alignSelf: "center",

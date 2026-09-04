@@ -1,4 +1,4 @@
-import { Stack, useRouter, useFocusEffect, type Href } from "expo-router";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 import { useCallback, useState, useMemo, memo } from "react";
 import {
   View,
@@ -14,7 +14,6 @@ import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { Icon } from "~/components/ui/icon";
 import {
-  ChevronLeft,
   Plus,
   Clock,
   CheckCircle,
@@ -346,28 +345,7 @@ export default function StatusPerizinanScreen() {
       <SafeAreaView className="flex-1 bg-background">
         {/* Header - Consistent with other pages */}
         <View className="px-6 py-4 flex-row items-center justify-between bg-background border-b border-border">
-          <TouchableOpacity
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                // SAFETY: `/home` is supplied by `(tabs)/home.tsx`.
-                router.navigate("/home" as Href);
-              }
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityRole="button"
-            accessibilityLabel="Kembali"
-            accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
-            className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border"
-          >
-            <Icon
-              as={ChevronLeft}
-              className="size-6 text-secondary-foreground"
-            />
-          </TouchableOpacity>
-
-          <Text className="text-lg font-bold text-foreground">
+          <Text className="text-xl font-bold text-foreground">
             Status Perizinan
           </Text>
 
@@ -445,6 +423,7 @@ export default function StatusPerizinanScreen() {
           <TouchableOpacity
             onPress={() => router.push("/perizinan/izin")}
             disabled={!canSubmitMore}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Ajukan Perizinan Baru"
             accessibilityHint="Ketuk dua kali untuk membuka form pengajuan izin baru"

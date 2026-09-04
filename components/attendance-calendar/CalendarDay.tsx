@@ -14,48 +14,56 @@ const baseDayClass =
 const getDayStatusClasses = (day: CalendarDay, isDark: boolean) => {
   if (!day.isCurrentMonth) return `${baseDayClass} opacity-0`;
 
-  if (day.isCurrentMonth && day.isFuture) {
-    return `${baseDayClass} ${isDark ? "bg-muted/50" : "bg-muted"}`;
+  // Future dates: Flat, unaccented, disabled
+  if (day.isFuture) {
+    return `${baseDayClass} opacity-30`;
   }
 
+  // Today without attendance: Clear primary accent ring
+  if (day.isToday && !day.attendance) {
+    return `${baseDayClass} border-2 border-primary bg-primary/10`;
+  }
+
+  // Days without attendance record: Flat, unaccented
   if (!day.attendance) return baseDayClass;
 
   const hasCompleteAttendance =
     !!day.attendance.checkInTime && !!day.attendance.checkOutTime;
 
+  // Present or Late
   if (day.attendance.status === "present" || day.attendance.status === "late") {
     const completeClass = isDark ? "bg-emerald-700/70" : "bg-emerald-400/50";
     const partialClass = isDark ? "bg-emerald-900/30" : "bg-emerald-100/70";
-    return `${baseDayClass} ${hasCompleteAttendance ? completeClass : partialClass}`;
+    const todayBorder = day.isToday ? "border-2 border-primary" : "";
+    return `${baseDayClass} ${hasCompleteAttendance ? completeClass : partialClass} ${todayBorder}`.trim();
   }
 
+  // Leave / Permit
   if (day.attendance.status === "leave") {
-    return `${baseDayClass} ${isDark ? "bg-blue-900/60" : "bg-blue-50"}`;
+    const todayBorder = day.isToday ? "border-2 border-primary" : "";
+    return `${baseDayClass} ${isDark ? "bg-blue-900/60" : "bg-blue-50"} ${todayBorder}`.trim();
   }
 
-  if (day.attendance.status === "sick") {
-    return `${baseDayClass} ${isDark ? "bg-rose-900/60" : "bg-rose-50"}`;
-  }
-
-  return `${baseDayClass} ${isDark ? "bg-rose-900/60" : "bg-rose-50"}`;
+  // Sick / Absent
+  const todayBorder = day.isToday ? "border-2 border-primary" : "";
+  return `${baseDayClass} ${isDark ? "bg-rose-900/60" : "bg-rose-50"} ${todayBorder}`.trim();
 };
 
 const getDayTextClasses = (day: CalendarDay, isDark: boolean) => {
   if (!day.isCurrentMonth) return "text-transparent";
 
+  // Future dates: Muted, disabled typography
   if (day.isFuture) {
-    return "text-muted-foreground";
+    return "text-sm font-normal text-muted-foreground/40";
   }
 
   const baseText = "text-sm font-semibold";
 
   if (!day.attendance) {
-    const todayClass = day.isToday
-      ? "text-blue-600 dark:text-blue-400 font-bold"
-      : isDark
-        ? "text-muted-foreground"
-        : "text-foreground";
-    return `${baseText} ${todayClass}`;
+    if (day.isToday) {
+      return `${baseText} text-primary font-bold`;
+    }
+    return `${baseText} ${isDark ? "text-muted-foreground" : "text-foreground"}`;
   }
 
   switch (day.attendance.status) {
@@ -84,7 +92,7 @@ export const CalendarDayComponent = memo(
         </Text>
 
         {day.isToday && !day.attendance && (
-          <View className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-500" />
+          <View className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-primary" />
         )}
       </View>
     );

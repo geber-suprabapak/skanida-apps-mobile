@@ -15,9 +15,10 @@ import {
 } from "~/utils/notifications";
 import { useNotificationSync } from "~/hooks/useNotificationSync";
 import { getLogtoUser } from "~/utils/logto";
-import { View, ActivityIndicator } from "react-native";
+import { View } from "react-native";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import LoadingScreen from "./auth/LoadingScreen";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -109,28 +110,21 @@ export default Sentry.wrap(function RootLayout() {
   if (!isAuthReady) {
     return (
       <SafeAreaProvider>
-        <View className="flex-1 items-center justify-center bg-background">
-          {initError ? (
-            <View className="items-center px-8">
-              <Text
-                variant="h3"
-                className="text-red-600 dark:text-red-500 mb-2"
-              >
-                Initialization Error
-              </Text>
-              <Text className="text-center text-muted-foreground">
-                {initError}
-              </Text>
-            </View>
-          ) : (
-            <View className="items-center">
-              <ActivityIndicator size="large" color="#0066FF" />
-              <Text className="mt-4 text-muted-foreground">
-                Initializing...
-              </Text>
-            </View>
-          )}
-        </View>
+        {initError ? (
+          <View className="flex-1 items-center justify-center bg-background px-8">
+            <Text
+              variant="h3"
+              className="text-red-600 dark:text-red-500 mb-2"
+            >
+              Initialization Error
+            </Text>
+            <Text className="text-center text-muted-foreground">
+              {initError}
+            </Text>
+          </View>
+        ) : (
+          <LoadingScreen />
+        )}
       </SafeAreaProvider>
     );
   }

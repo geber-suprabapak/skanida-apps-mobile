@@ -51,12 +51,14 @@ export default function LoginScreen() {
         <View className="flex-1 justify-center items-center px-8 py-16">
           {/* Logo Section */}
           <View className="items-center mb-16">
-            <View className="w-52 h-52 rounded-full shadow-lg mb-10 items-center justify-center bg-card">
+            <View className="w-52 h-52 rounded-full border border-border shadow-lg mb-10 items-center justify-center bg-card">
               <Image
                 source={SkanidaLogo}
+                style={{ width: 144, height: 144 }}
                 className="w-36 h-36"
                 contentFit="contain"
                 cachePolicy="memory-disk"
+                accessibilityLabel="Logo SMKN 2 Magelang"
               />
             </View>
             <Text

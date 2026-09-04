@@ -174,7 +174,7 @@ export const faceApiWarn = (event: string, cause?: unknown) => {
 export const faceApiError = (event: string, cause?: unknown) => {
   const normalizedPayload = normalizeDebugValue(cause);
   if (isDevLoggingEnabled()) {
-    console.error(`${PREFIX} ${event}`, normalizedPayload);
+    console.warn(`${PREFIX} ${event}`, normalizedPayload);
     return;
   }
 

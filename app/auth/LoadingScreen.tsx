@@ -9,9 +9,11 @@ const LoadingScreen = () => {
     <View className="flex-1 justify-center items-center bg-background">
       <Image
         source={require("../../assets/skanida.png")}
-        className="w-72 h-72 max-w-[80vw] max-h-[40vh] mb-6"
+        style={{ width: 144, height: 144 }}
+        className="w-36 h-36 mb-6"
         contentFit="contain"
         cachePolicy="memory-disk"
+        accessibilityLabel="Logo SMKN 2 Magelang"
       />
       <Text className="text-4xl font-bold text-foreground">SKANIDA</Text>
       <Text className="text-lg tracking-widest text-muted-foreground">

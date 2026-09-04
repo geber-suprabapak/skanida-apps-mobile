@@ -1,7 +1,7 @@
 import { Stack, useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
+import { useAuthRequest } from "expo-auth-session";
 import { View, TouchableOpacity, Alert, BackHandler } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import useAuthStore from "~/store/authStore";

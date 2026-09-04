@@ -5,17 +5,25 @@ import {
   ClipboardPenLine,
   Settings,
 } from "lucide-react-native";
+import { useUniwind } from "uniwind";
 
 const tabIconSize = 22;
 
 export default function TabLayout() {
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#0066FF",
-        tabBarInactiveTintColor: "#64748B",
+        tabBarInactiveTintColor: isDark ? "#A1A1AA" : "#64748B",
         tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          backgroundColor: isDark ? "#0a0a0a" : "#ffffff",
+          borderTopColor: isDark ? "#262626" : "#e5e5e5",
+        },
       }}
     >
       <Tabs.Screen
