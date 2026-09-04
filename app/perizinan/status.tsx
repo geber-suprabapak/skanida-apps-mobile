@@ -1,4 +1,4 @@
-import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useRouter, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useState, useMemo, memo } from "react";
 import {
   View,
@@ -285,8 +285,11 @@ export default function StatusPerizinanScreen() {
   useFocusEffect(
     useCallback(() => {
       const backAction = () => {
-        router.back();
-        return true;
+        if (router.canGoBack()) {
+          router.back();
+          return true;
+        }
+        return false;
       };
       const backHandler = BackHandler.addEventListener(
         "hardwareBackPress",
@@ -344,7 +347,14 @@ export default function StatusPerizinanScreen() {
         {/* Header - Consistent with other pages */}
         <View className="px-6 py-4 flex-row items-center justify-between bg-background border-b border-border">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                // SAFETY: `/home` is supplied by `(tabs)/home.tsx`.
+                router.navigate("/home" as Href);
+              }
+            }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Kembali"

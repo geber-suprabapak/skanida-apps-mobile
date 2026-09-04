@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import { View, TouchableOpacity, BackHandler, FlatList } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
@@ -53,20 +47,22 @@ export default function Riwayat() {
     }, [user?.id]),
   );
 
-  useEffect(() => {
-    const onBackPress = () => {
-      if (router.canGoBack()) {
-        router.back();
-        return true;
-      }
-      return false;
-    };
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      onBackPress,
-    );
-    return () => subscription.remove();
-  }, [router]);
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (router.canGoBack()) {
+          router.back();
+          return true;
+        }
+        return false;
+      };
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
+      return () => subscription.remove();
+    }, [router]),
+  );
 
   // PERF-H06: Derive stats from calendar data instead of separate fetch
   const handleCalendarDataLoaded = useCallback((data: AttendanceMap) => {

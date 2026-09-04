@@ -71,13 +71,13 @@ Remediation Complete: All four phases (Phases 1–4) and 20/20 Impeccable native
      - Localized `pop-up.tsx` celebration dialogs ("Selesai", "Diproses dalam ...").
   5. **Verification & Testing**:
      - Added `__tests__/phase4-ergonomics-performance.test.ts` with comprehensive invariant tests.
-     - Ran full test suite: 13/13 test suites pass, 106/106 tests pass.
+     - Ran full test suite: 13/13 test suites pass, 107/107 tests pass.
   6. **Final 20/20 Impeccable Polish & Remediation**:
      - `app/profile/enroll.tsx`: Applied safe area bottom inset to the capture button container (`paddingBottom: Math.max(24, insets.bottom + 12)`).
-     - `app/extra/pengaturan.tsx`: Replaced `useEffect` for `hardwareBackPress` with `useFocusEffect` from `expo-router` so the back press listener does not leak globally across bottom tabs.
+     - `app/extra/pengaturan.tsx`: Replaced `useEffect` for `hardwareBackPress` with `useFocusEffect` from `expo-router` guarded with `router.canGoBack()` so the back press listener does not leak globally across bottom tabs or trap user exits.
      - `app/auth/Login.tsx`: Removed `variant="h3"` from `<Text>` inside `<Button>` to eliminate VoiceOver heading rotor pollution.
      - `components/attendance-calendar/index.tsx`: Enhanced the refresh button with `hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}`, `min-h-12 min-w-12 items-center justify-center`, `accessibilityRole="button"`, and `accessibilityLabel="Perbarui kalender kehadiran"`.
-     - `__tests__/phase4-ergonomics-performance.test.ts`: Added test assertions verifying `variant="h3"` removal inside `<Button>` in `app/auth/Login.tsx` and calendar refresh touch clearance.
+     - `__tests__/phase4-ergonomics-performance.test.ts`: Added test assertions verifying `variant="h3"` removal inside `<Button>` in `app/auth/Login.tsx`, calendar refresh touch clearance, and useFocusEffect canGoBack guard.
      - `__tests__/phase2-platform-navigation.test.ts`: Added assertions for `app/profile/enroll.tsx` safe area bottom inset usage.
 
 # In Progress

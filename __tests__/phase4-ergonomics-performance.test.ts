@@ -35,6 +35,14 @@ describe("Phase 4: Ergonomics, Performance & Polish Invariants", () => {
       expect(source).toMatch(/EditButton[\s\S]*?hitSlop/);
       expect(source).toMatch(/handleCopyId[\s\S]*?hitSlop/);
       expect(source).toContain('accessibilityRole="switch"');
+      expect(source).toContain("useFocusEffect");
+      expect(source).toContain("router.canGoBack()");
+    });
+
+    it("app/perizinan/status.tsx guards hardwareBackPress with router.canGoBack", () => {
+      const source = readSource("app/perizinan/status.tsx");
+      expect(source).toContain("useFocusEffect");
+      expect(source).toContain("router.canGoBack()");
     });
 
     it("app/Dashboard.tsx configures 48x48dp dimensions, hitSlop, and min-height 48px", () => {

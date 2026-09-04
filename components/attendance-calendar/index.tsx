@@ -123,9 +123,7 @@ const AttendanceCalendar = forwardRef<
           </View>
         )}
 
-        <View
-          className={`rounded-3xl p-5 border border-border shadow-sm ${"bg-card"}`}
-        >
+        <View className="rounded-3xl p-5 border border-border shadow-sm bg-card">
           <View className="flex-row mb-4">
             {DAY_NAMES.map((dayName) => (
               <View key={dayName} className="flex-1 items-center">
@@ -133,9 +131,7 @@ const AttendanceCalendar = forwardRef<
                   className={`text-xs font-bold uppercase tracking-wider ${
                     dayName === "Min"
                       ? "text-rose-500"
-                      : isDarkColorScheme
-                        ? "text-muted-foreground"
-                        : "text-muted-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {dayName}
@@ -147,9 +143,7 @@ const AttendanceCalendar = forwardRef<
           {monthlyAttendance.loading ? (
             <View className="items-center justify-center py-20">
               <ActivityIndicator size="large" color="#3b82f6" />
-              <Text
-                className={`mt-4 text-sm font-medium ${"text-muted-foreground"}`}
-              >
+              <Text className="mt-4 text-sm font-medium text-muted-foreground">
                 Memuat data...
               </Text>
             </View>

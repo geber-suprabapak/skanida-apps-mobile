@@ -42,7 +42,7 @@
   - [x] Fix UX copy localization (standard Bahasa Indonesia)
   - [x] Validate Phase 4 (`tsc`, `lint`, `test`)
 - [x] Final Verification & Re-audit
-  - [x] Run full test suite (`pnpm test` - 13/13 suites, 106/106 tests pass)
+  - [x] Run full test suite (`pnpm test` - 13/13 suites, 107/107 tests pass)
   - [x] Run typecheck (`pnpm exec tsc --noEmit` - 0 errors across entire project)
   - [x] Run oxlint (`pnpm exec oxlint app components features utils` - 0 warnings, 0 errors)
   - [x] Run prettier (`pnpm exec prettier -c ...` - 100% clean formatting)
@@ -52,13 +52,13 @@
 
 20/20 Impeccable Native UI Remediation & Verification Complete:
 - Verified Audit Health Score: 20/20 (Impeccable — Production Standard).
-- All 13 test suites (106 tests) pass, typecheck 0 errors, oxlint 0 errors/warnings, prettier 100% clean.
+- All 13 test suites (107 tests) pass, typecheck 0 errors, oxlint 0 errors/warnings, prettier 100% clean.
 - 5 polish and platform ergonomics items resolved:
   1. `app/profile/enroll.tsx`: Applied safe area bottom inset to the capture button container (`paddingBottom: Math.max(24, insets.bottom + 12)`).
-  2. `app/extra/pengaturan.tsx`: Replaced `useEffect` with `useFocusEffect` from `expo-router` for `hardwareBackPress` handler to eliminate back-event leakage across tabs.
+  2. `app/extra/pengaturan.tsx`: Replaced `useEffect` with `useFocusEffect` from `expo-router` for `hardwareBackPress` handler guarded with `router.canGoBack()` to eliminate back-event leakage and exit-trapping across tabs.
   3. `app/auth/Login.tsx`: Removed `variant="h3"` from `<Text>` inside `<Button>` to eliminate VoiceOver heading rotor pollution.
   4. `components/attendance-calendar/index.tsx`: Enhanced refresh button with 48x48dp touch clearance (`hitSlop`, min dimensions) and accessibility attributes (`role="button"`, `accessibilityLabel="Perbarui kalender kehadiran"`).
-  5. `__tests__/phase4-ergonomics-performance.test.ts` & `__tests__/phase2-platform-navigation.test.ts`: Expanded regression coverage for Login button text, calendar refresh button, and enroll bottom safe-area insets.
+  5. `__tests__/phase4-ergonomics-performance.test.ts` & `__tests__/phase2-platform-navigation.test.ts`: Expanded regression coverage for Login button text, calendar refresh button, enroll bottom safe-area insets, and useFocusEffect back-guard invariant.
 
 # Blocked
 

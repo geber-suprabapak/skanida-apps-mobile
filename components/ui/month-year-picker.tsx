@@ -468,7 +468,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                 <View className="flex-row items-center justify-center mb-4">
                   <Icon
                     as={Clock}
-                    className={`size-4 mr-2 ${"text-muted-foreground"}`}
+                    className="size-4 mr-2 text-muted-foreground"
                   />
                   <Text
                     className={`
@@ -508,7 +508,7 @@ const MonthYearPicker: React.FC<MonthYearPickerProps> = ({
                 <View className="flex-row items-center justify-center mb-4">
                   <Icon
                     as={History}
-                    className={`size-4 mr-2 ${"text-muted-foreground"}`}
+                    className="size-4 mr-2 text-muted-foreground"
                   />
                   <Text
                     className={`

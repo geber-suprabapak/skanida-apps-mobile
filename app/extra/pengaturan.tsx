@@ -1,4 +1,4 @@
-import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useRouter, useFocusEffect, type Href } from "expo-router";
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
@@ -67,8 +67,11 @@ function Pengaturan() {
   useFocusEffect(
     useCallback(() => {
       const handler = BackHandler.addEventListener("hardwareBackPress", () => {
-        router.back();
-        return true;
+        if (router.canGoBack()) {
+          router.back();
+          return true;
+        }
+        return false;
       });
       return () => handler.remove();
     }, [router]),
@@ -208,7 +211,14 @@ function Pengaturan() {
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-border">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              // SAFETY: `/home` is supplied by `(tabs)/home.tsx`.
+              router.navigate("/home" as Href);
+            }
+          }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Kembali"
