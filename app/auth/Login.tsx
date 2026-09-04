@@ -22,7 +22,7 @@ export default function Login() {
   const hasStartedAuth = useRef(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
-  const redirectUri = makeRedirectUri({ native: getLogtoRedirectUri() });
+  const redirectUri = getLogtoRedirectUri();
   const discovery = {
     authorizationEndpoint: `${process.env.EXPO_PUBLIC_LOGTO_ENDPOINT}/oidc/auth`,
     tokenEndpoint: `${process.env.EXPO_PUBLIC_LOGTO_ENDPOINT}/oidc/token`,
@@ -43,7 +43,7 @@ export default function Login() {
       extraParams: {
         resource:
           process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??
-          "https://api.skanida.sch.id",
+          "https://astrayao.lunaradev.my.id",
       },
     },
     discovery,
