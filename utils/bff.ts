@@ -12,8 +12,25 @@ type BffSuccessEnvelope<T> = {
   };
 };
 
+export interface BffErrorDetailsRecord {
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | readonly string[];
+  pending_request_id?: string;
+  requested_start_date?: string;
+  overlapping_request_id?: string;
+  overlapping_start_date?: string;
+  overlapping_end_date?: string;
+  conflicting_dates?: readonly string[];
+  requested_end_date?: string;
+}
+
 export type BffErrorDetails =
-  | Record<string, string | number | boolean | null | undefined>
+  | Readonly<BffErrorDetailsRecord>
   | string
   | null
   | undefined;
@@ -52,6 +69,44 @@ export class BffRequestError extends Error {
   ) {
     super(message);
     this.name = "BffRequestError";
+  }
+}
+
+const asRecord = (
+  details: BffErrorDetails | undefined,
+): Readonly<BffErrorDetailsRecord> | null => {
+  if (
+    details === null ||
+    Array.isArray(details) ||
+    Object.prototype.toString.call(details) !== "[object Object]"
+  ) {
+    return null;
+  }
+  // SAFETY: Error details are decoded as the bounded BFF detail value union.
+  return details as Readonly<BffErrorDetailsRecord>;
+};
+
+/** Return a stable, actionable message for Astra leave conflict responses. */
+export function actionableLeaveErrorMessage(error: BffRequestError): string {
+  const details = asRecord(error.details);
+  switch (error.code) {
+    case "LEAVE_REQUEST_PENDING":
+      return "Pengajuan izin masih menunggu persetujuan. Tunggu hingga diproses atau ditolak sebelum mengajukan lagi.";
+    case "LEAVE_PERIOD_OVERLAP": {
+      const start = details?.overlapping_start_date;
+      const end = details?.overlapping_end_date;
+      const period =
+        start && end ? ` (${String(start)} sampai ${String(end)})` : "";
+      return `Tanggal pengajuan bertumpang tindih dengan izin yang sudah disetujui${period}. Pilih tanggal lain.`;
+    }
+    case "LEAVE_APPROVAL_CONFLICT": {
+      const dates = Array.isArray(details?.conflicting_dates)
+        ? details.conflicting_dates.map(String).join(", ")
+        : "tanggal yang sudah memiliki absensi fisik";
+      return `Pengajuan ditolak karena absensi fisik sudah tercatat pada: ${dates}.`;
+    }
+    default:
+      return error.message;
   }
 }
 

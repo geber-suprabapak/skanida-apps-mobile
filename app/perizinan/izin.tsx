@@ -22,6 +22,7 @@ import useAuthStore from "~/store/authStore";
 import { Icon } from "~/components/ui/icon";
 import { cn, formatDateWIB } from "~/lib/utils";
 import { createPermit, listPermits } from "~/utils/bffMobileApi";
+import { actionableLeaveErrorMessage, BffRequestError } from "~/utils/bff";
 import { useUniwind } from "uniwind";
 import {
   ChevronLeft,
@@ -614,8 +615,13 @@ export default function PerizinanScreen() {
       Alert.alert("Berhasil", "Pengajuan izin berhasil dikirim", [
         { text: "OK", onPress: () => router.back() },
       ]);
-    } catch (error: any) {
-      const errorMessage = error.message || "Unknown error";
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof BffRequestError
+          ? actionableLeaveErrorMessage(error)
+          : error instanceof Error
+            ? error.message
+            : "Pengajuan izin gagal diproses.";
       if (errorMessage.includes("Gagal membaca file")) return;
 
       const lower = errorMessage.toLowerCase();
@@ -828,13 +834,17 @@ export default function PerizinanScreen() {
                   as={Send}
                   className={cn(
                     "size-5 mr-2",
-                    canSubmit ? "text-primary-foreground" : "text-muted-foreground",
+                    canSubmit
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground",
                   )}
                 />
                 <Text
                   className={cn(
                     "font-bold text-lg",
-                    canSubmit ? "text-primary-foreground" : "text-muted-foreground",
+                    canSubmit
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   Kirim Pengajuan
