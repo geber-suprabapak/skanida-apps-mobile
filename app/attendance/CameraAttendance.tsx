@@ -157,6 +157,8 @@ const messageForOutcome = (
       return "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.";
     case "attempt_not_found":
       return "Data absensi tidak valid. Silakan coba lagi.";
+    case "attendance_blocked":
+      return outcome.message ?? "Presensi diblokir karena izin yang disetujui.";
     default:
       return "Gagal memproses absensi.";
   }

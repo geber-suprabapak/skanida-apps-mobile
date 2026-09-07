@@ -2,6 +2,7 @@ import type {
   BffAttendanceAction,
   MobileAttendanceAction,
 } from "~/utils/bffMobileApi";
+import { BffRequestError, type BffErrorDetails } from "~/utils/bff";
 
 const MAX_BASE64_SIZE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_ATTEMPT_TTL_MS = 10 * 60 * 1000;
@@ -33,6 +34,7 @@ export type AttendanceWorkflowErrorCode =
   | "payload_too_large"
   | "fallback_location_unavailable"
   | "fallback_mock_location"
+  | "attendance_blocked"
   | "submit_unavailable";
 
 export type PrepareOutcome =
@@ -58,6 +60,8 @@ export type CompleteOutcome =
       status: "failed";
       code: AttendanceWorkflowErrorCode;
       retryable: boolean;
+      message?: string;
+      details?: BffErrorDetails;
     }
   | {
       status: "cancelled";
@@ -387,7 +391,19 @@ export const createAttendanceWorkflow = (
             imageBase64,
             coordinates,
           });
-        } catch {
+        } catch (error) {
+          if (
+            error instanceof BffRequestError &&
+            error.code === "ATTENDANCE_BLOCKED"
+          ) {
+            return {
+              status: "failed",
+              code: "attendance_blocked",
+              retryable: false,
+              message: error.message,
+              details: error.details,
+            };
+          }
           return {
             status: "failed",
             code: "submit_unavailable",

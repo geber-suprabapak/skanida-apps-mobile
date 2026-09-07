@@ -9,6 +9,7 @@ import type {
   BffAttendanceAction,
   MobileAttendanceAction,
 } from "~/utils/bffMobileApi";
+import { BffRequestError } from "~/utils/bff";
 
 const coordinates = { latitude: -7.4503, longitude: 110.2241 };
 const actionablePrecheck = {
@@ -203,6 +204,32 @@ describe("Attendance workflow contract", () => {
     expect(adapters.gateway.submit).toHaveBeenCalledTimes(2);
     expect(adapters.capture.cleanup).toHaveBeenCalledWith("/cache/first.jpg");
     expect(adapters.capture.cleanup).toHaveBeenCalledWith("/cache/second.jpg");
+  });
+
+  it("preserves a structured Astra attendance gate block at the submit seam", async () => {
+    const adapters = createAdapters();
+    adapters.gateway.submit.mockRejectedValue(
+      new BffRequestError(
+        "Attendance is blocked by an approved Leave Period.",
+        409,
+        "ATTENDANCE_BLOCKED",
+        {
+          leave_request_id: "leave-1",
+          effective_end_date: "2026-09-09",
+        },
+      ),
+    );
+    const workflow = createAttendanceWorkflow(adapters);
+    const attemptId = await prepareReadyAttempt(workflow);
+
+    await expect(
+      workflow.complete({ attemptId, snapshotPath: "/cache/blocked.jpg" }),
+    ).resolves.toMatchObject({
+      status: "failed",
+      code: "attendance_blocked",
+      retryable: false,
+      message: "Attendance is blocked by an approved Leave Period.",
+    });
   });
 
   it("single-flights duplicate completion and ignores a cancelled late result", async () => {
