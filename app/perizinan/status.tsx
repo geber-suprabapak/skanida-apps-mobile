@@ -31,6 +31,10 @@ interface PerizinanRecord {
   deskripsi: string;
   approval_status: "pending" | "approved" | "rejected" | null;
   tanggal: string;
+  requested_start_date?: string;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   created_at: string;
   rejection_reason?: string | null;
   rejected_at?: string | null;
@@ -107,8 +111,12 @@ const PermissionCard = memo(function PermissionCard({
     },
   );
 
-  const duration = "1 Hari";
+  const duration = item.duration_days ?? 1;
   const isRejected = item.approval_status === "rejected";
+  const formatPeriodDate = (value?: string | null) =>
+    value
+      ? format(parseISO(value), "d MMM yyyy", { locale: idLocale })
+      : "Belum ditetapkan";
 
   return (
     <View className="bg-card border border-border rounded-xl p-4 mb-4 shadow-sm">
@@ -133,11 +141,25 @@ const PermissionCard = memo(function PermissionCard({
         &ldquo;{item.deskripsi}&rdquo;
       </Text>
 
+      <View className="mb-4 gap-1">
+        <Text className="text-xs text-muted-foreground">
+          Mulai: {formatPeriodDate(item.requested_start_date ?? item.tanggal)}
+        </Text>
+        <Text className="text-xs text-muted-foreground">
+          Akhir asli: {formatPeriodDate(item.original_end_date)}
+        </Text>
+        <Text className="text-xs text-muted-foreground">
+          Akhir efektif: {formatPeriodDate(item.effective_end_date)}
+        </Text>
+      </View>
+
       <View className="flex-row justify-between items-center pt-3 border-t border-border">
         <Text className="text-xs text-muted-foreground">
           Diajukan: {createdDateTime}
         </Text>
-        <Text className="text-xs font-medium text-foreground">{duration}</Text>
+        <Text className="text-xs font-medium text-foreground">
+          {duration} Hari
+        </Text>
       </View>
 
       {/* Alasan penolakan */}
@@ -177,6 +199,7 @@ function TopStatusCard({
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
 
   const status = item.approval_status || "pending";
+  const duration = item.duration_days ?? 1;
 
   return (
     <View className="bg-[#0F172A] rounded-2xl p-5 mb-6 shadow-lg">
@@ -215,6 +238,46 @@ function TopStatusCard({
           <Text className="text-white/60 text-xs font-bold w-20">WAKTU</Text>
           <Text className="text-white font-semibold text-sm">
             {formattedDate}
+          </Text>
+        </View>
+
+        <View className="flex-row items-start">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
+            MULAI
+          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">
+            {format(
+              parseISO(item.requested_start_date ?? item.tanggal),
+              "d MMM yyyy",
+              { locale: idLocale },
+            )}
+          </Text>
+        </View>
+
+        <View className="flex-row items-start">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
+            AKHIR ASLI
+          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">
+            {item.original_end_date
+              ? format(parseISO(item.original_end_date), "d MMM yyyy", {
+                  locale: idLocale,
+                })
+              : "Belum ditetapkan"}
+          </Text>
+        </View>
+
+        <View className="flex-row items-start">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
+            AKHIR EFEKTIF
+          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">
+            {item.effective_end_date
+              ? format(parseISO(item.effective_end_date), "d MMM yyyy", {
+                  locale: idLocale,
+                })
+              : "Belum ditetapkan"}
+            {item.approval_status === "approved" ? ` (${duration} hari)` : ""}
           </Text>
         </View>
 
