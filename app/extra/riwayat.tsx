@@ -21,6 +21,7 @@ import {
 import { formatTime } from "~/components/attendance-calendar/utils";
 import { formatDateWIB } from "~/lib/utils";
 import { useUniwind } from "uniwind";
+import { formatMobilePermitCategory } from "~/utils/bffMobileApi";
 
 export default function Riwayat() {
   const router = useRouter();
@@ -138,7 +139,7 @@ export default function Riwayat() {
           ? "Terlambat"
           : badgeVariant === "sakit"
             ? "Sakit"
-            : "Izin";
+            : formatMobilePermitCategory(item.leaveType);
 
     return (
       <View className="h-20 justify-center px-4 mb-3 bg-card rounded-2xl border border-border">

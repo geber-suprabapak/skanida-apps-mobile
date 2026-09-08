@@ -23,29 +23,22 @@ import {
   Stethoscope,
 } from "lucide-react-native";
 import { cn, formatDateWIB } from "~/lib/utils";
-import { listPermits } from "~/utils/bffMobileApi";
+import {
+  formatMobilePermitCategory,
+  listPermits,
+  type MobilePermit,
+} from "~/utils/bffMobileApi";
 
-interface PerizinanRecord {
-  id: string;
-  kategori_izin: "sakit" | "pergi" | "izin" | "cuti";
-  deskripsi: string;
-  approval_status: "pending" | "approved" | "rejected" | null;
-  tanggal: string;
-  requested_start_date?: string;
-  original_end_date?: string | null;
-  effective_end_date?: string | null;
-  duration_days?: number | null;
-  created_at: string;
-  rejection_reason?: string | null;
-  rejected_at?: string | null;
-}
+type PerizinanRecord = MobilePermit;
 
 const CATEGORY_CONFIG = {
-  sakit: { label: "Sakit", icon: Stethoscope, color: "text-red-500" },
-  pergi: { label: "Pergi", icon: FileText, color: "text-indigo-500" },
-  izin: { label: "Izin", icon: FileText, color: "text-indigo-500" },
-  cuti: { label: "Cuti", icon: Calendar, color: "text-purple-500" },
-  default: { label: "Izin", icon: FileText, color: "text-muted-foreground" },
+  sakit: { icon: Stethoscope, color: "text-red-500" },
+  pergi: { icon: FileText, color: "text-indigo-500" },
+  dispensasi: { icon: FileText, color: "text-indigo-500" },
+  lainnya: { icon: FileText, color: "text-indigo-500" },
+  izin: { icon: FileText, color: "text-indigo-500" },
+  cuti: { icon: Calendar, color: "text-purple-500" },
+  default: { icon: FileText, color: "text-muted-foreground" },
 };
 
 const STATUS_CONFIG = {
@@ -101,6 +94,7 @@ const PermissionCard = memo(function PermissionCard({
 }) {
   const category =
     CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
+  const categoryLabel = formatMobilePermitCategory(item.kategori_izin);
   const date = parseISO(item.tanggal);
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
   const createdDateTime = format(
@@ -127,7 +121,7 @@ const PermissionCard = memo(function PermissionCard({
           </View>
           <View>
             <Text className="font-bold text-foreground text-base">
-              {category.label}
+              {categoryLabel}
             </Text>
             <Text className="text-xs text-muted-foreground">
               {formattedDate}
@@ -193,8 +187,7 @@ function TopStatusCard({
 }) {
   if (!item) return null;
 
-  const category =
-    CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
+  const categoryLabel = formatMobilePermitCategory(item.kategori_izin);
   const date = parseISO(item.tanggal);
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
 
@@ -206,7 +199,7 @@ function TopStatusCard({
       <View className="flex-row justify-between items-start mb-6">
         <View>
           <Text className="text-white font-bold text-lg uppercase mb-1">
-            {category.label} - {userName}
+            {categoryLabel} - {userName}
           </Text>
         </View>
       </View>

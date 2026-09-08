@@ -163,9 +163,17 @@ export type BffPermit = {
   rejected_at?: string | null;
 };
 
+export type MobilePermitCategory =
+  | "sakit"
+  | "pergi"
+  | "dispensasi"
+  | "lainnya"
+  | "izin"
+  | "cuti";
+
 export type MobilePermit = {
   id: string;
-  kategori_izin: "sakit" | "pergi" | "izin" | "cuti";
+  kategori_izin: MobilePermitCategory;
   deskripsi: string;
   approval_status: "pending" | "approved" | "rejected" | null;
   tanggal: string;
@@ -374,12 +382,33 @@ export async function listPermits(): Promise<MobilePermit[]> {
   return result.items.map(toMobilePermit);
 }
 
+export function formatMobilePermitCategory(category?: string | null): string {
+  switch (category?.toLowerCase()) {
+    case "sakit":
+      return "Sakit";
+    case "pergi":
+      return "Izin (Pergi)";
+    case "dispensasi":
+      return "Dispensasi";
+    case "lainnya":
+      return "Izin (Lainnya)";
+    case "cuti":
+      return "Cuti";
+    case "izin":
+    default:
+      return "Izin";
+  }
+}
+
 export function toMobilePermit(permit: BffPermit): MobilePermit {
   return {
     id: permit.id,
     kategori_izin:
       permit.category === "sakit" ||
       permit.category === "pergi" ||
+      permit.category === "dispensasi" ||
+      permit.category === "lainnya" ||
+      permit.category === "izin" ||
       permit.category === "cuti"
         ? permit.category
         : "izin",

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { processAttendanceData } from "../components/attendance-calendar/utils";
 import {
+  formatMobilePermitCategory,
   toMobilePermit,
   type BffAttendanceRecord,
   type MobilePermit,
@@ -156,6 +157,41 @@ describe("Ticket 12 — Profile and Attendance History Invariants", () => {
       expect(legacy.original_end_date).toBe("2026-08-10");
       expect(legacy.effective_end_date).toBe("2026-08-10");
       expect(legacy.duration_days).toBe(1);
+    });
+
+    it("preserves canonical leave categories and renders their product labels", () => {
+      const categories = ["sakit", "pergi", "dispensasi", "lainnya"] as const;
+      const labels = ["Sakit", "Izin (Pergi)", "Dispensasi", "Izin (Lainnya)"];
+
+      expect(
+        categories.map(
+          (category) =>
+            toMobilePermit({
+              id: category,
+              category,
+              description: "Keterangan",
+              date: "2026-08-10",
+              approval_status: "approved",
+              attachment_url: null,
+            }).kategori_izin,
+        ),
+      ).toEqual(categories);
+      expect(categories.map(formatMobilePermitCategory)).toEqual(labels);
+    });
+
+    it("keeps legacy leave category labels readable", () => {
+      expect(
+        toMobilePermit({
+          id: "legacy-izin",
+          category: "izin",
+          description: "Keterangan",
+          date: "2026-08-10",
+          approval_status: "approved",
+          attachment_url: null,
+        }).kategori_izin,
+      ).toBe("izin");
+      expect(formatMobilePermitCategory("izin")).toBe("Izin");
+      expect(formatMobilePermitCategory("cuti")).toBe("Cuti");
     });
   });
 });
