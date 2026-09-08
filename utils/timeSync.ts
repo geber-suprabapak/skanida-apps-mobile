@@ -170,6 +170,9 @@ class TimeSync {
         if (__DEV__) console.error("Background sync failed:", error);
       });
     }, this.BACKGROUND_SYNC_INTERVAL);
+    // SAFETY: In Node.js/Jest runtimes, setInterval returns NodeJS.Timeout supporting unref() to prevent hanging tests.
+    const nodeTimer = this.backgroundSyncTimer as NodeJS.Timeout | null;
+    nodeTimer?.unref?.();
 
     // App state listener for sync on resume
     this.appStateSubscription = AppState.addEventListener(

@@ -7,6 +7,7 @@ module.exports = {
     "^uniwind$": "<rootDir>/__mocks__/uniwind.tsx",
     "^react-native-safe-area-context$":
       "<rootDir>/__mocks__/react-native-safe-area-context.tsx",
+    "^@sentry/react-native$": "<rootDir>/__mocks__/@sentry/react-native.ts",
     "^@/(.*)$": "<rootDir>/$1",
     "^~/(.*)$": "<rootDir>/$1",
   },

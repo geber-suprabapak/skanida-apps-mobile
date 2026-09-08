@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { processAttendanceData } from "../components/attendance-calendar/utils";
-import type { BffAttendanceRecord, MobilePermit } from "../utils/bffMobileApi";
+import {
+  formatMobilePermitCategory,
+  toMobilePermit,
+  type BffAttendanceRecord,
+  type MobilePermit,
+} from "../utils/bffMobileApi";
 
 describe("Ticket 12 — Profile and Attendance History Invariants", () => {
   const rootDir = process.cwd();
@@ -120,6 +125,73 @@ describe("Ticket 12 — Profile and Attendance History Invariants", () => {
 
       // Rejected leaves must be omitted from calendar representation
       expect(result["2026-08-05"]).toBeUndefined();
+    });
+
+    it("maps auditable leave period dates and preserves legacy approved one-day records", () => {
+      const period = toMobilePermit({
+        id: "period-1",
+        category: "sakit",
+        description: "Demam",
+        date: "2026-08-10",
+        requested_start_date: "2026-08-10",
+        original_end_date: "2026-08-12",
+        effective_end_date: "2026-08-11",
+        duration_days: 3,
+        approval_status: "approved",
+        attachment_url: null,
+      });
+      expect(period.requested_start_date).toBe("2026-08-10");
+      expect(period.original_end_date).toBe("2026-08-12");
+      expect(period.effective_end_date).toBe("2026-08-11");
+      expect(period.duration_days).toBe(3);
+
+      const legacy = toMobilePermit({
+        id: "legacy-1",
+        category: "pergi",
+        description: "Acara keluarga",
+        date: "2026-08-10",
+        approval_status: "approved",
+        attachment_url: null,
+      });
+      expect(legacy.requested_start_date).toBe("2026-08-10");
+      expect(legacy.original_end_date).toBe("2026-08-10");
+      expect(legacy.effective_end_date).toBe("2026-08-10");
+      expect(legacy.duration_days).toBe(1);
+    });
+
+    it("preserves canonical leave categories and renders their product labels", () => {
+      const categories = ["sakit", "pergi", "dispensasi", "lainnya"] as const;
+      const labels = ["Sakit", "Izin (Pergi)", "Dispensasi", "Izin (Lainnya)"];
+
+      expect(
+        categories.map(
+          (category) =>
+            toMobilePermit({
+              id: category,
+              category,
+              description: "Keterangan",
+              date: "2026-08-10",
+              approval_status: "approved",
+              attachment_url: null,
+            }).kategori_izin,
+        ),
+      ).toEqual(categories);
+      expect(categories.map(formatMobilePermitCategory)).toEqual(labels);
+    });
+
+    it("keeps legacy leave category labels readable", () => {
+      expect(
+        toMobilePermit({
+          id: "legacy-izin",
+          category: "izin",
+          description: "Keterangan",
+          date: "2026-08-10",
+          approval_status: "approved",
+          attachment_url: null,
+        }).kategori_izin,
+      ).toBe("izin");
+      expect(formatMobilePermitCategory("izin")).toBe("Izin");
+      expect(formatMobilePermitCategory("cuti")).toBe("Cuti");
     });
   });
 });

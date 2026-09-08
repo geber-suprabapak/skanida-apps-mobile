@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, TouchableOpacity, BackHandler } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { View } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import {
   cancelAttendance,
@@ -29,7 +29,6 @@ import {
 } from "~/utils/faceApiDebug";
 
 import {
-  ChevronLeft,
   Loader2,
   MapPin,
   MapPinOff,
@@ -153,21 +152,6 @@ export default function AbsenceReport() {
     fetchAttendanceStatus();
   }, [fetchAttendanceStatus]);
 
-  // Handle the hardware back button.
-  useEffect(() => {
-    const backAction = () => {
-      if (router.canGoBack()) {
-        router.back();
-      }
-      return true;
-    };
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction,
-    );
-    return () => backHandler.remove();
-  }, [router]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -221,30 +205,12 @@ export default function AbsenceReport() {
   const locationName = status?.details?.location_name;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950">
-      <Stack.Screen options={{ headerShown: false }} />
-
-      {/* Header Kustom */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="p-2 -ml-2 mr-1"
-        >
-          <Icon
-            as={ChevronLeft}
-            className="size-6 text-gray-900 dark:text-gray-100"
-          />
-        </TouchableOpacity>
-        <Text variant="h3" className="text-gray-900 dark:text-gray-100">
-          Lapor Absensi
-        </Text>
-      </View>
-
+    <SafeAreaView className="flex-1 bg-background">
       {/* Konten Utama */}
       <View className="flex-1 justify-center items-center px-6 py-8">
-        <Card className="w-full max-w-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 shadow-lg">
+        <Card className="w-full max-w-sm bg-card border-border shadow-lg">
           <CardHeader className="items-center pb-4">
-            <View className="p-4 rounded-full bg-gray-100 dark:bg-gray-800">
+            <View className="p-4 rounded-full bg-muted">
               {statusMeta.icon === Loader2 ? (
                 <Animated.View style={animatedStyle}>
                   <Icon
@@ -264,18 +230,15 @@ export default function AbsenceReport() {
           <CardContent className="items-center space-y-6 pt-2">
             {/* Status Message */}
             <View className="space-y-2 w-full">
-              <CardTitle className="text-xl text-center text-gray-900 dark:text-gray-100">
+              <CardTitle className="text-xl text-center text-foreground">
                 {statusMeta.message}
               </CardTitle>
 
               {/* Location Info */}
               {showLocationDetails && locationName && (
                 <View className="flex-row items-center justify-center gap-1 pt-1">
-                  <Icon
-                    as={MapPin}
-                    className="size-4 text-gray-600 dark:text-gray-400"
-                  />
-                  <Text className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                  <Icon as={MapPin} className="size-4 text-muted-foreground" />
+                  <Text className="text-sm text-muted-foreground text-center">
                     {locationName}
                   </Text>
                 </View>
@@ -285,16 +248,16 @@ export default function AbsenceReport() {
             {/* Refresh Button */}
             <Button
               variant="outline"
-              className="w-full border-blue-500 dark:border-blue-600 bg-white dark:bg-gray-900"
+              className="w-full border-primary bg-card"
               onPress={fetchAttendanceStatus}
               disabled={isLoading}
             >
               <Icon
                 as={RefreshCw}
-                className={`size-5 mr-2 ${isLoading ? "text-gray-400" : "text-blue-600 dark:text-blue-500"}`}
+                className={`size-5 mr-2 ${isLoading ? "text-muted-foreground" : "text-primary"}`}
               />
               <Text
-                className={`font-medium ${isLoading ? "text-gray-400" : "text-blue-600 dark:text-blue-500"}`}
+                className={`font-medium ${isLoading ? "text-muted-foreground" : "text-primary"}`}
               >
                 {isLoading ? "Memuat..." : "Segarkan Status"}
               </Text>

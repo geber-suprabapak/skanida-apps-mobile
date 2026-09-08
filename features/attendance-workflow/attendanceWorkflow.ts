@@ -2,6 +2,7 @@ import type {
   BffAttendanceAction,
   MobileAttendanceAction,
 } from "~/utils/bffMobileApi";
+import { BffRequestError, type BffErrorDetails } from "~/utils/bff";
 
 const MAX_BASE64_SIZE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_ATTEMPT_TTL_MS = 10 * 60 * 1000;
@@ -33,6 +34,7 @@ export type AttendanceWorkflowErrorCode =
   | "payload_too_large"
   | "fallback_location_unavailable"
   | "fallback_mock_location"
+  | "attendance_blocked"
   | "submit_unavailable";
 
 export type PrepareOutcome =
@@ -58,6 +60,8 @@ export type CompleteOutcome =
       status: "failed";
       code: AttendanceWorkflowErrorCode;
       retryable: boolean;
+      message?: string;
+      details?: BffErrorDetails;
     }
   | {
       status: "cancelled";
@@ -119,23 +123,59 @@ const isCoordinates = (value: Coordinates | undefined): value is Coordinates =>
     Number.isFinite(value.longitude),
   );
 
-const normalizeBase64 = (value: string): string | null => {
+const BASE64_LOOKUP = new Uint8Array(128);
+for (let i = 0; i < 26; i++) {
+  BASE64_LOOKUP[65 + i] = 1; // A-Z
+  BASE64_LOOKUP[97 + i] = 1; // a-z
+}
+for (let i = 0; i < 10; i++) {
+  BASE64_LOOKUP[48 + i] = 1; // 0-9
+}
+BASE64_LOOKUP[43] = 1; // +
+BASE64_LOOKUP[47] = 1; // /
+
+export const isValidBase64 = (str: string): boolean => {
+  const len = str.length;
+  if (len === 0 || len % 4 !== 0) return false;
+
+  let padding = 0;
+  if (str.charCodeAt(len - 1) === 61) {
+    padding++;
+    if (str.charCodeAt(len - 2) === 61) {
+      padding++;
+    }
+  }
+
+  const contentLen = len - padding;
+  for (let i = 0; i < contentLen; i++) {
+    const code = str.charCodeAt(i);
+    if (code >= 128 || BASE64_LOOKUP[code] !== 1) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+export const normalizeBase64 = (value: string): string | null => {
   const trimmed = value.trim();
-  if (
-    trimmed.length === 0 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      trimmed,
-    )
-  ) {
+  if (!isValidBase64(trimmed)) {
     return null;
   }
 
   return trimmed;
 };
 
-const base64ByteSize = (base64: string) => {
-  const paddingLength = base64.match(/=+$/)?.[0]?.length ?? 0;
-  return (base64.length * 3) / 4 - paddingLength;
+export const base64ByteSize = (base64: string): number => {
+  const len = base64.length;
+  let padding = 0;
+  if (len >= 1 && base64.charCodeAt(len - 1) === 61) {
+    padding++;
+    if (len >= 2 && base64.charCodeAt(len - 2) === 61) {
+      padding++;
+    }
+  }
+  return (len * 3) / 4 - padding;
 };
 
 const newAttemptId = (): AttemptId => {
@@ -351,7 +391,19 @@ export const createAttendanceWorkflow = (
             imageBase64,
             coordinates,
           });
-        } catch {
+        } catch (error) {
+          if (
+            error instanceof BffRequestError &&
+            error.code === "ATTENDANCE_BLOCKED"
+          ) {
+            return {
+              status: "failed",
+              code: "attendance_blocked",
+              retryable: false,
+              message: error.message,
+              details: error.details,
+            };
+          }
           return {
             status: "failed",
             code: "submit_unavailable",

@@ -30,8 +30,11 @@ export default function ResetPassword() {
   // Handle hardware back button for Android
   useEffect(() => {
     const backAction = () => {
-      router.back();
-      return true;
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      return false;
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -85,7 +88,11 @@ export default function ResetPassword() {
       <View className="flex-row items-center p-6 pt-4">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card dark:bg-gray-800"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Kembali"
+          accessibilityHint="Ketuk dua kali untuk kembali"
+          className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-card"
         >
           <Icon as={ChevronLeft} className="size-5 text-foreground" />
         </TouchableOpacity>
@@ -104,7 +111,7 @@ export default function ResetPassword() {
           <View className="flex-1 justify-center items-center px-8 py-8">
             {/* Logo and Title Section */}
             <View className="items-center mb-12">
-              <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card dark:bg-gray-800">
+              <View className="w-32 h-32 rounded-full shadow-lg mb-8 items-center justify-center bg-card">
                 <Icon as={Lock} className="size-12 text-foreground" />
               </View>
 
@@ -123,7 +130,7 @@ export default function ResetPassword() {
 
             {/* Form Section */}
             <View className="w-full max-w-sm space-y-6">
-              <View className="rounded-2xl p-8 shadow-xl bg-card dark:bg-gray-800">
+              <View className="rounded-2xl p-8 shadow-xl bg-card">
                 <Text
                   variant="small"
                   className="mb-3 font-medium text-foreground"
@@ -136,7 +143,7 @@ export default function ResetPassword() {
                   value={nis}
                   onChangeText={setNis}
                   editable={!loading}
-                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  className="mb-5"
                 />
                 <Text
                   variant="small"
@@ -149,7 +156,7 @@ export default function ResetPassword() {
                   value={code}
                   onChangeText={setCode}
                   editable={!loading}
-                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  className="mb-5"
                 />
                 <Text
                   variant="small"
@@ -163,7 +170,7 @@ export default function ResetPassword() {
                   value={newPassword}
                   onChangeText={setNewPassword}
                   editable={!loading}
-                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  className="mb-5"
                 />
                 <Text
                   variant="small"
@@ -177,7 +184,7 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   editable={!loading}
-                  className="mb-5 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  className="mb-5"
                 />
 
                 {/* Error Message */}
@@ -198,11 +205,11 @@ export default function ResetPassword() {
                   size="lg"
                   onPress={handleResetPassword}
                   disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ganti Password"
+                  accessibilityState={{ disabled: loading, busy: loading }}
                 >
-                  <Text
-                    variant="h3"
-                    className="font-semibold text-lg text-primary-foreground"
-                  >
+                  <Text className="font-semibold text-lg text-primary-foreground">
                     {loading ? "Menyimpan..." : "Ganti Password"}
                   </Text>
                 </Button>
@@ -213,7 +220,13 @@ export default function ResetPassword() {
                 <Text variant="default" className="text-foreground">
                   Sudah ingat password?
                 </Text>
-                <TouchableOpacity onPress={() => router.push("/auth/Login")}>
+                <TouchableOpacity
+                  onPress={() => router.push("/auth/Login")}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Kembali ke Login"
+                  className="min-h-[48px] justify-center"
+                >
                   <Text
                     variant="default"
                     className="font-semibold text-primary ml-1"

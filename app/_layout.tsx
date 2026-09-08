@@ -15,9 +15,10 @@ import {
 } from "~/utils/notifications";
 import { useNotificationSync } from "~/hooks/useNotificationSync";
 import { getLogtoUser } from "~/utils/logto";
-import { View, ActivityIndicator } from "react-native";
+import { View } from "react-native";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import LoadingScreen from "./auth/LoadingScreen";
 
 import * as Sentry from "@sentry/react-native";
 
@@ -109,28 +110,21 @@ export default Sentry.wrap(function RootLayout() {
   if (!isAuthReady) {
     return (
       <SafeAreaProvider>
-        <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950">
-          {initError ? (
-            <View className="items-center px-8">
-              <Text
-                variant="h3"
-                className="text-red-600 dark:text-red-500 mb-2"
-              >
-                Initialization Error
-              </Text>
-              <Text className="text-center text-gray-600 dark:text-gray-400">
-                {initError}
-              </Text>
-            </View>
-          ) : (
-            <View className="items-center">
-              <ActivityIndicator size="large" color="#0066FF" />
-              <Text className="mt-4 text-gray-600 dark:text-gray-400">
-                Initializing...
-              </Text>
-            </View>
-          )}
-        </View>
+        {initError ? (
+          <View className="flex-1 items-center justify-center bg-background px-8">
+            <Text
+              variant="h3"
+              className="text-red-600 dark:text-red-500 mb-2"
+            >
+              Initialization Error
+            </Text>
+            <Text className="text-center text-muted-foreground">
+              {initError}
+            </Text>
+          </View>
+        ) : (
+          <LoadingScreen />
+        )}
       </SafeAreaProvider>
     );
   }
@@ -139,7 +133,35 @@ export default Sentry.wrap(function RootLayout() {
     <SafeAreaProvider>
       <ConnectionChecker>
         <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-        <Stack />
+        <Stack
+          screenOptions={{ gestureEnabled: true, headerBackTitle: "Kembali" }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="attendance/AbsenceReport"
+            options={{ title: "Lapor Absensi" }}
+          />
+          <Stack.Screen
+            name="attendance/CameraAttendance"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="profile/ManageAccount"
+            options={{ title: "Kelola Akun" }}
+          />
+          <Stack.Screen
+            name="profile/enroll"
+            options={{ title: "Pendaftaran Wajah" }}
+          />
+          <Stack.Screen
+            name="perizinan/izin"
+            options={{ title: "Pengajuan Izin" }}
+          />
+          <Stack.Screen
+            name="perizinan/status"
+            options={{ title: "Status Perizinan" }}
+          />
+        </Stack>
         <PortalHost />
       </ConnectionChecker>
     </SafeAreaProvider>

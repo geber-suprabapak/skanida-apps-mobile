@@ -1,8 +1,9 @@
+import * as React from "react";
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { Slot } from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, View, ViewProps } from "react-native";
+import { Platform, View, type ViewProps } from "react-native";
 
 const badgeVariants = cva(
   cn(
@@ -29,6 +30,10 @@ const badgeVariants = cva(
         outline: Platform.select({
           web: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         }),
+        hadir: "border-emerald-500/30 bg-emerald-500/15",
+        terlambat: "border-amber-500/30 bg-amber-500/15",
+        izin: "border-slate-500/30 bg-slate-500/15",
+        sakit: "border-indigo-500/30 bg-indigo-500/15",
       },
     },
     defaultVariants: {
@@ -44,6 +49,10 @@ const badgeTextVariants = cva("text-xs font-medium", {
       secondary: "text-secondary-foreground",
       destructive: "text-white",
       outline: "text-foreground",
+      hadir: "text-emerald-700 dark:text-emerald-300",
+      terlambat: "text-amber-700 dark:text-amber-300",
+      izin: "text-slate-700 dark:text-slate-200",
+      sakit: "text-indigo-700 dark:text-indigo-300",
     },
   },
   defaultVariants: {
@@ -51,22 +60,25 @@ const badgeTextVariants = cva("text-xs font-medium", {
   },
 });
 
-type BadgeProps = ViewProps &
-  React.RefAttributes<View> & {
-    asChild?: boolean;
-  } & VariantProps<typeof badgeVariants>;
+type BadgeProps = ViewProps & {
+  asChild?: boolean;
+} & VariantProps<typeof badgeVariants>;
 
-function Badge({ className, variant, asChild, ...props }: BadgeProps) {
-  const Component = asChild ? Slot : View;
-  return (
-    <TextClassContext.Provider value={badgeTextVariants({ variant })}>
-      <Component
-        className={cn(badgeVariants({ variant }), className)}
-        {...props}
-      />
-    </TextClassContext.Provider>
-  );
-}
+const Badge = React.forwardRef<View, BadgeProps>(
+  ({ className, variant, asChild, ...props }, ref) => {
+    const Component = asChild ? Slot : View;
+    return (
+      <TextClassContext.Provider value={badgeTextVariants({ variant })}>
+        <Component
+          ref={ref}
+          className={cn(badgeVariants({ variant }), className)}
+          {...props}
+        />
+      </TextClassContext.Provider>
+    );
+  },
+);
+Badge.displayName = "Badge";
 
 export { Badge, badgeTextVariants, badgeVariants };
 export type { BadgeProps };

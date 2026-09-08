@@ -1,14 +1,21 @@
 import React, {
   useEffect,
-  useRef,
   createContext,
   useContext,
   useState,
   useMemo,
   useCallback,
 } from "react";
-import { Alert, BackHandler } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
+import { WifiOff, RefreshCw } from "lucide-react-native";
 
 interface ConnectionCheckerProps {
   children: React.ReactNode;
@@ -18,30 +25,73 @@ interface ConnectionContextType {
   isConnected: boolean;
   isInternetReachable: boolean;
   connectionType: string;
+  isRetrying?: boolean;
+  retryConnection?: () => Promise<void>;
   toggleForceOffline?: () => void;
 }
 
 const ConnectionContext = createContext<ConnectionContextType>({
-  isConnected: true, // PERF-C04: Default to true (optimistic) so app renders immediately
+  isConnected: true, // Optimistic default so app renders immediately
   isInternetReachable: true,
   connectionType: "unknown",
 });
 
 export const useConnection = () => useContext(ConnectionContext);
 
+export function TopOfflineBanner({
+  onRetry,
+  isRetrying,
+}: {
+  onRetry: () => void;
+  isRetrying?: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        styles.offlineBanner,
+        { paddingTop: Math.max(insets.top, 8) + 4 },
+      ]}
+      accessibilityRole="alert"
+    >
+      <View style={styles.bannerContent}>
+        <View style={styles.bannerLeft}>
+          <WifiOff size={16} color="#FFFFFF" />
+          <Text style={styles.bannerText}>Tidak ada koneksi internet</Text>
+        </View>
+        <TouchableOpacity
+          onPress={onRetry}
+          disabled={isRetrying}
+          style={styles.retryButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Coba Lagi"
+        >
+          {isRetrying ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <View style={styles.retryRow}>
+              <RefreshCw size={12} color="#FFFFFF" />
+              <Text style={styles.retryText}>Coba Lagi</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function ConnectionChecker({
   children,
 }: ConnectionCheckerProps) {
-  const isShowingAlert = useRef(false);
-  const isMounted = useRef(false);
   const [forceOffline, setForceOffline] = useState(false);
-  const [connectionState, setConnectionState] = useState<ConnectionContextType>(
-    {
-      isConnected: true, // PERF-C04: Optimistic default
-      isInternetReachable: true,
-      connectionType: "unknown",
-    },
-  );
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [connectionState, setConnectionState] = useState({
+    isConnected: true,
+    isInternetReachable: true,
+    connectionType: "unknown",
+  });
 
   const toggleForceOffline = useCallback(() => {
     if (__DEV__) {
@@ -49,56 +99,10 @@ export default function ConnectionChecker({
     }
   }, []);
 
-  useEffect(() => {
-    isMounted.current = true;
-
-    const showOfflineAlert = () => {
-      if (!isMounted.current || isShowingAlert.current) {
-        return;
-      }
-
-      isShowingAlert.current = true;
-
-      Alert.alert(
-        "🚫 Tidak Ada Koneksi Internet",
-        "Aplikasi ini memerlukan koneksi internet untuk berfungsi. Silakan periksa koneksi internet Anda dan coba lagi.",
-        [
-          {
-            text: "Coba Lagi",
-            onPress: () => {
-              isShowingAlert.current = false;
-              // Check connection again after user taps "Coba Lagi"
-              NetInfo.fetch().then((state) => {
-                const isConnected =
-                  state.isConnected === true &&
-                  (state.isInternetReachable === true ||
-                    state.isInternetReachable === null) &&
-                  !forceOffline;
-                if (!isConnected) {
-                  // Still offline, show alert again immediately
-                  setTimeout(() => {
-                    if (isMounted.current) showOfflineAlert();
-                  }, 300);
-                }
-              });
-            },
-          },
-          {
-            text: "Keluar",
-            onPress: () => BackHandler.exitApp(),
-            style: "destructive",
-          },
-        ],
-        {
-          cancelable: false, // Prevent dismissing without action
-        },
-      );
-    };
-
-    // Initial connection check (non-blocking)
-    NetInfo.fetch().then((state) => {
-      if (!isMounted.current) return;
-
+  const checkConnection = useCallback(async () => {
+    setIsRetrying(true);
+    try {
+      const state = await NetInfo.fetch();
       const isConnected =
         state.isConnected === true &&
         (state.isInternetReachable === true ||
@@ -106,19 +110,18 @@ export default function ConnectionChecker({
         !forceOffline;
 
       setConnectionState({
-        isConnected: !!state.isConnected && !forceOffline,
-        isInternetReachable: !!state.isInternetReachable,
+        isConnected,
+        isInternetReachable: state.isInternetReachable ?? false,
         connectionType: state.type || "unknown",
       });
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [forceOffline]);
 
-      if (!isConnected) {
-        setTimeout(() => {
-          if (isMounted.current) showOfflineAlert();
-        }, 1000);
-      }
-    });
+  useEffect(() => {
+    checkConnection();
 
-    // PERF-H09: Subscribe once, don't re-subscribe on state changes
     const unsubscribe = NetInfo.addEventListener((state) => {
       const isConnectedComputed =
         state.isConnected === true &&
@@ -128,36 +131,88 @@ export default function ConnectionChecker({
 
       setConnectionState({
         isConnected: isConnectedComputed,
-        isInternetReachable: !!state.isInternetReachable,
+        isInternetReachable: state.isInternetReachable ?? false,
         connectionType: state.type || "unknown",
       });
-
-      if (!isConnectedComputed) {
-        if (isMounted.current && !isShowingAlert.current) {
-          showOfflineAlert();
-        }
-      } else {
-        isShowingAlert.current = false;
-      }
     });
 
-    return () => {
-      isMounted.current = false;
-      isShowingAlert.current = false;
-      unsubscribe();
-    };
-  }, [forceOffline]); // PERF-H09: Only re-subscribe when forceOffline changes
+    return () => unsubscribe();
+  }, [checkConnection, forceOffline]);
 
-  // PERF-M03: Memoize context value to prevent unnecessary consumer re-renders
+  const isOffline = !connectionState.isConnected;
+
   const contextValue = useMemo(
-    () => ({ ...connectionState, toggleForceOffline }),
-    [connectionState, toggleForceOffline],
+    () => ({
+      ...connectionState,
+      isRetrying,
+      retryConnection: checkConnection,
+      toggleForceOffline,
+    }),
+    [connectionState, isRetrying, checkConnection, toggleForceOffline],
   );
 
-  // PERF-C04: Always render children (non-blocking). Show alert overlay if offline.
   return (
     <ConnectionContext.Provider value={contextValue}>
-      {children}
+      <View style={styles.container}>
+        {children}
+        {isOffline && (
+          <TopOfflineBanner onRetry={checkConnection} isRetrying={isRetrying} />
+        )}
+      </View>
     </ConnectionContext.Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  offlineBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#DC2626",
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    zIndex: 9999,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  bannerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  bannerText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  retryButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  retryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  retryText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+});

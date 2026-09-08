@@ -152,6 +152,10 @@ export type BffPermit = {
   category: string;
   description: string;
   date: string;
+  requested_start_date?: string | null;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   approval_status: "pending" | "approved" | "rejected" | null;
   attachment_url: string | null;
   created_at?: string;
@@ -159,12 +163,24 @@ export type BffPermit = {
   rejected_at?: string | null;
 };
 
+export type MobilePermitCategory =
+  | "sakit"
+  | "pergi"
+  | "dispensasi"
+  | "lainnya"
+  | "izin"
+  | "cuti";
+
 export type MobilePermit = {
   id: string;
-  kategori_izin: "sakit" | "pergi" | "izin" | "cuti";
+  kategori_izin: MobilePermitCategory;
   deskripsi: string;
   approval_status: "pending" | "approved" | "rejected" | null;
   tanggal: string;
+  requested_start_date?: string;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   created_at: string;
   rejection_reason?: string | null;
   rejected_at?: string | null;
@@ -363,21 +379,56 @@ export async function submitEnrollment(files: FilePart[]) {
 
 export async function listPermits(): Promise<MobilePermit[]> {
   const result = await bffRequest<{ items: BffPermit[] }>("/v1/mobile/permits");
-  return result.items.map((permit) => ({
+  return result.items.map(toMobilePermit);
+}
+
+export function formatMobilePermitCategory(category?: string | null): string {
+  switch (category?.toLowerCase()) {
+    case "sakit":
+      return "Sakit";
+    case "pergi":
+      return "Izin (Pergi)";
+    case "dispensasi":
+      return "Dispensasi";
+    case "lainnya":
+      return "Izin (Lainnya)";
+    case "cuti":
+      return "Cuti";
+    case "izin":
+    default:
+      return "Izin";
+  }
+}
+
+export function toMobilePermit(permit: BffPermit): MobilePermit {
+  return {
     id: permit.id,
     kategori_izin:
       permit.category === "sakit" ||
       permit.category === "pergi" ||
+      permit.category === "dispensasi" ||
+      permit.category === "lainnya" ||
+      permit.category === "izin" ||
       permit.category === "cuti"
         ? permit.category
         : "izin",
     deskripsi: permit.description,
     approval_status: permit.approval_status,
     tanggal: permit.date,
+    requested_start_date: permit.requested_start_date ?? permit.date,
+    original_end_date:
+      permit.original_end_date ??
+      (permit.approval_status === "approved" ? permit.date : null),
+    effective_end_date:
+      permit.effective_end_date ??
+      (permit.approval_status === "approved" ? permit.date : null),
+    duration_days:
+      permit.duration_days ??
+      (permit.approval_status === "approved" ? 1 : null),
     created_at: permit.created_at ?? permit.date,
     rejection_reason: permit.rejection_reason,
     rejected_at: permit.rejected_at ?? null,
-  }));
+  };
 }
 
 export async function createPermit(params: {

@@ -1,16 +1,14 @@
-// filepath: app/index.tsx
-import { useRouter, Stack } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { useRouter, Stack, type Href } from "expo-router";
+import { useEffect } from "react";
 import * as Sentry from "@sentry/react-native";
 
 import useAuthStore from "../store/authStore";
 import { clearLogtoSession, getLogtoUser } from "~/utils/logto";
+import LoadingScreen from "./auth/LoadingScreen";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
     let active = true;
@@ -37,12 +35,13 @@ export default function Index() {
           return;
         }
 
-        setLoadingMessage("Session found");
         if (!useAuthStore.getState().user) {
           setUser(currentUser);
         }
         if (active) {
-          router.replace("/Dashboard");
+          // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+          // generated typed-route cache is refreshed by Metro after file changes.
+          router.replace("/home" as Href);
         }
       } catch (err) {
         if (__DEV__) console.error("[Index] checkAuth error:", err);
@@ -63,10 +62,7 @@ export default function Index() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View className="flex-1 items-center justify-center p-4">
-        <Text className="mb-4 text-xl font-bold">{loadingMessage}</Text>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <LoadingScreen />
     </>
   );
 }
