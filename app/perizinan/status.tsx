@@ -7,14 +7,13 @@ import {
   BackHandler,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
 import { Icon } from "~/components/ui/icon";
 import {
-  ChevronLeft,
   Plus,
   Clock,
   CheckCircle,
@@ -24,28 +23,22 @@ import {
   Stethoscope,
 } from "lucide-react-native";
 import { cn, formatDateWIB } from "~/lib/utils";
-import { listPermits } from "~/utils/bffMobileApi";
+import {
+  formatMobilePermitCategory,
+  listPermits,
+  type MobilePermit,
+} from "~/utils/bffMobileApi";
 
-interface PerizinanRecord {
-  id: string;
-  kategori_izin: "sakit" | "pergi" | "izin" | "cuti";
-  deskripsi: string;
-  approval_status: "pending" | "approved" | "rejected" | null;
-  tanggal: string;
-  created_at: string;
-  rejection_reason?: string | null;
-  rejected_at?: string | null;
-}
+type PerizinanRecord = MobilePermit;
 
-const CATEGORY_CONFIG: Record<
-  string,
-  { label: string; icon: any; color: string }
-> = {
-  sakit: { label: "Sakit", icon: Stethoscope, color: "text-red-500" },
-  pergi: { label: "Pergi", icon: FileText, color: "text-blue-500" },
-  izin: { label: "Izin", icon: FileText, color: "text-blue-500" },
-  cuti: { label: "Cuti", icon: Calendar, color: "text-purple-500" },
-  default: { label: "Izin", icon: FileText, color: "text-gray-500" },
+const CATEGORY_CONFIG = {
+  sakit: { icon: Stethoscope, color: "text-red-500" },
+  pergi: { icon: FileText, color: "text-indigo-500" },
+  dispensasi: { icon: FileText, color: "text-indigo-500" },
+  lainnya: { icon: FileText, color: "text-indigo-500" },
+  izin: { icon: FileText, color: "text-indigo-500" },
+  cuti: { icon: Calendar, color: "text-purple-500" },
+  default: { icon: FileText, color: "text-muted-foreground" },
 };
 
 const STATUS_CONFIG = {
@@ -73,6 +66,7 @@ const STATUS_CONFIG = {
 };
 
 function StatusBadge({ status }: { status: string | null }) {
+  // SAFETY: Unknown or missing status strings fall back to STATUS_CONFIG.pending.
   const config =
     STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ||
     STATUS_CONFIG.pending;
@@ -100,6 +94,7 @@ const PermissionCard = memo(function PermissionCard({
 }) {
   const category =
     CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
+  const categoryLabel = formatMobilePermitCategory(item.kategori_izin);
   const date = parseISO(item.tanggal);
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
   const createdDateTime = format(
@@ -110,8 +105,12 @@ const PermissionCard = memo(function PermissionCard({
     },
   );
 
-  const duration = "1 Hari";
+  const duration = item.duration_days ?? 1;
   const isRejected = item.approval_status === "rejected";
+  const formatPeriodDate = (value?: string | null) =>
+    value
+      ? format(parseISO(value), "d MMM yyyy", { locale: idLocale })
+      : "Belum ditetapkan";
 
   return (
     <View className="bg-card border border-border rounded-xl p-4 mb-4 shadow-sm">
@@ -122,7 +121,7 @@ const PermissionCard = memo(function PermissionCard({
           </View>
           <View>
             <Text className="font-bold text-foreground text-base">
-              {category.label}
+              {categoryLabel}
             </Text>
             <Text className="text-xs text-muted-foreground">
               {formattedDate}
@@ -136,11 +135,25 @@ const PermissionCard = memo(function PermissionCard({
         &ldquo;{item.deskripsi}&rdquo;
       </Text>
 
+      <View className="mb-4 gap-1">
+        <Text className="text-xs text-muted-foreground">
+          Mulai: {formatPeriodDate(item.requested_start_date ?? item.tanggal)}
+        </Text>
+        <Text className="text-xs text-muted-foreground">
+          Akhir asli: {formatPeriodDate(item.original_end_date)}
+        </Text>
+        <Text className="text-xs text-muted-foreground">
+          Akhir efektif: {formatPeriodDate(item.effective_end_date)}
+        </Text>
+      </View>
+
       <View className="flex-row justify-between items-center pt-3 border-t border-border">
         <Text className="text-xs text-muted-foreground">
           Diajukan: {createdDateTime}
         </Text>
-        <Text className="text-xs font-medium text-foreground">{duration}</Text>
+        <Text className="text-xs font-medium text-foreground">
+          {duration} Hari
+        </Text>
       </View>
 
       {/* Alasan penolakan */}
@@ -174,26 +187,26 @@ function TopStatusCard({
 }) {
   if (!item) return null;
 
-  const category =
-    CATEGORY_CONFIG[item.kategori_izin] || CATEGORY_CONFIG.default;
+  const categoryLabel = formatMobilePermitCategory(item.kategori_izin);
   const date = parseISO(item.tanggal);
   const formattedDate = format(date, "d MMM yyyy", { locale: idLocale });
 
   const status = item.approval_status || "pending";
+  const duration = item.duration_days ?? 1;
 
   return (
     <View className="bg-[#0F172A] rounded-2xl p-5 mb-6 shadow-lg">
       <View className="flex-row justify-between items-start mb-6">
         <View>
           <Text className="text-white font-bold text-lg uppercase mb-1">
-            {category.label} - {userName}
+            {categoryLabel} - {userName}
           </Text>
         </View>
       </View>
 
       <View className="space-y-4">
         <View className="flex-row items-center">
-          <Text className="text-gray-400 text-xs font-bold w-20">STATUS</Text>
+          <Text className="text-white/60 text-xs font-bold w-20">STATUS</Text>
           <View
             className={cn(
               "px-3 py-1 rounded-full",
@@ -215,14 +228,54 @@ function TopStatusCard({
         </View>
 
         <View className="flex-row items-center">
-          <Text className="text-gray-400 text-xs font-bold w-20">WAKTU</Text>
+          <Text className="text-white/60 text-xs font-bold w-20">WAKTU</Text>
           <Text className="text-white font-semibold text-sm">
             {formattedDate}
           </Text>
         </View>
 
         <View className="flex-row items-start">
-          <Text className="text-gray-400 text-xs font-bold w-20 mt-0.5">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
+            MULAI
+          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">
+            {format(
+              parseISO(item.requested_start_date ?? item.tanggal),
+              "d MMM yyyy",
+              { locale: idLocale },
+            )}
+          </Text>
+        </View>
+
+        <View className="flex-row items-start">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
+            AKHIR ASLI
+          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">
+            {item.original_end_date
+              ? format(parseISO(item.original_end_date), "d MMM yyyy", {
+                  locale: idLocale,
+                })
+              : "Belum ditetapkan"}
+          </Text>
+        </View>
+
+        <View className="flex-row items-start">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
+            AKHIR EFEKTIF
+          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">
+            {item.effective_end_date
+              ? format(parseISO(item.effective_end_date), "d MMM yyyy", {
+                  locale: idLocale,
+                })
+              : "Belum ditetapkan"}
+            {item.approval_status === "approved" ? ` (${duration} hari)` : ""}
+          </Text>
+        </View>
+
+        <View className="flex-row items-start">
+          <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
             ALASAN
           </Text>
           <Text
@@ -235,7 +288,7 @@ function TopStatusCard({
 
         {item.approval_status === "rejected" && item.rejection_reason && (
           <View className="flex-row items-start">
-            <Text className="text-gray-400 text-xs font-bold w-20 mt-0.5">
+            <Text className="text-white/60 text-xs font-bold w-20 mt-0.5">
               DITOLAK
             </Text>
             <Text
@@ -287,8 +340,11 @@ export default function StatusPerizinanScreen() {
   useFocusEffect(
     useCallback(() => {
       const backAction = () => {
-        router.back();
-        return true;
+        if (router.canGoBack()) {
+          router.back();
+          return true;
+        }
+        return false;
       };
       const backHandler = BackHandler.addEventListener(
         "hardwareBackPress",
@@ -344,18 +400,8 @@ export default function StatusPerizinanScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView className="flex-1 bg-background">
         {/* Header - Consistent with other pages */}
-        <View className="px-6 py-4 flex-row items-center justify-between bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
-          >
-            <Icon
-              as={ChevronLeft}
-              className="size-6 text-gray-900 dark:text-gray-100"
-            />
-          </TouchableOpacity>
-
-          <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
+        <View className="px-6 py-4 flex-row items-center justify-between bg-background border-b border-border">
+          <Text className="text-xl font-bold text-foreground">
             Status Perizinan
           </Text>
 
@@ -364,7 +410,7 @@ export default function StatusPerizinanScreen() {
             className={cn(
               "px-3 py-1.5 rounded-full min-w-[40px] items-center",
               canSubmitMore
-                ? "bg-blue-100 dark:bg-blue-900/30"
+                ? "bg-indigo-100 dark:bg-indigo-900/30"
                 : "bg-red-100 dark:bg-red-900/30",
             )}
           >
@@ -372,7 +418,7 @@ export default function StatusPerizinanScreen() {
               className={cn(
                 "text-xs font-bold",
                 canSubmitMore
-                  ? "text-blue-600 dark:text-blue-400"
+                  ? "text-indigo-600 dark:text-indigo-400"
                   : "text-red-600 dark:text-red-400",
               )}
             >
@@ -388,10 +434,20 @@ export default function StatusPerizinanScreen() {
           maxToRenderPerBatch={8}
           windowSize={5}
           initialNumToRender={6}
+          getItemLayout={(_data, index) => ({
+            length: 120,
+            offset: 120 * index,
+            index,
+          })}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{
+            paddingBottom: 100,
+            width: "100%",
+            maxWidth: 672,
+            alignSelf: "center",
+          }}
           data={records}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -423,9 +479,14 @@ export default function StatusPerizinanScreen() {
           <TouchableOpacity
             onPress={() => router.push("/perizinan/izin")}
             disabled={!canSubmitMore}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Ajukan Perizinan Baru"
+            accessibilityHint="Ketuk dua kali untuk membuka form pengajuan izin baru"
+            accessibilityState={{ disabled: !canSubmitMore }}
             className={cn(
-              "flex-row items-center justify-center py-4 rounded-xl shadow-lg",
-              canSubmitMore ? "bg-[#0F172A]" : "bg-gray-400",
+              "flex-row items-center justify-center py-4 min-h-[48px] rounded-xl shadow-lg",
+              canSubmitMore ? "bg-slate-900" : "bg-muted",
             )}
             activeOpacity={0.8}
           >

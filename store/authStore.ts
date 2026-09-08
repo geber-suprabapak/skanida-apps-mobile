@@ -1,9 +1,9 @@
 // store/authStore.ts
 import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
-import type { User } from "@supabase/supabase-js";
-import { supabase, ensureSupabaseInitialized } from "~/utils/supabase";
+import { logoutLogtoSession, type MobileAuthUser } from "~/utils/logto";
 import { registerAndSaveNotificationToken } from "~/utils/notifications";
+import { getProfile } from "~/utils/bffMobileApi";
 
 // Define a more specific type for your user profile based on your table
 export interface UserProfile {
@@ -18,16 +18,13 @@ export interface UserProfile {
   role: string | null;
   gender: string | null;
   notification_token: string | null;
+  lifecycle_status?: "pending" | "approved" | "rejected" | "disabled" | null;
 }
 
-// PERF-L06: Only select columns that are actually used
-const USER_PROFILE_COLUMNS =
-  "id, user_id, full_name, email, nis, class_name, absence_number, avatar_url, role, gender, notification_token";
-
 interface AuthState {
-  user: User | null;
+  user: MobileAuthUser | null;
   userProfile: UserProfile | null;
-  setUser: (user: User | null) => void;
+  setUser: (user: MobileAuthUser | null) => void;
   fetchUserProfile: (userId: string, signal: AbortSignal) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -53,9 +50,6 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController = controller;
 
       (async () => {
-        // Ensure Supabase is initialized before making any calls
-        await ensureSupabaseInitialized();
-
         await Promise.all([
           get().fetchUserProfile(user.id, controller.signal),
           registerAndSaveNotificationToken(user.id, {
@@ -71,7 +65,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Action to fetch user profile from the database with retry logic
+  // Action to fetch user profile from Astra with retry logic
   fetchUserProfile: async (userId: string, signal: AbortSignal) => {
     const maxRetries = 5;
     const delay = 500; // 500ms delay between retries
@@ -83,35 +77,37 @@ const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       try {
-        const { data, error, status } = await supabase
-          .from("user_profiles")
-          .select(USER_PROFILE_COLUMNS)
-          .eq("user_id", userId)
-          .abortSignal(signal)
-          .single();
+        const data = await getProfile();
 
         // PERF-H04: Check if cancelled after network response
         if (signal.aborted) {
           return;
         }
 
-        // If data is found, profile exists. Set it and exit the loop.
         if (data) {
-          set({ userProfile: data as UserProfile });
+          set({
+            userProfile: {
+              id: data.user_id,
+              user_id: data.user_id,
+              full_name: data.full_name,
+              email: data.email,
+              nis: data.nis ?? null,
+              class_name: data.class_name ?? null,
+              absence_number:
+                data.absence_number !== undefined &&
+                data.absence_number !== null
+                  ? String(data.absence_number)
+                  : null,
+              avatar_url: data.avatar_url,
+              role: data.role ?? null,
+              gender: data.gender ?? null,
+              notification_token: null,
+              lifecycle_status: data.lifecycle_status ?? null,
+            },
+          });
           return; // Success, exit the function
         }
 
-        // If we get an error that is NOT a "resource not found" error, something is wrong.
-        if (error && status !== 406) {
-          if (__DEV__)
-            console.error("Error fetching user profile:", error.message);
-          Sentry.captureException(error);
-          set({ userProfile: null }); // Clear profile on definitive error
-          return;
-        }
-
-        // If we are here, it means data is null (profile not found yet).
-        // We will wait and retry, unless it's the last attempt.
         if (i < maxRetries - 1) {
           if (__DEV__)
             console.log(
@@ -120,20 +116,25 @@ const useAuthStore = create<AuthState>((set, get) => ({
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       } catch (error) {
+        if (signal.aborted) return;
+        if (i < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
         if (__DEV__)
           console.error(
-            "An unexpected error occurred fetching profile:",
+            "An unexpected error occurred fetching profile from Astra:",
             error,
           );
         Sentry.captureException(error);
-        set({ userProfile: null }); // Clear profile on unexpected error
+        set({ userProfile: null });
         return;
       }
     }
 
     // If the loop completes without finding a profile
     const fetchFailureError = new Error(
-      `Failed to fetch user profile for ${userId} after ${maxRetries} attempts.`,
+      `Failed to fetch user profile for ${userId} from Astra after ${maxRetries} attempts.`,
     );
     if (__DEV__) console.error(fetchFailureError.message);
     Sentry.captureException(fetchFailureError);
@@ -147,7 +148,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController.abort();
       activeFetchController = null;
     }
-    await supabase.auth.signOut();
+    await logoutLogtoSession();
     set({ user: null, userProfile: null });
   },
 }));

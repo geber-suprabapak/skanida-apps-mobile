@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PortalHost } from "@rn-primitives/portal";
 import ConnectionChecker from "~/components/ConnectionChecker";
 import { useEffect, useState } from "react";
-import { colorScheme } from "nativewind";
+import { Uniwind, useUniwind } from "uniwind";
 import useThemeStore from "~/store/themeStore";
 import { timeSync } from "~/utils/timeSync";
 import {
@@ -14,18 +14,22 @@ import {
   setupNotificationChannel,
 } from "~/utils/notifications";
 import { useNotificationSync } from "~/hooks/useNotificationSync";
-import { ensureSupabaseInitialized, supabase } from "~/utils/supabase";
-import { View, ActivityIndicator } from "react-native";
+import { getLogtoUser } from "~/utils/logto";
+import { View } from "react-native";
 import { Text } from "~/components/ui/text";
 import useAuthStore from "~/store/authStore";
+import LoadingScreen from "./auth/LoadingScreen";
 
 import * as Sentry from "@sentry/react-native";
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
+  enableTombstone: true,
   tracesSampleRate: 0.1,
-  profilesSampleRate: 0.05,
+  // Keep Hermes profiling off during the Expo 57 rollout to mitigate the
+  // known Sentry/Hermes teardown SIGABRT race.
+  profilesSampleRate: 0,
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 0.1,
 
@@ -43,44 +47,38 @@ export { ErrorBoundary } from "expo-router";
 
 export default Sentry.wrap(function RootLayout() {
   const { theme } = useThemeStore();
+  const { theme: resolvedTheme } = useUniwind();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const [isSupabaseReady, setIsSupabaseReady] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (theme === "system") {
-      colorScheme.set("light");
-    } else {
-      colorScheme.set(theme);
-    }
+    Uniwind.setTheme(theme);
   }, [theme]);
 
-  // Initialize Supabase first — this gates rendering. TimeSync and
-  // notifications are initialized afterwards without blocking auth.
+  // Restore the Logto session before rendering routes.
   useEffect(() => {
     let mounted = true;
 
     async function initializeApp() {
       try {
-        await ensureSupabaseInitialized();
+        const restoredUser = await getLogtoUser();
         if (!mounted) return;
-        // Unblock auth routing immediately after Supabase is ready.
-        setIsSupabaseReady(true);
+        setUser(restoredUser);
+        setIsAuthReady(true);
       } catch (error) {
-        if (__DEV__) {
-          console.error("Supabase initialization failed:", error);
-        }
+        if (__DEV__) console.error("Identity initialization failed:", error);
         Sentry.captureException(error);
         if (mounted) {
           setInitError(
             error instanceof Error ? error.message : "Failed to initialize app",
           );
+          setIsAuthReady(true);
         }
         return;
       }
 
-      // Non-blocking: failures here don't affect auth or routing.
       try {
         await timeSync.initialize();
       } catch (error) {
@@ -89,7 +87,6 @@ export default Sentry.wrap(function RootLayout() {
       }
 
       if (!mounted) return;
-
       try {
         setupNotificationHandler();
         await setupNotificationChannel();
@@ -105,54 +102,29 @@ export default Sentry.wrap(function RootLayout() {
       mounted = false;
       timeSync.cleanup();
     };
-  }, []);
+  }, [setUser]);
 
-  // Keep Zustand auth store in sync with Supabase auth state changes
-  // (token refresh, sign-out, sign-in from another tab/device, etc.)
-  // INITIAL_SESSION is intentionally skipped — index.tsx handles the first
-  // routing decision via getSession() to avoid a double fetchUserProfile call.
-  useEffect(() => {
-    if (!isSupabaseReady) return;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return;
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [isSupabaseReady, setUser]);
-
-  // Reconcile notification state on mount & app resume
-  useNotificationSync({ userId: user?.id, enabled: isSupabaseReady });
+  useNotificationSync({ userId: user?.id, enabled: isAuthReady });
 
   // Show loading screen while initializing
-  if (!isSupabaseReady) {
+  if (!isAuthReady) {
     return (
       <SafeAreaProvider>
-        <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950">
-          {initError ? (
-            <View className="items-center px-8">
-              <Text
-                variant="h3"
-                className="text-red-600 dark:text-red-500 mb-2"
-              >
-                Initialization Error
-              </Text>
-              <Text className="text-center text-gray-600 dark:text-gray-400">
-                {initError}
-              </Text>
-            </View>
-          ) : (
-            <View className="items-center">
-              <ActivityIndicator size="large" color="#0066FF" />
-              <Text className="mt-4 text-gray-600 dark:text-gray-400">
-                Initializing...
-              </Text>
-            </View>
-          )}
-        </View>
+        {initError ? (
+          <View className="flex-1 items-center justify-center bg-background px-8">
+            <Text
+              variant="h3"
+              className="text-red-600 dark:text-red-500 mb-2"
+            >
+              Initialization Error
+            </Text>
+            <Text className="text-center text-muted-foreground">
+              {initError}
+            </Text>
+          </View>
+        ) : (
+          <LoadingScreen />
+        )}
       </SafeAreaProvider>
     );
   }
@@ -160,8 +132,36 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider>
       <ConnectionChecker>
-        <StatusBar style="auto" />
-        <Stack />
+        <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+        <Stack
+          screenOptions={{ gestureEnabled: true, headerBackTitle: "Kembali" }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="attendance/AbsenceReport"
+            options={{ title: "Lapor Absensi" }}
+          />
+          <Stack.Screen
+            name="attendance/CameraAttendance"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="profile/ManageAccount"
+            options={{ title: "Kelola Akun" }}
+          />
+          <Stack.Screen
+            name="profile/enroll"
+            options={{ title: "Pendaftaran Wajah" }}
+          />
+          <Stack.Screen
+            name="perizinan/izin"
+            options={{ title: "Pengajuan Izin" }}
+          />
+          <Stack.Screen
+            name="perizinan/status"
+            options={{ title: "Status Perizinan" }}
+          />
+        </Stack>
         <PortalHost />
       </ConnectionChecker>
     </SafeAreaProvider>

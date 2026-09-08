@@ -227,7 +227,7 @@ tests/
   unit/
   integration/
 Dockerfile
-docker-compose.yml
+compose.yaml
 .env.example
 README.md
 ```

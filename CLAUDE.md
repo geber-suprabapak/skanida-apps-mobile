@@ -1,0 +1,1 @@
+C:/Users/fiz/folder_hrk/project/skanida-apps-mobile/AGENTS.md

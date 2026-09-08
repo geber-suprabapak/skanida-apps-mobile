@@ -6,9 +6,9 @@ This document records the current mobile integration with Project Astra, the BFF
 
 Mobile should stay thin:
 
-- Supabase Auth remains direct in v1.
+- Logto owns identity, sessions, and RBAC.
 - Business data and workflow decisions come from Astra.
-- Robin and Supabase business internals stay hidden behind Astra.
+- Supabase business internals stay hidden behind Astra.
 
 ## Active Boundary
 
@@ -32,7 +32,7 @@ utils/bffMobileApi.ts
 
 The transport helper:
 
-- reads the active Supabase session
+- reads the active Logto session
 - sends `Authorization: Bearer <access_token>`
 - sends `X-Request-Id`
 - applies request timeout
@@ -168,21 +168,9 @@ Astra returns permit lists as:
 
 Profile, avatar update, avatar clear, and password change use BFF helpers. Avatar changes update local screen state from the BFF response and no longer require a Supabase `auth.getUser()` refresh.
 
-## Allowed Direct Supabase Calls
+## Identity and Direct-Backend Boundary
 
-Allowed direct Supabase usage in v1:
-
-- login
-- reset password
-- signup/activation
-- logout
-- auth state listener
-- session refresh
-- BFF bearer token retrieval in `utils/bff.ts`
-
-Known exception:
-
-- `app/auth/Activate.tsx` calls `supabase.rpc("get_biodata_siswa")`.
+Logto handles login, logout, session refresh, and role claims. Astra handles activation and all business workflows. The mobile client may only retrieve the Logto bearer token in `utils/bff.ts`; it must not call Supabase Auth, PostgREST, storage, or RPC endpoints directly.
 
 ## Validation
 

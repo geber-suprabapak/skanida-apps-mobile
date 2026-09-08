@@ -1,4 +1,4 @@
-import { ensureSupabaseInitialized, supabase } from "~/utils/supabase";
+import { getLogtoAccessToken } from "~/utils/logto";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -12,12 +12,35 @@ type BffSuccessEnvelope<T> = {
   };
 };
 
+export interface BffErrorDetailsRecord {
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | readonly string[];
+  pending_request_id?: string;
+  requested_start_date?: string;
+  overlapping_request_id?: string;
+  overlapping_start_date?: string;
+  overlapping_end_date?: string;
+  conflicting_dates?: readonly string[];
+  requested_end_date?: string;
+}
+
+export type BffErrorDetails =
+  | Readonly<BffErrorDetailsRecord>
+  | string
+  | null
+  | undefined;
+
 type BffErrorEnvelope = {
   success: false;
   error?: {
     code?: string;
     message?: string;
-    details?: unknown;
+    details?: BffErrorDetails;
   };
   meta?: {
     request_id?: string;
@@ -27,11 +50,14 @@ type BffErrorEnvelope = {
 
 type BffEnvelope<T> = BffSuccessEnvelope<T> | BffErrorEnvelope;
 
+type BffHeaderMap = Record<string, string>;
+
 type BffRequestOptions = {
   method?: "GET" | "POST" | "PATCH";
-  body?: unknown;
-  headers?: Record<string, string>;
+  body?: JsonValue | FormData;
+  headers?: BffHeaderMap;
   timeoutMs?: number;
+  requireAuth?: boolean;
 };
 
 export class BffRequestError extends Error {
@@ -39,15 +65,53 @@ export class BffRequestError extends Error {
     message: string,
     readonly status?: number,
     readonly code?: string,
-    readonly details?: unknown,
+    readonly details?: BffErrorDetails,
   ) {
     super(message);
     this.name = "BffRequestError";
   }
 }
 
+const asRecord = (
+  details: BffErrorDetails | undefined,
+): Readonly<BffErrorDetailsRecord> | null => {
+  if (
+    details === null ||
+    Array.isArray(details) ||
+    Object.prototype.toString.call(details) !== "[object Object]"
+  ) {
+    return null;
+  }
+  // SAFETY: Error details are decoded as the bounded BFF detail value union.
+  return details as Readonly<BffErrorDetailsRecord>;
+};
+
+/** Return a stable, actionable message for Astra leave conflict responses. */
+export function actionableLeaveErrorMessage(error: BffRequestError): string {
+  const details = asRecord(error.details);
+  switch (error.code) {
+    case "LEAVE_REQUEST_PENDING":
+      return "Pengajuan izin masih menunggu persetujuan. Tunggu hingga diproses atau ditolak sebelum mengajukan lagi.";
+    case "LEAVE_PERIOD_OVERLAP": {
+      const start = details?.overlapping_start_date;
+      const end = details?.overlapping_end_date;
+      const period =
+        start && end ? ` (${String(start)} sampai ${String(end)})` : "";
+      return `Tanggal pengajuan bertumpang tindih dengan izin yang sudah disetujui${period}. Pilih tanggal lain.`;
+    }
+    case "LEAVE_APPROVAL_CONFLICT": {
+      const dates = Array.isArray(details?.conflicting_dates)
+        ? details.conflicting_dates.map(String).join(", ")
+        : "tanggal yang sudah memiliki absensi fisik";
+      return `Pengajuan ditolak karena absensi fisik sudah tercatat pada: ${dates}.`;
+    }
+    default:
+      return error.message;
+  }
+}
+
 const getBffBaseUrl = () => {
-  const url = process.env.EXPO_PUBLIC_BFF_API_URL as string | undefined;
+  const url = process.env.EXPO_PUBLIC_BFF_API_URL;
   if (!url) {
     throw new Error(
       "Server aplikasi belum dikonfigurasi. Hubungi administrator.",
@@ -59,32 +123,52 @@ const getBffBaseUrl = () => {
 const createRequestId = () =>
   `mobile-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const parseJson = (text: string): unknown => {
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+const parseJson = (text: string): JsonValue => {
   if (!text) return null;
   try {
-    return JSON.parse(text);
+    // SAFETY: JSON.parse result conforms to JsonValue shape.
+    return JSON.parse(text) as JsonValue;
   } catch {
     return text;
   }
 };
 
-const isFormData = (value: unknown): value is FormData =>
-  typeof FormData !== "undefined" && value instanceof FormData;
+const isFormData = (
+  candidate: BffRequestOptions["body"],
+): candidate is FormData => candidate instanceof FormData;
 
-const getErrorMessage = (body: unknown, status: number) => {
+const getErrorMessage = (cause: unknown, status: number) => {
   if (
-    body &&
-    typeof body === "object" &&
-    "success" in body &&
-    (body as BffErrorEnvelope).success === false
+    cause !== null &&
+    cause !== undefined &&
+    Object.prototype.hasOwnProperty.call(cause, "success")
   ) {
-    const message = (body as BffErrorEnvelope).error?.message;
-    if (message) return message;
+    // SAFETY: Verified property existence before reading error envelope.
+    const envelope = cause as BffErrorEnvelope;
+    if (envelope.success === false) {
+      const message = envelope.error?.message;
+      if (message) return message;
+    }
   }
 
-  if (body && typeof body === "object" && "message" in body) {
-    const message = (body as { message?: unknown }).message;
-    if (typeof message === "string") return message;
+  if (
+    cause !== null &&
+    cause !== undefined &&
+    Object.prototype.hasOwnProperty.call(cause, "message")
+  ) {
+    // SAFETY: Verified property existence before reading message property.
+    const message = (cause as { message?: unknown }).message;
+    if (Object.prototype.toString.call(message) === "[object String]") {
+      return String(message);
+    }
   }
 
   return `Permintaan server gagal (${status}).`;
@@ -94,27 +178,25 @@ export async function bffRequest<T>(
   path: string,
   options: BffRequestOptions = {},
 ): Promise<T> {
-  await ensureSupabaseInitialized();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.access_token) {
+  const accessToken =
+    options.requireAuth === false ? null : await getLogtoAccessToken();
+  if (options.requireAuth !== false && !accessToken) {
     throw new BffRequestError("Sesi tidak valid. Silakan login ulang.", 401);
   }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(
     () => controller.abort(),
     options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
   const body = options.body;
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-    "X-Request-Id": createRequestId(),
-    ...options.headers,
-  };
+  const headers = new Headers();
+  headers.set("Accept", "application/json");
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  headers.set("X-Request-Id", createRequestId());
+  headers.set("X-Astra-Contract-Version", "v1");
+  for (const [name, value] of Object.entries(options.headers ?? {})) {
+    headers.set(name, value);
+  }
 
   const requestInit: RequestInit = {
     method: options.method ?? "GET",
@@ -124,25 +206,131 @@ export async function bffRequest<T>(
 
   if (body !== undefined) {
     if (isFormData(body)) {
-      requestInit.body = body;
+      return new Promise<T>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(options.method ?? "POST", `${getBffBaseUrl()}${path}`);
+        xhr.timeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        xhr.setRequestHeader("Accept", "application/json");
+        if (accessToken)
+          xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+        xhr.setRequestHeader("X-Request-Id", createRequestId());
+        xhr.setRequestHeader("X-Astra-Contract-Version", "v1");
+        for (const [name, value] of Object.entries(options.headers ?? {})) {
+          if (name.toLowerCase() === "content-type") continue;
+          xhr.setRequestHeader(name, value);
+        }
+
+        xhr.onload = () => {
+          const contractVersion = xhr.getResponseHeader(
+            "X-Astra-Contract-Version",
+          );
+          if (contractVersion !== "v1") {
+            reject(
+              new BffRequestError(
+                "Versi kontrak server tidak kompatibel. Silakan perbarui aplikasi.",
+                502,
+                "CONTRACT_VERSION_UNSUPPORTED",
+              ),
+            );
+            return;
+          }
+          const parsedText = parseJson(xhr.responseText);
+          // SAFETY: parsedText is decoded from JSON or is null, asserting BffEnvelope<T> | null for shape matching
+          const parsed = parsedText as BffEnvelope<T> | null;
+          if (xhr.status < 200 || xhr.status >= 300) {
+            let envelope: BffErrorEnvelope | null = null;
+            if (
+              parsed !== null &&
+              parsed !== undefined &&
+              Object.prototype.hasOwnProperty.call(parsed, "success")
+            ) {
+              // SAFETY: parsed is non-null object with success property checked above
+              const candidate = parsed as BffErrorEnvelope;
+              if (candidate.success === false) {
+                envelope = candidate;
+              }
+            }
+            reject(
+              new BffRequestError(
+                getErrorMessage(parsed, xhr.status),
+                xhr.status,
+                envelope?.error?.code,
+                envelope?.error?.details,
+              ),
+            );
+            return;
+          }
+
+          if (
+            parsed !== null &&
+            parsed !== undefined &&
+            Object.prototype.hasOwnProperty.call(parsed, "success")
+          ) {
+            // SAFETY: parsed is non-null object with success property checked above
+            const candidate = parsed as BffSuccessEnvelope<T>;
+            if (candidate.success === true) {
+              resolve(candidate.data);
+              return;
+            }
+          }
+          reject(
+            new BffRequestError("Respons server tidak valid.", xhr.status),
+          );
+        };
+
+        xhr.onerror = () => {
+          reject(
+            new BffRequestError(
+              `Permintaan server gagal (${xhr.status || 0}).`,
+              xhr.status || 500,
+            ),
+          );
+        };
+
+        xhr.ontimeout = () => {
+          reject(
+            new BffRequestError(
+              "Permintaan server melebihi batas waktu. Silakan coba lagi.",
+              408,
+            ),
+          );
+        };
+
+        xhr.send(body);
+      });
     } else {
-      headers["Content-Type"] = "application/json";
+      headers.set("Content-Type", "application/json");
       requestInit.body = JSON.stringify(body);
     }
   }
 
   try {
     const response = await fetch(`${getBffBaseUrl()}${path}`, requestInit);
-    const parsed = parseJson(await response.text()) as BffEnvelope<T> | unknown;
+    const contractVersion = response.headers.get("X-Astra-Contract-Version");
+    if (contractVersion !== "v1") {
+      throw new BffRequestError(
+        "Versi kontrak server tidak kompatibel. Silakan perbarui aplikasi.",
+        502,
+        "CONTRACT_VERSION_UNSUPPORTED",
+      );
+    }
+    const parsedText = parseJson(await response.text());
+    // SAFETY: Network response parsed from JSON into expected envelope contract.
+    const parsed = parsedText as BffEnvelope<T> | null;
 
     if (!response.ok) {
-      const envelope =
-        parsed &&
-        typeof parsed === "object" &&
-        "success" in parsed &&
-        (parsed as BffErrorEnvelope).success === false
-          ? (parsed as BffErrorEnvelope)
-          : null;
+      let envelope: BffErrorEnvelope | null = null;
+      if (
+        parsed !== null &&
+        parsed !== undefined &&
+        Object.prototype.hasOwnProperty.call(parsed, "success")
+      ) {
+        // SAFETY: Envelope verified before narrowing to BffErrorEnvelope.
+        const candidate = parsed as BffErrorEnvelope;
+        if (candidate.success === false) {
+          envelope = candidate;
+        }
+      }
       throw new BffRequestError(
         getErrorMessage(parsed, response.status),
         response.status,
@@ -152,23 +340,26 @@ export async function bffRequest<T>(
     }
 
     if (
-      parsed &&
-      typeof parsed === "object" &&
-      "success" in parsed &&
-      (parsed as BffSuccessEnvelope<T>).success === true
+      parsed !== null &&
+      parsed !== undefined &&
+      Object.prototype.hasOwnProperty.call(parsed, "success")
     ) {
-      return (parsed as BffSuccessEnvelope<T>).data;
+      // SAFETY: Verified envelope shape before checking success flag.
+      const candidate = parsed as BffSuccessEnvelope<T>;
+      if (candidate.success === true) {
+        return candidate.data;
+      }
     }
 
     throw new BffRequestError("Respons server tidak valid.", response.status);
-  } catch (error: any) {
-    if (error?.name === "AbortError") {
+  } catch (cause: unknown) {
+    if (cause instanceof Error && cause.name === "AbortError") {
       throw new BffRequestError(
         "Permintaan server melebihi batas waktu. Silakan coba lagi.",
         408,
       );
     }
-    throw error;
+    throw cause;
   } finally {
     clearTimeout(timeoutId);
   }

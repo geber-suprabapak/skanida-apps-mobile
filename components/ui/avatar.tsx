@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Image, View, Text } from "react-native";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 
 import { cn } from "~/lib/utils";
 import { Icon } from "~/components/ui/icon";
@@ -17,26 +18,23 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
     const sizeClasses = {
       sm: "h-8 w-8",
       md: "h-10 w-10",
-      lg: "h-48 w-48",
-      xl: "h-64 w-64",
+      lg: "h-20 w-20",
+      xl: "h-28 w-28",
     };
 
     const iconSizeClasses = {
       sm: "size-4",
       md: "size-5",
-      lg: "size-12",
-      xl: "size-16",
+      lg: "size-8",
+      xl: "size-12",
     } as const;
 
-    const fallbackTextClasses: Record<
-      NonNullable<AvatarProps["size"]>,
-      string
-    > = {
+    const fallbackTextClasses = {
       sm: "text-xs",
       md: "text-sm",
-      lg: "text-3xl",
-      xl: "text-5xl",
-    };
+      lg: "text-2xl font-bold",
+      xl: "text-4xl font-bold",
+    } as const;
 
     return (
       <View
@@ -51,7 +49,12 @@ const Avatar = React.forwardRef<React.ElementRef<typeof View>, AvatarProps>(
         {source ? (
           <Image
             source={{ uri: source }}
-            className="h-full w-full rounded-full object-cover"
+            style={{ width: "100%", height: "100%" }}
+            className="h-full w-full rounded-full"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            accessibilityRole="image"
+            accessibilityLabel="Foto profil"
           />
         ) : (
           <View className="flex h-full w-full items-center justify-center bg-muted">

@@ -5,27 +5,27 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Image,
   BackHandler,
   Switch,
 } from "react-native";
+import { Image } from "expo-image";
+
+void Image;
 import * as Clipboard from "expo-clipboard";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
-import { colorScheme } from "nativewind";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
 import { Text } from "~/components/ui/text";
+import { Avatar } from "~/components/ui/avatar";
 import useAuthStore from "~/store/authStore";
 import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
 import { getProfile } from "~/utils/bffMobileApi";
 import { faceApiLog } from "~/utils/faceApiDebug";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
-  ChevronLeft,
   CircleFadingArrowUp,
   LogOut,
   Moon,
@@ -37,12 +37,15 @@ import {
   BellOff,
 } from "lucide-react-native";
 import { useNotificationSettings } from "~/hooks/useNotificationSettings";
+import { useUniwind } from "uniwind";
 
 function Pengaturan() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const { theme, setTheme } = useThemeStore();
+  const { setTheme } = useThemeStore();
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
 
   const initialProfile = useMemo(
     () => ({
@@ -57,19 +60,27 @@ function Pengaturan() {
     initialProfile.avatar,
   );
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [studentNis, setStudentNis] = useState<string>(
+    user?.user_metadata?.nis || "",
+  );
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   const notif = useNotificationSettings(user?.id);
 
   // Hardware back button
-  useEffect(() => {
-    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
-      router.back();
-      return true;
-    });
-    return () => handler.remove();
-  }, [router]);
+  useFocusEffect(
+    useCallback(() => {
+      const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (router.canGoBack()) {
+          router.back();
+          return true;
+        }
+        return false;
+      });
+      return () => handler.remove();
+    }, [router]),
+  );
 
   useEffect(() => {
     if (!profileAvatar) {
@@ -84,12 +95,14 @@ function Pengaturan() {
     if (!user) {
       setProfileName("Pengguna Skanida");
       setProfileAvatar(null);
+      setStudentNis("");
       return;
     }
     setProfileName(
       user.user_metadata?.name || user.email || "Pengguna Skanida",
     );
     setProfileAvatar(user.user_metadata?.avatar_url || null);
+    setStudentNis(user.user_metadata?.nis || "");
 
     try {
       const data = await getProfile();
@@ -99,7 +112,12 @@ function Pengaturan() {
           user.email ||
           "Pengguna Skanida",
       );
-      setProfileAvatar(data.avatar_url || user.user_metadata?.avatar_url);
+      setProfileAvatar(
+        data.avatar_url || user.user_metadata?.avatar_url || null,
+      );
+      if (data.nis) {
+        setStudentNis(data.nis);
+      }
     } catch (error) {
       if (__DEV__) console.error("Error fetching settings profile:", error);
     }
@@ -131,9 +149,8 @@ function Pengaturan() {
         style: "destructive",
         onPress: async () => {
           try {
-            await supabase.auth.signOut();
+            await useAuthStore.getState().logout();
             await AsyncStorage.clear();
-            setUser(null);
             router.replace("/auth/AuthSelector");
           } catch (error) {
             if (__DEV__) console.error("Logout error:", error);
@@ -145,18 +162,18 @@ function Pengaturan() {
   }, [setUser, router]);
 
   const handleCopyId = useCallback(async () => {
-    if (user?.id) {
-      await Clipboard.setStringAsync(user.id);
+    const val = studentNis || user?.id;
+    if (val) {
+      await Clipboard.setStringAsync(val);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
-  }, [user?.id]);
+  }, [studentNis, user?.id]);
 
   const toggleTheme = useCallback(() => {
-    const next = theme === "dark" ? "light" : "dark";
+    const next = isDark ? "light" : "dark";
     setTheme(next);
-    colorScheme.set(next);
-  }, [theme, setTheme]);
+  }, [isDark, setTheme]);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
@@ -186,6 +203,10 @@ function Pengaturan() {
   const EditButton = ({ onPress }: { onPress: () => void }) => (
     <TouchableOpacity
       onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityRole="button"
+      accessibilityLabel="Ubah foto profil"
+      accessibilityHint="Ketuk dua kali untuk mengedit foto profil"
       activeOpacity={0.8}
       className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 border-2 border-card items-center justify-center shadow-sm"
     >
@@ -194,54 +215,36 @@ function Pengaturan() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+    <SafeAreaView className="flex-1 bg-background">
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
-        >
-          <Icon
-            as={ChevronLeft}
-            className="size-6 text-gray-900 dark:text-gray-100"
-          />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
-          Pengaturan
-        </Text>
-        <View className="w-10" />
+      <View className="px-6 py-4 border-b border-border">
+        <Text className="text-xl font-bold text-foreground">Pengaturan</Text>
       </View>
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{
+          paddingBottom: 32,
+          width: "100%",
+          maxWidth: 672,
+          alignSelf: "center",
+        }}
       >
         {/* Profile Card */}
         <View className="px-5 mt-4">
           <Card className="p-0 overflow-hidden rounded-2xl border-0 shadow-lg bg-card">
             <View className="p-5 flex-row items-center">
               <View className="relative">
-                {avatarUrl ? (
-                  <Image
-                    source={{ uri: avatarUrl }}
-                    style={{ width: 72, height: 72 }}
-                    className="rounded-2xl"
-                  />
-                ) : (
-                  <View
-                    className="rounded-2xl items-center justify-center bg-indigo-500"
-                    style={{ width: 72, height: 72 }}
-                  >
-                    <Text className="text-white text-2xl font-bold">
-                      {(profileName || user?.email)?.charAt(0).toUpperCase() ||
-                        "U"}
-                    </Text>
-                  </View>
-                )}
+                <Avatar
+                  size="lg"
+                  fallback={(profileName || user?.email)?.charAt(0).toUpperCase() || "S"}
+                  className="w-20 h-20"
+                  source={avatarUrl ?? undefined}
+                />
                 <EditButton
                   onPress={() => {
                     faceApiLog("settings-page:navigate-manage-account", {
@@ -262,6 +265,11 @@ function Pengaturan() {
                 </Text>
                 <TouchableOpacity
                   onPress={handleCopyId}
+                  disabled={!studentNis}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Salin NIS Siswa"
+                  accessibilityHint="Ketuk dua kali untuk menyalin NIS siswa ke papan klip"
                   className={`self-start mt-2 px-3 py-1.5 rounded-xl flex-row items-center ${copiedId ? "bg-green-500/10" : "bg-muted"}`}
                   activeOpacity={0.7}
                 >
@@ -273,8 +281,10 @@ function Pengaturan() {
                     className={`text-xs font-medium ${copiedId ? "text-green-500" : "text-muted-foreground"}`}
                   >
                     {copiedId
-                      ? "ID Tersalin!"
-                      : `${user?.id?.substring(0, 8) || "Unknown"}...`}
+                      ? "NIS Tersalin!"
+                      : studentNis
+                        ? `NIS: ${studentNis}`
+                        : "NIS Belum Terdaftar"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -291,11 +301,11 @@ function Pengaturan() {
             {/* Dark Mode */}
             <View className="flex-row items-center p-4 border-b border-border/50">
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${theme === "dark" ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${isDark ? "bg-purple-500/10" : "bg-yellow-500/10"}`}
               >
                 <Icon
-                  as={theme === "dark" ? Moon : Sun}
-                  className={`size-5 ${theme === "dark" ? "text-purple-500" : "text-yellow-500"}`}
+                  as={isDark ? Moon : Sun}
+                  className={`size-5 ${isDark ? "text-purple-500" : "text-yellow-500"}`}
                 />
               </View>
               <View className="flex-1 ml-4">
@@ -303,12 +313,15 @@ function Pengaturan() {
                   Mode Gelap
                 </Text>
                 <Text className="text-muted-foreground text-xs mt-0.5">
-                  {theme === "dark" ? "Tema gelap aktif" : "Tema terang aktif"}
+                  {isDark ? "Tema gelap aktif" : "Tema terang aktif"}
                 </Text>
               </View>
               <Switch
-                value={theme === "dark"}
+                value={isDark}
                 onValueChange={toggleTheme}
+                accessibilityRole="switch"
+                accessibilityLabel="Mode Gelap"
+                accessibilityState={{ checked: isDark }}
                 trackColor={{ false: "#e5e7eb", true: "#6366f1" }}
                 thumbColor="#ffffff"
               />
@@ -322,11 +335,11 @@ function Pengaturan() {
               activeOpacity={0.7}
             >
               <View
-                className={`w-11 h-11 rounded-xl items-center justify-center ${notif.isEnabled ? "bg-blue-500/10" : "bg-gray-500/10"}`}
+                className={`w-11 h-11 rounded-xl items-center justify-center ${notif.isEnabled ? "bg-primary/10" : "bg-muted"}`}
               >
                 <Icon
                   as={notif.isEnabled ? Bell : BellOff}
-                  className={`size-5 ${notif.isEnabled ? "text-blue-500" : "text-gray-500"}`}
+                  className={`size-5 ${notif.isEnabled ? "text-primary" : "text-muted-foreground"}`}
                 />
               </View>
               <View className="flex-1 ml-4">
@@ -401,23 +414,25 @@ function Pengaturan() {
         </View>
 
         {/* Logout */}
-        <View className="px-5 mt-6">
-          <TouchableOpacity
-            onPress={handleLogout}
-            activeOpacity={0.9}
-            className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
-          >
-            <Icon as={LogOut} className="size-5 text-white mr-3" />
-            <Text className="font-bold text-white text-base">
-              Keluar dari Akun
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {Boolean(user) && (
+          <View className="px-5 mt-6">
+            <TouchableOpacity
+              onPress={handleLogout}
+              activeOpacity={0.9}
+              className="py-4 flex-row items-center justify-center rounded-2xl bg-red-600"
+            >
+              <Icon as={LogOut} className="size-5 text-white mr-3" />
+              <Text className="font-bold text-white text-base">
+                Keluar dari Akun
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Footer */}
         <View className="items-center mt-8 px-5">
           <Text className="text-muted-foreground text-xs">
-            © 2025 Skanida Apps
+            © {new Date().getFullYear()} Skanida Apps
           </Text>
           <Text className="text-muted-foreground/50 text-xs mt-1">
             Semua hak dilindungi undang-undang

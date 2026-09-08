@@ -38,3 +38,6 @@ google-services.json
 
 # EAS build needs this generated file from GitHub Actions secrets.
 !certs/google-services.json
+
+# Non-build / design archive assets
+assets-non-build/

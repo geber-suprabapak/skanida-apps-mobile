@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import * as Slot from "@rn-primitives/slot";
+import { Slot } from "@rn-primitives/slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { Platform, Text as RNText, type Role } from "react-native";
@@ -52,44 +52,61 @@ type TextVariantProps = VariantProps<typeof textVariants>;
 
 type TextVariant = NonNullable<TextVariantProps["variant"]>;
 
-const ROLE: Partial<Record<TextVariant, Role>> = {
+const ROLE = {
+  default: undefined,
   h1: "heading",
   h2: "heading",
   h3: "heading",
   h4: "heading",
+  p: undefined,
+  // SAFETY: React Native Web accepts these accessibility roles.
   blockquote: Platform.select({ web: "blockquote" as Role }),
+  // SAFETY: React Native Web accepts these accessibility roles.
   code: Platform.select({ web: "code" as Role }),
-};
+  lead: undefined,
+  large: undefined,
+  small: undefined,
+  muted: undefined,
+} satisfies Partial<Record<TextVariant, Role | undefined>>;
 
-const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
+const ARIA_LEVEL = {
+  default: undefined,
   h1: "1",
   h2: "2",
   h3: "3",
   h4: "4",
-};
+  p: undefined,
+  blockquote: undefined,
+  code: undefined,
+  lead: undefined,
+  large: undefined,
+  small: undefined,
+  muted: undefined,
+} satisfies Partial<Record<TextVariant, string | undefined>>;
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
 
-function Text({
-  className,
-  asChild = false,
-  variant = "default",
-  ...props
-}: React.ComponentProps<typeof RNText> &
-  TextVariantProps &
-  React.RefAttributes<RNText> & {
+type TextProps = React.ComponentPropsWithoutRef<typeof RNText> &
+  TextVariantProps & {
     asChild?: boolean;
-  }) {
-  const textClass = React.useContext(TextClassContext);
-  const Component = asChild ? Slot.Text : RNText;
-  return (
-    <Component
-      className={cn(textVariants({ variant }), textClass, className)}
-      role={variant ? ROLE[variant] : undefined}
-      aria-level={variant ? ARIA_LEVEL[variant] : undefined}
-      {...props}
-    />
-  );
-}
+  };
+
+const Text = React.forwardRef<RNText, TextProps>(
+  ({ className, asChild = false, variant = "default", ...props }, ref) => {
+    const textClass = React.useContext(TextClassContext);
+    const Component = asChild ? Slot : RNText;
+    return (
+      <Component
+        ref={ref}
+        className={cn(textVariants({ variant }), textClass, className)}
+        role={variant ? ROLE[variant] : undefined}
+        aria-level={variant ? ARIA_LEVEL[variant] : undefined}
+        {...props}
+      />
+    );
+  },
+);
+Text.displayName = "Text";
 
 export { Text, TextClassContext };
+export type { TextProps };

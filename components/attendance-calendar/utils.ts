@@ -93,7 +93,7 @@ interface RawLeaveRecord {
   kategori_izin: string;
   deskripsi?: string;
   link_foto?: string;
-  approval_status?: "pending" | "approved" | "rejected";
+  approval_status?: "pending" | "approved" | "rejected" | null;
 }
 
 const ABSENT_STATUSES = new Set(["Alpha", "absent"]);
@@ -180,7 +180,7 @@ export const processAttendanceData = (
       leaveType: leave.kategori_izin,
       description: leave.deskripsi,
       photo_url: leave.link_foto,
-      approval_status: leave.approval_status,
+      approval_status: leave.approval_status ?? undefined,
     };
   });
 

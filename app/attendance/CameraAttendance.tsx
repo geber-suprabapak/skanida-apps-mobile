@@ -3,8 +3,8 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useRouter, useLocalSearchParams, Stack, type Href } from "expo-router";
+import { useRef, useState, useEffect, useCallback, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -13,6 +13,8 @@ import {
   StatusBar,
   BackHandler,
   StyleSheet,
+  Linking,
+  AccessibilityInfo,
 } from "react-native";
 import { Text } from "~/components/ui/text";
 import Animated, {
@@ -21,9 +23,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
-import * as Location from "expo-location";
-import * as FileSystem from "expo-file-system";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "~/components/ui/icon";
 import {
@@ -31,29 +32,24 @@ import {
   SwitchCamera,
   ArrowLeft,
   Loader2,
+  Settings,
 } from "lucide-react-native";
-import useAuthStore from "~/store/authStore";
 import {
-  bytesInfo,
+  cancelAttendance,
+  completeAttendance,
+  type CompleteOutcome,
+} from "~/features/attendance-workflow";
+import {
   elapsedMs,
   faceApiError,
   faceApiLog,
   faceApiWarn,
   startFaceApiTimer,
 } from "~/utils/faceApiDebug";
-import { setPendingAttendanceSuccess } from "~/utils/attendanceSuccess";
-import { submitAttendance } from "~/utils/bffMobileApi";
 
-// --- CONSTANTS ---
-const MAX_BASE64_SIZE_MB = 5;
-const MAX_BASE64_SIZE_BYTES = MAX_BASE64_SIZE_MB * 1024 * 1024;
 // --- TYPES AND INTERFACES ---
 type CameraFacing = "front" | "back";
 type ProcessStage = "verifying" | "saving";
-type Coordinates = {
-  latitude: number;
-  longitude: number;
-};
 
 interface ProcessProgress {
   stage: ProcessStage;
@@ -74,7 +70,7 @@ const ProgressBar = memo<{ percentage: number }>(({ percentage }) => {
   }));
 
   return (
-    <View className="w-full h-2 bg-gray-700 rounded-full">
+    <View className="w-full h-2 bg-white/20 rounded-full">
       <Animated.View
         className="h-full bg-[#0066FF] rounded-full"
         style={animatedStyle}
@@ -96,6 +92,13 @@ const CaptureButton = memo<{
       onPress={onPress}
       disabled={isCapturing || !isReady || isProcessing}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Ambil foto presensi"
+      accessibilityHint="Ketuk dua kali untuk mengambil foto dan mencatat presensi"
+      accessibilityState={{
+        disabled: isCapturing || !isReady || isProcessing,
+        busy: isCapturing || isProcessing,
+      }}
     >
       {isCapturing ? (
         <ActivityIndicator size="large" color="#0066FF" />
@@ -142,48 +145,39 @@ const CameraReadyOverlay = memo(() => (
 ));
 CameraReadyOverlay.displayName = "CameraReadyOverlay";
 
-const getReadableError = (error: unknown, fallback = "Terjadi kesalahan.") => {
-  if (error instanceof Error) {
-    return error.message;
+const messageForOutcome = (
+  outcome: Extract<CompleteOutcome, { status: "failed" }>,
+): string => {
+  switch (outcome.code) {
+    case "capture_missing":
+      return "Failed to capture photo - no file path returned";
+    case "payload_too_large":
+      return "Ukuran data foto melebihi 5MB. Silakan ambil ulang foto.";
+    case "fallback_mock_location":
+      return "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.";
+    case "attempt_not_found":
+      return "Data absensi tidak valid. Silakan coba lagi.";
+    case "attendance_blocked":
+      return outcome.message ?? "Presensi diblokir karena izin yang disetujui.";
+    default:
+      return "Gagal memproses absensi.";
   }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string") {
-      return message;
-    }
-  }
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return fallback;
-  }
-};
-
-const sanitizeBase64 = (value: string) => value.replace(/[^A-Za-z0-9+/=]/g, "");
-
-const getBase64ByteSize = (base64: string) => {
-  const paddingLength = base64.match(/=+$/)?.[0]?.length ?? 0;
-  return (base64.length * 3) / 4 - paddingLength;
 };
 
 // --- MAIN COMPONENT ---
 const CameraAttendance = () => {
   // --- HOOKS ---
   const router = useRouter();
+  const safeAreaInsets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
-    actionType?: string | string[];
-    latitude?: string | string[];
-    longitude?: string | string[];
+    attemptId?: string | string[];
   }>();
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
   const permissionAttemptedRef = useRef(false);
+  const attemptId = Array.isArray(params.attemptId)
+    ? params.attemptId[0]
+    : params.attemptId;
 
   // --- STATE ---
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>("front");
@@ -215,184 +209,74 @@ const CameraAttendance = () => {
     transform: [{ rotate: `${spinnerRotation.value}deg` }],
   }));
 
-  // --- STORE & PARAMS ---
-  const user = useAuthStore((state) => state.user);
-
-  const actionType = useMemo<"check_in" | "check_out">(() => {
-    const value = params.actionType;
-    const candidate = Array.isArray(value) ? value[0] : value;
-    if (candidate === "check_in" || candidate === "check_out") {
-      return candidate;
-    }
-    return "check_in";
-  }, [params.actionType]);
-
-  const preFetchedLocation = useMemo<Coordinates | null>(() => {
-    const resolveValue = (val?: string | string[]) =>
-      Array.isArray(val) ? val[0] : val;
-
-    const latString = resolveValue(params.latitude);
-    const lonString = resolveValue(params.longitude);
-
-    if (!latString || !lonString) {
-      return null;
-    }
-
-    const latitude = Number(latString);
-    const longitude = Number(lonString);
-
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      return null;
-    }
-
-    return { latitude, longitude };
-  }, [params.latitude, params.longitude]);
-
   useEffect(() => {
     faceApiLog("attendance-camera:params", {
-      actionType,
-      rawParams: params,
-      preFetchedLocation,
-      userId: user?.id ?? null,
+      attemptId: attemptId ?? null,
       cameraFacing,
     });
-  }, [actionType, cameraFacing, params, preFetchedLocation, user?.id]);
+  }, [attemptId, cameraFacing]);
+
+  useEffect(
+    () => () => {
+      cancelAttendance(attemptId);
+    },
+    [attemptId],
+  );
 
   // --- MAIN PROCESS ---
   const processAttendance = useCallback(
-    async (base64Image: string): Promise<void> => {
-      if (!user) {
-        faceApiWarn("attendance-process:missing-user", {
-          actionType,
-        });
-        Alert.alert("Error", "Sesi pengguna tidak valid.");
+    async (snapshotPath: string | null | undefined): Promise<void> => {
+      if (!attemptId) {
+        Alert.alert("Error", "Data absensi tidak valid. Silakan coba lagi.");
         return;
       }
 
-      if (!actionType) {
-        faceApiWarn("attendance-process:missing-action-type", {
-          userId: user.id,
-        });
-        Alert.alert("Error", "Data absensi tidak valid.");
-        return;
-      }
-
-      const sanitizedBase64 = sanitizeBase64(base64Image);
-      const payloadSizeBytes = getBase64ByteSize(sanitizedBase64);
       const startedAt = startFaceApiTimer();
-
-      faceApiLog("attendance-process:start", {
-        userId: user.id,
-        actionType,
-        rawBase64Chars: base64Image.length,
-        sanitizedBase64Chars: sanitizedBase64.length,
-        payloadSize: bytesInfo(payloadSizeBytes),
-        hasPreFetchedLocation: Boolean(preFetchedLocation),
-        preFetchedLocation,
+      setIsProcessing(true);
+      setProcessProgress({
+        stage: "verifying",
+        percentage: 30,
+        message: "Memverifikasi wajah...",
       });
 
-      if (payloadSizeBytes > MAX_BASE64_SIZE_BYTES) {
-        faceApiWarn("attendance-process:payload-too-large", {
-          maxSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
-          payloadSize: bytesInfo(payloadSizeBytes),
-        });
-        Alert.alert(
-          "Error",
-          `Ukuran data foto melebihi batas ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto dengan pencahayaan lebih baik atau jarak lebih dekat.`,
-        );
-        return;
-      }
+      const outcome = await completeAttendance({
+        attemptId,
+        snapshotPath,
+      });
 
-      setIsProcessing(true);
-      const startTime = Date.now();
-
-      try {
-        let resolvedLocation = preFetchedLocation;
-
-        if (!resolvedLocation) {
-          faceApiLog("attendance-process:location-fetch:start", {
-            reason: "no-prefetched-location",
-          });
-          const latestLocation = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-          });
-
-          faceApiLog("attendance-process:location-fetch:result", {
-            mocked: latestLocation.mocked,
-            latitude: latestLocation.coords.latitude,
-            longitude: latestLocation.coords.longitude,
-            accuracy: latestLocation.coords.accuracy,
-          });
-
-          if (latestLocation.mocked) {
-            throw new Error(
-              "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.",
-            );
-          }
-
-          resolvedLocation = {
-            latitude: latestLocation.coords.latitude,
-            longitude: latestLocation.coords.longitude,
-          };
-        } else {
-          faceApiLog("attendance-process:location-prefetched", {
-            latitude: resolvedLocation.latitude,
-            longitude: resolvedLocation.longitude,
-          });
-        }
-
-        // BFF verifies face through Robin and persists attendance server-side.
-        setProcessProgress({
-          stage: "verifying",
-          percentage: 30,
-          message: "Memverifikasi wajah...",
-        });
-
-        const submitResult = await submitAttendance({
-          action_type: actionType,
-          image_base64: sanitizedBase64,
-          latitude: resolvedLocation.latitude,
-          longitude: resolvedLocation.longitude,
-        });
-
-        faceApiLog("attendance-process:bff-submit-result", {
-          durationMs: elapsedMs(startedAt),
-          submitResult,
-        });
-
+      if (outcome.status === "submitted") {
         setProcessProgress({
           stage: "saving",
           percentage: 100,
           message: "Berhasil!",
         });
-
-        const totalTime = Date.now() - startTime;
+        AccessibilityInfo.announceForAccessibility(
+          "Presensi berhasil dicatat.",
+        );
         faceApiLog("attendance-process:success", {
-          totalTimeMs: totalTime,
-          fullDurationMs: elapsedMs(startedAt),
-          actionType,
-          submitResult,
+          durationMs: elapsedMs(startedAt),
+          attemptId,
+          outcome,
         });
-        setPendingAttendanceSuccess({
-          attendanceType: submitResult.attendance_type,
-          processingTime: submitResult.processed_ms || totalTime,
-        });
-        router.replace("/Dashboard");
-      } catch (error: any) {
+        // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+        // generated typed-route cache is refreshed by Metro after file changes.
+        router.replace("/home" as Href);
+      } else if (outcome.status !== "cancelled") {
+        const errorMsg = messageForOutcome(outcome);
+        AccessibilityInfo.announceForAccessibility(
+          `Presensi gagal: ${errorMsg}`,
+        );
         faceApiError("attendance-process:failed", {
           durationMs: elapsedMs(startedAt),
-          actionType,
-          error,
+          attemptId,
+          code: outcome.code,
         });
-        Alert.alert(
-          "Error",
-          getReadableError(error, "Gagal memproses absensi."),
-        );
-      } finally {
-        setIsProcessing(false);
+        Alert.alert("Error", errorMsg);
       }
+
+      setIsProcessing(false);
     },
-    [user, actionType, preFetchedLocation, router],
+    [attemptId, router],
   );
 
   // --- EVENT HANDLERS ---
@@ -435,6 +319,9 @@ const CameraAttendance = () => {
         : null,
       cameraFacing,
     });
+    AccessibilityInfo.announceForAccessibility(
+      "Kamera siap. Posisikan wajah Anda di dalam bingkai.",
+    );
     setIsCameraReady(true);
   }, [cameraFacing, device]);
 
@@ -455,69 +342,28 @@ const CameraAttendance = () => {
     }
 
     setIsCapturingPhoto(true);
-
-    let photoUri: string | null = null;
+    AccessibilityInfo.announceForAccessibility("Mengambil foto presensi...");
     const startedAt = startFaceApiTimer();
     faceApiLog("attendance-capture:start", {
       cameraFacing,
-      actionType,
+      attemptId: attemptId ?? null,
       snapshotQuality: 70,
     });
 
     try {
-      // Use takeSnapshot for faster capture
       const snapshot = await cameraRef.current.takeSnapshot({
         quality: 70,
       });
 
+      const finalPhotoPath = snapshot?.path;
+
       faceApiLog("attendance-capture:snapshot", {
         durationMs: elapsedMs(startedAt),
-        hasPath: Boolean(snapshot?.path),
-        path: snapshot?.path,
+        hasPath: Boolean(finalPhotoPath),
+        path: finalPhotoPath,
       });
 
-      if (!snapshot?.path) {
-        throw new Error("Failed to capture photo - no file path returned");
-      }
-
-      photoUri = snapshot.path.startsWith("file://")
-        ? snapshot.path
-        : `file://${snapshot.path}`;
-
-      const fileInfo = await FileSystem.getInfoAsync(photoUri);
-      faceApiLog("attendance-capture:file-info", {
-        exists: fileInfo.exists,
-        uri: photoUri,
-        size: fileInfo.exists ? bytesInfo(fileInfo.size || 0) : null,
-      });
-
-      // Read file as base64 directly (no compression)
-      const rawBase64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const sanitizedBase64 = sanitizeBase64(rawBase64);
-      const base64SizeBytes = getBase64ByteSize(sanitizedBase64);
-      faceApiLog("attendance-capture:base64-ready", {
-        rawChars: rawBase64.length,
-        sanitizedChars: sanitizedBase64.length,
-        payloadSize: bytesInfo(base64SizeBytes),
-        maxPayloadSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
-      });
-
-      if (base64SizeBytes > MAX_BASE64_SIZE_BYTES) {
-        faceApiWarn("attendance-capture:base64-too-large", {
-          payloadSize: bytesInfo(base64SizeBytes),
-          maxPayloadSize: bytesInfo(MAX_BASE64_SIZE_BYTES),
-        });
-        Alert.alert(
-          "Error",
-          `Ukuran data foto melebihi ${MAX_BASE64_SIZE_MB}MB. Silakan ambil ulang foto.`,
-        );
-        return;
-      }
-
-      await processAttendance(sanitizedBase64);
+      await processAttendance(finalPhotoPath);
     } catch (error) {
       faceApiError("attendance-capture:failed", {
         durationMs: elapsedMs(startedAt),
@@ -530,20 +376,29 @@ const CameraAttendance = () => {
           : "Terjadi kesalahan saat mengambil foto. Silakan coba lagi.",
       );
     } finally {
-      if (photoUri) {
-        faceApiLog("attendance-capture:cleanup-temp-file", { photoUri });
-        FileSystem.deleteAsync(photoUri, { idempotent: true }).catch(() => {});
-      }
       setIsCapturingPhoto(false);
     }
-  }, [isCameraReady, isCapturingPhoto, processAttendance, isProcessing]);
+  }, [
+    attemptId,
+    cameraFacing,
+    isCameraReady,
+    isCapturingPhoto,
+    isProcessing,
+    processAttendance,
+  ]);
 
   const handleToggleCameraFacing = useCallback(() => {
+    const nextFacing = cameraFacing === "front" ? "back" : "front";
+    AccessibilityInfo.announceForAccessibility(
+      nextFacing === "front"
+        ? "Beralih ke kamera depan"
+        : "Beralih ke kamera belakang",
+    );
     faceApiLog("attendance-camera:toggle-facing", {
       from: cameraFacing,
-      to: cameraFacing === "front" ? "back" : "front",
+      to: nextFacing,
     });
-    setCameraFacing((current) => (current === "front" ? "back" : "front"));
+    setCameraFacing(nextFacing);
   }, [cameraFacing]);
 
   const handleBackPress = useCallback(() => {
@@ -556,7 +411,10 @@ const CameraAttendance = () => {
           {
             text: "Kembali",
             style: "destructive",
-            onPress: () => router.back(),
+            onPress: () => {
+              cancelAttendance(attemptId);
+              router.back();
+            },
           },
         ],
       );
@@ -564,16 +422,16 @@ const CameraAttendance = () => {
     }
 
     return false;
-  }, [isProcessing, router]);
+  }, [attemptId, isProcessing, router]);
 
   // --- EFFECTS ---
   useEffect(() => {
-    if (!actionType) {
+    if (!attemptId) {
       Alert.alert("Error", "Data absensi tidak valid. Silakan coba lagi.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     }
-  }, [actionType, router]);
+  }, [attemptId, router]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -606,7 +464,7 @@ const CameraAttendance = () => {
   FullScreenMessage.displayName = "FullScreenMessage";
 
   // --- MAIN RENDER ---
-  const permissionResolved = typeof hasPermission === "boolean";
+  const permissionResolved = hasPermission === true || hasPermission === false;
 
   if (!permissionResolved) {
     return <FullScreenMessage message="Memeriksa izin kamera..." />;
@@ -620,8 +478,19 @@ const CameraAttendance = () => {
       >
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <View className="px-4 py-2">
+          <TouchableOpacity
+            className="w-10 h-10 rounded-full bg-neutral-800 justify-center items-center shadow-lg"
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali"
+          >
+            <Icon as={ArrowLeft} className="size-6 text-white" />
+          </TouchableOpacity>
+        </View>
         <View className="flex-1 items-center justify-center px-10">
-          <Animated.View className="items-center justify-center">
+          <Animated.View className="items-center justify-center w-full">
             <Icon as={CameraIcon} className="size-20 text-[#0066FF]" />
             <Text variant="h2" className="text-white text-center mt-4 mb-2">
               Izinkan akses kamera
@@ -630,9 +499,31 @@ const CameraAttendance = () => {
               Kami membutuhkan izin kamera untuk mengambil foto absensi Anda.
             </Text>
             <TouchableOpacity
-              className="bg-[#0066FF] px-8 py-4 rounded-lg flex-row items-center"
+              className="bg-[#0066FF] px-8 py-4 rounded-lg flex-row items-center mb-3 w-full justify-center"
+              activeOpacity={0.7}
+              onPress={() => {
+                Linking.openSettings().catch(() => {
+                  Alert.alert(
+                    "Pengaturan tidak dapat dibuka",
+                    "Buka pengaturan perangkat secara manual untuk mengaktifkan izin kamera.",
+                  );
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Buka Pengaturan Aplikasi"
+              accessibilityHint="Membuka menu pengaturan perangkat untuk mengaktifkan izin kamera"
+            >
+              <Icon as={Settings} className="size-6 text-white" />
+              <Text variant="default" className="text-white font-bold ml-2">
+                Buka Pengaturan Aplikasi
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="bg-neutral-800 px-8 py-4 rounded-lg flex-row items-center w-full justify-center"
               activeOpacity={0.7}
               onPress={requestCameraAccess}
+              accessibilityRole="button"
+              accessibilityLabel="Beri izin kamera"
             >
               <Icon as={CameraIcon} className="size-6 text-white" />
               <Text variant="default" className="text-white font-bold ml-2">
@@ -675,8 +566,12 @@ const CameraAttendance = () => {
 
             <View className="flex-row items-center justify-between px-4">
               <TouchableOpacity
-                className="w-10 h-10 rounded-full bg-[#0066FF] justify-center items-center shadow-lg"
+                className="w-12 h-12 rounded-full bg-[#0066FF] justify-center items-center shadow-lg"
                 onPress={() => router.back()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Kembali"
+                accessibilityHint="Ketuk dua kali untuk kembali ke beranda"
                 activeOpacity={0.7}
                 disabled={isProcessing}
               >
@@ -684,10 +579,17 @@ const CameraAttendance = () => {
               </TouchableOpacity>
             </View>
 
-            <View className="absolute bottom-12 left-0 right-0 flex-row justify-around items-center px-5">
+            <View
+              className="absolute left-0 right-0 flex-row justify-around items-center px-5"
+              style={{ bottom: Math.max(24, safeAreaInsets.bottom + 12) }}
+            >
               <TouchableOpacity
                 className="w-16 h-16 rounded-full bg-black/50 justify-center items-center"
                 onPress={handleToggleCameraFacing}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel="Ganti kamera"
+                accessibilityHint="Ketuk dua kali untuk beralih antara kamera depan dan belakang"
                 activeOpacity={0.7}
                 disabled={isProcessing}
               >

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
-import { supabase } from "~/utils/supabase";
 import { AttendanceMap } from "~/components/attendance-calendar/types";
 import { processAttendanceData } from "~/components/attendance-calendar/utils";
+import { listAttendances, listPermits } from "~/utils/bffMobileApi";
 
 const __DEV__ = process.env.NODE_ENV === "development";
 
@@ -34,62 +34,37 @@ export const useOptimizedMonthlyAttendance = (
     const startDate = `${rangeYear}-${String(rangeMonth + 1).padStart(2, "0")}-01`;
     const lastDay = new Date(rangeYear, rangeMonth + 1, 0).getDate();
     const endDate = `${rangeYear}-${String(rangeMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-    const nextMonthStart =
-      rangeMonth === 11
-        ? `${rangeYear + 1}-01-01`
-        : `${rangeYear}-${String(rangeMonth + 2).padStart(2, "0")}-01`;
-    return { startDate, endDate, nextMonthStart };
+    return { startDate, endDate };
   }, []);
-
-  const toUtcStart = useCallback(
-    (dateString: string) => `${dateString}T00:00:00.000Z`,
-    [],
-  );
 
   const fetchFromServer = useCallback(
     async (signal?: AbortSignal) => {
       if (!userId) return {};
 
-      const { startDate, endDate, nextMonthStart } = getMonthRange(year, month);
+      const { startDate, endDate } = getMonthRange(year, month);
 
       try {
-        const [attendanceResult, leaveResult] = await Promise.all([
-          supabase
-            .from("absences")
-            .select("id, date, status, photo_url, created_at")
-            .eq("user_id", userId)
-            .gte("date", startDate)
-            .lte("date", endDate),
-          supabase
-            .from("perizinan")
-            .select(
-              "id, tanggal, kategori_izin, deskripsi, link_foto, approval_status",
-            )
-            .eq("user_id", userId)
-            .gte("tanggal", toUtcStart(startDate))
-            .lt("tanggal", toUtcStart(nextMonthStart)),
+        const [attendanceItems, permitItems] = await Promise.all([
+          listAttendances({ startDate, endDate }),
+          listPermits(),
         ]);
 
         if (signal?.aborted) return {};
 
-        if (attendanceResult.error) throw attendanceResult.error;
-        if (leaveResult.error) throw leaveResult.error;
-
         const processedData = processAttendanceData(
-          attendanceResult.data,
-          leaveResult.data?.filter(
-            (leave) => leave.approval_status !== "rejected",
-          ) ?? null,
+          attendanceItems,
+          permitItems.filter((leave) => leave.approval_status !== "rejected"),
         );
 
         return processedData;
       } catch (error) {
         if (signal?.aborted) return {};
-        if (__DEV__) console.error("Error fetching from server:", error);
+        if (__DEV__)
+          console.error("Error fetching attendance history from Astra:", error);
         throw error;
       }
     },
-    [userId, year, month, getMonthRange, toUtcStart],
+    [userId, year, month, getMonthRange],
   );
 
   const fetchData = useCallback(

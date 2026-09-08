@@ -9,12 +9,18 @@ import {
   TouchableWithoutFeedback,
   Modal,
   BackHandler,
-  Image as RNImage,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Image } from "expo-image";
+void Image;
+import { Avatar } from "~/components/ui/avatar";
+import { SafeAreaView } from "~/components/ui/safe-area-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { StatusBar } from "expo-status-bar";
+import { useUniwind } from "uniwind";
 
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -41,8 +47,6 @@ import {
   Loader2,
 } from "lucide-react-native";
 import useAuthStore from "~/store/authStore";
-import useThemeStore from "~/store/themeStore";
-import { supabase } from "~/utils/supabase";
 import {
   fetchEnrollmentStatus,
   type EnrollmentStatus,
@@ -75,7 +79,9 @@ const clearProfileCache = async () => {
 export default function ManageAccount() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  const theme = useThemeStore((state) => state.theme);
+  const safeAreaInsets = useSafeAreaInsets();
+  const { theme } = useUniwind();
+  const isDark = theme === "dark";
 
   // --- Profile State ---
   const [name, setName] = useState("");
@@ -89,13 +95,21 @@ export default function ManageAccount() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isAvatarOptionsVisible, setIsAvatarOptionsVisible] = useState(false);
 
+  type InitialProfileData = {
+    name: string;
+    absenceNumber: string;
+    className: string;
+    nis: string;
+    avatarPath: string | null;
+  };
+
   // Initial values for change detection
-  const [initialData, setInitialData] = useState({
+  const [initialData, setInitialData] = useState<InitialProfileData>({
     name: "",
     absenceNumber: "",
     className: "",
     nis: "",
-    avatarPath: null as string | null,
+    avatarPath: null,
   });
 
   // --- Password State ---
@@ -364,7 +378,7 @@ export default function ManageAccount() {
           {
             text: "OK",
             onPress: async () => {
-              await supabase.auth.signOut();
+              await useAuthStore.getState().logout();
               router.replace("/auth/Login");
             },
           },
@@ -420,423 +434,443 @@ export default function ManageAccount() {
   }, [name, absenceNumber, className, nis, avatarPath, initialData, router]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-background">
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+    <SafeAreaView className="flex-1 bg-background">
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Simple Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-border">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Kembali"
+          accessibilityHint="Ketuk dua kali untuk kembali"
+          className="w-12 h-12 rounded-full bg-secondary items-center justify-center border border-border"
         >
-          <Icon
-            as={ChevronLeft}
-            className="size-6 text-gray-900 dark:text-gray-100"
-          />
+          <Icon as={ChevronLeft} className="size-6 text-secondary-foreground" />
         </TouchableOpacity>
 
-        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
-          Kelola Akun
-        </Text>
+        <Text className="text-lg font-bold text-foreground">Kelola Akun</Text>
 
         <View className="w-10" />
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        keyboardShouldPersistTaps="handled"
       >
-        {/* --- SECTION 1: EDIT PROFILE --- */}
-        <View className="px-5 mt-2">
-          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
-            Edit Profil
-          </Text>
-
-          {/* Avatar Card */}
-          <Card className="p-6 mb-6 items-center bg-card border-border shadow-sm rounded-2xl">
-            <View className="relative mb-4">
-              {uploadingAvatar ? (
-                <View className="w-28 h-28 rounded-2xl items-center justify-center bg-muted">
-                  <ActivityIndicator size="large" color="#3b82f6" />
-                </View>
-              ) : (
-                <View>
-                  {avatarUrl ? (
-                    <RNImage
-                      source={{ uri: avatarUrl }}
-                      style={{ width: 112, height: 112, borderRadius: 24 }}
-                    />
-                  ) : (
-                    <View
-                      className="rounded-2xl items-center justify-center bg-blue-600"
-                      style={{ width: 112, height: 112 }}
-                    >
-                      <Text className="text-white text-4xl font-bold">
-                        {(name || user?.email || "U").charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center shadow-md bg-blue-600 border-2 border-white"
-                    onPress={() => setIsAvatarOptionsVisible(true)}
-                    activeOpacity={0.9}
-                  >
-                    <Icon as={Camera} className="size-5 text-white" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-            <Text className="text-foreground font-bold text-lg text-center">
-              {name || "User"}
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* --- SECTION 1: EDIT PROFILE --- */}
+          <View className="px-5 mt-2">
+            <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
+              Informasi Akun Siswa
             </Text>
-          </Card>
 
-          {/* Profile Form */}
-          <View className="space-y-4 mb-6">
-            <View>
-              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                Nama Lengkap
-              </Text>
-              <View className="relative">
-                <View className="absolute left-3 top-3 z-10">
-                  <Icon as={User} className="size-5 text-muted-foreground" />
-                </View>
-                <Input
-                  value={name}
-                  onChangeText={setName}
-                  editable={false}
-                  className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                  placeholder="Nama Lengkap"
-                />
+            {/* Avatar Card */}
+            <Card className="p-6 mb-6 items-center bg-card border-border shadow-sm rounded-2xl">
+              <View className="relative mb-4">
+                {uploadingAvatar ? (
+                  <View className="w-28 h-28 rounded-2xl items-center justify-center bg-muted">
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                  </View>
+                ) : (
+                  <View>
+                    <Avatar
+                      size="xl"
+                      fallback={(name || user?.email || "S").charAt(0).toUpperCase()}
+                      className="w-28 h-28 border-2 border-border"
+                      source={avatarUrl ?? undefined}
+                    />
+                    <TouchableOpacity
+                      className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl items-center justify-center shadow-md bg-blue-600 border-2 border-white"
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ganti foto profil"
+                      accessibilityHint="Ketuk dua kali untuk membuka pilihan foto profil"
+                      onPress={() => setIsAvatarOptionsVisible(true)}
+                      activeOpacity={0.9}
+                    >
+                      <Icon as={Camera} className="size-5 text-white" />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-            </View>
-
-            <View>
-              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                Email
+              <Text className="text-foreground font-bold text-lg text-center">
+                {name || "User"}
               </Text>
-              <View className="relative">
-                <View className="absolute left-3 top-3 z-10">
-                  <Icon as={Mail} className="size-5 text-muted-foreground" />
-                </View>
-                <Input
-                  value={email}
-                  onChangeText={setEmail}
-                  editable={false}
-                  className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                />
-              </View>
-            </View>
+            </Card>
 
-            <View className="flex-row gap-4">
-              <View className="flex-1">
+            {/* Profile Form */}
+            <View className="space-y-4 mb-6">
+              <View>
                 <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                  Kelas
+                  Nama Lengkap
+                </Text>
+                <View className="relative">
+                  <View className="absolute left-3 top-3 z-10">
+                    <Icon as={User} className="size-5 text-muted-foreground" />
+                  </View>
+                  <Input
+                    value={name}
+                    onChangeText={setName}
+                    editable={false}
+                    className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
+                    placeholder="Nama Lengkap"
+                  />
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                  Email
+                </Text>
+                <View className="relative">
+                  <View className="absolute left-3 top-3 z-10">
+                    <Icon as={Mail} className="size-5 text-muted-foreground" />
+                  </View>
+                  <Input
+                    value={email}
+                    onChangeText={setEmail}
+                    editable={false}
+                    className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-4">
+                <View className="flex-1">
+                  <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                    Kelas
+                  </Text>
+                  <View className="relative">
+                    <View className="absolute left-3 top-3 z-10">
+                      <Icon
+                        as={GraduationCap}
+                        className="size-5 text-muted-foreground"
+                      />
+                    </View>
+                    <Input
+                      value={className}
+                      onChangeText={setClassName}
+                      editable={false}
+                      className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
+                      placeholder="Contoh: XII RPL 1"
+                    />
+                  </View>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                    No. Absen
+                  </Text>
+                  <View className="relative">
+                    <View className="absolute left-3 top-3 z-10">
+                      <Icon
+                        as={Hash}
+                        className="size-5 text-muted-foreground"
+                      />
+                    </View>
+                    <Input
+                      value={absenceNumber}
+                      onChangeText={setAbsenceNumber}
+                      editable={false}
+                      keyboardType="numeric"
+                      className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
+                      placeholder="00"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                  NIS / NISN
                 </Text>
                 <View className="relative">
                   <View className="absolute left-3 top-3 z-10">
                     <Icon
-                      as={GraduationCap}
+                      as={CreditCard}
                       className="size-5 text-muted-foreground"
                     />
                   </View>
                   <Input
-                    value={className}
-                    onChangeText={setClassName}
+                    value={nis}
+                    onChangeText={setNis}
                     editable={false}
-                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                    placeholder="Contoh: XII RPL 1"
+                    keyboardType="numeric"
+                    className="pl-10 h-12 bg-muted/30 opacity-100 text-foreground font-medium border-border"
+                    placeholder="Nomor Induk Siswa"
                   />
                 </View>
               </View>
-              <View className="flex-1">
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View className="h-2 bg-muted/20 my-2" />
+
+          {/* --- SECTION: FACE ENROLLMENT --- */}
+          <View className="px-5 mt-6">
+            <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
+              Verifikasi Wajah
+            </Text>
+
+            <Card className="p-5 mb-2 bg-card border-border shadow-sm rounded-2xl">
+              {(enrollmentStatus === "loading" || isCheckingFaceApi) && (
+                <View className="flex-row items-center py-2">
+                  <ActivityIndicator size="small" color="#3b82f6" />
+                  <Text className="text-muted-foreground ml-3">
+                    Memeriksa status wajah dan server...
+                  </Text>
+                </View>
+              )}
+
+              {enrollmentStatus === "enrolled" && (
+                <View className="flex-row items-center py-2">
+                  <View className="w-10 h-10 rounded-full bg-green-500/20 items-center justify-center">
+                    <Icon as={CheckCircle} className="size-6 text-green-600" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-foreground font-medium">
+                      Wajah Sudah Terdaftar
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">
+                      Data wajah Anda tersimpan untuk verifikasi absensi
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {enrollmentStatus === "not_enrolled" && (
+                <View>
+                  <View className="flex-row items-center py-2 mb-3">
+                    <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
+                      <Icon
+                        as={AlertCircle}
+                        className="size-6 text-amber-600"
+                      />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-foreground font-medium">
+                        Wajah Belum Terdaftar
+                      </Text>
+                      <Text className="text-xs text-muted-foreground">
+                        Daftarkan wajah untuk mengaktifkan fitur absensi
+                      </Text>
+                    </View>
+                  </View>
+                  <Button
+                    variant="default"
+                    size="default"
+                    onPress={() => {
+                      faceApiLog("settings:navigate-enroll", {
+                        enrollmentStatus,
+                        enrollmentError,
+                        userId: user?.id ?? null,
+                      });
+                      router.push("./enroll");
+                    }}
+                    className="w-full bg-blue-600"
+                  >
+                    <Icon as={Scan} className="size-5 text-white mr-2" />
+                    <Text className="text-white font-semibold">
+                      Daftar Sekarang
+                    </Text>
+                  </Button>
+                </View>
+              )}
+
+              {enrollmentStatus === "error" && (
+                <View>
+                  <View className="flex-row items-center py-2 mb-3">
+                    <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                      <Icon as={AlertCircle} className="size-6 text-red-600" />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-foreground font-medium">
+                        Gagal Memeriksa Status
+                      </Text>
+                      <Text className="text-xs text-muted-foreground">
+                        {enrollmentError || "Terjadi kesalahan"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {faceApiRuntime && (
+                <View className="mt-4 pt-4 border-t border-border/60">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-foreground font-semibold">
+                      Status Server
+                    </Text>
+                    <View
+                      className={`px-2.5 py-1 rounded-full ${
+                        faceApiRuntime.state === "healthy"
+                          ? "bg-green-500/15"
+                          : faceApiRuntime.state === "unhealthy"
+                            ? "bg-amber-500/15"
+                            : "bg-red-500/15"
+                      }`}
+                    >
+                      <Text
+                        className={`text-[11px] font-semibold ${
+                          faceApiRuntime.state === "healthy"
+                            ? "text-green-600"
+                            : faceApiRuntime.state === "unhealthy"
+                              ? "text-amber-600"
+                              : "text-red-600"
+                        }`}
+                      >
+                        {faceApiRuntime.state === "healthy"
+                          ? "SIAP"
+                          : faceApiRuntime.state === "unhealthy"
+                            ? "BELUM SIAP"
+                            : faceApiRuntime.state === "misconfigured"
+                              ? "KONFIG"
+                              : "OFFLINE"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text className="text-xs text-muted-foreground mb-4">
+                    {faceApiRuntime.message}
+                  </Text>
+
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onPress={refreshFaceVerificationStatus}
+                    className="w-full border-border"
+                  >
+                    <Icon
+                      as={Loader2}
+                      className="size-5 text-foreground mr-2"
+                    />
+                    <Text className="text-foreground font-semibold">
+                      Segarkan Status
+                    </Text>
+                  </Button>
+                </View>
+              )}
+            </Card>
+          </View>
+
+          {/* Divider */}
+          <View className="h-2 bg-muted/20 my-2" />
+
+          {/* --- SECTION 2: CHANGE PASSWORD --- */}
+          <View className="px-5 mt-6">
+            <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
+              Keamanan Akun
+            </Text>
+
+            <View className="space-y-4">
+              <View>
                 <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                  No. Absen
+                  Password Lama
                 </Text>
                 <View className="relative">
                   <View className="absolute left-3 top-3 z-10">
-                    <Icon as={Hash} className="size-5 text-muted-foreground" />
+                    <Icon as={Key} className="size-5 text-muted-foreground" />
                   </View>
                   <Input
-                    value={absenceNumber}
-                    onChangeText={setAbsenceNumber}
-                    editable={false}
-                    keyboardType="numeric"
-                    className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                    placeholder="00"
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    secureTextEntry={!showAllPasswords}
+                    className="pl-10 pr-10 h-12 bg-card"
+                    placeholder="Masukkan password saat ini"
                   />
-                </View>
-              </View>
-            </View>
-
-            <View>
-              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                NIS / NISN
-              </Text>
-              <View className="relative">
-                <View className="absolute left-3 top-3 z-10">
-                  <Icon
-                    as={CreditCard}
-                    className="size-5 text-muted-foreground"
-                  />
-                </View>
-                <Input
-                  value={nis}
-                  onChangeText={setNis}
-                  editable={false}
-                  keyboardType="numeric"
-                  className="pl-10 h-12 bg-muted/50 text-muted-foreground border-transparent"
-                  placeholder="Nomor Induk Siswa"
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Divider */}
-        <View className="h-2 bg-muted/20 my-2" />
-
-        {/* --- SECTION: FACE ENROLLMENT --- */}
-        <View className="px-5 mt-6">
-          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
-            Verifikasi Wajah
-          </Text>
-
-          <Card className="p-5 mb-2 bg-card border-border shadow-sm rounded-2xl">
-            {(enrollmentStatus === "loading" || isCheckingFaceApi) && (
-              <View className="flex-row items-center py-2">
-                <ActivityIndicator size="small" color="#3b82f6" />
-                <Text className="text-muted-foreground ml-3">
-                  Memeriksa status wajah dan server...
-                </Text>
-              </View>
-            )}
-
-            {enrollmentStatus === "enrolled" && (
-              <View className="flex-row items-center py-2">
-                <View className="w-10 h-10 rounded-full bg-green-500/20 items-center justify-center">
-                  <Icon as={CheckCircle} className="size-6 text-green-600" />
-                </View>
-                <View className="ml-3 flex-1">
-                  <Text className="text-foreground font-medium">
-                    Wajah Sudah Terdaftar
-                  </Text>
-                  <Text className="text-xs text-muted-foreground">
-                    Data wajah Anda tersimpan untuk verifikasi absensi
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {enrollmentStatus === "not_enrolled" && (
-              <View>
-                <View className="flex-row items-center py-2 mb-3">
-                  <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
-                    <Icon as={AlertCircle} className="size-6 text-amber-600" />
-                  </View>
-                  <View className="ml-3 flex-1">
-                    <Text className="text-foreground font-medium">
-                      Wajah Belum Terdaftar
-                    </Text>
-                    <Text className="text-xs text-muted-foreground">
-                      Daftarkan wajah untuk mengaktifkan fitur absensi
-                    </Text>
-                  </View>
-                </View>
-                <Button
-                  variant="default"
-                  size="default"
-                  onPress={() => {
-                    faceApiLog("settings:navigate-enroll", {
-                      enrollmentStatus,
-                      enrollmentError,
-                      userId: user?.id ?? null,
-                    });
-                    router.push("./enroll");
-                  }}
-                  className="w-full bg-blue-600"
-                >
-                  <Icon as={Scan} className="size-5 text-white mr-2" />
-                  <Text className="text-white font-semibold">
-                    Daftar Sekarang
-                  </Text>
-                </Button>
-              </View>
-            )}
-
-            {enrollmentStatus === "error" && (
-              <View>
-                <View className="flex-row items-center py-2 mb-3">
-                  <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
-                    <Icon as={AlertCircle} className="size-6 text-red-600" />
-                  </View>
-                  <View className="ml-3 flex-1">
-                    <Text className="text-foreground font-medium">
-                      Gagal Memeriksa Status
-                    </Text>
-                    <Text className="text-xs text-muted-foreground">
-                      {enrollmentError || "Terjadi kesalahan"}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {faceApiRuntime && (
-              <View className="mt-4 pt-4 border-t border-border/60">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-foreground font-semibold">
-                    Status Server
-                  </Text>
-                  <View
-                    className={`px-2.5 py-1 rounded-full ${
-                      faceApiRuntime.state === "healthy"
-                        ? "bg-green-500/15"
-                        : faceApiRuntime.state === "unhealthy"
-                          ? "bg-amber-500/15"
-                          : "bg-red-500/15"
-                    }`}
+                  <TouchableOpacity
+                    onPress={() => setShowAllPasswords(!showAllPasswords)}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showAllPasswords
+                        ? "Sembunyikan password"
+                        : "Tampilkan password"
+                    }
+                    accessibilityHint="Ketuk dua kali untuk mengubah visibilitas password"
+                    className="absolute right-3 top-3 p-1"
                   >
-                    <Text
-                      className={`text-[11px] font-semibold ${
-                        faceApiRuntime.state === "healthy"
-                          ? "text-green-600"
-                          : faceApiRuntime.state === "unhealthy"
-                            ? "text-amber-600"
-                            : "text-red-600"
-                      }`}
-                    >
-                      {faceApiRuntime.state === "healthy"
-                        ? "SIAP"
-                        : faceApiRuntime.state === "unhealthy"
-                          ? "BELUM SIAP"
-                          : faceApiRuntime.state === "misconfigured"
-                            ? "KONFIG"
-                            : "OFFLINE"}
-                    </Text>
+                    <Icon
+                      as={showAllPasswords ? EyeOff : Eye}
+                      className="size-4 text-muted-foreground"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                  Password Baru
+                </Text>
+                <View className="relative">
+                  <View className="absolute left-3 top-3 z-10">
+                    <Icon as={Lock} className="size-5 text-muted-foreground" />
                   </View>
-                </View>
-
-                <Text className="text-xs text-muted-foreground mb-4">
-                  {faceApiRuntime.message}
-                </Text>
-
-                <Button
-                  variant="outline"
-                  size="default"
-                  onPress={refreshFaceVerificationStatus}
-                  className="w-full border-border"
-                >
-                  <Icon as={Loader2} className="size-5 text-foreground mr-2" />
-                  <Text className="text-foreground font-semibold">
-                    Segarkan Status
-                  </Text>
-                </Button>
-              </View>
-            )}
-          </Card>
-        </View>
-
-        {/* Divider */}
-        <View className="h-2 bg-muted/20 my-2" />
-
-        {/* --- SECTION 2: CHANGE PASSWORD --- */}
-        <View className="px-5 mt-6">
-          <Text className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-4 ml-1">
-            Keamanan Akun
-          </Text>
-
-          <View className="space-y-4">
-            <View>
-              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                Password Lama
-              </Text>
-              <View className="relative">
-                <View className="absolute left-3 top-3 z-10">
-                  <Icon as={Key} className="size-5 text-muted-foreground" />
-                </View>
-                <Input
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  secureTextEntry={!showAllPasswords}
-                  className="pl-10 pr-10 h-12 bg-card"
-                  placeholder="Masukkan password saat ini"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowAllPasswords(!showAllPasswords)}
-                  className="absolute right-3 top-3 p-1"
-                >
-                  <Icon
-                    as={showAllPasswords ? EyeOff : Eye}
-                    className="size-4 text-muted-foreground"
+                  <Input
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showAllPasswords}
+                    className="pl-10 pr-10 h-12 bg-card"
+                    placeholder="Minimal 8 karakter (A-Z, a-z, 0-9)"
                   />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View>
-              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                Password Baru
-              </Text>
-              <View className="relative">
-                <View className="absolute left-3 top-3 z-10">
-                  <Icon as={Lock} className="size-5 text-muted-foreground" />
                 </View>
-                <Input
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showAllPasswords}
-                  className="pl-10 pr-10 h-12 bg-card"
-                  placeholder="Minimal 6 karakter"
-                />
+                <Text className="text-[11px] text-muted-foreground mt-1 ml-1">
+                  Minimal 8 karakter, kombinasi huruf besar, huruf kecil, dan
+                  angka.
+                </Text>
               </View>
-            </View>
 
-            <View>
-              <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
-                Konfirmasi Password Baru
-              </Text>
-              <View className="relative">
-                <View className="absolute left-3 top-3 z-10">
-                  <Icon as={Lock} className="size-5 text-muted-foreground" />
+              <View>
+                <Text className="text-xs font-medium text-muted-foreground mb-1.5 ml-1">
+                  Konfirmasi Password Baru
+                </Text>
+                <View className="relative">
+                  <View className="absolute left-3 top-3 z-10">
+                    <Icon as={Lock} className="size-5 text-muted-foreground" />
+                  </View>
+                  <Input
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showAllPasswords}
+                    className="pl-10 pr-10 h-12 bg-card"
+                    placeholder="Ketik ulang password baru"
+                  />
                 </View>
-                <Input
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showAllPasswords}
-                  className="pl-10 pr-10 h-12 bg-card"
-                  placeholder="Ketik ulang password baru"
-                />
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <Text className="text-xs text-red-500 mt-1 ml-1">
+                    Password tidak cocok
+                  </Text>
+                )}
               </View>
-              {confirmPassword && newPassword !== confirmPassword && (
-                <Text className="text-xs text-red-500 mt-1 ml-1">
-                  Password tidak cocok
-                </Text>
-              )}
+
+              <Button
+                onPress={handleChangePassword}
+                disabled={passwordLoading}
+                variant="outline"
+                className="w-full mt-2 border-primary/20"
+              >
+                {passwordLoading ? (
+                  <ActivityIndicator color="#3b82f6" size="small" />
+                ) : (
+                  <Text className="text-primary font-semibold">
+                    Ubah Password
+                  </Text>
+                )}
+              </Button>
             </View>
 
-            <Button
-              onPress={handleChangePassword}
-              disabled={passwordLoading}
-              variant="outline"
-              className="w-full mt-2 border-primary/20"
-            >
-              {passwordLoading ? (
-                <ActivityIndicator color="#3b82f6" size="small" />
-              ) : (
-                <Text className="text-primary font-semibold">
-                  Ubah Password
-                </Text>
-              )}
-            </Button>
+            <View className="h-10" />
           </View>
-
-          <View className="h-10" />
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Avatar Options Modal */}
       <Modal
@@ -850,7 +884,12 @@ export default function ManageAccount() {
         >
           <View className="flex-1 bg-black/60 justify-end">
             <TouchableWithoutFeedback>
-              <View className="bg-card rounded-t-3xl p-6">
+              <View
+                className="bg-card rounded-t-3xl px-6 pt-6"
+                style={{
+                  paddingBottom: Math.max(24, safeAreaInsets.bottom + 16),
+                }}
+              >
                 <View className="items-center mb-6">
                   <View className="w-12 h-1.5 bg-muted rounded-full mb-4" />
                   <Text className="font-bold text-lg text-foreground">

@@ -1,113 +1,68 @@
-// filepath: app/index.tsx
-import { useRouter, Stack } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { useRouter, Stack, type Href } from "expo-router";
+import { useEffect } from "react";
 import * as Sentry from "@sentry/react-native";
 
 import useAuthStore from "../store/authStore";
-import { supabase } from "../utils/supabase";
-import { resolveUserRole } from "~/utils/authUtils";
+import { clearLogtoSession, getLogtoUser } from "~/utils/logto";
+import LoadingScreen from "./auth/LoadingScreen";
 
 export default function Index() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
-  const [loadingMessage, setLoadingMessage] = useState("Loading...");
 
   useEffect(() => {
+    let active = true;
+
     const checkAuth = async () => {
       try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          if (__DEV__)
-            console.error("[Index] getSession error:", error.message);
-          Sentry.captureException(error);
+        // Avoid redundant parallel session restoration if already populated by _layout.tsx
+        const initialUser = useAuthStore.getState().user;
+        const currentUser = initialUser ?? (await getLogtoUser());
+        if (!active) return;
+        if (!currentUser) {
+          router.replace("/auth/AuthSelector");
+          return;
         }
 
-        if (session?.user) {
-          let activeSession = session;
-          let role = resolveUserRole(
-            activeSession.access_token,
-            activeSession.user.app_metadata as
-              | Record<string, unknown>
-              | undefined,
-          );
-
-          if (!role) {
-            setLoadingMessage("Refreshing session");
-
-            const {
-              data: { session: refreshedSession },
-              error: refreshError,
-            } = await supabase.auth.refreshSession();
-
-            if (refreshError) {
-              if (__DEV__)
-                console.error(
-                  "[Index] refreshSession error:",
-                  refreshError.message,
-                );
-              Sentry.captureException(refreshError, {
-                tags: { feature: "auth-startup", reason: "missing-role" },
-                extra: { userId: activeSession.user.id },
-              });
-              router.replace("/auth/AuthSelector");
-              return;
-            }
-
-            if (refreshedSession?.user) {
-              activeSession = refreshedSession;
-              role = resolveUserRole(
-                activeSession.access_token,
-                activeSession.user.app_metadata as
-                  | Record<string, unknown>
-                  | undefined,
-              );
-            }
-          }
-
-          if (role === "siswa") {
-            setLoadingMessage("Session found");
-            setUser(activeSession.user);
-            router.replace("/Dashboard");
-            return;
-          }
-
-          if (role) {
-            await supabase.auth.signOut();
-            router.replace("/auth/AuthSelector");
-            return;
-          }
-
-          Sentry.captureMessage("Missing user role after session refresh", {
-            level: "warning",
-            tags: { feature: "auth-startup", reason: "missing-role" },
-            extra: { userId: activeSession.user.id },
-          });
+        const isStudent = currentUser.roles.some(
+          (role) => role === "student" || role === "siswa",
+        );
+        if (!isStudent) {
+          await clearLogtoSession();
+          if (!active) return;
+          setUser(null);
           router.replace("/auth/AuthSelector");
-        } else {
-          router.replace("/auth/AuthSelector");
+          return;
+        }
+
+        if (!useAuthStore.getState().user) {
+          setUser(currentUser);
+        }
+        if (active) {
+          // SAFETY: `/home` is supplied by the new `(tabs)/home.tsx` route; Expo's
+          // generated typed-route cache is refreshed by Metro after file changes.
+          router.replace("/home" as Href);
         }
       } catch (err) {
         if (__DEV__) console.error("[Index] checkAuth error:", err);
         Sentry.captureException(err);
-        router.replace("/auth/AuthSelector");
+        if (active) {
+          router.replace("/auth/AuthSelector");
+        }
       }
     };
 
-    checkAuth();
+    void checkAuth();
+
+    return () => {
+      active = false;
+    };
   }, [router, setUser]);
 
   return (
     <>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <View className="flex-1 items-center justify-center p-4">
-        <Text className="mb-4 text-xl font-bold">{loadingMessage}</Text>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
+      <LoadingScreen />
     </>
   );
 }

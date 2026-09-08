@@ -1,0 +1,79 @@
+{
+  "contract": "skanida-astra",
+  "version": "v1",
+  "published_at": "2026-08-21",
+  "request": {
+    "required_headers": [
+      "Authorization",
+      "X-Request-ID",
+      "X-Astra-Contract-Version"
+    ],
+    "contract_header": { "name": "X-Astra-Contract-Version", "value": "v1" },
+    "authorization": "Logto OIDC access token"
+  },
+  "response": {
+    "content_type": "application/json",
+    "envelope": {
+      "success": "boolean",
+      "data": "object|null",
+      "message": "string",
+      "meta": "object"
+    },
+    "contract_header": { "name": "X-Astra-Contract-Version", "value": "v1" }
+  },
+  "mobile_routes": [
+    "GET /v1/mobile/health",
+    "GET /v1/mobile/time",
+    "GET /v1/mobile/dashboard",
+    "POST /v1/mobile/attendance/precheck",
+    "POST /v1/mobile/attendance/submit",
+    "GET /v1/mobile/attendance",
+    "GET /v1/mobile/face/enrollment/status",
+    "POST /v1/mobile/face/enrollment",
+    "DELETE /v1/mobile/face/enrollment",
+    "GET /v1/mobile/permits",
+    "POST /v1/mobile/permits",
+    "GET /v1/mobile/profile",
+    "PATCH /v1/mobile/profile/avatar",
+    "PATCH /v1/mobile/profile/password",
+    "GET /v1/mobile/notifications/token",
+    "PATCH /v1/mobile/notifications/token",
+    "POST /v1/mobile/files/upload-intent",
+    "POST /v1/mobile/files/{file_id}/confirm",
+    "GET /v1/mobile/files/{file_id}"
+  ],
+  "admin_routes": [
+    "GET /v1/admin/students",
+    "GET /v1/admin/students/{user_id}",
+    "GET /v1/admin/staff",
+    "GET /v1/admin/staff/{user_id}",
+    "GET /v1/admin/classes",
+    "GET /v1/admin/locations",
+    "POST /v1/admin/locations",
+    "PATCH /v1/admin/locations/{id}",
+    "DELETE /v1/admin/locations/{id}",
+    "GET /v1/admin/schedules",
+    "POST /v1/admin/schedules",
+    "PATCH /v1/admin/schedules/{id}",
+    "DELETE /v1/admin/schedules/{id}",
+    "GET /v1/admin/leave-requests",
+    "POST /v1/admin/leave-requests",
+    "PATCH /v1/admin/leave-requests/{id}",
+    "POST /v1/admin/leave-requests/{id}/approve",
+    "POST /v1/admin/leave-requests/{id}/reject",
+    "GET /v1/admin/attendance",
+    "POST /v1/admin/attendance/manual",
+    "GET /v1/admin/attendance/attempts"
+  ],
+  "identity_routes": [
+    "POST /v1/auth/student/signup",
+    "POST /v1/auth/student/reset-password",
+    "POST /v1/auth/password"
+  ],
+  "ownership": {
+    "domain_state": "Astra PostgreSQL",
+    "object_metadata": "Astra",
+    "face_artifacts": "Robin through Astra",
+    "clients": "must not access PostgreSQL, storage, Robin, or Logto Management API"
+  }
+}

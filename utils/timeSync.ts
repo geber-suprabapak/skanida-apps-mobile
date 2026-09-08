@@ -1,7 +1,6 @@
 // utils/timeSync.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, AppStateStatus } from "react-native";
-import { ensureSupabaseInitialized } from "./supabase";
 import { getServerTime } from "~/utils/bffMobileApi";
 import useTimeSyncStore from "~/store/timeSyncStore";
 
@@ -72,7 +71,7 @@ class TimeSync {
   private readonly DRIFT_THRESHOLD = 5000; // 5 seconds
   private readonly STORAGE_KEY = "time_sync_data";
   private syncPromise: Promise<void> | null = null;
-  private backgroundSyncTimer: NodeJS.Timeout | null = null;
+  private backgroundSyncTimer: ReturnType<typeof setTimeout> | null = null;
   private appStateSubscription: any = null;
   private isInitialized: boolean = false;
 
@@ -85,9 +84,6 @@ class TimeSync {
     if (this.isInitialized) return;
 
     try {
-      // Ensure Supabase is initialized first
-      await ensureSupabaseInitialized();
-
       // Load persisted offset
       await this.loadPersistedOffset();
 
@@ -174,6 +170,9 @@ class TimeSync {
         if (__DEV__) console.error("Background sync failed:", error);
       });
     }, this.BACKGROUND_SYNC_INTERVAL);
+    // SAFETY: In Node.js/Jest runtimes, setInterval returns NodeJS.Timeout supporting unref() to prevent hanging tests.
+    const nodeTimer = this.backgroundSyncTimer as NodeJS.Timeout | null;
+    nodeTimer?.unref?.();
 
     // App state listener for sync on resume
     this.appStateSubscription = AppState.addEventListener(
@@ -382,60 +381,69 @@ class TimeSync {
    */
   private async _syncWithNTP(): Promise<void> {
     const requestTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    // Using WorldTimeAPI as NTP alternative
-    const response = await fetch(
-      "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
-    );
+    try {
+      // Using WorldTimeAPI as NTP alternative
+      const response = await fetch(
+        "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
+        {
+          signal: controller.signal,
+        },
+      );
 
-    const responseTime = Date.now();
-    const roundTripTime = responseTime - requestTime;
+      const responseTime = Date.now();
+      const roundTripTime = responseTime - requestTime;
 
-    if (!response.ok) {
-      throw new Error(`NTP request failed: ${response.status}`);
-    }
+      if (!response.ok) {
+        throw new Error(`NTP request failed: ${response.status}`);
+      }
 
-    const data: NTPResponse = await response.json();
+      const data: NTPResponse = await response.json();
 
-    if (!data.datetime) {
-      throw new Error("Invalid NTP response");
-    }
+      if (!data.datetime) {
+        throw new Error("Invalid NTP response");
+      }
 
-    // Parse NTP time
-    const ntpTime = new Date(data.datetime).getTime();
+      // Parse NTP time
+      const ntpTime = new Date(data.datetime).getTime();
 
-    // Estimate NTP time accounting for network delay
-    const estimatedNtpTime = ntpTime + roundTripTime / 2;
+      // Estimate NTP time accounting for network delay
+      const estimatedNtpTime = ntpTime + roundTripTime / 2;
 
-    // Calculate new offset
-    const newOffset = estimatedNtpTime - responseTime;
+      // Calculate new offset
+      const newOffset = estimatedNtpTime - responseTime;
 
-    // Detect drift
-    this.detectDrift(newOffset);
+      // Detect drift
+      this.detectDrift(newOffset);
 
-    // Update offset
-    this.timeOffset = newOffset;
-    this.lastSyncTime = Date.now();
+      // Update offset
+      this.timeOffset = newOffset;
+      this.lastSyncTime = Date.now();
 
-    // Update store
-    // PERF-H03: Batch store update (was 5 separate calls = 5 re-renders)
-    useTimeSyncStore.setState({
-      offset: newOffset,
-      syncSource: "ntp",
-      status: "synced",
-      lastSyncTime: Date.now(),
-      error: null,
-    });
-
-    // Persist
-    await this.persistOffset(newOffset, "ntp");
-
-    if (__DEV__)
-      console.log("NTP sync successful", {
+      // Update store
+      // PERF-H03: Batch store update (was 5 separate calls = 5 re-renders)
+      useTimeSyncStore.setState({
         offset: newOffset,
-        roundTripTime,
-        ntpTime: data.datetime,
+        syncSource: "ntp",
+        status: "synced",
+        lastSyncTime: Date.now(),
+        error: null,
       });
+
+      // Persist
+      await this.persistOffset(newOffset, "ntp");
+
+      if (__DEV__)
+        console.log("NTP sync successful", {
+          offset: newOffset,
+          roundTripTime,
+          ntpTime: data.datetime,
+        });
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**

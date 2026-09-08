@@ -45,6 +45,17 @@ export type BffAttendanceSubmitResult = {
   processed_ms: number;
 };
 
+export type BffAttendanceRecord = {
+  id: string;
+  user_id: string;
+  date: string;
+  status: string;
+  action_type?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at: string;
+};
+
 export type BffEnrollmentStatus = {
   status: "enrolled" | "not_enrolled";
   embeddingCount: number;
@@ -67,6 +78,7 @@ export type BffDashboard = {
     absence_number: string | null;
     avatar_url: string | null;
     role?: string | null;
+    lifecycle_status?: "pending" | "approved" | "rejected" | "disabled" | null;
   };
   attendance: {
     today_status: "pending" | "present" | "absent" | "leave";
@@ -140,6 +152,10 @@ export type BffPermit = {
   category: string;
   description: string;
   date: string;
+  requested_start_date?: string | null;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   approval_status: "pending" | "approved" | "rejected" | null;
   attachment_url: string | null;
   created_at?: string;
@@ -147,12 +163,24 @@ export type BffPermit = {
   rejected_at?: string | null;
 };
 
+export type MobilePermitCategory =
+  | "sakit"
+  | "pergi"
+  | "dispensasi"
+  | "lainnya"
+  | "izin"
+  | "cuti";
+
 export type MobilePermit = {
   id: string;
-  kategori_izin: "sakit" | "pergi" | "izin" | "cuti";
+  kategori_izin: MobilePermitCategory;
   deskripsi: string;
   approval_status: "pending" | "approved" | "rejected" | null;
   tanggal: string;
+  requested_start_date?: string;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   created_at: string;
   rejection_reason?: string | null;
   rejected_at?: string | null;
@@ -168,6 +196,7 @@ export type BffProfile = {
   gender?: string | null;
   role?: string | null;
   avatar_url: string | null;
+  lifecycle_status?: "pending" | "approved" | "rejected" | "disabled" | null;
 };
 
 export type BffServerTime = {
@@ -183,6 +212,20 @@ type FilePart = {
   type: string;
 };
 
+type NativeFormData = FormData & {
+  append(
+    name: string,
+    value: Blob | FilePart | string,
+    filename?: string,
+  ): void;
+};
+
+function appendNativeFile(form: FormData, field: string, file: FilePart) {
+  // SAFETY: React Native's FormData accepts { uri, name, type } file parts for XMLHttpRequest.
+  const nativeForm = form as NativeFormData;
+  nativeForm.append(field, file);
+}
+
 const formatIsoAsWIBTime = (value: string | null) => {
   if (!value) return null;
 
@@ -197,7 +240,7 @@ const formatIsoAsWIBTime = (value: string | null) => {
 };
 
 const formatWorkHours = (hours: number | null) => {
-  if (typeof hours !== "number" || !Number.isFinite(hours)) return undefined;
+  if (hours === null || !Number.isFinite(hours)) return undefined;
   return `${Number.isInteger(hours) ? hours : hours.toFixed(2)} jam`;
 };
 
@@ -240,7 +283,9 @@ export async function getDashboard() {
 }
 
 export async function getMobileHealth() {
-  return bffRequest<{ status: BffHealthStatus }>("/v1/mobile/health");
+  return bffRequest<{ status: BffHealthStatus }>("/v1/mobile/health", {
+    requireAuth: false,
+  });
 }
 
 export async function getServerTime() {
@@ -285,15 +330,45 @@ export async function submitAttendance(params: {
   });
 }
 
+export async function listAttendances(params?: {
+  startDate?: string;
+  endDate?: string;
+  date?: string;
+  start_date?: string;
+  end_date?: string;
+}): Promise<BffAttendanceRecord[]> {
+  const queryParams = new URLSearchParams();
+  const startDate = params?.startDate ?? params?.start_date;
+  const endDate = params?.endDate ?? params?.end_date;
+
+  if (startDate) {
+    queryParams.append("startDate", startDate);
+    queryParams.append("start_date", startDate);
+  }
+  if (endDate) {
+    queryParams.append("endDate", endDate);
+    queryParams.append("end_date", endDate);
+  }
+  if (params?.date) queryParams.append("date", params.date);
+
+  const query = queryParams.toString();
+  const path = query
+    ? `/v1/mobile/attendance?${query}`
+    : "/v1/mobile/attendance";
+
+  const result = await bffRequest<{ items: BffAttendanceRecord[] }>(path);
+  return result.items;
+}
+
 export async function getEnrollmentStatus() {
   return bffRequest<BffEnrollmentStatus>("/v1/mobile/face/enrollment/status");
 }
 
 export async function submitEnrollment(files: FilePart[]) {
   const form = new FormData();
-  files.forEach((file) => {
-    form.append("files", file as unknown as Blob);
-  });
+  for (const file of files) {
+    await appendNativeFile(form, "files", file);
+  }
 
   return bffRequest<BffEnrollmentResult>("/v1/mobile/face/enrollment", {
     method: "POST",
@@ -304,16 +379,56 @@ export async function submitEnrollment(files: FilePart[]) {
 
 export async function listPermits(): Promise<MobilePermit[]> {
   const result = await bffRequest<{ items: BffPermit[] }>("/v1/mobile/permits");
-  return result.items.map((permit) => ({
+  return result.items.map(toMobilePermit);
+}
+
+export function formatMobilePermitCategory(category?: string | null): string {
+  switch (category?.toLowerCase()) {
+    case "sakit":
+      return "Sakit";
+    case "pergi":
+      return "Izin (Pergi)";
+    case "dispensasi":
+      return "Dispensasi";
+    case "lainnya":
+      return "Izin (Lainnya)";
+    case "cuti":
+      return "Cuti";
+    case "izin":
+    default:
+      return "Izin";
+  }
+}
+
+export function toMobilePermit(permit: BffPermit): MobilePermit {
+  return {
     id: permit.id,
-    kategori_izin: permit.category as MobilePermit["kategori_izin"],
+    kategori_izin:
+      permit.category === "sakit" ||
+      permit.category === "pergi" ||
+      permit.category === "dispensasi" ||
+      permit.category === "lainnya" ||
+      permit.category === "izin" ||
+      permit.category === "cuti"
+        ? permit.category
+        : "izin",
     deskripsi: permit.description,
     approval_status: permit.approval_status,
     tanggal: permit.date,
+    requested_start_date: permit.requested_start_date ?? permit.date,
+    original_end_date:
+      permit.original_end_date ??
+      (permit.approval_status === "approved" ? permit.date : null),
+    effective_end_date:
+      permit.effective_end_date ??
+      (permit.approval_status === "approved" ? permit.date : null),
+    duration_days:
+      permit.duration_days ??
+      (permit.approval_status === "approved" ? 1 : null),
     created_at: permit.created_at ?? permit.date,
     rejection_reason: permit.rejection_reason,
     rejected_at: permit.rejected_at ?? null,
-  }));
+  };
 }
 
 export async function createPermit(params: {
@@ -326,7 +441,7 @@ export async function createPermit(params: {
   form.append("description", params.description);
   form.append("date", formatDateWIB(new Date()));
   if (params.attachment) {
-    form.append("attachment", params.attachment as unknown as Blob);
+    await appendNativeFile(form, "attachment", params.attachment);
   }
 
   return bffRequest<BffPermit>("/v1/mobile/permits", {
@@ -360,7 +475,7 @@ export async function updateAvatar(
   }
 
   const form = new FormData();
-  form.append("file", file as unknown as Blob);
+  await appendNativeFile(form, "file", file);
   const result = await bffRequest<{ avatar_url: string | null }>(
     "/v1/mobile/profile/avatar",
     {
