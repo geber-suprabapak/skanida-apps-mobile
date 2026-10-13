@@ -26,3 +26,11 @@
 
 **Purpose:** Render UI primitives, camera/attendance surfaces, calendar, time-sync, and notification support.
 **Entry points:** `components/`, `app/attendance/`.
+
+## Native Android experiment
+
+**Purpose:** Build an independent Kotlin/Jetpack Compose Android client using the same Logto identity and Astra `v1` API. Expo source remains as the comparison baseline and is not included in this APK.
+**Entry points:** `native-android/app/src/main/java/id/skanida/nativeapp/MainActivity.kt`, `native-android/app/src/main/java/id/skanida/nativeapp/MainViewModel.kt`.
+**Identity/transport:** `Identity.kt`, `SessionStore.kt`, and `Astra.kt` in the same Kotlin package.
+**Device boundaries:** `DeviceMedia.kt` owns location/image preparation; `CameraScreen.kt` binds CameraX; `PushService.kt` registers native FCM tokens with the existing Expo push service and Astra.
+**Read next:** `native-android/README.md`; `docs/native-kotlin-experiment.md` records verification scope and outstanding parity evidence.
