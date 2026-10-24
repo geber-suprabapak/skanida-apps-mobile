@@ -12,10 +12,66 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # S01 release gate: every dispatch must verify the exact revision with
+  # frozen dependencies, lint, type-check, and the unit suite before any APK
+  # is built or uploaded. The build job depends on this job, so a manually
+  # dispatched run cannot bypass verification.
+  verify:
+    name: Verify (lint, types, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    outputs:
+      verified_sha: ${{ steps.record_sha.outputs.verified_sha }}
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "11.21.0"
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.19.0"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm exec tsc --noEmit
+
+      - name: Unit tests
+        run: pnpm exec jest --runInBand
+
+      - name: Record verified revision
+        id: record_sha
+        run: |
+          VERIFIED_SHA=$(git rev-parse HEAD)
+          echo "verified_sha=$VERIFIED_SHA" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Android APK release gate"
+            echo ""
+            echo "Verify PASS (frozen install, pnpm lint, tsc --noEmit, jest --runInBand)"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Verified source revision | \`$VERIFIED_SHA\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    needs: verify
 
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -38,6 +94,16 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Assert built revision matches verified revision
+        run: |
+          BUILD_SHA=$(git rev-parse HEAD)
+          echo "Built revision: $BUILD_SHA"
+          echo "Verified revision: ${{ needs.verify.outputs.verified_sha }}"
+          test "$BUILD_SHA" = "${{ needs.verify.outputs.verified_sha }}" || {
+            echo "Refusing to build: checked-out revision differs from the verified revision."
+            exit 1
+          }
 
       - name: Restore google-services.json
         run: |
@@ -98,9 +164,32 @@ jobs:
       - name: Build APK
         run: eas build --local --platform android --profile production-ci --non-interactive
 
+      - name: Record source SHA and APK SHA-256 in run summary
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          apk_count=0
+          while IFS= read -r apk; do
+            apk_count=$((apk_count + 1))
+            APK_SHA=$(sha256sum "$apk" | awk '{print $1}')
+            {
+              echo "| APK \`${apk#*/}\` | SHA-256 \`$APK_SHA\` |"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "APK: $apk"
+            echo "SHA-256: $APK_SHA"
+          done < <(find "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" -type f -name '*.apk' | sort)
+          if [ "$apk_count" -eq 0 ]; then
+            echo "No APK produced; refusing to record a checksum."
+            exit 1
+          fi
+          {
+            echo "| Built source revision | \`$SOURCE_SHA\` |"
+            echo "| Artifact retention | 90 days (GitHub Actions artifact \`skanida-apps-android-apk\`) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: skanida-apps-android-apk
           path: ${{ env.EAS_LOCAL_BUILD_ARTIFACTS_DIR }}/**/*.apk
           if-no-files-found: error
+          retention-days: 90

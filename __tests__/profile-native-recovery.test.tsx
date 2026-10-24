@@ -36,6 +36,12 @@ const mockUser = {
   },
 };
 
+// Module mocking is the only seam available to these tests: ManageAccount
+// imports the auth store, the BFF client, and Expo native modules directly,
+// and adding dependency-injection parameters would change production app
+// code, which is out of scope for this recovery-behaviour test. Each
+// jest.mock below is a deliberate, per-file substitute boundary.
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("~/store/authStore", () => {
   const useAuthStore: any = (selector: any) =>
     selector({
@@ -47,6 +53,7 @@ jest.mock("~/store/authStore", () => {
   return { __esModule: true, default: useAuthStore };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("~/utils/bffMobileApi", () => ({
   getProfile: jest.fn(),
   updateAvatar: jest.fn(),
@@ -54,16 +61,19 @@ jest.mock("~/utils/bffMobileApi", () => ({
   getEnrollmentStatus: jest.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("~/utils/enrollment", () => ({
   fetchEnrollmentStatus: jest.fn(async () => ({
     status: "not_enrolled" as const,
   })),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("~/utils/faceApiDebug", () => ({
   faceApiLog: jest.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("~/utils/faceApiRuntime", () => ({
   fetchFaceApiRuntimeStatus: jest.fn(async () => ({
     state: "healthy" as const,
@@ -71,6 +81,7 @@ jest.mock("~/utils/faceApiRuntime", () => ({
   })),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("expo-image-picker", () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
   requestCameraPermissionsAsync: jest.fn(),
@@ -79,19 +90,23 @@ jest.mock("expo-image-picker", () => ({
   MediaTypeOptions: { Images: "Images" },
 }));
 
-type ImagePickerMocks = {
+type ImagePickerMocks = typeof ImagePicker & {
   requestMediaLibraryPermissionsAsync: jest.Mock;
   requestCameraPermissionsAsync: jest.Mock;
   launchImageLibraryAsync: jest.Mock;
   launchCameraAsync: jest.Mock;
 };
 
-const mockImagePicker = ImagePicker as unknown as ImagePickerMocks;
+// SAFETY: the jest.mock factory above replaces exactly these four picker
+// functions with jest.Mock doubles at runtime; the intersection narrows only
+// those members and keeps every other ImagePicker export at its real type.
+const mockImagePicker = ImagePicker as ImagePickerMocks;
 
 // The shared expo-router mock invokes useFocusEffect callbacks synchronously
 // during render; ManageAccount's focus callback sets state immediately, which
 // re-triggers the synchronous call and loops. Run the focus callback in a
 // post-mount effect instead — the same lifecycle the real hook provides.
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("expo-router", () => {
   const React = require("react");
   const actual = jest.requireActual("../__mocks__/expo-router");
@@ -132,7 +147,9 @@ describe("M08 — Profile load and avatar picker recovery", () => {
     alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     // Every scenario starts from a settled profile read; individual tests
     // override with mockRejectedValueOnce/mockResolvedValueOnce as needed.
+    // SAFETY: getProfile is the jest.Mock double installed by the factory above.
     (getProfile as jest.Mock).mockResolvedValue(profileData);
+    // SAFETY: updateAvatar is the jest.Mock double installed by the factory above.
     (updateAvatar as jest.Mock).mockReset();
     mockImagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({
       status: "granted",
@@ -152,6 +169,7 @@ describe("M08 — Profile load and avatar picker recovery", () => {
   it("shows a loading state and populates profile fields once getProfile resolves", async () => {
     // Hold the read open so the distinct loading state is observable.
     let resolveProfile!: (value: typeof profileData) => void;
+    // SAFETY: getProfile is the jest.Mock double installed by the factory above.
     (getProfile as jest.Mock).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -178,6 +196,7 @@ describe("M08 — Profile load and avatar picker recovery", () => {
   });
 
   it("shows a recoverable error on getProfile rejection and retry re-invokes the profile read", async () => {
+    // SAFETY: getProfile is the jest.Mock double installed by the factory above.
     (getProfile as jest.Mock).mockRejectedValueOnce(
       new Error("Permintaan ke server gagal"),
     );
@@ -192,6 +211,7 @@ describe("M08 — Profile load and avatar picker recovery", () => {
     expect(screen.getByPlaceholderText("Nama Lengkap").props.value).toBe("");
 
     // Retry must invoke the failed profile operation again.
+    // SAFETY: getProfile is the jest.Mock double installed by the factory above.
     (getProfile as jest.Mock).mockResolvedValueOnce(profileData);
     fireEvent.press(screen.getByLabelText("Coba Muat Ulang Profil"));
 
@@ -290,6 +310,7 @@ describe("M08 — Profile load and avatar picker recovery", () => {
   });
 
   it("alerts with a recoverable message when the avatar upload itself fails", async () => {
+    // SAFETY: updateAvatar is the jest.Mock double installed by the factory above.
     (updateAvatar as jest.Mock).mockRejectedValueOnce(
       new Error("Gagal unggah avatar"),
     );

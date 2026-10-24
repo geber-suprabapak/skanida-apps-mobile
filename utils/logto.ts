@@ -104,7 +104,8 @@ function notifySessionExpired(reason: string) {
     sessionExpiredHandler?.(reason);
   } catch (handlerError) {
     // A broken handler must never break session resolution itself.
-    if (__DEV__) console.error("Logto session-expired handler failed:", handlerError);
+    if (__DEV__)
+      console.error("Logto session-expired handler failed:", handlerError);
   }
 }
 

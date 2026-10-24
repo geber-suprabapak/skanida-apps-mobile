@@ -1,5 +1,11 @@
 import * as React from "react";
-import { render, fireEvent, waitFor, cleanup, screen } from "@testing-library/react-native";
+import {
+  render,
+  fireEvent,
+  waitFor,
+  cleanup,
+  screen,
+} from "@testing-library/react-native";
 import ResetPassword from "../app/auth/ResetPassword";
 
 /**

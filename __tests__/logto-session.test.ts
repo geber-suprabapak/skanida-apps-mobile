@@ -14,6 +14,11 @@ import useAuthStore, {
 import { NOTIFICATION_OPT_OUT_PREFIX } from "~/utils/notifications";
 import { TIME_SYNC_STORAGE_KEY } from "~/utils/timeSync";
 
+// Module mocking is the only seam available here: expo-web-browser's auth
+// session is a native module with no in-memory implementation, and routing
+// logto's browser dependency through an injectable parameter would change
+// production code. This per-file factory keeps the boundary deliberate.
+// oxlint-disable-next-line anti-slop/no-module-mocking
 jest.mock("expo-web-browser", () => ({
   openAuthSessionAsync: jest.fn(async () => ({ type: "success" })),
 }));
@@ -342,7 +347,9 @@ describe("Rendered auth state and logout cleanup consistency (M02)", () => {
     lifecycle_status: "approved",
   };
 
-  const seedSession = (overrides: Record<string, unknown> = {}) => {
+  // Synthetic SecureStore session seed; overrides only carry the primitive
+  // session fields (tokens, timestamps) the persisted JSON envelope holds.
+  const seedSession = (overrides: Record<string, string | number> = {}) => {
     mockStore["astra-logto-session"] = JSON.stringify({
       access_token: "expired-token",
       refresh_token: "refresh-1",
@@ -375,7 +382,10 @@ describe("Rendered auth state and logout cleanup consistency (M02)", () => {
     // Render a session-expired-adjacent UI state: authenticated store + the
     // session-scoped and preference keys that must (not) survive cleanup.
     useAuthStore.setState({ user: renderedUser, userProfile: renderedProfile });
-    const asyncStorage = AsyncStorage as unknown as {
+    // SAFETY: the AsyncStorage jest mock (jest.config moduleNameMapper →
+    // async-storage-mock) exposes this internal storage map at runtime; the
+    // intersection narrows only that member.
+    const asyncStorage = AsyncStorage as typeof AsyncStorage & {
       __INTERNAL_MOCK_STORAGE__: Record<string, string>;
     };
     asyncStorage.__INTERNAL_MOCK_STORAGE__ = {
@@ -407,6 +417,8 @@ describe("Rendered auth state and logout cleanup consistency (M02)", () => {
 
   it("resets the rendered user/profile when an in-session refresh fails permanently with invalid_grant", async () => {
     seedSession();
+    // SAFETY: minimal synthetic fetch envelope for the Jest mock; only
+    // `ok`, `status`, and `json` are read by the code under test.
     jest.spyOn(global, "fetch").mockResolvedValue({
       ok: false,
       status: 400,

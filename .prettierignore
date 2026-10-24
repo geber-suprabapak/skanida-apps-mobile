@@ -2,6 +2,7 @@ node_modules/
 .expo/
 dist/
 android/
+native-android/app/build/
 ios/
 web-build/
 artifacts/

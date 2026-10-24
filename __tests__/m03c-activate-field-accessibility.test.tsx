@@ -1,5 +1,11 @@
 import * as React from "react";
-import { render, fireEvent, waitFor, cleanup, screen } from "@testing-library/react-native";
+import {
+  render,
+  fireEvent,
+  waitFor,
+  cleanup,
+  screen,
+} from "@testing-library/react-native";
 import Activate from "../app/auth/Activate";
 
 /**
@@ -81,7 +87,10 @@ describe("M03c — Activate form inputs have stable accessible names", () => {
     expect(nis.props.placeholder).toBe("Masukkan NIS Anda");
 
     // Reveal the email/password/confirm section by checking a valid NIS.
-    fireEvent.changeText(screen.getByLabelText(FIELDS[0].label), FIELDS[0].value);
+    fireEvent.changeText(
+      screen.getByLabelText(FIELDS[0].label),
+      FIELDS[0].value,
+    );
     await waitFor(() =>
       expect(screen.getByLabelText(FIELDS[0].label).props.value).toBe(
         FIELDS[0].value,
