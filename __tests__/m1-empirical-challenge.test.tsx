@@ -4,34 +4,11 @@ import { join } from "node:path";
 import { render } from "@testing-library/react-native";
 // @ts-expect-error missing dev types
 import TestRenderer from "react-test-renderer";
-import { View, TextInput, Text as RNText, Platform, Modal } from "react-native";
+import { View, TextInput, Text as RNText, Modal } from "react-native";
 // @ts-expect-error missing dev types
 import * as babelParser from "@babel/parser";
 // @ts-expect-error missing dev types
 import babelTraverse from "@babel/traverse";
-
-jest.mock("uniwind", () => ({
-  useUniwind: () => ({ theme: "light" }),
-  withUniwind: jest.fn((Comp: any) => Comp),
-}));
-
-jest.mock("lucide-react-native", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    CheckCircle: (props: any) => React.createElement(View, { ...props, testID: "check-circle-icon" }),
-    Briefcase: (props: any) => React.createElement(View, { ...props, testID: "briefcase-icon" }),
-    FileText: (props: any) => React.createElement(View, { ...props, testID: "file-text-icon" }),
-    AlertCircle: (props: any) => React.createElement(View, { ...props, testID: "alert-circle-icon" }),
-    Camera: (props: any) => React.createElement(View, { ...props, testID: "camera-icon" }),
-    Send: (props: any) => React.createElement(View, { ...props, testID: "send-icon" }),
-    Lock: (props: any) => React.createElement(View, { ...props, testID: "lock-icon" }),
-    Eye: (props: any) => React.createElement(View, { ...props, testID: "eye-icon" }),
-    EyeOff: (props: any) => React.createElement(View, { ...props, testID: "eye-off-icon" }),
-    ImageIcon: (props: any) => React.createElement(View, { ...props, testID: "image-icon" }),
-    Trash2: (props: any) => React.createElement(View, { ...props, testID: "trash-icon" }),
-  };
-});
 
 import AttendanceSuccessPopup from "@/components/ui/pop-up";
 import { Input } from "@/components/ui/input";
@@ -46,8 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Text } from "@/components/ui/text";
 
-const traverse =
-  (babelTraverse as any).default || babelTraverse;
+const traverse = babelTraverse;
 
 describe("Milestone 1 Empirical Challenge: Forms, Modals, Validation, and Primitives", () => {
   const rootDir = process.cwd();
@@ -130,7 +106,9 @@ describe("Milestone 1 Empirical Challenge: Forms, Modals, Validation, and Primit
 
       expect(kavFound).toBe(true);
       expect(kavClassName).toContain("flex-1");
-      expect(kavBehaviorExpr).toBe('Platform.OS === "ios" ? "padding" : "height"');
+      expect(kavBehaviorExpr).toBe(
+        'Platform.OS === "ios" ? "padding" : "height"',
+      );
       expect(innerScrollViewHasPersistTaps).toBe(true);
       expect(persistTapsValue).toBe("handled");
       expect(hasModalInsideKav).toBe(false);
@@ -235,7 +213,9 @@ describe("Milestone 1 Empirical Challenge: Forms, Modals, Validation, and Primit
 
       expect(kavFound).toBe(true);
       expect(kavClassName).toContain("flex-1");
-      expect(kavBehaviorExpr).toBe('Platform.OS === "ios" ? "padding" : "height"');
+      expect(kavBehaviorExpr).toBe(
+        'Platform.OS === "ios" ? "padding" : "height"',
+      );
       expect(innerScrollViewHasPersistTaps).toBe(true);
       expect(persistTapsValue).toBe("handled");
 
@@ -438,7 +418,7 @@ describe("Milestone 1 Empirical Challenge: Forms, Modals, Validation, and Primit
 
       expect(getByTestId("test-input")).toBeTruthy();
       expect(inputRef.current).not.toBeNull();
-      expect(typeof inputRef.current?.focus).toBe("function");
+      expect(inputRef.current?.focus).toEqual(expect.any(Function));
     });
 
     it("Card family: refs attach to native View and Text elements", async () => {
@@ -547,8 +527,16 @@ describe("Milestone 1 Empirical Challenge: Forms, Modals, Validation, and Primit
         { password: "Aa1", expected: false, reason: "Length 3 < 8" },
         { password: "Aa12345", expected: false, reason: "Length 7 < 8" },
         // Boundary: Length >= 8
-        { password: "Aa123456", expected: true, reason: "Length 8 == min length" },
-        { password: "Aa1234567", expected: true, reason: "Length 9 > min length" },
+        {
+          password: "Aa123456",
+          expected: true,
+          reason: "Length 8 == min length",
+        },
+        {
+          password: "Aa1234567",
+          expected: true,
+          reason: "Length 9 > min length",
+        },
         {
           password: "VeryLongPassword1234567890ABCDEFabcdef!@#$",
           expected: true,
@@ -621,7 +609,9 @@ describe("Milestone 1 Empirical Challenge: Forms, Modals, Validation, and Primit
       expect(content).not.toContain("Minimal 6 karakter");
 
       // Check placeholder
-      expect(content).toContain('placeholder="Minimal 8 karakter (A-Z, a-z, 0-9)"');
+      expect(content).toContain(
+        'placeholder="Minimal 8 karakter (A-Z, a-z, 0-9)"',
+      );
 
       // Check helper text
       expect(content).toContain(

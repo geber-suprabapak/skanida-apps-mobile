@@ -1,9 +1,35 @@
 // store/authStore.ts
 import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
-import { logoutLogtoSession, type MobileAuthUser } from "~/utils/logto";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  logoutLogtoSession,
+  setLogtoSessionExpiredHandler,
+  type MobileAuthUser,
+} from "~/utils/logto";
 import { registerAndSaveNotificationToken } from "~/utils/notifications";
 import { getProfile } from "~/utils/bffMobileApi";
+
+/**
+ * AsyncStorage keys that are explicitly session-scoped and therefore removed
+ * on logout and on permanent session expiry. Everything else is a preference
+ * or device cache that must survive a session change — notably the per-user
+ * notification opt-out (`utils/notifications.ts`, prefix
+ * `notification-opt-out`) and the time-sync offset cache
+ * (`utils/timeSync.ts`, key `time_sync_data`) — so this is a removal
+ * allowlist, never AsyncStorage.clear().
+ */
+export const SESSION_STORAGE_KEYS = ["user_profile_cache"] as const;
+
+const clearSessionScopedStorage = async () => {
+  for (const key of SESSION_STORAGE_KEYS) {
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch (error) {
+      if (__DEV__) console.warn(`Failed to clear session key ${key}:`, error);
+    }
+  }
+};
 
 // Define a more specific type for your user profile based on your table
 export interface UserProfile {
@@ -149,8 +175,25 @@ const useAuthStore = create<AuthState>((set, get) => ({
       activeFetchController = null;
     }
     await logoutLogtoSession();
+    // Remove only session-scoped values; notification opt-out and the time
+    // cache are unrelated preferences and must be retained.
+    await clearSessionScopedStorage();
     set({ user: null, userProfile: null });
   },
 }));
+
+// In-session permanent expiry (e.g. refresh token revoked → invalid_grant)
+// clears the SecureStore session inside utils/logto.ts; route the rendered
+// state through the same reset boundary as logout so no screen keeps a stale
+// `user`. The end-session browser hop of logout() is intentionally skipped
+// for passive expiry.
+setLogtoSessionExpiredHandler(() => {
+  if (activeFetchController) {
+    activeFetchController.abort();
+    activeFetchController = null;
+  }
+  void clearSessionScopedStorage();
+  useAuthStore.setState({ user: null, userProfile: null });
+});
 
 export default useAuthStore;

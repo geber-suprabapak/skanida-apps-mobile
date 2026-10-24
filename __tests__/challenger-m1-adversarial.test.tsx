@@ -3,81 +3,10 @@ import { render, fireEvent, cleanup } from "@testing-library/react-native";
 import { Linking, BackHandler } from "react-native";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { mockRouter } from "../__mocks__/expo-router";
 
-// Mocks for CameraAttendance dependencies
-const mockRouterBack = jest.fn();
-const mockCanGoBack = jest.fn();
-const mockRequestPermission = jest.fn();
-
-jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    back: mockRouterBack,
-    canGoBack: mockCanGoBack,
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
-  useLocalSearchParams: () => ({}),
-  Stack: {
-    Screen: () => null,
-  },
-}));
-
-jest.mock("react-native-vision-camera", () => ({
-  Camera: () => null,
-  useCameraDevice: () => ({ id: "front-camera" }),
-  useCameraPermission: () => ({
-    hasPermission: false,
-    requestPermission: mockRequestPermission,
-  }),
-}));
-
-jest.mock("react-native-reanimated", () => {
-  const { View } = require("react-native");
-  return {
-    __esModule: true,
-    default: {
-      View,
-      createAnimatedComponent: (comp: any) => comp,
-    },
-    useSharedValue: (val: any) => ({ value: val }),
-    useAnimatedStyle: () => ({}),
-    withTiming: (toValue: any) => toValue,
-    withRepeat: (anim: any) => anim,
-    withSequence: (...anims: any[]) => anims[0],
-  };
-});
-
-jest.mock("expo-auth-session", () => ({
-  makeRedirectUri: () => "skanida://callback",
-  useAuthRequest: () => [null, null, jest.fn()],
-}));
-
-jest.mock("expo-constants", () => ({
-  expoConfig: { scheme: "skanida" },
-}));
-
-jest.mock("expo-notifications", () => ({
-  PermissionStatus: {
-    UNDETERMINED: "undetermined",
-    GRANTED: "granted",
-    DENIED: "denied",
-  },
-  getExpoPushTokenAsync: jest.fn(),
-  setNotificationHandler: jest.fn(),
-  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
-  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
-}));
-
-jest.mock("lucide-react-native", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return new Proxy(
-    {},
-    {
-      get: () => (props: any) => React.createElement(View, props),
-    },
-  );
-});
+const mockRouterBack = mockRouter.back;
+const mockCanGoBack = mockRouter.canGoBack;
 
 // Import component under test
 import CameraAttendance from "@/app/attendance/CameraAttendance";
@@ -153,7 +82,7 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
     it("triggers Linking.openSettings() when settings button is pressed", async () => {
       const spyOpenSettings = jest
         .spyOn(Linking, "openSettings")
-        .mockResolvedValue(undefined as any);
+        .mockResolvedValue(undefined);
 
       const { getByLabelText } = await render(<CameraAttendance />);
       const settingsBtn = getByLabelText("Buka Pengaturan Aplikasi");
@@ -181,18 +110,20 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
   });
 
   describe("Challenge 3: Hardware back press stress test in Auth Screens", () => {
-    let backPressHandler: (() => boolean) | null = null;
+    let backPressHandler:
+      | Parameters<typeof BackHandler.addEventListener>[1]
+      | null = null;
     let addEventListenerSpy: jest.SpyInstance;
 
     beforeEach(() => {
       backPressHandler = null;
       addEventListenerSpy = jest
         .spyOn(BackHandler, "addEventListener")
-        .mockImplementation((event: any, handler: any) => {
+        .mockImplementation((event, handler) => {
           if (event === "hardwareBackPress") {
             backPressHandler = handler;
           }
-          return { remove: jest.fn() } as any;
+          return { remove: jest.fn() };
         });
     });
 
@@ -206,7 +137,10 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
         await render(<LoginScreen />);
 
         expect(backPressHandler).not.toBeNull();
-        const result = backPressHandler!();
+        const result = backPressHandler!({
+          type: "hardwareBackPress",
+          timeStamp: Date.now(),
+        });
 
         expect(mockCanGoBack).toHaveBeenCalled();
         expect(mockRouterBack).not.toHaveBeenCalled();
@@ -218,7 +152,10 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
         await render(<LoginScreen />);
 
         expect(backPressHandler).not.toBeNull();
-        const result = backPressHandler!();
+        const result = backPressHandler!({
+          type: "hardwareBackPress",
+          timeStamp: Date.now(),
+        });
 
         expect(mockCanGoBack).toHaveBeenCalled();
         expect(mockRouterBack).toHaveBeenCalledTimes(1);
@@ -232,7 +169,10 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
         await render(<ActivateScreen />);
 
         expect(backPressHandler).not.toBeNull();
-        const result = backPressHandler!();
+        const result = backPressHandler!({
+          type: "hardwareBackPress",
+          timeStamp: Date.now(),
+        });
 
         expect(mockCanGoBack).toHaveBeenCalled();
         expect(mockRouterBack).not.toHaveBeenCalled();
@@ -244,7 +184,10 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
         await render(<ActivateScreen />);
 
         expect(backPressHandler).not.toBeNull();
-        const result = backPressHandler!();
+        const result = backPressHandler!({
+          type: "hardwareBackPress",
+          timeStamp: Date.now(),
+        });
 
         expect(mockCanGoBack).toHaveBeenCalled();
         expect(mockRouterBack).toHaveBeenCalledTimes(1);
@@ -258,7 +201,10 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
         await render(<ResetPasswordScreen />);
 
         expect(backPressHandler).not.toBeNull();
-        const result = backPressHandler!();
+        const result = backPressHandler!({
+          type: "hardwareBackPress",
+          timeStamp: Date.now(),
+        });
 
         expect(mockCanGoBack).toHaveBeenCalled();
         expect(mockRouterBack).not.toHaveBeenCalled();
@@ -270,7 +216,10 @@ describe("Milestone 1 Empirical & Adversarial Challenges", () => {
         await render(<ResetPasswordScreen />);
 
         expect(backPressHandler).not.toBeNull();
-        const result = backPressHandler!();
+        const result = backPressHandler!({
+          type: "hardwareBackPress",
+          timeStamp: Date.now(),
+        });
 
         expect(mockCanGoBack).toHaveBeenCalled();
         expect(mockRouterBack).toHaveBeenCalledTimes(1);

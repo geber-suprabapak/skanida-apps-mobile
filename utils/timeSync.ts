@@ -63,13 +63,18 @@ interface PersistedSyncData {
  * - DO NOT manually add timezone offset for display - it's automatic!
  * - Offset is time difference between server and device, NOT timezone offset
  */
+
+// Exported so logout/expiration cleanup can document that this device-cache
+// key is intentionally retained (see store/authStore.ts SESSION_STORAGE_KEYS).
+export const TIME_SYNC_STORAGE_KEY = "time_sync_data";
+
 class TimeSync {
   private timeOffset: number = 0;
   private lastSyncTime: number = 0;
   private readonly SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
   private readonly BACKGROUND_SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
   private readonly DRIFT_THRESHOLD = 5000; // 5 seconds
-  private readonly STORAGE_KEY = "time_sync_data";
+  private readonly STORAGE_KEY = TIME_SYNC_STORAGE_KEY;
   private syncPromise: Promise<void> | null = null;
   private backgroundSyncTimer: ReturnType<typeof setTimeout> | null = null;
   private appStateSubscription: any = null;

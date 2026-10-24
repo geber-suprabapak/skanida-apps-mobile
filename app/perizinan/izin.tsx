@@ -22,6 +22,13 @@ import useAuthStore from "~/store/authStore";
 import { Icon } from "~/components/ui/icon";
 import { cn, formatDateWIB } from "~/lib/utils";
 import { createPermit, listPermits } from "~/utils/bffMobileApi";
+import {
+  buildPermitAttachment,
+  isValidLeaveImageSize,
+  resolvePickedAsset,
+  validateLeaveForm,
+  type PermitCategory,
+} from "~/utils/leaveForm";
 import { actionableLeaveErrorMessage, BffRequestError } from "~/utils/bff";
 import { useUniwind } from "uniwind";
 import {
@@ -36,8 +43,6 @@ import {
   CloudUpload,
   CheckCircle2,
 } from "lucide-react-native";
-
-type PermitCategory = "sakit" | "pergi";
 
 interface ImageData {
   uri: string;
@@ -55,9 +60,6 @@ interface UIState {
   checking: boolean;
 }
 const IMAGE_QUALITY = 0.8;
-const IMAGE_FORMAT = "jpeg";
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
-const MIN_DESCRIPTION_LENGTH = 10;
 const MAX_DESCRIPTION_LENGTH = 500;
 
 const CATEGORY_LABELS = {
@@ -69,10 +71,6 @@ const CATEGORY_DESCRIPTIONS = {
   sakit: "Kesehatan",
   pergi: "Urusan Pribadi",
 } satisfies Record<PermitCategory, string>;
-const getImageContentType = (uri: string): string => {
-  const ext = uri.split(".").pop()?.toLowerCase();
-  return ext === "png" ? "image/png" : "image/jpeg";
-};
 
 const CategoryCard: React.FC<{
   value: PermitCategory;
@@ -263,17 +261,11 @@ export default function PerizinanScreen() {
   const descriptionInputRef = useRef<TextInput>(null);
 
   // ---- Computed State ----
-  const validation = useMemo(
-    () => ({
-      category: !!formData.category,
-      description: formData.description.trim().length >= MIN_DESCRIPTION_LENGTH,
-      image: !!formData.image,
-    }),
-    [formData],
-  );
+  // The Leave Request attachment is optional: `validateLeaveForm` treats a
+  // missing image as valid and only validates the file when one is present.
+  const validation = useMemo(() => validateLeaveForm(formData), [formData]);
 
-  const isFormValid =
-    validation.category && validation.description && validation.image;
+  const isFormValid = validation.valid;
   const canSubmit =
     isFormValid &&
     !uiState.uploading &&
@@ -444,11 +436,12 @@ export default function PerizinanScreen() {
 
   const handleImageResult = useCallback(
     async (result: ImagePicker.ImagePickerResult): Promise<void> => {
-      if (result.canceled || !result.assets?.[0]) {
+      // A cancelled or empty picker result leaves the form unchanged; the
+      // Leave Request stays valid without an attachment.
+      const asset = resolvePickedAsset(result);
+      if (!asset) {
         return;
       }
-
-      const asset = result.assets[0];
 
       // Downscale photo attachment before saving to maximum 1280px dimension at 0.7 JPEG quality
       const actions: ImageManipulator.Action[] = [];
@@ -492,7 +485,7 @@ export default function PerizinanScreen() {
           ? fileInfo.size
           : await resolveAssetFileSize(asset);
 
-      if (resolvedSize > MAX_IMAGE_SIZE_BYTES) {
+      if (!isValidLeaveImageSize(resolvedSize)) {
         Alert.alert(
           "Error",
           "Ukuran file melebihi 10 MB. Silakan pilih file yang lebih kecil.",
@@ -583,14 +576,6 @@ export default function PerizinanScreen() {
       return;
     }
 
-    if (!formData.image) {
-      Alert.alert(
-        "Error",
-        "Foto bukti wajib dilampirkan untuk pengajuan izin.",
-      );
-      return;
-    }
-
     try {
       setUIState((prev) => ({ ...prev, uploading: true }));
 
@@ -601,14 +586,12 @@ export default function PerizinanScreen() {
         );
       }
 
+      // The attachment is optional: `buildPermitAttachment` returns undefined
+      // without an image so the multipart body omits the `attachment` field.
       await createPermit({
         category: formData.category,
         description: formData.description,
-        attachment: {
-          uri: formData.image.uri,
-          name: `permit_${Date.now()}.${IMAGE_FORMAT}`,
-          type: getImageContentType(formData.image.uri),
-        },
+        attachment: buildPermitAttachment(formData.image),
       });
 
       setHasSubmittedToday(true);
@@ -780,7 +763,7 @@ export default function PerizinanScreen() {
               </View>
               <View className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
                 <Text className="text-xs font-bold text-orange-600 dark:text-orange-400">
-                  WAJIB
+                  OPSIONAL
                 </Text>
               </View>
             </View>

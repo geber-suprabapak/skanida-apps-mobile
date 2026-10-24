@@ -82,6 +82,32 @@ export class LogtoPermanentAuthError extends Error {
 let sessionVersion = 0;
 let activeRefreshPromise: Promise<LogtoSession | null> | null = null;
 
+/**
+ * Invoked when a permanent (non-retryable) session expiry clears the stored
+ * session while the app is running. The auth store registers a handler so an
+ * already-rendered screen cannot retain stale `user` state after the session
+ * is gone. Keeping this as a callback avoids a circular import between
+ * utils/logto.ts and store/authStore.ts.
+ */
+export type LogtoSessionExpiredHandler = (reason: string) => void;
+
+let sessionExpiredHandler: LogtoSessionExpiredHandler | null = null;
+
+export function setLogtoSessionExpiredHandler(
+  handler: LogtoSessionExpiredHandler | null,
+) {
+  sessionExpiredHandler = handler;
+}
+
+function notifySessionExpired(reason: string) {
+  try {
+    sessionExpiredHandler?.(reason);
+  } catch (handlerError) {
+    // A broken handler must never break session resolution itself.
+    if (__DEV__) console.error("Logto session-expired handler failed:", handlerError);
+  }
+}
+
 export async function saveLogtoSession(session: LogtoSession) {
   sessionVersion++;
   activeRefreshPromise = null;
@@ -158,6 +184,9 @@ export async function getLogtoSession(): Promise<LogtoSession | null> {
     } catch (error) {
       if (error instanceof LogtoPermanentAuthError) {
         await clearLogtoSession();
+        // Route the permanent expiry through the registered auth-store reset
+        // boundary so rendered screens drop stale user/profile state.
+        notifySessionExpired(error.message);
         return null;
       }
       if (sessionVersion !== currentVersion) {

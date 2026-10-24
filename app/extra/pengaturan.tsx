@@ -13,7 +13,6 @@ import { Image } from "expo-image";
 void Image;
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
 import * as Updates from "expo-updates";
@@ -26,6 +25,7 @@ import { faceApiLog } from "~/utils/faceApiDebug";
 import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import {
+  AlertCircle,
   CircleFadingArrowUp,
   LogOut,
   Moon,
@@ -63,6 +63,9 @@ function Pengaturan() {
   const [studentNis, setStudentNis] = useState<string>(
     user?.user_metadata?.nis || "",
   );
+  // Degraded profile-read indicator (M08): shown when the latest getProfile()
+  // call failed, with a retry that re-invokes the profile read.
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
@@ -96,6 +99,7 @@ function Pengaturan() {
       setProfileName("Pengguna Skanida");
       setProfileAvatar(null);
       setStudentNis("");
+      setProfileLoadFailed(false);
       return;
     }
     setProfileName(
@@ -118,8 +122,10 @@ function Pengaturan() {
       if (data.nis) {
         setStudentNis(data.nis);
       }
+      setProfileLoadFailed(false);
     } catch (error) {
       if (__DEV__) console.error("Error fetching settings profile:", error);
+      setProfileLoadFailed(true);
     }
   }, [user]);
 
@@ -150,7 +156,10 @@ function Pengaturan() {
         onPress: async () => {
           try {
             await useAuthStore.getState().logout();
-            await AsyncStorage.clear();
+            // Session-scoped cleanup (SecureStore, in-memory user/profile,
+            // session keys) is centralized in the auth-store logout boundary;
+            // unrelated preferences (notification opt-out, time cache, theme)
+            // are retained there, so no AsyncStorage.clear() here.
             router.replace("/auth/AuthSelector");
           } catch (error) {
             if (__DEV__) console.error("Logout error:", error);
@@ -241,7 +250,9 @@ function Pengaturan() {
               <View className="relative">
                 <Avatar
                   size="lg"
-                  fallback={(profileName || user?.email)?.charAt(0).toUpperCase() || "S"}
+                  fallback={
+                    (profileName || user?.email)?.charAt(0).toUpperCase() || "S"
+                  }
                   className="w-20 h-20"
                   source={avatarUrl ?? undefined}
                 />
@@ -289,6 +300,32 @@ function Pengaturan() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {profileLoadFailed && (
+              <View
+                className="flex-row items-center px-5 py-3 border-t border-border/50 bg-red-50"
+                accessibilityLabel="Profil gagal dimuat"
+              >
+                <Icon as={AlertCircle} className="size-4 text-red-600 mr-2" />
+                <Text className="flex-1 text-xs text-muted-foreground">
+                  Data profil terbaru gagal dimuat.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    void fetchProfile();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Coba Muat Ulang Profil"
+                  accessibilityHint="Ketuk dua kali untuk memuat ulang data profil"
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-xs font-bold text-blue-600">
+                    Coba Lagi
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </Card>
         </View>
 

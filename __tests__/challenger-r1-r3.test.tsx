@@ -2,13 +2,14 @@ import * as React from "react";
 import fs from "node:fs";
 import path from "node:path";
 import { render, cleanup } from "@testing-library/react-native";
-import { View, Alert, BackHandler } from "react-native";
+import { Alert, BackHandler } from "react-native";
+import { setTestTheme } from "../__mocks__/uniwind";
 // @ts-expect-error missing dev types
 import * as babelParser from "@babel/parser";
 // @ts-expect-error missing dev types
 import babelTraverse from "@babel/traverse";
 
-const traverse = (babelTraverse as any).default || babelTraverse;
+const traverse = babelTraverse;
 const ROOT = path.resolve(__dirname, "..");
 
 function readSource(relPath: string): string {
@@ -23,67 +24,6 @@ function parseAst(relPath: string) {
   });
 }
 
-// Configurable uniwind theme state for theme testing
-let mockTheme = "light";
-jest.mock("uniwind", () => ({
-  useUniwind: () => ({
-    theme: mockTheme,
-    isDark: mockTheme === "dark",
-  }),
-  withUniwind: jest.fn((Comp: any) => Comp),
-}));
-
-// Mock expo-router Tabs
-jest.mock("expo-router", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-
-  const TabsComponent = (props: any) => {
-    return React.createElement(View, { testID: "mock-tabs", ...props }, props.children);
-  };
-  TabsComponent.Screen = (props: any) =>
-    React.createElement(View, { testID: `mock-tab-${props.name}` });
-
-  return {
-    useRouter: () => ({
-      back: jest.fn(),
-      canGoBack: jest.fn(),
-      push: jest.fn(),
-      replace: jest.fn(),
-      navigate: jest.fn(),
-    }),
-    useFocusEffect: (callback: () => any) => {
-      return callback();
-    },
-    useLocalSearchParams: () => ({}),
-    Stack: {
-      Screen: () => null,
-    },
-    Tabs: TabsComponent,
-  };
-});
-
-jest.mock("expo-image", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    Image: (props: any) =>
-      React.createElement(View, { ...props, testID: "mock-expo-image" }),
-  };
-});
-
-jest.mock("lucide-react-native", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return new Proxy(
-    {},
-    {
-      get: () => (props: any) =>
-        React.createElement(View, { ...props, testID: "mock-lucide-icon" }),
-    },
-  );
-});
-
 import { Avatar } from "../components/ui/avatar";
 import LoadingScreen from "../app/auth/LoadingScreen";
 import TabLayout from "../app/(tabs)/_layout";
@@ -91,7 +31,7 @@ import TabLayout from "../app/(tabs)/_layout";
 describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockTheme = "light";
+    setTestTheme("light");
   });
 
   afterEach(() => {
@@ -121,8 +61,10 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
                     const expr = attr.value.expression;
                     if (expr.type === "ObjectExpression") {
                       for (const prop of expr.properties) {
-                        if (prop.key.name === "width") widthVal = prop.value.value;
-                        if (prop.key.name === "height") heightVal = prop.value.value;
+                        if (prop.key.name === "width")
+                          widthVal = prop.value.value;
+                        if (prop.key.name === "height")
+                          heightVal = prop.value.value;
                       }
                     }
                   }
@@ -176,8 +118,10 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
                       const expr = attr.value.expression;
                       if (expr.type === "ObjectExpression") {
                         for (const prop of expr.properties) {
-                          if (prop.key.name === "width") widthVal = prop.value.value;
-                          if (prop.key.name === "height") heightVal = prop.value.value;
+                          if (prop.key.name === "width")
+                            widthVal = prop.value.value;
+                          if (prop.key.name === "height")
+                            heightVal = prop.value.value;
                         }
                       }
                     }
@@ -217,8 +161,10 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
                     const expr = attr.value.expression;
                     if (expr.type === "ObjectExpression") {
                       for (const prop of expr.properties) {
-                        if (prop.key.name === "width") widthVal = prop.value.value;
-                        if (prop.key.name === "height") heightVal = prop.value.value;
+                        if (prop.key.name === "width")
+                          widthVal = prop.value.value;
+                        if (prop.key.name === "height")
+                          heightVal = prop.value.value;
                       }
                     }
                   }
@@ -294,8 +240,10 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
                           const expr = attr.value.expression;
                           if (expr.type === "ObjectExpression") {
                             for (const prop of expr.properties) {
-                              if (prop.key.name === "width") widthVal = prop.value.value;
-                              if (prop.key.name === "height") heightVal = prop.value.value;
+                              if (prop.key.name === "width")
+                                widthVal = prop.value.value;
+                              if (prop.key.name === "height")
+                                heightVal = prop.value.value;
                             }
                           }
                         }
@@ -338,12 +286,18 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
           JSXElement(path: any) {
             if (path.node.openingElement.name.name === "Image") {
               for (const attr of path.node.openingElement.attributes) {
-                if (attr.type === "JSXAttribute" && attr.name.name === "style") {
+                if (
+                  attr.type === "JSXAttribute" &&
+                  attr.name.name === "style"
+                ) {
                   if (attr.value?.type === "JSXExpressionContainer") {
                     const expr = attr.value.expression;
                     if (expr.type === "ObjectExpression") {
                       for (const prop of expr.properties) {
-                        if (prop.key?.name === "width" || prop.key?.name === "height") {
+                        if (
+                          prop.key?.name === "width" ||
+                          prop.key?.name === "height"
+                        ) {
                           // Must not be 0
                           expect(prop.value.value).not.toBe(0);
                           expect(prop.value.value).not.toBe("0");
@@ -375,7 +329,10 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
             const parent = path.parentPath;
             if (parent && parent.node.type === "JSXElement") {
               for (const attr of parent.node.openingElement.attributes) {
-                if (attr.type === "JSXAttribute" && attr.name.name === "className") {
+                if (
+                  attr.type === "JSXAttribute" &&
+                  attr.name.name === "className"
+                ) {
                   containerClass = attr.value?.value || "";
                 }
               }
@@ -392,7 +349,7 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
     });
 
     it("app/(tabs)/_layout.tsx: adapts tabBarStyle dynamically in dark mode", () => {
-      mockTheme = "dark";
+      setTestTheme("dark");
       const tree = TabLayout();
       expect(tree).toBeDefined();
       const screenOptions = tree.props.screenOptions;
@@ -405,7 +362,7 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
     });
 
     it("app/(tabs)/_layout.tsx: adapts tabBarStyle dynamically in light mode", () => {
-      mockTheme = "light";
+      setTestTheme("light");
       const tree = TabLayout();
       expect(tree).toBeDefined();
       const screenOptions = tree.props.screenOptions;
@@ -438,7 +395,10 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
             const container = path.parentPath;
             if (container && container.node.type === "JSXElement") {
               for (const attr of container.node.openingElement.attributes) {
-                if (attr.type === "JSXAttribute" && attr.name.name === "className") {
+                if (
+                  attr.type === "JSXAttribute" &&
+                  attr.name.name === "className"
+                ) {
                   stickyContainerClasses = attr.value?.value || "";
                 }
               }
@@ -446,10 +406,15 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
               // Check grandparent
               const grandparent = container.parentPath;
               if (grandparent && grandparent.node.type === "JSXElement") {
-                if (grandparent.node.openingElement.name.name === "KeyboardAvoidingView") {
+                if (
+                  grandparent.node.openingElement.name.name ===
+                  "KeyboardAvoidingView"
+                ) {
                   submitParentIsKav = true;
                 }
-                if (grandparent.node.openingElement.name.name === "ScrollView") {
+                if (
+                  grandparent.node.openingElement.name.name === "ScrollView"
+                ) {
                   submitParentIsScrollView = true;
                 }
               }
@@ -472,8 +437,12 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
       expect(source).not.toContain("bg-slate-900");
 
       // Verify bg-primary with active state and shadow
-      expect(source).toMatch(/canSubmit\s*\?\s*"bg-primary shadow-primary\/30 active:opacity-90"/);
-      expect(source).toMatch(/canSubmit\s*\?\s*"text-primary-foreground"\s*:\s*"text-muted-foreground"/);
+      expect(source).toMatch(
+        /canSubmit\s*\?\s*"bg-primary shadow-primary\/30 active:opacity-90"/,
+      );
+      expect(source).toMatch(
+        /canSubmit\s*\?\s*"text-primary-foreground"\s*:\s*"text-muted-foreground"/,
+      );
       expect(source).toContain("border-primary-foreground");
     });
   });
@@ -567,7 +536,9 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
         back: jest.fn(),
       };
       const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
-      const exitAppSpy = jest.spyOn(BackHandler, "exitApp").mockImplementation(() => {});
+      const exitAppSpy = jest
+        .spyOn(BackHandler, "exitApp")
+        .mockImplementation(() => {});
 
       const handleBackPress = () => {
         if (mockRouter.canGoBack()) {
@@ -599,15 +570,16 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
 
       const alertArgs = alertSpy.mock.calls[0];
       expect(alertArgs[0]).toBe("Keluar Aplikasi");
-      const buttons = alertArgs[2] as any[];
+      const buttons = alertArgs[2] ?? [];
       expect(buttons.length).toBe(2);
 
       const cancelButton = buttons.find((b) => b.text === "Batal");
       expect(cancelButton).toBeDefined();
 
       const exitButton = buttons.find((b) => b.text === "Keluar");
-      expect(exitButton).toBeDefined();
+      if (!exitButton) throw new Error("Expected exit button in alert");
       expect(exitButton.style).toBe("destructive");
+      if (!exitButton.onPress) throw new Error("Expected exit button action");
 
       // Press exit button
       exitButton.onPress();
@@ -620,17 +592,25 @@ describe("Empirical Challenge: Requirements R1, R2, and R3 Invariants", () => {
     it("app/_layout.tsx renders official LoadingScreen during !isAuthReady and eliminates raw ActivityIndicator", () => {
       const source = readSource("app/_layout.tsx");
 
-      expect(source).toContain('import LoadingScreen from "./auth/LoadingScreen";');
+      expect(source).toContain(
+        'import LoadingScreen from "./auth/LoadingScreen";',
+      );
       expect(source).toMatch(/!isAuthReady[\s\S]*?<LoadingScreen \/>/);
-      expect(source).not.toContain('<ActivityIndicator size="large" color="#0066FF" />');
+      expect(source).not.toContain(
+        '<ActivityIndicator size="large" color="#0066FF" />',
+      );
     });
 
     it("app/index.tsx renders official LoadingScreen during session verification", () => {
       const source = readSource("app/index.tsx");
 
-      expect(source).toContain('import LoadingScreen from "./auth/LoadingScreen";');
+      expect(source).toContain(
+        'import LoadingScreen from "./auth/LoadingScreen";',
+      );
       expect(source).toContain("<LoadingScreen />");
-      expect(source).not.toContain('<ActivityIndicator size="large" color="#0000ff" />');
+      expect(source).not.toContain(
+        '<ActivityIndicator size="large" color="#0000ff" />',
+      );
       expect(source).not.toContain("setLoadingMessage");
     });
 

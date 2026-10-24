@@ -112,10 +112,7 @@ export default Sentry.wrap(function RootLayout() {
       <SafeAreaProvider>
         {initError ? (
           <View className="flex-1 items-center justify-center bg-background px-8">
-            <Text
-              variant="h3"
-              className="text-red-600 dark:text-red-500 mb-2"
-            >
+            <Text variant="h3" className="text-red-600 dark:text-red-500 mb-2">
               Initialization Error
             </Text>
             <Text className="text-center text-muted-foreground">

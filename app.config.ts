@@ -91,6 +91,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
     ],
+    // SAFETY: Expo runs this typed ConfigPlugin at config evaluation; ExpoConfig's plugins type only models package string/tuple forms.
     withSizeOptimizations as any,
     [
       "expo-notifications",

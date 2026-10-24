@@ -234,6 +234,8 @@ export default function Activate() {
                   <Input
                     placeholder="Masukkan NIS Anda"
                     placeholderTextColor="#6B7280"
+                    accessibilityLabel="NIS"
+                    accessibilityHint="Masukkan nomor induk siswa Anda untuk memulai aktivasi"
                     keyboardType="numeric"
                     value={nis}
                     onChangeText={(text) => {
@@ -309,8 +311,8 @@ export default function Activate() {
                           NIS siap diperiksa
                         </Text>
                         <Text className="text-muted-foreground">
-                          Sistem sekolah akan memvalidasi NIS terhadap data siswa
-                          saat pendaftaran dikirim.
+                          Sistem sekolah akan memvalidasi NIS terhadap data
+                          siswa saat pendaftaran dikirim.
                         </Text>
                       </View>
                     </View>
@@ -361,6 +363,8 @@ export default function Activate() {
                       </Text>
                       <Input
                         placeholder="Masukkan email Anda"
+                        accessibilityLabel="Email"
+                        accessibilityHint="Email untuk aktivasi akun Anda"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         value={email}
@@ -385,6 +389,8 @@ export default function Activate() {
                       <View className="relative">
                         <Input
                           placeholder="Masukkan password Anda"
+                          accessibilityLabel="Password"
+                          accessibilityHint="Minimal 8 karakter dengan huruf besar, huruf kecil, dan angka"
                           secureTextEntry={!showPassword}
                           value={password}
                           onChangeText={(text) => {
@@ -426,6 +432,8 @@ export default function Activate() {
                       <View className="relative">
                         <Input
                           placeholder="Konfirmasi password Anda"
+                          accessibilityLabel="Konfirmasi Password"
+                          accessibilityHint="Ulangi password yang sama dengan di atas"
                           secureTextEntry={!showConfirmPassword}
                           value={confirmPassword}
                           onChangeText={(text) => {

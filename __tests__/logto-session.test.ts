@@ -1,9 +1,22 @@
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   clearLogtoSession,
   getLogtoSession,
   getLogtoUser,
+  type MobileAuthUser,
 } from "~/utils/logto";
+import useAuthStore, {
+  SESSION_STORAGE_KEYS,
+  type UserProfile,
+} from "~/store/authStore";
+import { NOTIFICATION_OPT_OUT_PREFIX } from "~/utils/notifications";
+import { TIME_SYNC_STORAGE_KEY } from "~/utils/timeSync";
+
+jest.mock("expo-web-browser", () => ({
+  openAuthSessionAsync: jest.fn(async () => ({ type: "success" })),
+}));
 
 type TestJwtClaims = {
   sub: string;
@@ -297,5 +310,194 @@ describe("Logto Session Resilience and Deduplication", () => {
     expect(result).toBeNull();
     // SecureStore must NOT contain the resurrected session
     expect(mockStore["astra-logto-session"]).toBeUndefined();
+  });
+});
+
+describe("Rendered auth state and logout cleanup consistency (M02)", () => {
+  const originalEndpoint = process.env.EXPO_PUBLIC_LOGTO_ENDPOINT;
+  const originalAppId = process.env.EXPO_PUBLIC_LOGTO_APP_ID;
+  let mockStore: Record<string, string> = {};
+
+  const renderedUser: MobileAuthUser = {
+    id: "user-render",
+    username: "render",
+    email: "render@example.com",
+    name: "Rendered User",
+    roles: ["student"],
+    mustChangePassword: false,
+  };
+
+  const renderedProfile: UserProfile = {
+    id: "user-render",
+    user_id: "user-render",
+    full_name: "Rendered User",
+    email: "render@example.com",
+    nis: "12345",
+    class_name: "X-A",
+    absence_number: "01",
+    avatar_url: null,
+    role: "student",
+    gender: "L",
+    notification_token: null,
+    lifecycle_status: "approved",
+  };
+
+  const seedSession = (overrides: Record<string, unknown> = {}) => {
+    mockStore["astra-logto-session"] = JSON.stringify({
+      access_token: "expired-token",
+      refresh_token: "refresh-1",
+      expires_at: Date.now() - 5_000,
+      id_token: createFakeJwt({ sub: "user-render", roles: ["student"] }),
+      ...overrides,
+    });
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockStore = {};
+    process.env.EXPO_PUBLIC_LOGTO_ENDPOINT = "https://auth.example.com";
+    process.env.EXPO_PUBLIC_LOGTO_APP_ID = "skanida-mobile";
+
+    jest
+      .spyOn(SecureStore, "getItemAsync")
+      .mockImplementation(async (key: string) => mockStore[key] ?? null);
+    jest
+      .spyOn(SecureStore, "setItemAsync")
+      .mockImplementation(async (key: string, value: string) => {
+        mockStore[key] = value;
+      });
+    jest
+      .spyOn(SecureStore, "deleteItemAsync")
+      .mockImplementation(async (key: string) => {
+        delete mockStore[key];
+      });
+
+    // Render a session-expired-adjacent UI state: authenticated store + the
+    // session-scoped and preference keys that must (not) survive cleanup.
+    useAuthStore.setState({ user: renderedUser, userProfile: renderedProfile });
+    const asyncStorage = AsyncStorage as unknown as {
+      __INTERNAL_MOCK_STORAGE__: Record<string, string>;
+    };
+    asyncStorage.__INTERNAL_MOCK_STORAGE__ = {
+      user_profile_cache: '{"user_id":"user-render","full_name":"cached"}',
+      [`${NOTIFICATION_OPT_OUT_PREFIX}:user-render`]: "true",
+      [TIME_SYNC_STORAGE_KEY]: JSON.stringify({
+        offset: 1200,
+        timestamp: Date.now(),
+        source: "server",
+      }),
+    };
+  });
+
+  afterEach(async () => {
+    await clearLogtoSession();
+    useAuthStore.setState({ user: null, userProfile: null });
+    if (originalEndpoint !== undefined) {
+      process.env.EXPO_PUBLIC_LOGTO_ENDPOINT = originalEndpoint;
+    } else {
+      delete process.env.EXPO_PUBLIC_LOGTO_ENDPOINT;
+    }
+    if (originalAppId !== undefined) {
+      process.env.EXPO_PUBLIC_LOGTO_APP_ID = originalAppId;
+    } else {
+      delete process.env.EXPO_PUBLIC_LOGTO_APP_ID;
+    }
+    jest.restoreAllMocks();
+  });
+
+  it("resets the rendered user/profile when an in-session refresh fails permanently with invalid_grant", async () => {
+    seedSession();
+    jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "invalid_grant" }),
+    } as Response);
+
+    const session = await getLogtoSession();
+
+    expect(session).toBeNull();
+    expect(mockStore["astra-logto-session"]).toBeUndefined();
+    // The already-rendered screen must not retain stale auth state.
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().userProfile).toBeNull();
+    // The passive-expiry handler must remove session-scoped storage too.
+    for (const key of SESSION_STORAGE_KEYS) {
+      expect(await AsyncStorage.getItem(key)).toBeNull();
+    }
+    // ...while unrelated preferences survive a passive expiry unchanged.
+    expect(
+      await AsyncStorage.getItem(`${NOTIFICATION_OPT_OUT_PREFIX}:user-render`),
+    ).toBe("true");
+    expect(await AsyncStorage.getItem(TIME_SYNC_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("keeps the rendered user/profile when a refresh fails transiently", async () => {
+    seedSession();
+    jest
+      .spyOn(global, "fetch")
+      .mockRejectedValue(new TypeError("Network request failed"));
+
+    const session = await getLogtoSession();
+
+    expect(session).not.toBeNull();
+    expect(mockStore["astra-logto-session"]).toBeDefined();
+    expect(useAuthStore.getState().user?.id).toBe("user-render");
+    expect(useAuthStore.getState().userProfile?.user_id).toBe("user-render");
+  });
+
+  it("logout clears SecureStore and in-memory profile/user but retains notification opt-out and the time cache", async () => {
+    seedSession({ expires_at: Date.now() + 120_000 }); // valid session, no refresh needed
+
+    await useAuthStore.getState().logout();
+
+    // SecureStore session cleared (via logoutLogtoSession → clearLogtoSession)
+    expect(mockStore["astra-logto-session"]).toBeUndefined();
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled();
+    // In-memory state cleared
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().userProfile).toBeNull();
+    // Session-scoped AsyncStorage removed
+    for (const key of SESSION_STORAGE_KEYS) {
+      expect(await AsyncStorage.getItem(key)).toBeNull();
+    }
+    // Unrelated preferences retained
+    expect(
+      await AsyncStorage.getItem(`${NOTIFICATION_OPT_OUT_PREFIX}:user-render`),
+    ).toBe("true");
+    expect(await AsyncStorage.getItem(TIME_SYNC_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("does not reset rendered state into a resurrected session when logout clears the session mid-refresh", async () => {
+    seedSession();
+
+    let resolveFetch: ((value: Response) => void) | undefined;
+    jest.spyOn(global, "fetch").mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+
+    // Refresh goes in-flight; the user then logs out (not awaited: logout
+    // itself awaits the in-flight refresh promise before clearing).
+    const refreshOp = getLogtoSession();
+    const logoutOp = useAuthStore.getState().logout();
+
+    // Let the refresh actually reach the pending network call before resolving it.
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(useAuthStore.getState().user).not.toBeNull();
+
+    // The in-flight refresh completes with a permanent rejection: no
+    // resurrection and no stale re-render.
+    resolveFetch!(
+      new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }),
+    );
+    const result = await refreshOp;
+    await logoutOp;
+    expect(result).toBeNull();
+    expect(mockStore["astra-logto-session"]).toBeUndefined();
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().userProfile).toBeNull();
   });
 });

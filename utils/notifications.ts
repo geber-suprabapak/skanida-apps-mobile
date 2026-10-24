@@ -40,7 +40,9 @@ type ClearNotificationOptions = {
 // Constants & module-level state
 // ---------------------------------------------------------------------------
 
-const NOTIFICATION_OPT_OUT_PREFIX = "notification-opt-out";
+// Exported so logout/expiration cleanup can document which preference keys
+// are intentionally retained (see store/authStore.ts SESSION_STORAGE_KEYS).
+export const NOTIFICATION_OPT_OUT_PREFIX = "notification-opt-out";
 const EXPO_PUSH_TOKEN_MAX_RETRIES = 3;
 
 let activeNotificationSync: {

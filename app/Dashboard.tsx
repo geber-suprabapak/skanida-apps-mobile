@@ -653,6 +653,10 @@ export default function Dashboard() {
                   size="lg"
                   className="w-full border-border"
                   onPress={async () => {
+                    // Exit cleanup (SecureStore session, in-memory
+                    // user/profile, session-scoped AsyncStorage keys) is
+                    // centralized in the auth-store logout boundary, matching
+                    // the Settings exit path; unrelated preferences are kept.
                     await useAuthStore.getState().logout();
                     router.replace("/auth/AuthSelector");
                   }}

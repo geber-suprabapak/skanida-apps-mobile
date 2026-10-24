@@ -5,6 +5,16 @@ type UniwindConfig = {
   color?: { fromClassName: string; styleProperty: string };
 };
 
+let testTheme = "light";
+
+export function setTestTheme(theme: string) {
+  testTheme = theme;
+}
+
+export function useUniwind() {
+  return { theme: testTheme, isDark: testTheme === "dark" };
+}
+
 export const withUniwind = jest.fn(
   <Props extends { className?: string; size?: number; style?: unknown }>(
     Component: React.ComponentType<Props>,

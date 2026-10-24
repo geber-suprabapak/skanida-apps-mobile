@@ -139,6 +139,8 @@ export default function ResetPassword() {
                 </Text>
                 <Input
                   placeholder="Masukkan NIS"
+                  accessibilityLabel="NIS"
+                  accessibilityHint="Nomor induk siswa yang passwordnya akan direset"
                   keyboardType="number-pad"
                   value={nis}
                   onChangeText={setNis}
@@ -153,6 +155,8 @@ export default function ResetPassword() {
                 </Text>
                 <Input
                   placeholder="Kode dari administrator"
+                  accessibilityLabel="Kode pemulihan"
+                  accessibilityHint="Kode pemulihan yang diberikan administrator sekolah"
                   value={code}
                   onChangeText={setCode}
                   editable={!loading}
@@ -166,6 +170,8 @@ export default function ResetPassword() {
                 </Text>
                 <Input
                   placeholder="Minimal 8 karakter"
+                  accessibilityLabel="Password baru"
+                  accessibilityHint="Minimal 8 karakter"
                   secureTextEntry
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -180,6 +186,8 @@ export default function ResetPassword() {
                 </Text>
                 <Input
                   placeholder="Ulangi password baru"
+                  accessibilityLabel="Konfirmasi password"
+                  accessibilityHint="Ulangi password baru yang sama"
                   secureTextEntry
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}

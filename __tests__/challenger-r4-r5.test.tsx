@@ -2,38 +2,12 @@ import * as React from "react";
 import fs from "node:fs";
 import path from "node:path";
 import { render } from "@testing-library/react-native";
-import { View, Text as RNText } from "react-native";
 
 const ROOT = path.resolve(__dirname, "..");
 
 function readSource(relPath: string): string {
   return fs.readFileSync(path.join(ROOT, relPath), "utf8");
 }
-
-// Mocks
-jest.mock("uniwind", () => ({
-  useUniwind: () => ({ theme: "light", isDark: false }),
-  withUniwind: jest.fn((Comp: any) => Comp),
-}));
-
-jest.mock("expo-image", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    Image: (props: any) => React.createElement(View, { ...props, testID: "mock-expo-image" }),
-  };
-});
-
-jest.mock("lucide-react-native", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return new Proxy(
-    {},
-    {
-      get: () => (props: any) => React.createElement(View, { ...props, testID: "mock-lucide-icon" }),
-    },
-  );
-});
 
 import { CalendarDayComponent } from "../components/attendance-calendar/CalendarDay";
 import { Avatar } from "../components/ui/avatar";
@@ -56,15 +30,23 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
       const { toJSON } = await render(
         <CalendarDayComponent day={futureDay} isDarkColorScheme={false} />,
       );
-      const json = toJSON() as any;
+      const json = toJSON();
+      if (!json) throw new Error("Expected CalendarDay to render a host node");
       expect(json.props.className).toContain("opacity-30");
       expect(json.props.className).not.toContain("bg-muted");
       expect(json.props.className).not.toContain("border-primary");
 
       // Check text inside
       const textChild = json.children.find((c: any) => c.type === "Text");
-      expect(textChild.props.className).toContain("text-muted-foreground/40");
-      expect(textChild.props.className).toContain("font-normal");
+      if (!textChild) throw new Error("Expected CalendarDay text node");
+      expect(textChild).toMatchObject({
+        props: {
+          className: expect.stringContaining("text-muted-foreground/40"),
+        },
+      });
+      expect(textChild).toMatchObject({
+        props: { className: expect.stringContaining("font-normal") },
+      });
     });
 
     it("renders dark mode future dates without bg-muted or accent", async () => {
@@ -79,7 +61,8 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
       const { toJSON } = await render(
         <CalendarDayComponent day={futureDay} isDarkColorScheme={true} />,
       );
-      const json = toJSON() as any;
+      const json = toJSON();
+      if (!json) throw new Error("Expected CalendarDay to render a host node");
       expect(json.props.className).toContain("opacity-30");
       expect(json.props.className).not.toContain("bg-muted");
     });
@@ -94,20 +77,33 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
       };
 
       const { toJSON } = await render(
-        <CalendarDayComponent day={todayWithoutAttendance} isDarkColorScheme={false} />,
+        <CalendarDayComponent
+          day={todayWithoutAttendance}
+          isDarkColorScheme={false}
+        />,
       );
-      const json = toJSON() as any;
-      expect(json.props.className).toContain("border-2 border-primary bg-primary/10");
+      const json = toJSON();
+      if (!json) throw new Error("Expected CalendarDay to render a host node");
+      expect(json.props.className).toContain(
+        "border-2 border-primary bg-primary/10",
+      );
 
       const textChild = json.children.find((c: any) => c.type === "Text");
-      expect(textChild.props.className).toContain("text-primary font-bold");
+      if (!textChild) throw new Error("Expected CalendarDay text node");
+      expect(textChild).toMatchObject({
+        props: { className: expect.stringContaining("text-primary font-bold") },
+      });
 
       // Verify indicator dot exists
       const dot = json.children.find(
-        (c: any) => c.type === "View" && c.props.className?.includes("rounded-full bg-primary"),
+        (c: any) =>
+          c.type === "View" &&
+          c.props.className?.includes("rounded-full bg-primary"),
       );
-      expect(dot).toBeDefined();
-      expect(dot.props.className).toContain("w-1.5 h-1.5");
+      if (!dot) throw new Error("Expected CalendarDay indicator dot");
+      expect(dot).toMatchObject({
+        props: { className: expect.stringContaining("w-1.5 h-1.5") },
+      });
     });
 
     it("renders past attended dates with correct status badges and no today ring", async () => {
@@ -129,12 +125,16 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
       const { toJSON } = await render(
         <CalendarDayComponent day={pastAttended} isDarkColorScheme={false} />,
       );
-      const json = toJSON() as any;
+      const json = toJSON();
+      if (!json) throw new Error("Expected CalendarDay to render a host node");
       expect(json.props.className).toContain("bg-emerald-400/50");
       expect(json.props.className).not.toContain("border-primary");
 
       const textChild = json.children.find((c: any) => c.type === "Text");
-      expect(textChild.props.className).toContain("text-emerald-600");
+      if (!textChild) throw new Error("Expected CalendarDay text node");
+      expect(textChild).toMatchObject({
+        props: { className: expect.stringContaining("text-emerald-600") },
+      });
     });
 
     it("renders past sick and leave days with respective color accents", async () => {
@@ -153,7 +153,10 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
       const { toJSON: leaveJson } = await render(
         <CalendarDayComponent day={leaveDay} isDarkColorScheme={false} />,
       );
-      expect((leaveJson() as any).props.className).toContain("bg-blue-50");
+      const leaveTree = leaveJson();
+      if (!leaveTree)
+        throw new Error("Expected leave day to render a host node");
+      expect(leaveTree.props.className).toContain("bg-blue-50");
 
       const sickDay = {
         date: 3,
@@ -170,7 +173,9 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
       const { toJSON: sickJson } = await render(
         <CalendarDayComponent day={sickDay} isDarkColorScheme={false} />,
       );
-      expect((sickJson() as any).props.className).toContain("bg-rose-50");
+      const sickTree = sickJson();
+      if (!sickTree) throw new Error("Expected sick day to render a host node");
+      expect(sickTree.props.className).toContain("bg-rose-50");
     });
   });
 
@@ -180,8 +185,12 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
   describe("Item 2: Riwayat scroll padding and header back button elimination", () => {
     it("verifies FlatList contentContainerStyle paddingBottom is 100", () => {
       const source = readSource("app/extra/riwayat.tsx");
-      expect(source).toMatch(/contentContainerStyle=\{[\s\S]*?paddingBottom:\s*100/);
-      expect(source).not.toMatch(/contentContainerStyle=\{[\s\S]*?paddingBottom:\s*40/);
+      expect(source).toMatch(
+        /contentContainerStyle=\{[\s\S]*?paddingBottom:\s*100/,
+      );
+      expect(source).not.toMatch(
+        /contentContainerStyle=\{[\s\S]*?paddingBottom:\s*40/,
+      );
     });
 
     it("verifies header back button is removed from Riwayat", () => {
@@ -226,15 +235,27 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
     });
 
     it("Avatar primitive scales correctly across lg and xl sizes", async () => {
-      const { toJSON: lgJson } = await render(<Avatar fallback="A" size="lg" />);
-      expect((lgJson() as any).props.className).toContain("h-20 w-20");
+      const { toJSON: lgJson } = await render(
+        <Avatar fallback="A" size="lg" />,
+      );
+      const lgTree = lgJson();
+      if (!lgTree)
+        throw new Error("Expected large Avatar to render a host node");
+      expect(lgTree.props.className).toContain("h-20 w-20");
 
-      const { toJSON: xlJson } = await render(<Avatar fallback="B" size="xl" />);
-      expect((xlJson() as any).props.className).toContain("h-28 w-28");
+      const { toJSON: xlJson } = await render(
+        <Avatar fallback="B" size="xl" />,
+      );
+      const xlTree = xlJson();
+      if (!xlTree)
+        throw new Error("Expected extra-large Avatar to render a host node");
+      expect(xlTree.props.className).toContain("h-28 w-28");
     });
 
     it("Avatar primitive sets explicit inline 100% dimensions on image", async () => {
-      const { getByTestId } = await render(<Avatar source="https://example.com/avatar.jpg" size="md" />);
+      const { getByTestId } = await render(
+        <Avatar source="https://example.com/avatar.jpg" size="md" />,
+      );
       const img = getByTestId("mock-expo-image");
       expect(img.props.style).toEqual({ width: "100%", height: "100%" });
     });
@@ -242,19 +263,25 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
     it("Dashboard uses Avatar with initials fallback", () => {
       const dashboard = readSource("app/Dashboard.tsx");
       expect(dashboard).toContain("<Avatar");
-      expect(dashboard).toMatch(/fallback=\{displayName\.charAt\(0\)\.toUpperCase\(\)/);
+      expect(dashboard).toMatch(
+        /fallback=\{displayName\.charAt\(0\)\.toUpperCase\(\)/,
+      );
     });
 
     it("Pengaturan uses Avatar with initials fallback", () => {
       const pengaturan = readSource("app/extra/pengaturan.tsx");
       expect(pengaturan).toContain("<Avatar");
-      expect(pengaturan).toMatch(/fallback=\{\(profileName \|\| user\?\.email\)\?\.charAt\(0\)\.toUpperCase\(\)/);
+      expect(pengaturan).toMatch(
+        /fallback=\{\s*\(profileName\s*\|\|\s*user\?\.email\)\?\.charAt\(0\)\.toUpperCase\(\)/,
+      );
     });
 
     it("ManageAccount uses Avatar with initials fallback", () => {
       const manageAccount = readSource("app/profile/ManageAccount.tsx");
       expect(manageAccount).toContain("<Avatar");
-      expect(manageAccount).toMatch(/fallback=\{\(name \|\| user\?\.email \|\| "S"\)\.charAt\(0\)\.toUpperCase\(\)/);
+      expect(manageAccount).toMatch(
+        /fallback=\{\s*\(name\s*\|\|\s*user\?\.email\s*\|\|\s*"S"\)\s*\.charAt\(0\)\s*\.toUpperCase\(\)/,
+      );
     });
   });
 
@@ -267,17 +294,23 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
     it("verifies section title is retitled to 'Informasi Akun Siswa'", () => {
       expect(manageAccount).toContain("Informasi Akun Siswa");
       // Check that UI text is not "Edit Profil"
-      expect(manageAccount).not.toMatch(/<Text[^>]*>\s*Edit Profil\s*<\/Text>/i);
+      expect(manageAccount).not.toMatch(
+        /<Text[^>]*>\s*Edit Profil\s*<\/Text>/i,
+      );
     });
 
     it("verifies read-only inputs have elevated contrast classes", () => {
-      const matches = manageAccount.match(/className="pl-10 h-12 bg-muted\/30 opacity-100 text-foreground font-medium border-border"/g);
+      const matches = manageAccount.match(
+        /className="pl-10 h-12 bg-muted\/30 opacity-100 text-foreground font-medium border-border"/g,
+      );
       // All 5 read-only inputs (Name, Email, Kelas, No. Absen, NIS) must have this contrast
       expect(matches).not.toBeNull();
       expect(matches?.length).toBe(5);
 
       // Must not have the old dimming classes
-      expect(manageAccount).not.toContain("bg-muted/50 text-muted-foreground border-transparent");
+      expect(manageAccount).not.toContain(
+        "bg-muted/50 text-muted-foreground border-transparent",
+      );
     });
   });
 
@@ -288,7 +321,9 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
     const pengaturan = readSource("app/extra/pengaturan.tsx");
 
     it("verifies student NIS is displayed and handled in copy", () => {
-      expect(pengaturan).toMatch(/studentNis\s*\?\s*`NIS:\s*\$\{studentNis\}`\s*:\s*"NIS Belum Terdaftar"/);
+      expect(pengaturan).toMatch(
+        /studentNis\s*\?\s*`NIS:\s*\$\{studentNis\}`\s*:\s*"NIS Belum Terdaftar"/,
+      );
       expect(pengaturan).toMatch(/accessibilityLabel="Salin NIS Siswa"/);
       expect(pengaturan).toContain("const val = studentNis || user?.id;");
     });
@@ -311,14 +346,20 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
     const activate = readSource("app/auth/Activate.tsx");
 
     it("verifies justify-center is removed from main container and scroll padding added", () => {
-      expect(activate).toContain('contentContainerStyle={{ flexGrow: 1, paddingBottom: 48 }}');
+      expect(activate).toContain(
+        "contentContainerStyle={{ flexGrow: 1, paddingBottom: 48 }}",
+      );
       expect(activate).toContain('className="w-full items-center px-8 py-8"');
-      expect(activate).not.toContain('className="flex-1 justify-center items-center px-8 py-8"');
+      expect(activate).not.toContain(
+        'className="flex-1 justify-center items-center px-8 py-8"',
+      );
     });
 
     it("verifies Astra jargon is replaced with school-friendly terminology", () => {
       expect(activate).not.toContain("Astra akan memvalidasi");
-      expect(activate).toMatch(/Sistem sekolah akan memvalidasi NIS terhadap data siswa[\s\S]*?saat pendaftaran dikirim\./);
+      expect(activate).toMatch(
+        /Sistem\s+sekolah\s+akan\s+memvalidasi\s+NIS\s+terhadap\s+data\s+siswa\s+saat\s+pendaftaran\s+dikirim\./,
+      );
     });
   });
 
@@ -330,12 +371,16 @@ describe("Empirical Challenge: Requirements R4 & R5 Invariants & Stress Tests", 
 
     it("verifies faceApiError uses console.warn instead of console.error", () => {
       expect(debugSource).not.toContain("console.error");
-      expect(debugSource).toContain("console.warn(`${PREFIX} ${event}`, normalizedPayload);");
+      expect(debugSource).toContain(
+        "console.warn(`${PREFIX} ${event}`, normalizedPayload);",
+      );
     });
 
     it("empirically verifies calling faceApiError routes to console.warn", () => {
       const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      const errorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       faceApiError("test-error-event", { detail: "mock error" });
 

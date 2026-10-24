@@ -53,6 +53,36 @@ describe("Ticket 12 — Profile and Attendance History Invariants", () => {
       expect(content).toContain("export async function getProfile");
       expect(content).toContain("export async function listPermits");
     });
+
+    it("ensures ManageAccount's profile retry re-invokes loadProfile (M08)", () => {
+      const manageContent = readFileSync(
+        join(rootDir, "app/profile/ManageAccount.tsx"),
+        "utf8",
+      );
+
+      // Distinct load lifecycle with a screen-level retry that re-invokes the
+      // failed profile read, not merely a connectivity recheck.
+      expect(manageContent).toContain('ProfileLoadState = "loading"');
+      expect(manageContent).toContain("onPress={loadProfile}");
+      expect(manageContent).toContain(
+        'accessibilityLabel="Coba Muat Ulang Profil"',
+      );
+      // Picker cancel stays a deliberate no-op in both gallery and camera.
+      expect(manageContent).toContain("if (result.canceled) return;");
+    });
+
+    it("ensures Pengaturan surfaces a failed profile read with a retry (M08)", () => {
+      const settingsContent = readFileSync(
+        join(rootDir, "app/extra/pengaturan.tsx"),
+        "utf8",
+      );
+
+      expect(settingsContent).toContain("setProfileLoadFailed(true)");
+      expect(settingsContent).toContain(
+        'accessibilityLabel="Coba Muat Ulang Profil"',
+      );
+      expect(settingsContent).toContain("void fetchProfile()");
+    });
   });
 
   describe("processAttendanceData domain mapping", () => {

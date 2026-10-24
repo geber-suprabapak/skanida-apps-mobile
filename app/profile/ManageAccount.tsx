@@ -95,6 +95,14 @@ export default function ManageAccount() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isAvatarOptionsVisible, setIsAvatarOptionsVisible] = useState(false);
 
+  // Profile read lifecycle: distinct loading / ready / error states so a
+  // failed getProfile() shows a recoverable error with a retry instead of
+  // silently leaving the fields blank (M08).
+  type ProfileLoadState = "loading" | "ready" | "error";
+  const [profileLoadState, setProfileLoadState] =
+    useState<ProfileLoadState>("loading");
+  const [profileLoadError, setProfileLoadError] = useState("");
+
   type InitialProfileData = {
     name: string;
     absenceNumber: string;
@@ -128,55 +136,64 @@ export default function ManageAccount() {
   const [isCheckingFaceApi, setIsCheckingFaceApi] = useState(true);
 
   // --- Fetch Profile Data ---
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!user) return;
+  const loadProfile = useCallback(async () => {
+    if (!user) return;
 
-      try {
-        const data = await getProfile();
-        let profileName =
-          user.user_metadata?.name || user.user_metadata?.full_name || "";
-        let profileEmail = user.email || "";
-        let profileAbsence = user.user_metadata?.absence_number || "";
-        let profileClass = user.user_metadata?.class_name || "";
-        let profileNis = user.user_metadata?.nis || "";
-        let profileAvatar = user.user_metadata?.avatar_url || null;
+    setProfileLoadState("loading");
+    setProfileLoadError("");
 
-        if (data) {
-          profileName = data.full_name || profileName;
-          profileEmail = data.email || profileEmail;
-          profileAbsence = data.absence_number
-            ? String(data.absence_number)
-            : profileAbsence;
-          profileClass = data.class_name || profileClass;
-          profileNis = data.nis || profileNis;
-          profileAvatar = data.avatar_url || profileAvatar;
-        }
+    try {
+      const data = await getProfile();
+      let profileName =
+        user.user_metadata?.name || user.user_metadata?.full_name || "";
+      let profileEmail = user.email || "";
+      let profileAbsence = user.user_metadata?.absence_number || "";
+      let profileClass = user.user_metadata?.class_name || "";
+      let profileNis = user.user_metadata?.nis || "";
+      let profileAvatar = user.user_metadata?.avatar_url || null;
 
-        setName(profileName);
-        setEmail(profileEmail);
-        setAbsenceNumber(profileAbsence);
-        setClassName(profileClass);
-        setNis(profileNis);
-        const normalizedAvatarPath = profileAvatar || null;
-
-        setAvatarPath(normalizedAvatarPath);
-        setAvatarUrl(normalizedAvatarPath);
-
-        setInitialData({
-          name: profileName,
-          absenceNumber: profileAbsence,
-          className: profileClass,
-          nis: profileNis,
-          avatarPath: normalizedAvatarPath,
-        });
-      } catch (error) {
-        if (__DEV__) console.error("Error fetching profile:", error);
+      if (data) {
+        profileName = data.full_name || profileName;
+        profileEmail = data.email || profileEmail;
+        profileAbsence = data.absence_number
+          ? String(data.absence_number)
+          : profileAbsence;
+        profileClass = data.class_name || profileClass;
+        profileNis = data.nis || profileNis;
+        profileAvatar = data.avatar_url || profileAvatar;
       }
-    };
 
-    fetchProfileData();
+      setName(profileName);
+      setEmail(profileEmail);
+      setAbsenceNumber(profileAbsence);
+      setClassName(profileClass);
+      setNis(profileNis);
+      const normalizedAvatarPath = profileAvatar || null;
+
+      setAvatarPath(normalizedAvatarPath);
+      setAvatarUrl(normalizedAvatarPath);
+
+      setInitialData({
+        name: profileName,
+        absenceNumber: profileAbsence,
+        className: profileClass,
+        nis: profileNis,
+        avatarPath: normalizedAvatarPath,
+      });
+
+      setProfileLoadState("ready");
+    } catch (error: any) {
+      if (__DEV__) console.error("Error fetching profile:", error);
+      setProfileLoadState("error");
+      setProfileLoadError(
+        error?.message ? String(error.message) : "Gagal memuat profil.",
+      );
+    }
   }, [user]);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   // --- Check Face Enrollment Status ---
   const checkEnrollmentStatus = useCallback(async () => {
@@ -222,7 +239,10 @@ export default function ManageAccount() {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Izin Ditolak", "Kami membutuhkan izin akses galeri foto.");
+        Alert.alert(
+          "Izin Ditolak",
+          "Kami membutuhkan izin akses galeri foto. Aktifkan izin galeri di pengaturan perangkat, lalu coba lagi.",
+        );
         return;
       }
 
@@ -233,11 +253,25 @@ export default function ManageAccount() {
         quality: 0.7,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        await uploadAvatar(result.assets[0].uri);
+      // Picker cancel is a deliberate no-op: no alert, no upload.
+      if (result.canceled) return;
+
+      const asset = result.assets && result.assets[0];
+      if (!asset || !asset.uri) {
+        Alert.alert(
+          "Media Tidak Valid",
+          "Berkas yang dipilih tidak dapat digunakan sebagai foto profil. Silakan pilih gambar lain.",
+        );
+        return;
       }
+
+      await uploadAvatar(asset.uri);
     } catch (error) {
       if (__DEV__) console.error("Error picking image:", error);
+      Alert.alert(
+        "Gagal Membuka Galeri",
+        "Terjadi kesalahan saat membuka galeri. Periksa izin aplikasi, lalu coba lagi.",
+      );
     } finally {
       setIsAvatarOptionsVisible(false);
     }
@@ -247,7 +281,10 @@ export default function ManageAccount() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Izin Ditolak", "Kami membutuhkan izin akses kamera.");
+        Alert.alert(
+          "Izin Ditolak",
+          "Kami membutuhkan izin akses kamera. Aktifkan izin kamera di pengaturan perangkat, lalu coba lagi.",
+        );
         return;
       }
 
@@ -257,11 +294,25 @@ export default function ManageAccount() {
         quality: 0.7,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        await uploadAvatar(result.assets[0].uri);
+      // Picker cancel is a deliberate no-op: no alert, no upload.
+      if (result.canceled) return;
+
+      const asset = result.assets && result.assets[0];
+      if (!asset || !asset.uri) {
+        Alert.alert(
+          "Media Tidak Valid",
+          "Foto yang diambil tidak dapat digunakan sebagai foto profil. Silakan coba ambil foto lagi.",
+        );
+        return;
       }
+
+      await uploadAvatar(asset.uri);
     } catch (error) {
       if (__DEV__) console.error("Error capturing image:", error);
+      Alert.alert(
+        "Gagal Membuka Kamera",
+        "Terjadi kesalahan saat membuka kamera. Periksa izin aplikasi, lalu coba lagi.",
+      );
     } finally {
       setIsAvatarOptionsVisible(false);
     }
@@ -483,7 +534,9 @@ export default function ManageAccount() {
                   <View>
                     <Avatar
                       size="xl"
-                      fallback={(name || user?.email || "S").charAt(0).toUpperCase()}
+                      fallback={(name || user?.email || "S")
+                        .charAt(0)
+                        .toUpperCase()}
                       className="w-28 h-28 border-2 border-border"
                       source={avatarUrl ?? undefined}
                     />
@@ -505,6 +558,52 @@ export default function ManageAccount() {
                 {name || "User"}
               </Text>
             </Card>
+
+            {/* Profile Load State (M08): distinct loading and recoverable error */}
+            {profileLoadState === "loading" && (
+              <View
+                className="flex-row items-center justify-center py-6 mb-4"
+                accessibilityLabel="Memuat profil"
+              >
+                <ActivityIndicator size="small" color="#3b82f6" />
+                <Text className="text-muted-foreground ml-3">
+                  Memuat profil...
+                </Text>
+              </View>
+            )}
+
+            {profileLoadState === "error" && (
+              <Card className="p-5 mb-6 bg-card border-border shadow-sm rounded-2xl">
+                <View className="flex-row items-center mb-3">
+                  <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
+                    <Icon as={AlertCircle} className="size-6 text-red-600" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-foreground font-medium">
+                      Gagal Memuat Profil
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">
+                      {profileLoadError ||
+                        "Terjadi kesalahan saat memuat profil."}
+                    </Text>
+                  </View>
+                </View>
+                <Button
+                  variant="outline"
+                  size="default"
+                  onPress={loadProfile}
+                  accessibilityRole="button"
+                  accessibilityLabel="Coba Muat Ulang Profil"
+                  accessibilityHint="Ketuk dua kali untuk memuat ulang data profil"
+                  className="w-full border-border"
+                >
+                  <Icon as={Loader2} className="size-5 text-foreground mr-2" />
+                  <Text className="text-foreground font-semibold">
+                    Coba Lagi
+                  </Text>
+                </Button>
+              </Card>
+            )}
 
             {/* Profile Form */}
             <View className="space-y-4 mb-6">
