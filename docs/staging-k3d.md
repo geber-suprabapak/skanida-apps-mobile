@@ -1,6 +1,7 @@
 # Local k3d staging
 
-Use branch `k8s-prep`. The shared sandbox is on penacony, with Kubernetes
+Use permanent branch `k8s-staging`, tracking `origin/k8s-staging` in all seven repos.
+The shared sandbox is on penacony, with Kubernetes
 context `k3d-skanida-staging` and dummy data only. Configure these public values
 in the ignored local `.env`; preserve any existing production env backup.
 
@@ -22,6 +23,9 @@ when possible; LAN mode is needed only when devices cannot use that tunnel.
 Validated on 2026-10-26 with agent-device, emulator Android16/API36:
 NIS24002 signup → Astra school-admin approval → Logto sign-in → native dashboard
 showing SISWA DUMMY2 from the shared Astra/PostgreSQL stack. No face is enrolled.
+Bronya manual attendance for NIS24002 was also visible in native history at
+09.28 WIB after relaunch. This completes the debug staging baseline; standalone
+release APK, physical-device push delivery and real face/camera QA remain open.
 The emulator also has an older Skanida Apps Native package handling `skanida://`;
 select Skanida Apps (com.hfzrk.skanidaappsmobile) for callbacks.
 
