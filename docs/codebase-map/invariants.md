@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-MOBILE-006 — Terminal session loss clears rendered identity and protected routes
+
+**Rule:** Expired sessions without a refresh token, corrupt/incomplete sessions and permanent refresh failures clear the auth store and session-scoped cache while retaining preferences. Root Stack.Protected removes tabs and detail/legacy authenticated routes when user state is cleared; transient refresh/network failures preserve the recoverable session.
+**Evidence:** `utils/logto.ts`, `store/authStore.ts`, `app/_layout.tsx`, `__tests__/logto-session.test.ts`.
+
 ## INV-MOBILE-001 — Authenticated domain calls use Astra transport
 
 **Rule:** Preserve Logto bearer token, request ID, timeout, envelope handling, and `X-Astra-Contract-Version: v1` in BFF calls.

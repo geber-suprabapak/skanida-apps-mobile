@@ -133,31 +133,36 @@ export default Sentry.wrap(function RootLayout() {
         <Stack
           screenOptions={{ gestureEnabled: true, headerBackTitle: "Kembali" }}
         >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="attendance/AbsenceReport"
-            options={{ title: "Lapor Absensi" }}
-          />
-          <Stack.Screen
-            name="attendance/CameraAttendance"
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="profile/ManageAccount"
-            options={{ title: "Kelola Akun" }}
-          />
-          <Stack.Screen
-            name="profile/enroll"
-            options={{ title: "Pendaftaran Wajah" }}
-          />
-          <Stack.Screen
-            name="perizinan/izin"
-            options={{ title: "Pengajuan Izin" }}
-          />
-          <Stack.Screen
-            name="perizinan/status"
-            options={{ title: "Status Perizinan" }}
-          />
+          <Stack.Protected guard={!!user}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="Dashboard" options={{ headerShown: false }} />
+            <Stack.Screen name="extra/riwayat" />
+            <Stack.Screen name="extra/pengaturan" />
+            <Stack.Screen
+              name="attendance/AbsenceReport"
+              options={{ title: "Lapor Absensi" }}
+            />
+            <Stack.Screen
+              name="attendance/CameraAttendance"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="profile/ManageAccount"
+              options={{ title: "Kelola Akun" }}
+            />
+            <Stack.Screen
+              name="profile/enroll"
+              options={{ title: "Pendaftaran Wajah" }}
+            />
+            <Stack.Screen
+              name="perizinan/izin"
+              options={{ title: "Pengajuan Izin" }}
+            />
+            <Stack.Screen
+              name="perizinan/status"
+              options={{ title: "Status Perizinan" }}
+            />
+          </Stack.Protected>
         </Stack>
         <PortalHost />
       </ConnectionChecker>

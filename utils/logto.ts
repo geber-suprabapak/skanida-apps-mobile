@@ -130,11 +130,13 @@ export async function getLogtoSession(): Promise<LogtoSession | null> {
     session = JSON.parse(raw) as LogtoSession;
   } catch {
     await clearLogtoSession();
+    notifySessionExpired("Sesi tidak valid. Silakan login ulang.");
     return null;
   }
 
   if (!session.access_token || !session.expires_at) {
     await clearLogtoSession();
+    notifySessionExpired("Sesi tidak valid. Silakan login ulang.");
     return null;
   }
 
@@ -145,6 +147,7 @@ export async function getLogtoSession(): Promise<LogtoSession | null> {
   if (!session.refresh_token) {
     if (session.expires_at <= Date.now()) {
       await clearLogtoSession();
+      notifySessionExpired("Sesi telah berakhir. Silakan login ulang.");
       return null;
     }
     return session;

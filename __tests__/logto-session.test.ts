@@ -443,6 +443,35 @@ describe("Rendered auth state and logout cleanup consistency (M02)", () => {
     expect(await AsyncStorage.getItem(TIME_SYNC_STORAGE_KEY)).not.toBeNull();
   });
 
+  it.each([
+    "expired without refresh token",
+    "corrupt JSON",
+    "missing access token",
+  ])("resets rendered auth state for a session with %s", async (scenario) => {
+    if (scenario === "corrupt JSON") {
+      mockStore["astra-logto-session"] = "not-json";
+    } else {
+      seedSession(
+        scenario === "missing access token"
+          ? { access_token: "" }
+          : { refresh_token: "" },
+      );
+    }
+
+    const session = await getLogtoSession();
+
+    expect(session).toBeNull();
+    expect(mockStore["astra-logto-session"]).toBeUndefined();
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().userProfile).toBeNull();
+    for (const key of SESSION_STORAGE_KEYS) {
+      expect(await AsyncStorage.getItem(key)).toBeNull();
+    }
+    expect(
+      await AsyncStorage.getItem(`${NOTIFICATION_OPT_OUT_PREFIX}:user-render`),
+    ).toBe("true");
+  });
+
   it("keeps the rendered user/profile when a refresh fails transiently", async () => {
     seedSession();
     jest

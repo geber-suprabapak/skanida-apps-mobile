@@ -26,6 +26,10 @@ showing SISWA DUMMY2 from the shared Astra/PostgreSQL stack. No face is enrolled
 Bronya manual attendance for NIS24002 was also visible in native history at
 09.28 WIB after relaunch. This completes the debug staging baseline; standalone
 release APK, physical-device push delivery and real face/camera QA remain open.
+Further QA fixed terminal-session cleanup and protected authenticated routes.
+The student submitted a leave request with an emulator camera photo; Chronos
+rejection/reason and reopening were observed as DITOLAK/MENUNGGU in this app.
+The ongoing cross-app scope and remaining simulations are in infra's QA-REPORT.md.
 The emulator also has an older Skanida Apps Native package handling `skanida://`;
 select Skanida Apps (com.hfzrk.skanidaappsmobile) for callbacks.
 
