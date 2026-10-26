@@ -2,7 +2,7 @@
 
 ## INV-MOBILE-007 — Pending leave is not recorded attendance
 
-**Rule:** Only explicitly approved leave requests enter the attendance calendar. Pending, rejected and missing decisions cannot replace a recorded check-in or inflate leave totals; request status remains available in Perizinan.
+**Rule:** Only explicitly approved leave requests enter the attendance calendar. Expand their effective period inclusively within the selected month, with legacy approvals treated as one day; list keys use the date because a permit ID can repeat across days. Pending, rejected and missing decisions cannot replace a recorded check-in or inflate leave totals; request status remains available in Perizinan.
 **Evidence:** `components/attendance-calendar/utils.ts`, `__tests__/profile-attendance-history.test.ts`.
 
 ## INV-MOBILE-006 — Terminal session loss clears rendered identity and protected routes

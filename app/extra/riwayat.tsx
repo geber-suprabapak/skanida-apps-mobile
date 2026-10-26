@@ -284,7 +284,7 @@ export default function Riwayat() {
       <FlatList
         className="flex-1 px-6"
         data={records}
-        keyExtractor={(item) => item.id || item.date}
+        keyExtractor={(item) => item.date}
         renderItem={renderItem}
         getItemLayout={getItemLayout}
         removeClippedSubviews={true}

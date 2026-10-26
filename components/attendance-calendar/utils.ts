@@ -102,6 +102,9 @@ interface RawLeaveRecord {
   deskripsi?: string;
   link_foto?: string;
   approval_status?: "pending" | "approved" | "rejected" | null;
+  requested_start_date?: string | null;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
 }
 
 const ABSENT_STATUSES = new Set(["Alpha", "absent"]);
@@ -111,7 +114,7 @@ const LATE_STATUSES = new Set(["Terlambat", "late"]);
 const LEAVE_STATUSES = new Set(["leave", "sick"]);
 
 const normalizeDateKey = (value: string) =>
-  value.includes("T") ? value.slice(0, 10) : value;
+  value.includes("T") ? formatDateWIB(new Date(value)) : value;
 
 const normalizeLeaveStatus = (value: string): AttendanceStatus =>
   value === "sakit" ? "sick" : "leave";
@@ -119,12 +122,14 @@ const normalizeLeaveStatus = (value: string): AttendanceStatus =>
 export const processAttendanceData = (
   attendanceRecords: RawAttendanceRecord[] | null,
   leaveRecords: RawLeaveRecord[] | null,
+  range?: { startDate: string; endDate: string },
 ): AttendanceMap => {
   const processedData: AttendanceMap = {};
 
   const attendanceByDate: Record<string, RawAttendanceRecord[]> = {};
   attendanceRecords?.forEach((record) => {
     const dateKey = normalizeDateKey(record.date);
+    if (range && (dateKey < range.startDate || dateKey > range.endDate)) return;
     if (!attendanceByDate[dateKey]) attendanceByDate[dateKey] = [];
     attendanceByDate[dateKey].push(record);
   });
@@ -180,16 +185,31 @@ export const processAttendanceData = (
   leaveRecords?.forEach((leave) => {
     if (leave.approval_status !== "approved") return;
 
-    const dateKey = normalizeDateKey(leave.tanggal);
-    processedData[dateKey] = {
-      id: leave.id,
-      date: dateKey,
-      status: normalizeLeaveStatus(leave.kategori_izin),
-      leaveType: leave.kategori_izin,
-      description: leave.deskripsi,
-      photo_url: leave.link_foto,
-      approval_status: leave.approval_status ?? undefined,
-    };
+    const start = normalizeDateKey(leave.requested_start_date ?? leave.tanggal);
+    const effectiveEnd = normalizeDateKey(
+      leave.effective_end_date ?? leave.original_end_date ?? start,
+    );
+    const firstDate =
+      range && start < range.startDate ? range.startDate : start;
+    const lastDate =
+      range && effectiveEnd > range.endDate ? range.endDate : effectiveEnd;
+    const end = Date.parse(`${lastDate}T00:00:00Z`);
+    for (
+      let day = Date.parse(`${firstDate}T00:00:00Z`);
+      day <= end;
+      day += 86_400_000
+    ) {
+      const dateKey = new Date(day).toISOString().slice(0, 10);
+      processedData[dateKey] = {
+        id: leave.id,
+        date: dateKey,
+        status: normalizeLeaveStatus(leave.kategori_izin),
+        leaveType: leave.kategori_izin,
+        description: leave.deskripsi,
+        photo_url: leave.link_foto,
+        approval_status: leave.approval_status,
+      };
+    }
   });
 
   return processedData;

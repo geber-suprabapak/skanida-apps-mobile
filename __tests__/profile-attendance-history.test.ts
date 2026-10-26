@@ -104,6 +104,80 @@ describe("Ticket 12 — Profile and Attendance History Invariants", () => {
   });
 
   describe("processAttendanceData domain mapping", () => {
+    it.each([
+      [
+        "2026-10-30",
+        "2026-11-03",
+        "2026-11-01",
+        "2026-10-01",
+        "2026-10-31",
+        ["2026-10-30", "2026-10-31"],
+      ],
+      [
+        "2026-10-30",
+        "2026-11-03",
+        "2026-11-01",
+        "2026-11-01",
+        "2026-11-30",
+        ["2026-11-01"],
+      ],
+      [
+        "2026-10-30",
+        "2026-11-03",
+        "2026-11-01",
+        "2026-12-01",
+        "2026-12-31",
+        [],
+      ],
+      [
+        "2026-10-26T17:00:00Z",
+        "2026-10-29",
+        "2026-10-28",
+        "2026-10-01",
+        "2026-10-31",
+        ["2026-10-27", "2026-10-28"],
+      ],
+      [
+        "2028-02-28",
+        "2028-03-01",
+        null,
+        "2028-02-01",
+        "2028-02-29",
+        ["2028-02-28", "2028-02-29"],
+      ],
+      [
+        "2028-02-28",
+        "2028-03-01",
+        null,
+        "2028-03-01",
+        "2028-03-31",
+        ["2028-03-01"],
+      ],
+    ] as const)(
+      "clips approved period starting %s to the selected month",
+      (start, originalEnd, effectiveEnd, startDate, endDate, expectedDates) => {
+        const result = processAttendanceData(
+          [],
+          [
+            {
+              id: "period",
+              tanggal: start,
+              kategori_izin: "sakit",
+              approval_status: "approved",
+              requested_start_date: start,
+              original_end_date: originalEnd,
+              effective_end_date: effectiveEnd,
+            },
+          ],
+          { startDate, endDate },
+        );
+        expect(Object.keys(result)).toEqual(expectedDates);
+        expect(
+          Object.values(result).every((item) => item.status === "sick"),
+        ).toBe(true);
+      },
+    );
+
     it("correctly aggregates present and late attendance records", () => {
       const attendances: BffAttendanceRecord[] = [
         {

@@ -54,6 +54,7 @@ export const useOptimizedMonthlyAttendance = (
         const processedData = processAttendanceData(
           attendanceItems,
           permitItems,
+          { startDate, endDate },
         );
 
         return processedData;
