@@ -178,7 +178,7 @@ export const processAttendanceData = (
   });
 
   leaveRecords?.forEach((leave) => {
-    if (leave.approval_status === "rejected") return;
+    if (leave.approval_status !== "approved") return;
 
     const dateKey = normalizeDateKey(leave.tanggal);
     processedData[dateKey] = {

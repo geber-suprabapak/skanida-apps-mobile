@@ -133,7 +133,7 @@ describe("Ticket 12 — Profile and Attendance History Invariants", () => {
       expect(result["2026-08-02"].isLate).toBe(true);
     });
 
-    it("correctly maps approved and pending leave requests", () => {
+    it("counts only approved leave requests as attendance", () => {
       const permits: MobilePermit[] = [
         {
           id: "permit-1",
@@ -167,13 +167,37 @@ describe("Ticket 12 — Profile and Attendance History Invariants", () => {
       expect(result["2026-08-03"].status).toBe("sick");
       expect(result["2026-08-03"].approval_status).toBe("approved");
 
-      expect(result["2026-08-04"]).toBeDefined();
-      expect(result["2026-08-04"].status).toBe("leave");
-      expect(result["2026-08-04"].approval_status).toBe("pending");
+      expect(result["2026-08-04"]).toBeUndefined();
 
       // Rejected leaves must be omitted from calendar representation
       expect(result["2026-08-05"]).toBeUndefined();
     });
+
+    it.each(["pending", "rejected", null, undefined] as const)(
+      "does not let a %s leave overwrite recorded attendance",
+      (approval_status) => {
+        const result = processAttendanceData(
+          [
+            {
+              id: "check-in",
+              date: "2026-10-26",
+              status: "Hadir",
+              created_at: "2026-10-26T02:28:00Z",
+            },
+          ],
+          [
+            {
+              id: "leave",
+              tanggal: "2026-10-26",
+              kategori_izin: "sakit",
+              approval_status,
+            },
+          ],
+        );
+        expect(result["2026-10-26"].status).toBe("present");
+        expect(result["2026-10-26"].checkInTime).toBe("2026-10-26T02:28:00Z");
+      },
+    );
 
     it("maps auditable leave period dates and preserves legacy approved one-day records", () => {
       const period = toMobilePermit({

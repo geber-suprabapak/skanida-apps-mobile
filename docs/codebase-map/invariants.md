@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-MOBILE-007 — Pending leave is not recorded attendance
+
+**Rule:** Only explicitly approved leave requests enter the attendance calendar. Pending, rejected and missing decisions cannot replace a recorded check-in or inflate leave totals; request status remains available in Perizinan.
+**Evidence:** `components/attendance-calendar/utils.ts`, `__tests__/profile-attendance-history.test.ts`.
+
 ## INV-MOBILE-006 — Terminal session loss clears rendered identity and protected routes
 
 **Rule:** Expired sessions without a refresh token, corrupt/incomplete sessions and permanent refresh failures clear the auth store and session-scoped cache while retaining preferences. Root Stack.Protected removes tabs and detail/legacy authenticated routes when user state is cleared; transient refresh/network failures preserve the recoverable session.
