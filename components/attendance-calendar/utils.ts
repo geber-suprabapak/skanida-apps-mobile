@@ -10,10 +10,18 @@ export const formatDate = (date: Date): string => {
 };
 
 export const formatTime = (dateString: string): string => {
-  if (!dateString || !dateString.includes("T")) return "N/A";
-  return new Date(dateString).toLocaleTimeString("id-ID", {
+  if (!dateString) return "N/A";
+  // PostgreSQL also returns a space separator, microseconds, and hour-only offsets.
+  const timestamp = dateString
+    .replace(" ", "T")
+    .replace(/(\.\d{3})\d+/, "$1")
+    .replace(/([+-]\d{2})$/, "$1:00");
+  const date = new Date(timestamp);
+  if (!timestamp.includes("T") || Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Jakarta",
   });
 };
 

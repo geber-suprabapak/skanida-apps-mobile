@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { processAttendanceData } from "../components/attendance-calendar/utils";
+import {
+  formatTime,
+  processAttendanceData,
+} from "../components/attendance-calendar/utils";
 import {
   formatMobilePermitCategory,
   toMobilePermit,
@@ -10,6 +13,21 @@ import {
 
 describe("Ticket 12 — Profile and Attendance History Invariants", () => {
   const rootDir = process.cwd();
+
+  it.each([
+    "2026-10-26T02:28:00.123Z",
+    "2026-10-26 02:28:00.123456+00",
+    "2026-10-26 09:28:00+07",
+  ])("formats attendance timestamp %s in school time", (timestamp) => {
+    expect(formatTime(timestamp)).toMatch(/^09[.:]28$/);
+  });
+
+  it.each(["", "2026-10-26", "invalidTtimestamp"])(
+    "keeps invalid time %s unavailable",
+    (timestamp) => {
+      expect(formatTime(timestamp)).toBe("N/A");
+    },
+  );
 
   describe("Calendar and Profile Architecture Invariants", () => {
     it("ensures attendance-calendar hooks do not directly query Supabase tables", () => {

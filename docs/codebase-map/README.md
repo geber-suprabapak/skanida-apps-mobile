@@ -9,4 +9,5 @@ Skanida Apps Mobile is the Expo React Native student application. Logto owns mob
 | Standalone Kotlin/Compose experiment | [Native Android](../../native-android/README.md) |
 | Two-phase attendance | [Mobile attendance](flows/mobile-attendance.md) |
 | Face capture and enrollment | [Face enrollment](flows/face-enrollment.md) |
+| Local k3d sandbox and Android QA | [Staging setup](../staging-k3d.md) |
 | Rules | [Invariants](invariants.md) |
