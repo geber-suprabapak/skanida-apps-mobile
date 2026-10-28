@@ -7,6 +7,11 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const profile = JSON.parse(
   readFileSync(new URL("../eas.json", import.meta.url)),
 ).build.staging;
+const debug = process.argv[2] === "--debug";
+assert.ok(
+  process.argv.length === 2 || (process.argv.length === 3 && debug),
+  "usage: build-staging-android.mjs [--debug]",
+);
 assert.equal(profile.env.RELEASE_CHANNEL, "staging");
 assert.equal(
   profile.env.EXPO_PUBLIC_BFF_API_URL,
@@ -14,6 +19,8 @@ assert.equal(
 );
 const env = { ...process.env, ...profile.env, EXPO_NO_DOTENV: "1" };
 delete env.SENTRY_AUTH_TOKEN;
+if (debug) env.BUNDLE_STAGING_DEBUG = "1";
+else delete env.BUNDLE_STAGING_DEBUG;
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, env, stdio: "inherit" });
   if (result.error) throw result.error;
@@ -43,4 +50,13 @@ assert.match(
   manifest,
   /android:name="expo\.modules\.updates\.ENABLED" android:value="false"/,
 );
-run("./gradlew", profile.android.gradleCommand.split(" "), `${root}/android`);
+if (debug) assert.match(manifest, /EXDevClientEmbeddedBundle/);
+const gradleFile = readFileSync(
+  new URL("../android/app/build.gradle", import.meta.url),
+  "utf8",
+);
+if (debug) assert.match(gradleFile, /debuggableVariants = \[\]/);
+const gradleCommand = debug
+  ? ":app:assembleDebug -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon --max-workers=2 --console=plain"
+  : profile.android.gradleCommand;
+run("./gradlew", gradleCommand.split(" "), `${root}/android`);

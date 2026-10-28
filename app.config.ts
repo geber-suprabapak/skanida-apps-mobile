@@ -1,5 +1,9 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
-import { ConfigPlugin, withGradleProperties } from "expo/config-plugins";
+import {
+  ConfigPlugin,
+  withAppBuildGradle,
+  withGradleProperties,
+} from "expo/config-plugins";
 
 const withSizeOptimizations: ConfigPlugin = (c) => {
   return withGradleProperties(c, (mod) => {
@@ -14,6 +18,36 @@ const withSizeOptimizations: ConfigPlugin = (c) => {
     return mod;
   });
 };
+
+const withStagingDebugBundle: ConfigPlugin = (config) =>
+  withAppBuildGradle(config, (mod) => {
+    const marker =
+      "    // k8s-staging: bundled debug artifact\n    debuggableVariants = []\n";
+    let contents = mod.modResults.contents;
+    const markerCount = contents.split(marker).length - 1;
+    if (markerCount > 1)
+      throw new Error("Duplicate staging debug bundle marker");
+    contents = contents.split(marker).join("");
+
+    if (
+      process.env.RELEASE_CHANNEL === "staging" &&
+      process.env.BUNDLE_STAGING_DEBUG === "1"
+    ) {
+      const anchor = "react {\n";
+      if (contents.split(anchor).length - 1 !== 1) {
+        throw new Error("Unable to locate React Native Gradle configuration");
+      }
+      contents = contents.replace(anchor, `${anchor}${marker}`);
+    }
+
+    mod.modResults.contents = contents;
+    return mod;
+  });
+
+const stagingDebugDevClientPlugin: [string, { embeddedBundle: boolean }] = [
+  "expo-dev-client",
+  { embeddedBundle: true },
+];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -41,6 +75,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   plugins: [
+    ...(process.env.RELEASE_CHANNEL === "staging" &&
+    process.env.BUNDLE_STAGING_DEBUG === "1"
+      ? [stagingDebugDevClientPlugin]
+      : []),
     "expo-router",
     "expo-secure-store",
     "expo-web-browser",
@@ -97,6 +135,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     // SAFETY: Expo runs this typed ConfigPlugin at config evaluation; ExpoConfig's plugins type only models package string/tuple forms.
     withSizeOptimizations as any,
+    // SAFETY: ExpoConfig's plugins type does not accept a typed inline ConfigPlugin.
+    withStagingDebugBundle as any,
     [
       "expo-notifications",
       {

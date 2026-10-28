@@ -47,6 +47,32 @@ The APK is `android/app/build/outputs/apk/release/app-release.apk`, with bundled
 JavaScript/Hermes and the existing local debug signing key. It is for sandbox QA.
 The command does not request EAS remote signing credentials.
 
+### Bundled local debug APK
+
+```sh
+pnpm android:staging:debug
+```
+
+This uses the same staging-only public profile, sets `EXPO_NO_DOTENV=1`, and
+builds a locally debug-signed APK with an embedded JavaScript bundle. It does
+not call EAS or load local dotenv files. The debug-only config enables the
+embedded-bundle option; on first launch, choose **Load embedded bundle** in the
+Expo launcher. Do not connect Metro for the cold-start check. This is a QA
+artifact, not a release build.
+
+Validated 2026-10-29 on the Android 16/API 36 x86_64 emulator. The APK SHA256 is
+`acbb3fa3776dbc2dd67b95f43b89d5e812e5a7c3584a7e438cd2b4cb8e21e988`; it
+contains `assets/index.android.bundle`, supports arm64-v8a and x86_64, and is
+debuggable. With no Metro listener or ADB reverse tunnel, the bundled route
+cold-launched offline and retained the authenticated dummy session. Detailed
+native limitations and evidence are in
+`../../.scratch/system-hardening/remediation/evidence/M09.md`.
+
+Before replacing an existing install, compare signer certificates and retain a
+rollback APK. Restore it with `adb install -r`; do not uninstall or clear app
+data. The 2026-10-29 QA run restored the pre-existing release APK this way and
+confirmed the dashboard session remained.
+
 The staging app label is **Skanida Apps (Staging)**. Only this channel permits HTTP
 to the k3d ingress and disables Sentry JS/native telemetry and build uploads. OTA
 is disabled in source config for all channels; verify the generated manifest and

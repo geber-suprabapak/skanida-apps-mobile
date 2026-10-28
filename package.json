@@ -12,6 +12,7 @@
   "scripts": {
     "android": "expo run:android",
     "android:staging": "node scripts/build-staging-android.mjs",
+    "android:staging:debug": "node scripts/build-staging-android.mjs --debug",
     "ios": "expo run:ios",
     "start": "expo start",
     "prebuild": "expo prebuild",
