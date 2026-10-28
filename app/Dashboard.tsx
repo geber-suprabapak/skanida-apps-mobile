@@ -24,12 +24,9 @@ import { Card } from "~/components/ui/card";
 import { Icon } from "~/components/ui/icon";
 import AttendanceSuccessPopup from "~/components/ui/pop-up";
 import useAuthStore from "~/store/authStore";
-import { fetchEnrollmentStatus } from "~/utils/enrollment";
+import { useConnection } from "~/components/ConnectionChecker";
 import type { EnrollmentStatus } from "~/utils/enrollment";
-import {
-  fetchFaceApiRuntimeStatus,
-  type FaceApiRuntimeStatusResult,
-} from "~/utils/faceApiRuntime";
+import type { FaceApiRuntimeStatusResult } from "~/utils/faceApiRuntime";
 import {
   consumePendingAttendanceSuccess,
   type PendingAttendanceSuccess,
@@ -207,6 +204,7 @@ export default function Dashboard() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.userProfile);
+  const { isConnected } = useConnection();
   const { theme } = useUniwind();
   const isDark = theme === "dark";
 
@@ -295,37 +293,6 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  const checkEnrollmentStatus = useCallback(async () => {
-    faceApiLog("dashboard:enroll-status-check:start", {
-      userId: user?.id ?? null,
-      email: user?.email ?? null,
-    });
-    setEnrollmentStatus("loading");
-    setEnrollmentError("");
-
-    const result = await fetchEnrollmentStatus();
-    faceApiLog("dashboard:enroll-status-check:result", {
-      result,
-      userId: user?.id ?? null,
-    });
-
-    setEnrollmentStatus(result.status);
-    if (result.error) {
-      setEnrollmentError(result.error);
-    }
-  }, [user?.email, user?.id]);
-
-  const checkFaceApiRuntime = useCallback(async () => {
-    setIsCheckingFaceApi(true);
-    const result = await fetchFaceApiRuntimeStatus();
-    faceApiLog("dashboard:runtime-check:result", {
-      result,
-      userId: user?.id ?? null,
-    });
-    setFaceApiRuntime(result);
-    setIsCheckingFaceApi(false);
-  }, [user?.id]);
-
   // Lifecycle
   const initializeDashboard = useCallback(async () => {
     try {
@@ -337,8 +304,8 @@ export default function Dashboard() {
   }, [fetchAttendanceData]);
 
   useEffect(() => {
-    initializeDashboard();
-  }, [initializeDashboard]);
+    if (isConnected) void initializeDashboard();
+  }, [initializeDashboard, isConnected]);
 
   // Refresh dashboard-owned readiness/enrollment/attendance whenever focus returns.
   useFocusEffect(
@@ -812,7 +779,7 @@ export default function Dashboard() {
                     <Button
                       variant="outline"
                       size="default"
-                      onPress={checkFaceApiRuntime}
+                      onPress={fetchAttendanceData}
                       className="w-full border-border"
                     >
                       <Icon
@@ -886,7 +853,7 @@ export default function Dashboard() {
                     <Button
                       variant="outline"
                       size="default"
-                      onPress={checkEnrollmentStatus}
+                      onPress={fetchAttendanceData}
                       className="w-full border-border"
                     >
                       <Icon

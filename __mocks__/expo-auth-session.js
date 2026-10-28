@@ -1,4 +1,5 @@
 module.exports = {
   makeRedirectUri: () => "skanida://callback",
-  useAuthRequest: () => [null, null, jest.fn()],
+  useAuthRequest: jest.fn(() => [null, null, jest.fn()]),
+  Prompt: { Consent: "consent" },
 };

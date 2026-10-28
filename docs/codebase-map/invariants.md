@@ -1,5 +1,15 @@
 # Invariants
 
+## INV-MOBILE-009 — Native offline access requests consent
+
+**Rule:** Keep PKCE, `offline_access` and explicit consent in native authorization requests so Logto can issue refresh tokens. Do not substitute a shared IdP policy or credential change for the client request.
+**Evidence:** `app/auth/Login.tsx`, `__tests__/login-offline-consent.test.tsx`; [OIDC Offline Access](https://openid.net/specs/openid-connect-core-1_0-final.html#OfflineAccess).
+
+## INV-MOBILE-008 — Dashboard recovery reloads its complete projection
+
+**Rule:** Reconnect and advertised server/enrollment retries reload the same Astra dashboard request as initialization. A successful face-only check cannot stand in for recovered attendance, schedule or primary action.
+**Evidence:** `app/Dashboard.tsx`, `__tests__/dashboard-network-recovery.test.tsx`.
+
 ## INV-MOBILE-007 — Pending leave is not recorded attendance
 
 **Rule:** Only explicitly approved leave requests enter the attendance calendar. Expand their effective period inclusively within the selected month, with legacy approvals treated as one day; list keys use the date because a permit ID can repeat across days. Pending, rejected and missing decisions cannot replace a recorded check-in or inflate leave totals; request status remains available in Perizinan.

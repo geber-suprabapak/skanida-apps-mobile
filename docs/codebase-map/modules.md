@@ -4,12 +4,14 @@
 
 **Purpose:** Navigate/authenticate students and present dashboard, attendance, leave, profile, and history screens.
 **Entry points:** `app/_layout.tsx`, `app/`.
+**Dashboard recovery:** Reconnect and both retry controls reload the complete Astra dashboard projection, keeping attendance, schedule, face state and primary action consistent.
 
 ## BFF and Logto
 
 **Purpose:** Manage OIDC session/token lifecycle and invoke Astra’s contract-versioned API.
 **Entry points:** `app/auth/Login.tsx`, `utils/logto.ts`, `utils/bff.ts`, `utils/bffMobileApi.ts`.
 **Login flow:** The Login route immediately opens Logto’s OIDC authorization page; identity input is collected only by Logto, not by the mobile app.
+**Offline access:** Native authorization uses PKCE and explicit consent with `offline_access`; `utils/logto.ts` owns refresh and permanent/transient failure handling.
 
 ## Attendance workflow
 

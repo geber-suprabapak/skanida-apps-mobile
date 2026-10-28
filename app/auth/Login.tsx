@@ -1,7 +1,7 @@
 import { Stack, useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
-import { useAuthRequest } from "expo-auth-session";
+import { Prompt, useAuthRequest } from "expo-auth-session";
 import { View, TouchableOpacity, Alert, BackHandler } from "react-native";
 import { SafeAreaView } from "~/components/ui/safe-area-view";
 import useAuthStore from "~/store/authStore";
@@ -40,6 +40,8 @@ export default function Login() {
         "mobile:access",
       ],
       usePKCE: true,
+      // Offline access requires consent for refresh-token issuance.
+      prompt: Prompt.Consent,
       extraParams: {
         resource:
           process.env.EXPO_PUBLIC_LOGTO_RESOURCE ??

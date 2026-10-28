@@ -79,9 +79,38 @@ The initial run omitted Expo57's new explicit `--no-clean` and regenerated ignor
 Android output; key/env hashes were unchanged and the installed debug APK was then
 retained outside that tree. The corrected command was tested afterward: APK, key,
 manifest and both env files remained byte-identical. Metaspace/deprecation warnings
-did not fail the build; Sentry upload was skipped. Remaining release checks include
-cold start offline, expiry/refresh edge cases, camera/Face and physical-device push.
+did not fail the build; Sentry upload was skipped. The repair below covers cold
+start offline and refresh-token issuance. Access-expiry refresh, camera/Face and
+physical-device push remain separate checks.
 arm64 was compiled and packaged but has not been tested on an arm64 device.
+
+### Cold-start recovery and offline authorization
+
+QA found that a failed offline dashboard read could leave attendance blank after
+the server/enrollment retry succeeded: those controls fetched only face state.
+Dashboard retries and reconnect now reload the complete Astra dashboard projection.
+Native authorization also requests explicit consent with PKCE and `offline_access`,
+as required for this provider to issue refresh tokens.
+
+The corrected APK SHA256 is
+`1466d5792ee9db89a3681318fd242874c7b9622253a67c76dcd084ce45fbd744`,
+30,004,371 bytes, retained as `artifacts/k8s-staging/qa/skanida-staging-1466d579.apk`.
+All21mobile suites/205tests, typecheck, scoped lint and formatting passed. The
+actual Dashboard and Login regressions failed before the fixes and passed afterward.
+The cached two-ABI release build completed in1m53s; signer and sandbox guards match
+the earlier release, which is retained as rollback.
+
+Cold app start with both emulator radios off retained24003 and the offline banner.
+After7.455seconds offline, restoring radios reloaded06:00/13:04 and Selesai without
+login or retry; UI was observed647ms after the restore commands completed. This is
+one functional sample, not a latency benchmark or a DNS-configuration repair.
+Normal native logout/credential login then increased own active refresh tokens0→1
+and added `offline_access` to the grant; identity fields/roles and five source
+attendance records remained unchanged. No token value or identifier was extracted.
+
+Existing sessions without a refresh token need a fresh login to obtain one. The
+new native session was issued around15:48WIB on28October; keep it for the actual
+access-token-expiry recovery check, without host clock changes or helper logins.
 
 Workspace evidence and infrastructure report:
 `../infra/k8s/STAGING-REPORT.md`, `../artifacts/k8s-staging/`,
