@@ -1,5 +1,4 @@
 import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
@@ -365,8 +364,6 @@ export async function registerAndSaveNotificationToken(
 
   return runNotificationSyncLocked(userId, async () => {
     try {
-      if (!Device.isDevice) return FAIL_RESULT;
-
       if (Platform.OS === "android" && Number(Platform.Version) < 33) {
         return await saveTokenToDatabase(userId);
       }
