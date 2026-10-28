@@ -51,6 +51,7 @@ assert.match(
   /android:name="expo\.modules\.updates\.ENABLED" android:value="false"/,
 );
 if (debug) assert.match(manifest, /EXDevClientEmbeddedBundle/);
+else assert.doesNotMatch(manifest, /EXDevClientEmbeddedBundle/);
 const gradleFile = readFileSync(
   new URL("../android/app/build.gradle", import.meta.url),
   "utf8",

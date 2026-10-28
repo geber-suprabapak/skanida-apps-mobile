@@ -1,6 +1,7 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
 import {
   ConfigPlugin,
+  withAndroidManifest,
   withAppBuildGradle,
   withGradleProperties,
 } from "expo/config-plugins";
@@ -19,8 +20,22 @@ const withSizeOptimizations: ConfigPlugin = (c) => {
   });
 };
 
-const withStagingDebugBundle: ConfigPlugin = (config) =>
-  withAppBuildGradle(config, (mod) => {
+const withStagingDebugBundle: ConfigPlugin = (config) => {
+  const debugBundle =
+    process.env.RELEASE_CHANNEL === "staging" &&
+    process.env.BUNDLE_STAGING_DEBUG === "1";
+  config = withAndroidManifest(config, (mod) => {
+    if (debugBundle) return mod;
+
+    const application = mod.modResults.manifest.application?.[0];
+    if (!application) throw new Error("Android application manifest missing");
+    application["meta-data"] = (application["meta-data"] ?? []).filter(
+      ({ $ }) => $["android:name"] !== "EXDevClientEmbeddedBundle",
+    );
+    return mod;
+  });
+
+  return withAppBuildGradle(config, (mod) => {
     const marker =
       "    // k8s-staging: bundled debug artifact\n    debuggableVariants = []\n";
     let contents = mod.modResults.contents;
@@ -29,10 +44,7 @@ const withStagingDebugBundle: ConfigPlugin = (config) =>
       throw new Error("Duplicate staging debug bundle marker");
     contents = contents.split(marker).join("");
 
-    if (
-      process.env.RELEASE_CHANNEL === "staging" &&
-      process.env.BUNDLE_STAGING_DEBUG === "1"
-    ) {
+    if (debugBundle) {
       const anchor = "react {\n";
       if (contents.split(anchor).length - 1 !== 1) {
         throw new Error("Unable to locate React Native Gradle configuration");
@@ -43,6 +55,7 @@ const withStagingDebugBundle: ConfigPlugin = (config) =>
     mod.modResults.contents = contents;
     return mod;
   });
+};
 
 const stagingDebugDevClientPlugin: [string, { embeddedBundle: boolean }] = [
   "expo-dev-client",
