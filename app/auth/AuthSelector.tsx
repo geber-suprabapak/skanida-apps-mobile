@@ -99,6 +99,18 @@ export default function LoginScreen() {
                 Daftar
               </Text>
             </Button>
+            <Button
+              variant="link"
+              className="self-center min-h-12"
+              accessibilityRole="button"
+              accessibilityLabel="Lupa password?"
+              accessibilityHint="Buka formulir reset dengan kode pemulihan dari administrator"
+              onPress={() => router.push("/auth/ResetPassword")}
+            >
+              <Text className="font-semibold text-foreground underline">
+                Lupa password?
+              </Text>
+            </Button>
           </View>
           {/* Footer */}
           <View className="mt-20">
