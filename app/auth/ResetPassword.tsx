@@ -74,7 +74,9 @@ export default function ResetPassword() {
       );
     } catch (error) {
       if (__DEV__) console.error("Reset password error:", error);
-      setErrorMessage("Kode tidak valid atau sudah kedaluwarsa.");
+      setErrorMessage(
+        "Password belum dapat dipastikan berubah. Coba masuk dengan password baru. Jika gagal, minta kode pemulihan baru kepada administrator.",
+      );
     } finally {
       setLoading(false);
     }
