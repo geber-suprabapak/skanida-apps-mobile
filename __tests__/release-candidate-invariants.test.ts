@@ -13,6 +13,34 @@ describe("Release candidate v1.3.0 invariants", () => {
   };
 
   describe("Application configuration seam", () => {
+    it.each(["staging", "production"])(
+      "isolates HTTP and telemetry settings for %s builds",
+      (channel) => {
+        const previous = process.env.RELEASE_CHANNEL;
+        process.env.RELEASE_CHANNEL = channel;
+        try {
+          const config = getAppConfig(mockContext);
+          const plugin = config.plugins?.find(
+            (p) => Array.isArray(p) && p[0] === "expo-build-properties",
+          );
+          expect(
+            Array.isArray(plugin) && plugin[1].android.usesCleartextTraffic,
+          ).toBe(channel === "staging");
+          expect(config.extra?.isStaging).toBe(channel === "staging");
+          expect(config.name).toBe(
+            channel === "staging" ? "Skanida Apps (Staging)" : "Skanida Apps",
+          );
+          expect(config.updates?.enabled).toBe(false);
+          expect(config.updates?.requestHeaders?.["expo-channel-name"]).toBe(
+            channel,
+          );
+        } finally {
+          if (previous === undefined) delete process.env.RELEASE_CHANNEL;
+          else process.env.RELEASE_CHANNEL = previous;
+        }
+      },
+    );
+
     it("reports version 1.3.0, appVersion policy, automatic theme, and native platforms", () => {
       const config = getAppConfig(mockContext);
 

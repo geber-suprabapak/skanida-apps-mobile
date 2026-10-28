@@ -27,6 +27,13 @@
 **Purpose:** Render UI primitives, camera/attendance surfaces, calendar, time-sync, and notification support.
 **Entry points:** `components/`, `app/attendance/`.
 
+## Expo staging APK
+
+**Purpose:** Build a bundled Android release APK against the dummy k3d stack, using local debug signing for sandbox QA.
+**Entry points:** `scripts/build-staging-android.mjs`, `eas.json` staging profile, `app.config.ts`.
+**Boundary:** The staging profile supplies public sandbox endpoints without loading local dotenv files. Native generation uses Expo57's explicit `--no-clean`; only staging allows HTTP and disables Sentry JS/native telemetry. OTA remains disabled. Production configuration keeps HTTP disabled.
+**Read next:** `docs/staging-k3d.md` for build/install verification and current test limitations.
+
 ## Native Android experiment
 
 **Purpose:** Build an independent Kotlin/Jetpack Compose Android client using the same Logto identity and Astra `v1` API. Expo source remains as the comparison baseline and is not included in this APK.

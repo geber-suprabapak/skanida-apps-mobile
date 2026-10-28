@@ -17,7 +17,10 @@ const withSizeOptimizations: ConfigPlugin = (c) => {
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "Skanida Apps",
+  name:
+    process.env.RELEASE_CHANNEL === "staging"
+      ? "Skanida Apps (Staging)"
+      : "Skanida Apps",
   slug: "skanida-apps-mobile",
   version: "1.3.0",
   runtimeVersion: {
@@ -70,6 +73,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-build-properties",
       {
         android: {
+          usesCleartextTraffic: process.env.RELEASE_CHANNEL === "staging",
           minSdkVersion: 24,
           enableBundleCompression: true,
           enableMinifyInReleaseBuilds: true,
@@ -127,6 +131,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   },
   extra: {
+    isStaging: process.env.RELEASE_CHANNEL === "staging",
     router: {
       origin: false,
     },

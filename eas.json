@@ -4,6 +4,27 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "staging": {
+      "node": "24.19.0",
+      "pnpm": "11.21.0",
+      "distribution": "internal",
+      "channel": "staging",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon --max-workers=2 --console=plain"
+      },
+      "env": {
+        "RELEASE_CHANNEL": "staging",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "SENTRY_DISABLE_NATIVE_DEBUG_UPLOAD": "true",
+        "EXPO_PUBLIC_LOGTO_ENDPOINT": "http://auth.192.168.21.122.nip.io:8080",
+        "EXPO_PUBLIC_LOGTO_APP_ID": "ktok16dl83bmwh85jgc97",
+        "EXPO_PUBLIC_LOGTO_REDIRECT_URI": "skanida://auth/callback",
+        "EXPO_PUBLIC_LOGTO_LOGOUT_URI": "skanida://auth/callback",
+        "EXPO_PUBLIC_LOGTO_RESOURCE": "https://api.skanida-staging.test",
+        "EXPO_PUBLIC_BFF_API_URL": "http://api.192.168.21.122.nip.io:8080"
+      }
+    },
     "development": {
       "node": "24.19.0",
       "pnpm": "11.21.0",

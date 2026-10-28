@@ -21,8 +21,11 @@ import useAuthStore from "~/store/authStore";
 import LoadingScreen from "./auth/LoadingScreen";
 
 import * as Sentry from "@sentry/react-native";
+import Constants from "expo-constants";
 
 Sentry.init({
+  enabled: !Constants.expoConfig?.extra?.isStaging,
+  enableNative: !Constants.expoConfig?.extra?.isStaging,
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
   enableTombstone: true,
