@@ -165,13 +165,15 @@ describe("Release candidate v1.3.0 invariants", () => {
       expect(content).toContain('queryParams.append("end_date", endDate)');
     });
 
-    it("ISS-10: ensures Dashboard.tsx handles pending profile lifecycle status gracefully", () => {
+    it("ISS-10: keeps restricted lifecycle states out of the normal dashboard", () => {
       const dashboardPath = join(rootDir, "app/Dashboard.tsx");
       const content = readFileSync(dashboardPath, "utf8");
 
-      expect(content).toContain("isPendingApproval");
+      expect(content).toContain("accountAccessState");
       expect(content).toContain("Akun Menunggu Persetujuan");
+      expect(content).toContain("Akun Tidak Dapat Diakses");
       expect(content).toContain("Cek Status Persetujuan");
+      expect(content).toContain('lifecycle_status !== "approved"');
       expect(content).toContain("lifecycle_status");
     });
 

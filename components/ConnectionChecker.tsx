@@ -154,10 +154,10 @@ export default function ConnectionChecker({
   return (
     <ConnectionContext.Provider value={contextValue}>
       <View style={styles.container}>
-        {children}
         {isOffline && (
           <TopOfflineBanner onRetry={checkConnection} isRetrying={isRetrying} />
         )}
+        <View style={styles.content}>{children}</View>
       </View>
     </ConnectionContext.Provider>
   );
@@ -167,15 +167,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  content: {
+    flex: 1,
+  },
   offlineBanner: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
     backgroundColor: "#DC2626",
     paddingBottom: 8,
     paddingHorizontal: 16,
-    zIndex: 9999,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

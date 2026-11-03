@@ -10,7 +10,12 @@ const DEFAULT_ATTEMPT_TTL_MS = 10 * 60 * 1000;
 type AttemptId = string & {
   readonly __attendanceWorkflowAttempt: unique symbol;
 };
-type AttemptState = "ready" | "submitting" | "submitted" | "cancelled";
+type AttemptState =
+  | "ready"
+  | "submitting"
+  | "submitted"
+  | "uncertain"
+  | "cancelled";
 
 export type Coordinates = {
   latitude: number;
@@ -35,7 +40,7 @@ export type AttendanceWorkflowErrorCode =
   | "fallback_location_unavailable"
   | "fallback_mock_location"
   | "attendance_blocked"
-  | "submit_unavailable";
+  | "submit_outcome_unknown";
 
 export type PrepareOutcome =
   | {
@@ -114,6 +119,7 @@ type Attempt = {
   snapshotPath?: string;
   completion?: Promise<CompleteOutcome>;
   submitted?: Extract<CompleteOutcome, { status: "submitted" }>;
+  uncertainOutcome?: Extract<CompleteOutcome, { status: "failed" }>;
 };
 
 const isCoordinates = (value: Coordinates | undefined): value is Coordinates =>
@@ -193,14 +199,16 @@ export const createAttendanceWorkflow = (
   const now = options.now ?? Date.now;
   let pendingSuccess: PendingAttendanceSuccess | null = null;
 
-  const cleanup = async (attempt: Attempt) => {
-    if (!attempt.snapshotPath) return;
+  const cleanupPath = async (snapshotPath?: string) => {
+    if (!snapshotPath) return;
     try {
-      await adapters.capture.cleanup(attempt.snapshotPath);
+      await adapters.capture.cleanup(snapshotPath);
     } catch {
       // Local cleanup must not replace an attendance outcome.
     }
   };
+
+  const cleanup = (attempt: Attempt) => cleanupPath(attempt.snapshotPath);
 
   const cancelAttempt = (attempt: Attempt) => {
     if (attempt.state === "submitted" || attempt.state === "cancelled") return;
@@ -297,8 +305,29 @@ export const createAttendanceWorkflow = (
     if (attempt.state === "cancelled") {
       return { status: "cancelled", reason: "attempt_cancelled" };
     }
+    if (attempt.state === "uncertain") {
+      const nextSnapshot = snapshotPath?.trim();
+      if (nextSnapshot && nextSnapshot !== attempt.snapshotPath) {
+        await cleanupPath(nextSnapshot);
+      }
+      return (
+        attempt.uncertainOutcome ?? {
+          status: "failed",
+          code: "submit_outcome_unknown",
+          retryable: false,
+          message:
+            "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi.",
+        }
+      );
+    }
     if (attempt.submitted) return attempt.submitted;
-    if (attempt.completion) return attempt.completion;
+    if (attempt.completion) {
+      const nextSnapshot = snapshotPath?.trim();
+      if (nextSnapshot && nextSnapshot !== attempt.snapshotPath) {
+        await cleanupPath(nextSnapshot);
+      }
+      return attempt.completion;
+    }
 
     const generation = attempt.generation;
     attempt.snapshotPath = snapshotPath?.trim() || undefined;
@@ -404,11 +433,16 @@ export const createAttendanceWorkflow = (
               details: error.details,
             };
           }
-          return {
+          const uncertainOutcome = {
             status: "failed",
-            code: "submit_unavailable",
-            retryable: true,
-          };
+            code: "submit_outcome_unknown",
+            retryable: false,
+            message:
+              "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi.",
+          } satisfies Extract<CompleteOutcome, { status: "failed" }>;
+          attempt.state = "uncertain";
+          attempt.uncertainOutcome = uncertainOutcome;
+          return uncertainOutcome;
         }
 
         if (!isActive(attempt, generation)) {

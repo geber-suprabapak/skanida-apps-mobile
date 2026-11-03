@@ -1,148 +1,92 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { AttendanceMap } from "~/components/attendance-calendar/types";
 import { processAttendanceData } from "~/components/attendance-calendar/utils";
 import { listAttendances, listPermits } from "~/utils/bffMobileApi";
 
-const __DEV__ = process.env.NODE_ENV === "development";
-
-// PERF-M09: In-memory cache for previously fetched calendar months
-const MONTH_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MONTH_CACHE_TTL_MS = 5 * 60 * 1000;
 const monthCache = new Map<
   string,
   { data: AttendanceMap; expiresAt: number }
 >();
-
-function getCacheKey(userId: string, year: number, month: number): string {
-  return `${userId}-${year}-${month}`;
-}
 
 export const useOptimizedMonthlyAttendance = (
   userId: string,
   year: number,
   month: number,
 ) => {
-  const [data, setData] = useState<AttendanceMap>({});
-  const [loading, setLoading] = useState(false);
-  const lastFetchRef = useRef<{
-    userId: string;
-    year: number;
-    month: number;
-  } | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const key = `${userId}-${year}-${month}`;
+  const [state, setState] = useState<{
+    key: string;
+    data: AttendanceMap | null;
+    loading: boolean;
+    error: boolean;
+  }>({
+    key,
+    data: null,
+    loading: !!userId,
+    error: false,
+  });
+  const active = useRef<{ key: string; controller: AbortController } | null>(
+    null,
+  );
 
-  const getMonthRange = useCallback((rangeYear: number, rangeMonth: number) => {
-    const startDate = `${rangeYear}-${String(rangeMonth + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(rangeYear, rangeMonth + 1, 0).getDate();
-    const endDate = `${rangeYear}-${String(rangeMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-    return { startDate, endDate };
-  }, []);
+  useEffect(
+    () => () => {
+      active.current?.controller.abort();
+      active.current = null;
+    },
+    [key],
+  );
 
-  const fetchFromServer = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!userId) return {};
+  const refetch = useCallback(
+    async (forceRefresh = false) => {
+      if (!userId) return;
+      if (!forceRefresh && active.current?.key === key) return;
+      active.current?.controller.abort();
+      active.current = null;
 
-      const { startDate, endDate } = getMonthRange(year, month);
+      const cached = monthCache.get(key);
+      if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
+        setState({ key, data: cached.data, loading: false, error: false });
+        return;
+      }
 
+      const controller = new AbortController();
+      active.current = { key, controller };
+      setState({ key, data: null, loading: true, error: false });
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, "0")}`;
       try {
-        const [attendanceItems, permitItems] = await Promise.all([
+        const [attendance, permits] = await Promise.all([
           listAttendances({ startDate, endDate }),
           listPermits(),
         ]);
-
-        if (signal?.aborted) return {};
-
-        const processedData = processAttendanceData(
-          attendanceItems,
-          permitItems,
-          { startDate, endDate },
-        );
-
-        return processedData;
+        if (controller.signal.aborted) return;
+        const data = processAttendanceData(attendance, permits, {
+          startDate,
+          endDate,
+        });
+        monthCache.set(key, {
+          data,
+          expiresAt: Date.now() + MONTH_CACHE_TTL_MS,
+        });
+        setState({ key, data, loading: false, error: false });
       } catch (error) {
-        if (signal?.aborted) return {};
+        if (controller.signal.aborted) return;
         if (__DEV__)
           console.error("Error fetching attendance history from Astra:", error);
-        throw error;
-      }
-    },
-    [userId, year, month, getMonthRange],
-  );
-
-  const fetchData = useCallback(
-    async (forceRefresh: boolean = false) => {
-      if (!userId) return;
-
-      const currentRequest = { userId, year, month };
-      const cacheKey = getCacheKey(userId, year, month);
-
-      // PERF-M09: Check in-memory cache first (skip on force refresh)
-      if (!forceRefresh) {
-        const cached = monthCache.get(cacheKey);
-        if (cached && cached.expiresAt > Date.now()) {
-          // Still need to check if this is a duplicate of last fetch
-          if (
-            lastFetchRef.current &&
-            lastFetchRef.current.userId === currentRequest.userId &&
-            lastFetchRef.current.year === currentRequest.year &&
-            lastFetchRef.current.month === currentRequest.month
-          ) {
-            return;
-          }
-          lastFetchRef.current = currentRequest;
-          setData(cached.data);
-          return;
-        }
-
-        // Non-cached duplicate check
-        if (
-          lastFetchRef.current &&
-          lastFetchRef.current.userId === currentRequest.userId &&
-          lastFetchRef.current.year === currentRequest.year &&
-          lastFetchRef.current.month === currentRequest.month
-        ) {
-          return;
-        }
-      }
-
-      lastFetchRef.current = currentRequest;
-
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
-
-      try {
-        setLoading(true);
-
-        const serverData = await fetchFromServer(signal);
-
-        if (!signal.aborted) {
-          setData(serverData);
-          // PERF-M09: Cache the result
-          monthCache.set(cacheKey, {
-            data: serverData,
-            expiresAt: Date.now() + MONTH_CACHE_TTL_MS,
-          });
-        }
-      } catch (error) {
-        if (!signal?.aborted) {
-          if (__DEV__) console.error("Error in fetchData:", error);
-          setData({});
-        }
+        setState({ key, data: null, loading: false, error: true });
       } finally {
-        if (!signal?.aborted) {
-          setLoading(false);
-        }
+        if (active.current?.controller === controller) active.current = null;
       }
     },
-    [userId, year, month, fetchFromServer],
+    [userId, year, month, key],
   );
 
   return {
-    data,
-    loading,
-    refetch: fetchData,
+    ...(state.key === key
+      ? state
+      : { data: null, loading: !!userId, error: false }),
+    refetch,
   };
 };

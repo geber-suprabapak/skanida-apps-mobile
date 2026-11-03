@@ -74,6 +74,28 @@ const prepareReadyAttempt = async (workflow: AttendanceWorkflow) => {
 };
 
 describe("Attendance workflow contract", () => {
+  it("distinguishes location failures from precheck failures before capture", async () => {
+    const locationFailure = createAdapters();
+    locationFailure.location.getCurrentPosition.mockRejectedValue(
+      new Error("location"),
+    );
+    await expect(
+      createAttendanceWorkflow(locationFailure).prepare({
+        userId: "student-1",
+      }),
+    ).resolves.toEqual({ status: "failed", code: "location_unavailable" });
+    expect(locationFailure.gateway.precheck).not.toHaveBeenCalled();
+
+    const precheckFailure = createAdapters();
+    precheckFailure.gateway.precheck.mockRejectedValue(new Error("network"));
+    await expect(
+      createAttendanceWorkflow(precheckFailure).prepare({
+        userId: "student-1",
+      }),
+    ).resolves.toEqual({ status: "failed", code: "precheck_unavailable" });
+    expect(precheckFailure.capture.readBase64).not.toHaveBeenCalled();
+  });
+
   it("blocks denied permission and mocked positions before precheck", async () => {
     const deniedAdapters = createAdapters();
     deniedAdapters.location.getCurrentPosition.mockResolvedValue({
@@ -178,7 +200,7 @@ describe("Attendance workflow contract", () => {
     }
   });
 
-  it("allows a fresh capture after submit failure without automatic retry", async () => {
+  it("does not resubmit an ambiguous outcome for the same attempt", async () => {
     const adapters = createAdapters();
     adapters.gateway.submit
       .mockRejectedValueOnce(new Error("network"))
@@ -193,15 +215,45 @@ describe("Attendance workflow contract", () => {
       workflow.complete({ attemptId, snapshotPath: "/cache/first.jpg" }),
     ).resolves.toMatchObject({
       status: "failed",
-      code: "submit_unavailable",
-      retryable: true,
+      code: "submit_outcome_unknown",
+      retryable: false,
+      message: expect.stringContaining("Periksa riwayat presensi"),
     });
     expect(adapters.gateway.submit).toHaveBeenCalledTimes(1);
 
     await expect(
       workflow.complete({ attemptId, snapshotPath: "/cache/second.jpg" }),
+    ).resolves.toMatchObject({
+      status: "failed",
+      code: "submit_outcome_unknown",
+      retryable: false,
+    });
+    expect(adapters.gateway.submit).toHaveBeenCalledTimes(1);
+    expect(adapters.capture.cleanup).toHaveBeenCalledWith("/cache/first.jpg");
+    expect(adapters.capture.cleanup).toHaveBeenCalledWith("/cache/second.jpg");
+  });
+
+  it("allows recapture after a local failure before any submit", async () => {
+    const adapters = createAdapters();
+    adapters.capture.readBase64
+      .mockRejectedValueOnce(new Error("capture not ready"))
+      .mockResolvedValueOnce("aGVsbG8=");
+    const workflow = createAttendanceWorkflow(adapters);
+    const attemptId = await prepareReadyAttempt(workflow);
+
+    await expect(
+      workflow.complete({ attemptId, snapshotPath: "/cache/first.jpg" }),
+    ).resolves.toMatchObject({
+      status: "failed",
+      code: "capture_unreadable",
+      retryable: true,
+    });
+    expect(adapters.gateway.submit).not.toHaveBeenCalled();
+
+    await expect(
+      workflow.complete({ attemptId, snapshotPath: "/cache/second.jpg" }),
     ).resolves.toMatchObject({ status: "submitted" });
-    expect(adapters.gateway.submit).toHaveBeenCalledTimes(2);
+    expect(adapters.gateway.submit).toHaveBeenCalledTimes(1);
     expect(adapters.capture.cleanup).toHaveBeenCalledWith("/cache/first.jpg");
     expect(adapters.capture.cleanup).toHaveBeenCalledWith("/cache/second.jpg");
   });

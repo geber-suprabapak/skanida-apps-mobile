@@ -523,10 +523,10 @@ export default function PerizinanScreen() {
   }, [requestCameraPermission, handleImageResult]);
 
   const pickFromLibrary = useCallback(async (): Promise<void> => {
-    const hasPermission = await requestLibraryPermission();
-    if (!hasPermission) return;
-
     try {
+      const hasPermission = await requestLibraryPermission();
+      if (!hasPermission) return;
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: IMAGE_QUALITY,

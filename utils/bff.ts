@@ -58,6 +58,7 @@ type BffRequestOptions = {
   headers?: BffHeaderMap;
   timeoutMs?: number;
   requireAuth?: boolean;
+  signal?: AbortSignal;
 };
 
 export class BffRequestError extends Error {
@@ -208,6 +209,33 @@ export async function bffRequest<T>(
     if (isFormData(body)) {
       return new Promise<T>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        let settled = false;
+        let abortRequest = () => {};
+        const finish = (callback: () => void) => {
+          if (settled) return;
+          settled = true;
+          options.signal?.removeEventListener("abort", abortRequest);
+          clearTimeout(timeoutId);
+          callback();
+        };
+        const fail = (error: BffRequestError) => finish(() => reject(error));
+        const succeed = (value: T) => finish(() => resolve(value));
+        abortRequest = () => {
+          if (settled) return;
+          xhr.abort();
+          fail(
+            new BffRequestError("Permintaan dibatalkan.", 0, "REQUEST_ABORTED"),
+          );
+        };
+        if (options.signal?.aborted) {
+          fail(
+            new BffRequestError("Permintaan dibatalkan.", 0, "REQUEST_ABORTED"),
+          );
+          return;
+        }
+        options.signal?.addEventListener("abort", abortRequest, {
+          once: true,
+        });
         xhr.open(options.method ?? "POST", `${getBffBaseUrl()}${path}`);
         xhr.timeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
         xhr.setRequestHeader("Accept", "application/json");
@@ -225,7 +253,7 @@ export async function bffRequest<T>(
             "X-Astra-Contract-Version",
           );
           if (contractVersion !== "v1") {
-            reject(
+            fail(
               new BffRequestError(
                 "Versi kontrak server tidak kompatibel. Silakan perbarui aplikasi.",
                 502,
@@ -250,7 +278,7 @@ export async function bffRequest<T>(
                 envelope = candidate;
               }
             }
-            reject(
+            fail(
               new BffRequestError(
                 getErrorMessage(parsed, xhr.status),
                 xhr.status,
@@ -269,17 +297,15 @@ export async function bffRequest<T>(
             // SAFETY: parsed is non-null object with success property checked above
             const candidate = parsed as BffSuccessEnvelope<T>;
             if (candidate.success === true) {
-              resolve(candidate.data);
+              succeed(candidate.data);
               return;
             }
           }
-          reject(
-            new BffRequestError("Respons server tidak valid.", xhr.status),
-          );
+          fail(new BffRequestError("Respons server tidak valid.", xhr.status));
         };
 
         xhr.onerror = () => {
-          reject(
+          fail(
             new BffRequestError(
               `Permintaan server gagal (${xhr.status || 0}).`,
               xhr.status || 500,
@@ -288,11 +314,17 @@ export async function bffRequest<T>(
         };
 
         xhr.ontimeout = () => {
-          reject(
+          fail(
             new BffRequestError(
               "Permintaan server melebihi batas waktu. Silakan coba lagi.",
               408,
             ),
+          );
+        };
+
+        xhr.onabort = () => {
+          fail(
+            new BffRequestError("Permintaan dibatalkan.", 0, "REQUEST_ABORTED"),
           );
         };
 

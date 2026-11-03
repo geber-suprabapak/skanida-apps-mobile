@@ -313,6 +313,7 @@ export default function StatusPerizinanScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [records, setRecords] = useState<PerizinanRecord[]>([]);
+  const [loadError, setLoadError] = useState(false);
 
   // ---- Fetching ----
   const fetchRecords = useCallback(async () => {
@@ -321,8 +322,10 @@ export default function StatusPerizinanScreen() {
     try {
       const data = await listPermits();
       setRecords(data);
+      setLoadError(false);
     } catch (error) {
       if (__DEV__) console.error("Error fetching records:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -384,15 +387,28 @@ export default function StatusPerizinanScreen() {
 
   const MAX_DAILY_SUBMISSIONS = 3;
   const canSubmitMore =
-    todayCount < MAX_DAILY_SUBMISSIONS && !hasPendingOrApproved;
+    !loading &&
+    !refreshing &&
+    !loadError &&
+    todayCount < MAX_DAILY_SUBMISSIONS &&
+    !hasPendingOrApproved;
 
   const buttonLabel = useMemo(() => {
+    if (loadError) return "Muat ulang data perizinan";
+    if (loading || refreshing) return "Memuat data perizinan";
     if (canSubmitMore) return "Ajukan Izin Baru";
     if (hasPendingOrApproved) return "Sudah Ada Izin Aktif";
     if (todayCount >= MAX_DAILY_SUBMISSIONS)
       return `Batas Harian Tercapai (${MAX_DAILY_SUBMISSIONS})`;
     return "Tidak Dapat Mengajukan Izin";
-  }, [canSubmitMore, hasPendingOrApproved, todayCount]);
+  }, [
+    canSubmitMore,
+    hasPendingOrApproved,
+    todayCount,
+    loadError,
+    loading,
+    refreshing,
+  ]);
 
   // ---- Render ----
   return (
@@ -422,7 +438,7 @@ export default function StatusPerizinanScreen() {
                   : "text-red-600 dark:text-red-400",
               )}
             >
-              {todayCount}/{MAX_DAILY_SUBMISSIONS}
+              {loadError ? "—" : `${todayCount}/${MAX_DAILY_SUBMISSIONS}`}
             </Text>
           </View>
         </View>
@@ -452,25 +468,46 @@ export default function StatusPerizinanScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={
-            todayLatestRecord ? (
-              <TopStatusCard
-                item={todayLatestRecord}
-                userName={userProfile?.full_name || "Siswa"}
-              />
-            ) : null
+            <>
+              {loadError && (
+                <View
+                  className="items-center py-4"
+                  accessibilityLiveRegion="polite"
+                >
+                  <Text className="text-foreground">
+                    Tidak dapat memuat data perizinan.
+                  </Text>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Coba lagi"
+                    onPress={handleRefresh}
+                    disabled={refreshing}
+                    className="min-h-12 justify-center px-4"
+                  >
+                    <Text className="text-primary">Coba lagi</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {todayLatestRecord && (
+                <TopStatusCard
+                  item={todayLatestRecord}
+                  userName={userProfile?.full_name || "Siswa"}
+                />
+              )}
+            </>
           }
           ListEmptyComponent={
             loading && !refreshing ? (
               <View className="items-center py-10">
                 <Text className="text-muted-foreground">Memuat data...</Text>
               </View>
-            ) : (
+            ) : !loadError ? (
               <View className="items-center py-10">
                 <Text className="text-muted-foreground">
                   Tidak ada data perizinan.
                 </Text>
               </View>
-            )
+            ) : null
           }
         />
 
@@ -490,8 +527,19 @@ export default function StatusPerizinanScreen() {
             )}
             activeOpacity={0.8}
           >
-            <Icon as={Plus} className="text-white mr-2 size-5" />
-            <Text className="text-white font-bold text-base">
+            <Icon
+              as={Plus}
+              className={cn(
+                "mr-2 size-5",
+                canSubmitMore ? "text-white" : "text-muted-foreground",
+              )}
+            />
+            <Text
+              className={cn(
+                "font-bold text-base",
+                canSubmitMore ? "text-white" : "text-muted-foreground",
+              )}
+            >
               {buttonLabel}
             </Text>
           </TouchableOpacity>

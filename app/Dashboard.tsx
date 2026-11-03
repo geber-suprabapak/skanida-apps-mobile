@@ -231,7 +231,9 @@ export default function Dashboard() {
     useState<BffDashboardPrimaryAction | null>(null);
   const [attendanceSuccess, setAttendanceSuccess] =
     useState<PendingAttendanceSuccess | null>(null);
-  const [isPendingApproval, setIsPendingApproval] = useState(false);
+  const [accountAccessState, setAccountAccessState] = useState<
+    "pending" | "restricted" | null
+  >(null);
 
   // 60-second interval for schedule computations
   useEffect(() => {
@@ -249,10 +251,18 @@ export default function Dashboard() {
     try {
       const data = await getDashboard();
       if (data.profile.lifecycle_status === "pending") {
-        setIsPendingApproval(true);
+        setAccountAccessState("pending");
         return;
       }
-      setIsPendingApproval(false);
+      if (
+        data.profile.lifecycle_status !== undefined &&
+        data.profile.lifecycle_status !== null &&
+        data.profile.lifecycle_status !== "approved"
+      ) {
+        setAccountAccessState("restricted");
+        return;
+      }
+      setAccountAccessState(null);
       const avatar = data.profile.avatar_url;
 
       setAttendanceStatus(toMobileAttendanceStatus(data.attendance));
@@ -269,14 +279,10 @@ export default function Dashboard() {
       setPrimaryAction(data.primary_action);
     } catch (error) {
       if (
-        (error instanceof BffRequestError &&
-          (error.status === 403 || error.code === "FORBIDDEN")) ||
-        (error instanceof Error &&
-          /pending|menunggu|persetujuan|access denied|forbidden/i.test(
-            error.message,
-          ))
+        error instanceof BffRequestError &&
+        (error.status === 403 || error.code === "FORBIDDEN")
       ) {
-        setIsPendingApproval(true);
+        setAccountAccessState("restricted");
         return;
       }
       Sentry.captureException(error);
@@ -542,7 +548,7 @@ export default function Dashboard() {
   );
 
   // Render
-  if (isPendingApproval) {
+  if (accountAccessState !== null) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -571,13 +577,15 @@ export default function Dashboard() {
                 variant="h2"
                 className="text-2xl font-bold text-center mb-3 text-foreground"
               >
-                Akun Menunggu Persetujuan
+                {accountAccessState === "pending"
+                  ? "Akun Menunggu Persetujuan"
+                  : "Akun Tidak Dapat Diakses"}
               </Text>
 
               <Text className="text-center text-sm text-muted-foreground leading-relaxed mb-6">
-                Pendaftaran akun Anda sedang ditinjau oleh administrator
-                sekolah. Silakan tunggu hingga akun diverifikasi dan disetujui
-                untuk dapat mengakses layanan absensi.
+                {accountAccessState === "pending"
+                  ? "Pendaftaran akun Anda sedang ditinjau oleh administrator sekolah. Silakan tunggu hingga akun diverifikasi dan disetujui untuk dapat mengakses layanan absensi."
+                  : "Akun ini belum dapat mengakses layanan. Hubungi administrator sekolah untuk memastikan status akun Anda."}
               </Text>
 
               <Card className="w-full p-4 mb-6 bg-card border border-border/50 rounded-2xl">
@@ -590,7 +598,9 @@ export default function Dashboard() {
                   </Text>
                   <View className="bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/30">
                     <Text className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                      Pending
+                      {accountAccessState === "pending"
+                        ? "Pending"
+                        : "Akses terbatas"}
                     </Text>
                   </View>
                 </View>
@@ -611,7 +621,9 @@ export default function Dashboard() {
                   <Text className="text-secondary-foreground font-semibold">
                     {refreshing
                       ? "Memeriksa Status..."
-                      : "Cek Status Persetujuan"}
+                      : accountAccessState === "pending"
+                        ? "Cek Status Persetujuan"
+                        : "Coba Lagi"}
                   </Text>
                 </Button>
 

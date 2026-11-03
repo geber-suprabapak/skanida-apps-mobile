@@ -150,7 +150,7 @@ const messageForOutcome = (
 ): string => {
   switch (outcome.code) {
     case "capture_missing":
-      return "Failed to capture photo - no file path returned";
+      return "Foto tidak berhasil diambil. Silakan ambil ulang foto.";
     case "payload_too_large":
       return "Ukuran data foto melebihi 5MB. Silakan ambil ulang foto.";
     case "fallback_mock_location":
@@ -159,6 +159,11 @@ const messageForOutcome = (
       return "Data absensi tidak valid. Silakan coba lagi.";
     case "attendance_blocked":
       return outcome.message ?? "Presensi diblokir karena izin yang disetujui.";
+    case "submit_outcome_unknown":
+      return (
+        outcome.message ??
+        "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
+      );
     default:
       return "Gagal memproses absensi.";
   }
@@ -264,14 +269,30 @@ const CameraAttendance = () => {
       } else if (outcome.status !== "cancelled") {
         const errorMsg = messageForOutcome(outcome);
         AccessibilityInfo.announceForAccessibility(
-          `Presensi gagal: ${errorMsg}`,
+          outcome.code === "submit_outcome_unknown"
+            ? errorMsg
+            : `Presensi gagal: ${errorMsg}`,
         );
         faceApiError("attendance-process:failed", {
           durationMs: elapsedMs(startedAt),
           attemptId,
           code: outcome.code,
         });
-        Alert.alert("Error", errorMsg);
+        if (outcome.code === "submit_outcome_unknown") {
+          Alert.alert(
+            "Hasil Presensi Belum Diketahui",
+            errorMsg,
+            [
+              {
+                text: "Periksa Riwayat",
+                onPress: () => router.replace("/extra/riwayat"),
+              },
+            ],
+            { cancelable: false },
+          );
+        } else {
+          Alert.alert("Error", errorMsg);
+        }
       }
 
       setIsProcessing(false);

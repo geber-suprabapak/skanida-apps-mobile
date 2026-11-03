@@ -364,7 +364,10 @@ export async function getEnrollmentStatus() {
   return bffRequest<BffEnrollmentStatus>("/v1/mobile/face/enrollment/status");
 }
 
-export async function submitEnrollment(files: FilePart[]) {
+export async function submitEnrollment(
+  files: FilePart[],
+  signal?: AbortSignal,
+) {
   const form = new FormData();
   for (const file of files) {
     await appendNativeFile(form, "files", file);
@@ -374,6 +377,7 @@ export async function submitEnrollment(files: FilePart[]) {
     method: "POST",
     body: form,
     timeoutMs: 60_000,
+    signal,
   });
 }
 

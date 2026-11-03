@@ -29,7 +29,7 @@ export interface AttendanceCalendarProps {
   currentYear?: number;
   currentMonth?: number;
   /** PERF-H06: Callback to share loaded data with parent, avoiding duplicate fetches */
-  onDataLoaded?: (data: AttendanceMap) => void;
+  onDataLoaded?: (data: AttendanceMap | null) => void;
 }
 
 export interface AttendanceCalendarRef {

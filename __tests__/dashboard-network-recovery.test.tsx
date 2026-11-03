@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Text } from "react-native";
 import {
   act,
   cleanup,
@@ -13,6 +14,7 @@ import useAuthStore from "../store/authStore";
 import * as api from "../utils/bffMobileApi";
 import * as face from "../utils/faceApiRuntime";
 import * as enrollment from "../utils/enrollment";
+import { BffRequestError } from "../utils/bff";
 import { timeSync } from "../utils/timeSync";
 
 type NetworkState = {
@@ -158,5 +160,88 @@ describe("Dashboard recovery after an offline start", () => {
     expect(screen.getByText("13:04")).toBeTruthy();
     expect(screen.getByText("SELESAI")).toBeTruthy();
     expect(screen.queryByText("Tidak ada koneksi internet")).toBeNull();
+  });
+
+  it.each(["rejected", "disabled"] as const)(
+    "keeps a %s account out of the normal dashboard",
+    async (lifecycle_status) => {
+      read.mockResolvedValue({
+        ...dashboard,
+        profile: { ...dashboard.profile, lifecycle_status },
+      });
+
+      await render(<Dashboard />);
+
+      expect(await screen.findByText("Akun Tidak Dapat Diakses")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Akun ini belum dapat mengakses layanan. Hubungi administrator sekolah untuk memastikan status akun Anda.",
+        ),
+      ).toBeTruthy();
+      expect(screen.getByText("Akses terbatas")).toBeTruthy();
+      expect(screen.getByText("Coba Lagi")).toBeTruthy();
+      expect(screen.queryByText("SELESAI")).toBeNull();
+    },
+  );
+
+  it("keeps an unrecognized non-null lifecycle state out of the dashboard", async () => {
+    const unsupportedLifecyclePayload = JSON.parse(
+      JSON.stringify({
+        ...dashboard,
+        profile: { ...dashboard.profile, lifecycle_status: "suspended" },
+      }),
+    );
+    read.mockResolvedValue(unsupportedLifecyclePayload);
+
+    await render(<Dashboard />);
+
+    expect(await screen.findByText("Akun Tidak Dapat Diakses")).toBeTruthy();
+    expect(screen.queryByText("SELESAI")).toBeNull();
+  });
+
+  it("does not guess a lifecycle state from a forbidden response", async () => {
+    read.mockRejectedValue(
+      new BffRequestError("Akun pending", 403, "FORBIDDEN"),
+    );
+
+    await render(<Dashboard />);
+
+    expect(await screen.findByText("Akun Tidak Dapat Diakses")).toBeTruthy();
+    expect(screen.queryByText("Akun Menunggu Persetujuan")).toBeNull();
+    expect(screen.queryByText("SELESAI")).toBeNull();
+  });
+
+  it("keeps the pending lifecycle message when Astra returns pending explicitly", async () => {
+    read.mockResolvedValue({
+      ...dashboard,
+      profile: { ...dashboard.profile, lifecycle_status: "pending" },
+    });
+
+    await render(<Dashboard />);
+
+    expect(await screen.findByText("Akun Menunggu Persetujuan")).toBeTruthy();
+    expect(screen.getByText("Cek Status Persetujuan")).toBeTruthy();
+    expect(screen.queryByText("SELESAI")).toBeNull();
+  });
+
+  it("keeps the offline banner in flow above screen content", async () => {
+    mockConnected = false;
+    await render(
+      <ConnectionChecker>
+        <Text testID="offline-layout-page">Halaman</Text>
+      </ConnectionChecker>,
+    );
+
+    const bannerText = await screen.findByText("Tidak ada koneksi internet");
+    const banner = bannerText.parent?.parent?.parent;
+    const page = screen.getByTestId("offline-layout-page");
+    const appLayout = banner?.parent;
+
+    expect(banner).toBeTruthy();
+    expect(appLayout).toBeTruthy();
+    expect(page.parent?.parent).toBe(appLayout);
+    expect(appLayout!.children.indexOf(banner!)).toBeLessThan(
+      appLayout!.children.indexOf(page.parent!),
+    );
   });
 });

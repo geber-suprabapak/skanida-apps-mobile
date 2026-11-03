@@ -33,12 +33,12 @@ export default function Riwayat() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const calendarRef = useRef<AttendanceCalendarRef>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [monthlyStats, setMonthlyStats] = useState({
-    hadir: 0,
-    terlambat: 0,
-    sakit: 0,
-    izin: 0,
-  });
+  const [monthlyStats, setMonthlyStats] = useState<{
+    hadir: number;
+    terlambat: number;
+    sakit: number;
+    izin: number;
+  } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,7 +66,12 @@ export default function Riwayat() {
   );
 
   // PERF-H06: Derive stats from calendar data instead of separate fetch
-  const handleCalendarDataLoaded = useCallback((data: AttendanceMap) => {
+  const handleCalendarDataLoaded = useCallback((data: AttendanceMap | null) => {
+    if (!data) {
+      setMonthlyStats(null);
+      setRecords([]);
+      return;
+    }
     let hadirCount = 0;
     let terlambatCount = 0;
     let sakitCount = 0;
@@ -108,9 +113,19 @@ export default function Riwayat() {
   // PERF-M10: Memoize maximumDate to avoid new Date() on every render
   const maximumDate = useMemo(() => new Date(), []);
 
-  const handleDateChange = useCallback((date: Date) => {
-    setSelectedDate(date);
-  }, []);
+  const handleDateChange = useCallback(
+    (date: Date) => {
+      if (
+        date.getFullYear() !== selectedDate.getFullYear() ||
+        date.getMonth() !== selectedDate.getMonth()
+      ) {
+        setMonthlyStats(null);
+        setRecords([]);
+      }
+      setSelectedDate(date);
+    },
+    [selectedDate],
+  );
 
   const getItemLayout = useCallback(
     (_data: any, index: number) => ({
@@ -123,23 +138,32 @@ export default function Riwayat() {
 
   const renderItem = useCallback(({ item }: { item: AttendanceRecord }) => {
     const isLate = item.isLate || item.status === "late";
-    const badgeVariant: "hadir" | "terlambat" | "izin" | "sakit" =
-      item.status === "sick"
-        ? "sakit"
-        : item.status === "leave"
-          ? "izin"
-          : isLate
-            ? "terlambat"
-            : "hadir";
+    const badgeVariant:
+      | "hadir"
+      | "terlambat"
+      | "izin"
+      | "sakit"
+      | "destructive" =
+      item.status === "absent"
+        ? "destructive"
+        : item.status === "sick"
+          ? "sakit"
+          : item.status === "leave"
+            ? "izin"
+            : isLate
+              ? "terlambat"
+              : "hadir";
 
     const badgeLabel =
-      badgeVariant === "hadir"
-        ? "Hadir"
-        : badgeVariant === "terlambat"
-          ? "Terlambat"
-          : badgeVariant === "sakit"
-            ? "Sakit"
-            : formatMobilePermitCategory(item.leaveType);
+      badgeVariant === "destructive"
+        ? "Alpha"
+        : badgeVariant === "hadir"
+          ? "Hadir"
+          : badgeVariant === "terlambat"
+            ? "Terlambat"
+            : badgeVariant === "sakit"
+              ? "Sakit"
+              : formatMobilePermitCategory(item.leaveType);
 
     return (
       <View className="h-20 justify-center px-4 mb-3 bg-card rounded-2xl border border-border">
@@ -155,7 +179,9 @@ export default function Riwayat() {
                       ? ` • Pulang: ${formatTime(item.checkOutTime)}`
                       : ""
                   }`
-                : item.description || "Pengajuan izin tercatat"}
+                : item.status === "absent"
+                  ? "Tidak hadir"
+                  : item.description || "Pengajuan izin tercatat"}
             </Text>
           </View>
           <Badge variant={badgeVariant}>
@@ -191,49 +217,51 @@ export default function Riwayat() {
         </View>
 
         {/* === MONTHLY STATISTICS CARDS === */}
-        <View className="mb-4">
-          <View className="flex-row flex-wrap gap-3">
-            {/* Hadir Card */}
-            <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
-              <Text className="text-foreground text-4xl font-bold mb-3">
-                {monthlyStats.hadir}
-              </Text>
-              <Badge variant="hadir">
-                <Text>Hadir</Text>
-              </Badge>
-            </View>
+        {monthlyStats && (
+          <View className="mb-4">
+            <View className="flex-row flex-wrap gap-3">
+              {/* Hadir Card */}
+              <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
+                <Text className="text-foreground text-4xl font-bold mb-3">
+                  {monthlyStats.hadir}
+                </Text>
+                <Badge variant="hadir">
+                  <Text>Hadir</Text>
+                </Badge>
+              </View>
 
-            {/* Terlambat Card */}
-            <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
-              <Text className="text-foreground text-4xl font-bold mb-3">
-                {monthlyStats.terlambat}
-              </Text>
-              <Badge variant="terlambat">
-                <Text>Terlambat</Text>
-              </Badge>
-            </View>
+              {/* Terlambat Card */}
+              <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
+                <Text className="text-foreground text-4xl font-bold mb-3">
+                  {monthlyStats.terlambat}
+                </Text>
+                <Badge variant="terlambat">
+                  <Text>Terlambat</Text>
+                </Badge>
+              </View>
 
-            {/* Sakit Card */}
-            <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
-              <Text className="text-foreground text-4xl font-bold mb-3">
-                {monthlyStats.sakit}
-              </Text>
-              <Badge variant="sakit">
-                <Text>Sakit</Text>
-              </Badge>
-            </View>
+              {/* Sakit Card */}
+              <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
+                <Text className="text-foreground text-4xl font-bold mb-3">
+                  {monthlyStats.sakit}
+                </Text>
+                <Badge variant="sakit">
+                  <Text>Sakit</Text>
+                </Badge>
+              </View>
 
-            {/* Izin Card */}
-            <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
-              <Text className="text-foreground text-4xl font-bold mb-3">
-                {monthlyStats.izin}
-              </Text>
-              <Badge variant="izin">
-                <Text>Izin</Text>
-              </Badge>
+              {/* Izin Card */}
+              <View className="flex-1 min-w-[45%] bg-card rounded-2xl p-4 border border-border">
+                <Text className="text-foreground text-4xl font-bold mb-3">
+                  {monthlyStats.izin}
+                </Text>
+                <Badge variant="izin">
+                  <Text>Izin</Text>
+                </Badge>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* === CALENDAR COMPONENT === */}
         <View className="mb-6">

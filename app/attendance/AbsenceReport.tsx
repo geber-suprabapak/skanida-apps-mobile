@@ -138,7 +138,13 @@ export default function AbsenceReport() {
         durationMs: elapsedMs(startedAt),
         code: outcome.code,
       });
-      setErrorMessage("Terjadi kesalahan tidak diketahui.");
+      setErrorMessage(
+        outcome.code === "location_unavailable"
+          ? "Lokasi belum tersedia. Pastikan lokasi perangkat aktif, lalu segarkan status."
+          : outcome.code === "precheck_unavailable"
+            ? "Status absensi belum dapat diperiksa. Periksa koneksi, lalu segarkan status."
+            : "Terjadi kesalahan tidak diketahui.",
+      );
     }
 
     faceApiLog("attendance-report:status:finish", {

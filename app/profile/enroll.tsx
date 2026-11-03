@@ -40,7 +40,7 @@ import {
   fetchFaceApiRuntimeStatus,
   type FaceApiRuntimeStatusResult,
 } from "~/utils/faceApiRuntime";
-import { submitEnrollment } from "~/utils/bffMobileApi";
+import { getEnrollmentStatus, submitEnrollment } from "~/utils/bffMobileApi";
 import { Icon } from "~/components/ui/icon";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -61,7 +61,14 @@ const MAX_IMAGE_SIZE_MB = 2;
 const SNAPSHOT_QUALITY = 60; // Lower quality for smaller file size
 
 // --- TYPES ---
-type EnrollmentStep = "capture" | "confirm" | "uploading" | "success" | "error";
+type EnrollmentStep =
+  | "capture"
+  | "confirm"
+  | "uploading"
+  | "success"
+  | "error"
+  | "cancelled"
+  | "unknown";
 
 interface CapturedImage {
   uri: string;
@@ -82,6 +89,13 @@ type FormDataFilePart = {
   name: string;
   type: string;
 };
+
+const cleanupCapturedImages = (images: readonly Pick<CapturedImage, "uri">[]) =>
+  Promise.all(
+    images.map((image) =>
+      FileSystem.deleteAsync(image.uri, { idempotent: true }).catch(() => {}),
+    ),
+  );
 
 // --- UTILITY FUNCTIONS ---
 const getReadableError = (
@@ -340,6 +354,54 @@ const ErrorScreen = memo<{
 ));
 ErrorScreen.displayName = "ErrorScreen";
 
+const CancelledScreen = memo<{
+  cancelled: boolean;
+  statusMessage: string;
+  checking: boolean;
+  onCheckStatus: () => void;
+  onBack: () => void;
+}>(({ cancelled, statusMessage, checking, onCheckStatus, onBack }) => (
+  <SafeAreaView className="flex-1 bg-slate-900" edges={["top", "bottom"]}>
+    <View className="flex-1 justify-center items-center px-8">
+      <Animated.View entering={FadeIn.duration(500)} className="items-center">
+        <View className="w-24 h-24 rounded-full bg-amber-500/20 items-center justify-center mb-6">
+          <Icon as={AlertCircle} className="size-16 text-amber-500" />
+        </View>
+        <Text variant="h1" className="text-white text-center mb-2">
+          {cancelled
+            ? "Pengiriman Dihentikan"
+            : "Hasil Pendaftaran Belum Diketahui"}
+        </Text>
+        <Text variant="default" className="text-white/70 text-center mb-8">
+          Server mungkin sudah menerima sebagian atau seluruh proses. Periksa
+          status pendaftaran. Jangan mengirim ulang selama hasil belum jelas.
+        </Text>
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-white text-center mb-4"
+        >
+          {statusMessage}
+        </Text>
+        <Button
+          onPress={onCheckStatus}
+          disabled={checking}
+          className="bg-[#0066FF] w-full mb-3"
+        >
+          <Text className="text-white">
+            {checking ? "Memeriksa status..." : "Periksa Status Pendaftaran"}
+          </Text>
+        </Button>
+        <Button onPress={onBack} className="bg-[#0066FF] w-full">
+          <Text variant="default" className="text-white font-semibold">
+            Kembali
+          </Text>
+        </Button>
+      </Animated.View>
+    </View>
+  </SafeAreaView>
+));
+CancelledScreen.displayName = "CancelledScreen";
+
 const FaceApiStatusScreen = memo<{
   status: FaceApiRuntimeStatusResult | null;
   isLoading: boolean;
@@ -395,6 +457,10 @@ const FaceEnrollment = () => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
   const permissionAttemptedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const capturedImagesRef = useRef<CapturedImage[]>([]);
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
+  const uploadCancelledRef = useRef(false);
 
   // --- STATE ---
   const device = useCameraDevice("front");
@@ -404,6 +470,31 @@ const FaceEnrollment = () => {
   const [step, setStep] = useState<EnrollmentStep>("capture");
   const [uploadMessage, setUploadMessage] = useState("Mengunggah foto...");
   const [errorMessage, setErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [checkingEnrollment, setCheckingEnrollment] = useState(false);
+  const checkingEnrollmentRef = useRef(false);
+  const checkEnrollmentStatus = useCallback(async () => {
+    if (checkingEnrollmentRef.current) return;
+    checkingEnrollmentRef.current = true;
+    setCheckingEnrollment(true);
+    try {
+      const result = await getEnrollmentStatus();
+      if (!mountedRef.current) return;
+      setStatusMessage(
+        result.status === "enrolled"
+          ? "Status wajah saat ini: terdaftar. Kembali untuk melihat status terbaru."
+          : "Wajah belum terdaftar saat diperiksa. Proses sebelumnya mungkin masih berjalan; jangan mengirim ulang. Hubungi admin bila status tidak berubah.",
+      );
+    } catch {
+      if (mountedRef.current)
+        setStatusMessage(
+          "Status belum dapat diperiksa. Periksa koneksi dan coba periksa status lagi; jangan mengirim ulang foto.",
+        );
+    } finally {
+      checkingEnrollmentRef.current = false;
+      if (mountedRef.current) setCheckingEnrollment(false);
+    }
+  }, []);
   const [successResponse, setSuccessResponse] =
     useState<EnrollmentSuccessResponse | null>(null);
   const [faceApiRuntime, setFaceApiRuntime] =
@@ -495,6 +586,8 @@ const FaceEnrollment = () => {
 
     setIsCapturing(true);
     const startedAt = startFaceApiTimer();
+    let temporaryUri: string | null = null;
+    let retainedForEnrollment = false;
     faceApiLog("enroll-capture:start", {
       capturedCount: capturedImages.length,
       requiredImages: REQUIRED_IMAGES,
@@ -521,9 +614,12 @@ const FaceEnrollment = () => {
         : `file://${snapshot.path}`;
 
       const finalPhotoUri = photoUri;
+      temporaryUri = finalPhotoUri;
+      if (!mountedRef.current) return;
 
       // Check file size
       const fileInfo = await FileSystem.getInfoAsync(finalPhotoUri);
+      if (!mountedRef.current) return;
       if (!fileInfo.exists) {
         throw new Error("File foto tidak ditemukan");
       }
@@ -547,11 +643,11 @@ const FaceEnrollment = () => {
         return;
       }
 
-      const newImages = [
-        ...capturedImages,
-        { uri: finalPhotoUri, size: fileSizeBytes },
-      ];
+      const capturedImage = { uri: finalPhotoUri, size: fileSizeBytes };
+      const newImages = [...capturedImages, capturedImage];
+      capturedImagesRef.current = newImages;
       setCapturedImages(newImages);
+      retainedForEnrollment = true;
       AccessibilityInfo.announceForAccessibility(
         `Foto ke-${newImages.length} dari ${REQUIRED_IMAGES} berhasil diambil.`,
       );
@@ -574,13 +670,17 @@ const FaceEnrollment = () => {
         setStep("confirm");
       }
     } catch (error) {
+      if (!mountedRef.current) return;
       faceApiError("enroll-capture:failed", {
         durationMs: elapsedMs(startedAt),
         error,
       });
       Alert.alert("Error", getReadableError(error, "Gagal mengambil foto."));
     } finally {
-      setIsCapturing(false);
+      if (temporaryUri && !retainedForEnrollment) {
+        await cleanupCapturedImages([{ uri: temporaryUri }]);
+      }
+      if (mountedRef.current) setIsCapturing(false);
     }
   }, [isCameraReady, isCapturing, capturedImages]);
 
@@ -594,15 +694,30 @@ const FaceEnrollment = () => {
       })),
     });
     // Clean up temporary files
-    capturedImages.forEach((img) => {
-      FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
-    });
+    void cleanupCapturedImages(capturedImagesRef.current);
+    capturedImagesRef.current = [];
     setCapturedImages([]);
     setStep("capture");
     setErrorMessage("");
   }, [capturedImages]);
 
   const handleEnroll = useCallback(async () => {
+    if (uploadAbortControllerRef.current) return;
+    if (capturedImages.length < REQUIRED_IMAGES) {
+      faceApiWarn("enroll-upload:not-enough-images", {
+        capturedCount: capturedImages.length,
+        requiredImages: REQUIRED_IMAGES,
+      });
+      Alert.alert(
+        "Error",
+        `Diperlukan ${REQUIRED_IMAGES} foto untuk enrollment.`,
+      );
+      return;
+    }
+
+    uploadCancelledRef.current = false;
+    const abortController = new AbortController();
+    uploadAbortControllerRef.current = abortController;
     const startedAt = startFaceApiTimer();
     faceApiLog("enroll-upload:start", {
       capturedCount: capturedImages.length,
@@ -617,24 +732,14 @@ const FaceEnrollment = () => {
       })),
     });
 
-    if (capturedImages.length < REQUIRED_IMAGES) {
-      faceApiWarn("enroll-upload:not-enough-images", {
-        capturedCount: capturedImages.length,
-        requiredImages: REQUIRED_IMAGES,
-      });
-      Alert.alert(
-        "Error",
-        `Diperlukan ${REQUIRED_IMAGES} foto untuk enrollment.`,
-      );
-      return;
-    }
-
     setStep("uploading");
     setUploadMessage("Mempersiapkan foto...");
+    let requestStarted = false;
 
     try {
       const runtime = await fetchFaceApiRuntimeStatus();
       setFaceApiRuntime(runtime);
+      if (uploadCancelledRef.current) return;
       if (runtime.state !== "healthy") {
         setErrorMessage(runtime.message);
         setStep("error");
@@ -683,7 +788,9 @@ const FaceEnrollment = () => {
 
       setUploadMessage(`Mendaftarkan ${capturedImages.length} foto wajah...`);
 
-      const response = await submitEnrollment(files);
+      requestStarted = true;
+      const response = await submitEnrollment(files, abortController.signal);
+      if (uploadCancelledRef.current) return;
 
       faceApiLog("enroll-upload:response", {
         durationMs: elapsedMs(startedAt),
@@ -702,10 +809,18 @@ const FaceEnrollment = () => {
       );
       setStep("success");
     } catch (error) {
+      if (uploadCancelledRef.current) return;
       faceApiError("enroll-upload:failed", {
         durationMs: elapsedMs(startedAt),
         error,
       });
+      if (requestStarted) {
+        AccessibilityInfo.announceForAccessibility(
+          "Hasil pendaftaran belum diketahui. Periksa status pendaftaran sebelum mencoba lagi.",
+        );
+        setStep("unknown");
+        return;
+      }
       const errText = getReadableError(error, "Gagal mendaftarkan wajah.");
       AccessibilityInfo.announceForAccessibility(
         `Pendaftaran wajah gagal: ${errText}`,
@@ -716,10 +831,11 @@ const FaceEnrollment = () => {
       faceApiLog("enroll-upload:cleanup-temp-files", {
         capturedCount: capturedImages.length,
       });
-      // Clean up temporary files
-      capturedImages.forEach((img) => {
-        FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(() => {});
-      });
+      await cleanupCapturedImages(capturedImages);
+      capturedImagesRef.current = [];
+      if (uploadAbortControllerRef.current === abortController) {
+        uploadAbortControllerRef.current = null;
+      }
     }
   }, [capturedImages]);
 
@@ -741,7 +857,9 @@ const FaceEnrollment = () => {
               faceApiWarn("enroll-upload:abort-from-back", {
                 capturedCount: capturedImages.length,
               });
-              router.back();
+              uploadCancelledRef.current = true;
+              uploadAbortControllerRef.current?.abort();
+              setStep("cancelled");
             },
           },
         ],
@@ -762,12 +880,8 @@ const FaceEnrollment = () => {
               faceApiWarn("enroll-capture:cancel-from-back", {
                 capturedCount: capturedImages.length,
               });
-              // Clean up temporary files
-              capturedImages.forEach((img) => {
-                FileSystem.deleteAsync(img.uri, { idempotent: true }).catch(
-                  () => {},
-                );
-              });
+              void cleanupCapturedImages(capturedImagesRef.current);
+              capturedImagesRef.current = [];
               router.back();
             },
           },
@@ -783,6 +897,17 @@ const FaceEnrollment = () => {
   useEffect(() => {
     void refreshFaceApiRuntime();
   }, [refreshFaceApiRuntime]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      uploadCancelledRef.current = true;
+      uploadAbortControllerRef.current?.abort();
+      void cleanupCapturedImages(capturedImagesRef.current);
+      capturedImagesRef.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -819,6 +944,22 @@ const FaceEnrollment = () => {
         <ErrorScreen
           errorMessage={errorMessage}
           onRetry={handleRetryCapture}
+          onBack={handleDone}
+        />
+      </>
+    );
+  }
+
+  if (step === "cancelled" || step === "unknown") {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar barStyle="light-content" backgroundColor="#111827" />
+        <CancelledScreen
+          cancelled={step === "cancelled"}
+          statusMessage={statusMessage}
+          checking={checkingEnrollment}
+          onCheckStatus={checkEnrollmentStatus}
           onBack={handleDone}
         />
       </>

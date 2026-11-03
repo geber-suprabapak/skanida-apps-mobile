@@ -87,9 +87,7 @@ const AttendanceCalendar = forwardRef<
     }, []);
     // PERF-H06: Notify parent when attendance data is loaded
     useEffect(() => {
-      if (onDataLoaded && monthlyAttendance.data) {
-        onDataLoaded(monthlyAttendance.data);
-      }
+      onDataLoaded?.(monthlyAttendance.data);
     }, [monthlyAttendance.data, onDataLoaded]);
     // PERF-M10: Memoize maximumDate to avoid new Date() on every render
     const maximumDate = useMemo(() => new Date(), []);
@@ -146,6 +144,23 @@ const AttendanceCalendar = forwardRef<
               <Text className="mt-4 text-sm font-medium text-muted-foreground">
                 Memuat data...
               </Text>
+            </View>
+          ) : monthlyAttendance.error ? (
+            <View
+              className="items-center justify-center py-10"
+              accessibilityLiveRegion="polite"
+            >
+              <Text className="text-foreground">
+                Tidak dapat memuat riwayat kehadiran.
+              </Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Coba lagi memuat riwayat"
+                onPress={handleRefresh}
+                className="min-h-12 justify-center px-4"
+              >
+                <Text className="text-primary">Coba lagi</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View key={`calendar-${displayYear}-${displayMonth}`}>
