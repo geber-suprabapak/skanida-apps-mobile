@@ -1,4 +1,5 @@
 node_modules/
+s/
 .expo/
 dist/
 npm-debug.*
@@ -35,5 +36,6 @@ certs/private-key.pem
 certs/public-key.pem
 
 .serena
+.impeccable
 google-services.json
 artifacts/

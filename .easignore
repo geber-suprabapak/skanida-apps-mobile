@@ -1,4 +1,5 @@
 node_modules/
+s/
 .expo/
 dist/
 npm-debug.*
@@ -34,10 +35,8 @@ certs/private-key.pem
 certs/public-key.pem
 
 .serena
+.impeccable
 google-services.json
 
 # EAS build needs this generated file from GitHub Actions secrets.
 !certs/google-services.json
-
-# Non-build / design archive assets
-assets-non-build/
