@@ -91,6 +91,7 @@ interface RawAttendanceRecord {
   id: string;
   date: string;
   status: string;
+  action_type?: string | null;
   photo_url?: string;
   created_at?: string;
 }
@@ -140,9 +141,15 @@ export const processAttendanceData = (
 
     const hasAbsent = records.some((r) => ABSENT_STATUSES.has(r.status));
     const hasLeave = records.some((r) => LEAVE_STATUSES.has(r.status));
-    const checkInRecord = records.find((r) => CHECK_IN_STATUSES.has(r.status));
-    const checkOutRecord = records.find((r) =>
-      CHECK_OUT_STATUSES.has(r.status),
+    const checkInRecord = records.find(
+      (r) =>
+        r.action_type === "check_in" ||
+        (r.action_type !== "check_out" && CHECK_IN_STATUSES.has(r.status)),
+    );
+    const checkOutRecord = records.find(
+      (r) =>
+        r.action_type === "check_out" ||
+        (r.action_type !== "check_in" && CHECK_OUT_STATUSES.has(r.status)),
     );
     const isLate = records.some((r) => LATE_STATUSES.has(r.status));
 
@@ -200,6 +207,10 @@ export const processAttendanceData = (
       day += 86_400_000
     ) {
       const dateKey = new Date(day).toISOString().slice(0, 10);
+      const existing = processedData[dateKey];
+      if (existing?.status === "present" || existing?.status === "late") {
+        continue;
+      }
       processedData[dateKey] = {
         id: leave.id,
         date: dateKey,

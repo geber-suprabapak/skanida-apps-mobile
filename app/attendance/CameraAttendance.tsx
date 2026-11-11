@@ -152,7 +152,10 @@ const messageForOutcome = (
     case "capture_missing":
       return "Foto tidak berhasil diambil. Silakan ambil ulang foto.";
     case "payload_too_large":
-      return "Ukuran data foto melebihi 5MB. Silakan ambil ulang foto.";
+      return (
+        outcome.message ??
+        "Ukuran data foto melebihi 5MB. Silakan ambil ulang foto."
+      );
     case "fallback_mock_location":
       return "Terdeteksi lokasi palsu (mock location). Mohon matikan aplikasi fake GPS.";
     case "attempt_not_found":
@@ -165,7 +168,7 @@ const messageForOutcome = (
         "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
       );
     default:
-      return "Gagal memproses absensi.";
+      return outcome.message ?? "Gagal memproses absensi.";
   }
 };
 

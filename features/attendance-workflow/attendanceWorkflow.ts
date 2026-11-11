@@ -421,17 +421,33 @@ export const createAttendanceWorkflow = (
             coordinates,
           });
         } catch (error) {
-          if (
-            error instanceof BffRequestError &&
-            error.code === "ATTENDANCE_BLOCKED"
-          ) {
-            return {
-              status: "failed",
-              code: "attendance_blocked",
-              retryable: false,
-              message: error.message,
-              details: error.details,
-            };
+          if (error instanceof BffRequestError) {
+            if (error.code === "ATTENDANCE_BLOCKED" || error.status === 409) {
+              return {
+                status: "failed",
+                code: "attendance_blocked",
+                retryable: false,
+                message: error.message,
+                details: error.details,
+              };
+            }
+            if (
+              error.status !== undefined &&
+              error.status >= 400 &&
+              error.status < 500 &&
+              error.status !== 408
+            ) {
+              return {
+                status: "failed",
+                code:
+                  error.status === 413
+                    ? "payload_too_large"
+                    : "capture_invalid",
+                retryable: error.status !== 401 && error.status !== 403,
+                message: error.message,
+                details: error.details,
+              };
+            }
           }
           const uncertainOutcome = {
             status: "failed",

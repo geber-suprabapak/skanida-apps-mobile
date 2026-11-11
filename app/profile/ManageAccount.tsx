@@ -729,7 +729,7 @@ export default function ManageAccount() {
                 </View>
               )}
 
-              {enrollmentStatus === "enrolled" && (
+              {!isCheckingFaceApi && enrollmentStatus === "enrolled" && (
                 <View className="flex-row items-center py-2">
                   <View className="w-10 h-10 rounded-full bg-green-500/20 items-center justify-center">
                     <Icon as={CheckCircle} className="size-6 text-green-600" />
@@ -745,7 +745,7 @@ export default function ManageAccount() {
                 </View>
               )}
 
-              {enrollmentStatus === "not_enrolled" && (
+              {!isCheckingFaceApi && enrollmentStatus === "not_enrolled" && (
                 <View>
                   <View className="flex-row items-center py-2 mb-3">
                     <View className="w-10 h-10 rounded-full bg-amber-500/20 items-center justify-center">
@@ -784,7 +784,7 @@ export default function ManageAccount() {
                 </View>
               )}
 
-              {enrollmentStatus === "error" && (
+              {!isCheckingFaceApi && enrollmentStatus === "error" && (
                 <View>
                   <View className="flex-row items-center py-2 mb-3">
                     <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">

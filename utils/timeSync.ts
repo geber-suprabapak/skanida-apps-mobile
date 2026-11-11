@@ -80,6 +80,26 @@ class TimeSync {
   private appStateSubscription: any = null;
   private isInitialized: boolean = false;
 
+  private get syncSource() {
+    return useTimeSyncStore.getState().syncSource;
+  }
+
+  private set syncSource(
+    value: ReturnType<typeof useTimeSyncStore.getState>["syncSource"],
+  ) {
+    useTimeSyncStore.setState({ syncSource: value });
+  }
+
+  private get status() {
+    return useTimeSyncStore.getState().status;
+  }
+
+  private set status(
+    value: ReturnType<typeof useTimeSyncStore.getState>["status"],
+  ) {
+    useTimeSyncStore.setState({ status: value });
+  }
+
   // PERF-C03: Background timers are started in initialize(), not at import time.
 
   /**
@@ -121,6 +141,9 @@ class TimeSync {
         if (age < 60 * 60 * 1000) {
           this.timeOffset = data.offset;
           this.lastSyncTime = data.timestamp;
+          if (data.source !== "local") {
+            this.status = "synced";
+          }
 
           // PERF-H03: Batch store update (was 3 separate calls = 3 re-renders)
           useTimeSyncStore.setState({
@@ -142,6 +165,10 @@ class TimeSync {
     } catch (error) {
       if (__DEV__) console.error("Failed to load persisted offset:", error);
     }
+  }
+
+  private async loadCachedSync(): Promise<void> {
+    return this.loadPersistedOffset();
   }
 
   /**
@@ -218,6 +245,9 @@ class TimeSync {
    * Check if a sync is needed based on last sync time
    */
   private shouldSync(): boolean {
+    if (this.syncSource === "local" || this.status !== "synced") {
+      return true;
+    }
     return Date.now() - this.lastSyncTime > this.SYNC_INTERVAL;
   }
 
@@ -225,7 +255,7 @@ class TimeSync {
    * Detect time drift by comparing old and new offset
    */
   private detectDrift(newOffset: number): boolean {
-    if (this.timeOffset === 0) return false; // First sync
+    if (!this.lastSyncTime || this.syncSource === "local") return false;
 
     const drift = Math.abs(newOffset - this.timeOffset);
     const hasDrift = drift > this.DRIFT_THRESHOLD;

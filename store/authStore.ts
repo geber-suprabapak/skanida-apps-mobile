@@ -3,12 +3,15 @@ import * as Sentry from "@sentry/react-native";
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
+  clearLogtoSession,
+  getLogtoUser,
   logoutLogtoSession,
   setLogtoSessionExpiredHandler,
   type MobileAuthUser,
 } from "~/utils/logto";
 import { registerAndSaveNotificationToken } from "~/utils/notifications";
-import { getProfile } from "~/utils/bffMobileApi";
+import { BffRequestError } from "~/utils/bff";
+import { getProfile, type BffProfile } from "~/utils/bffMobileApi";
 
 /**
  * AsyncStorage keys that are explicitly session-scoped and therefore removed
@@ -51,12 +54,45 @@ interface AuthState {
   user: MobileAuthUser | null;
   userProfile: UserProfile | null;
   setUser: (user: MobileAuthUser | null) => void;
+  initializeAuth: () => Promise<MobileAuthUser | null>;
   fetchUserProfile: (userId: string, signal: AbortSignal) => Promise<void>;
   logout: () => Promise<void>;
 }
 
+const toUserProfile = (data: BffProfile): UserProfile => ({
+  id: data.user_id,
+  user_id: data.user_id,
+  full_name: data.full_name,
+  email: data.email,
+  nis: data.nis ?? null,
+  class_name: data.class_name ?? null,
+  absence_number:
+    data.absence_number !== undefined && data.absence_number !== null
+      ? String(data.absence_number)
+      : null,
+  avatar_url: data.avatar_url,
+  role: data.role ?? null,
+  gender: data.gender ?? null,
+  notification_token: null,
+  lifecycle_status: data.lifecycle_status ?? null,
+});
+
 // PERF-H04: Track active fetch so it can be cancelled on logout/user change
 let activeFetchController: AbortController | null = null;
+
+export const resetAuthSessionState = async (
+  options: { clearSecureSession?: boolean } = {},
+) => {
+  if (activeFetchController) {
+    activeFetchController.abort();
+    activeFetchController = null;
+  }
+  if (options.clearSecureSession) {
+    await clearLogtoSession();
+  }
+  await clearSessionScopedStorage();
+  useAuthStore.setState({ user: null, userProfile: null });
+};
 
 const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -91,6 +127,42 @@ const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  initializeAuth: async () => {
+    let restoredUser: MobileAuthUser | null = null;
+    try {
+      restoredUser = await getLogtoUser();
+    } catch (error) {
+      Sentry.captureException(error);
+      await resetAuthSessionState({ clearSecureSession: true });
+      return null;
+    }
+
+    if (!restoredUser) {
+      await resetAuthSessionState({ clearSecureSession: false });
+      return null;
+    }
+
+    set({ user: restoredUser });
+
+    try {
+      const data = await getProfile();
+      if (data) {
+        set({ user: restoredUser, userProfile: toUserProfile(data) });
+      }
+      return restoredUser;
+    } catch (error) {
+      Sentry.captureException(error);
+      const clearSecureSession =
+        error instanceof BffRequestError &&
+        (error.status === 401 || error.status === 403);
+      await resetAuthSessionState({ clearSecureSession });
+      if (!clearSecureSession) {
+        set({ user: restoredUser, userProfile: null });
+      }
+      return clearSecureSession ? null : restoredUser;
+    }
+  },
+
   // Action to fetch user profile from Astra with retry logic
   fetchUserProfile: async (userId: string, signal: AbortSignal) => {
     const maxRetries = 5;
@@ -112,24 +184,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
         if (data) {
           set({
-            userProfile: {
-              id: data.user_id,
-              user_id: data.user_id,
-              full_name: data.full_name,
-              email: data.email,
-              nis: data.nis ?? null,
-              class_name: data.class_name ?? null,
-              absence_number:
-                data.absence_number !== undefined &&
-                data.absence_number !== null
-                  ? String(data.absence_number)
-                  : null,
-              avatar_url: data.avatar_url,
-              role: data.role ?? null,
-              gender: data.gender ?? null,
-              notification_token: null,
-              lifecycle_status: data.lifecycle_status ?? null,
-            },
+            userProfile: toUserProfile(data),
           });
           return; // Success, exit the function
         }
@@ -143,6 +198,14 @@ const useAuthStore = create<AuthState>((set, get) => ({
         }
       } catch (error) {
         if (signal.aborted) return;
+        if (
+          error instanceof BffRequestError &&
+          (error.status === 401 || error.status === 403)
+        ) {
+          Sentry.captureException(error);
+          await resetAuthSessionState({ clearSecureSession: true });
+          return;
+        }
         if (i < maxRetries - 1) {
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
@@ -188,12 +251,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 // `user`. The end-session browser hop of logout() is intentionally skipped
 // for passive expiry.
 setLogtoSessionExpiredHandler(() => {
-  if (activeFetchController) {
-    activeFetchController.abort();
-    activeFetchController = null;
-  }
-  void clearSessionScopedStorage();
-  useAuthStore.setState({ user: null, userProfile: null });
+  void resetAuthSessionState({ clearSecureSession: false });
 });
 
 export default useAuthStore;
