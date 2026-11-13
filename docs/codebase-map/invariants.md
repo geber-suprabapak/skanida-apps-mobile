@@ -3,22 +3,22 @@
 ## INV-MOBILE-009 — Native offline access requests consent
 
 **Rule:** Keep PKCE, `offline_access` and explicit consent in native authorization requests so Logto can issue refresh tokens. Do not substitute a shared IdP policy or credential change for the client request.
-**Evidence:** `app/auth/Login.tsx`, `__tests__/login-offline-consent.test.tsx`; [OIDC Offline Access](https://openid.net/specs/openid-connect-core-1_0-final.html#OfflineAccess).
+**Evidence:** `app/auth/Login.tsx`; [OIDC Offline Access](https://openid.net/specs/openid-connect-core-1_0-final.html#OfflineAccess).
 
 ## INV-MOBILE-008 — Dashboard recovery reloads its complete projection
 
 **Rule:** Reconnect and advertised server/enrollment retries reload the same Astra dashboard request as initialization. A successful face-only check cannot stand in for recovered attendance, schedule or primary action.
-**Evidence:** `app/Dashboard.tsx`, `__tests__/dashboard-network-recovery.test.tsx`.
+**Evidence:** `app/Dashboard.tsx`.
 
 ## INV-MOBILE-007 — Pending leave is not recorded attendance
 
 **Rule:** Only explicitly approved leave requests enter the attendance calendar. Expand their effective period inclusively within the selected month, with legacy approvals treated as one day; list keys use the date because a permit ID can repeat across days. Pending, rejected and missing decisions cannot replace a recorded check-in or inflate leave totals; request status remains available in Perizinan.
-**Evidence:** `components/attendance-calendar/utils.ts`, `__tests__/profile-attendance-history.test.ts`.
+**Evidence:** `components/attendance-calendar/utils.ts`.
 
 ## INV-MOBILE-006 — Terminal session loss clears rendered identity and protected routes
 
 **Rule:** Expired sessions without a refresh token, corrupt/incomplete sessions and permanent refresh failures clear the auth store and session-scoped cache while retaining preferences. Root Stack.Protected removes tabs and detail/legacy authenticated routes when user state is cleared; transient refresh/network failures preserve the recoverable session.
-**Evidence:** `utils/logto.ts`, `store/authStore.ts`, `app/_layout.tsx`, `__tests__/logto-session.test.ts`.
+**Evidence:** `utils/logto.ts`, `store/authStore.ts`, `app/_layout.tsx`.
 
 ## INV-MOBILE-001 — Authenticated domain calls use Astra transport
 
@@ -28,7 +28,7 @@
 ## INV-MOBILE-002 — Precheck precedes capture/submission
 
 **Rule:** Do not submit a face image until the workflow has a current actionable server precheck.
-**Evidence:** `features/attendance-workflow/attendanceWorkflow.ts`, `__tests__/attendance-workflow.test.ts`.
+**Evidence:** `features/attendance-workflow/attendanceWorkflow.ts`.
 
 ## INV-MOBILE-003 — Mocked/missing location blocks attendance
 

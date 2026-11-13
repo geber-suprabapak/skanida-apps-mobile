@@ -12,6 +12,14 @@ This repo uses the default five triage labels: `needs-triage`, `needs-info`, `re
 
 This repo uses a single-context domain-doc layout with root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.
 
+## Development and verification
+
+This is a pnpm-managed Expo React Native application (`pnpm-lock.yaml`). Use `pnpm test` for Jest tests, `pnpm lint` for linting, `pnpm prettier:check` for formatting checks, `pnpm exec tsc --noEmit` for TypeScript checks, and `pnpm start` or `pnpm android:staging` for local/staging runs. Use `package.json` as the source of truth for commands.
+
+## Execution boundary
+
+Logto owns mobile identity (`offline_access` + PKCE); authenticated business flows use Astra's `/v1/mobile/*` API through `utils/bff.ts` and `utils/bffMobileApi.ts`. Never commit signing keys, `.env` secrets, or local bypasses.
+
 <!-- repo-map:start -->
 ## Codebase semantic map
 

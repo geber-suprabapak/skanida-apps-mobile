@@ -9,4 +9,4 @@
 
 Missing permission, unavailable runtime, insufficient images, oversized capture, or Astra failure prevents a success state. Retry and cancellation paths also remove temporary captures on a best-effort basis.
 
-**Evidence:** `app/profile/enroll.tsx`, `utils/enrollment.ts`, `utils/faceApiRuntime.ts`, `utils/bffMobileApi.ts`, `__tests__/face-enrollment-lifecycle.test.tsx`, `README.md`.
+**Evidence:** `app/profile/enroll.tsx`, `utils/enrollment.ts`, `utils/faceApiRuntime.ts`, `utils/bffMobileApi.ts`, `README.md`.
