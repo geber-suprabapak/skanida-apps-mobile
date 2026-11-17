@@ -683,7 +683,7 @@ export default function Dashboard() {
             <View className="px-6 pt-2 pb-6">
               <View className="flex-row items-center justify-between mb-8">
                 <View className="flex-row items-center gap-3">
-                  <View className="w-12 h-12 rounded-lg border border-border items-center justify-center bg-card">
+                  <View className="w-12 h-12 rounded-lg border border-border items-center justify-center bg-white dark:bg-white/95">
                     <Image
                       source={LogoImage}
                       style={{ width: 40, height: 40 }}
