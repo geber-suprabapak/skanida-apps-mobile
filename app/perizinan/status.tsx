@@ -450,11 +450,6 @@ export default function StatusPerizinanScreen() {
           maxToRenderPerBatch={8}
           windowSize={5}
           initialNumToRender={6}
-          getItemLayout={(_data, index) => ({
-            length: 120,
-            offset: 120 * index,
-            index,
-          })}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
