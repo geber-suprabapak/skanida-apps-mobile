@@ -25,6 +25,9 @@ const IconImpl = withUniwind(IconImplementation, {
     fromClassName: "className",
     styleProperty: "color",
   },
+  style: {
+    fromClassName: "className",
+  },
 });
 
 function Icon({ as: IconComponent, className, size, ...props }: IconProps) {
