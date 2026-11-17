@@ -19,6 +19,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Text } from "~/components/ui/text";
 import { Icon } from "~/components/ui/icon";
 import useAuthStore from "~/store/authStore";
+import {
+  resolveAbsenceStatusMeta,
+  type AbsenceStatusIconName,
+} from "~/utils/absenceStatus";
 import type { MobileAttendanceAction } from "~/utils/bffMobileApi";
 import {
   elapsedMs,
@@ -166,42 +170,22 @@ export default function AbsenceReport() {
   }, []);
 
   const statusMeta = useMemo(() => {
-    if (isLoading) {
-      return {
-        icon: Loader2,
-        color: "text-blue-600 dark:text-blue-500",
-        message: "Memeriksa Status...",
-      };
-    }
-
-    if (errorMessage) {
-      return {
-        icon: MapPinOff,
-        color: "text-red-600 dark:text-red-500",
-        message: errorMessage,
-      };
-    }
-
-    if (status?.actionable) {
-      // Show the late status when the server reports it.
-      if (status.details?.status === "Terlambat") {
-        return {
-          icon: Clock, // Use the clock icon for late attendance.
-          message: status.message,
-        };
-      }
-      // Otherwise the attendance is on time.
-      return {
-        icon: CheckCircle2,
-        color: "text-green-600 dark:text-green-500",
-        message: status.message,
-      };
-    }
-
+    const iconByName = {
+      loader: Loader2,
+      "map-pin-off": MapPinOff,
+      clock: Clock,
+      "check-circle": CheckCircle2,
+      "help-circle": HelpCircle,
+    } satisfies Record<AbsenceStatusIconName, typeof Loader2>;
+    const resolved = resolveAbsenceStatusMeta({
+      isLoading,
+      errorMessage,
+      status,
+    });
     return {
-      icon: HelpCircle,
-      color: "text-blue-600 dark:text-blue-500",
-      message: status?.message || "Status Tidak Diketahui",
+      icon: iconByName[resolved.iconName],
+      color: resolved.color,
+      message: resolved.message,
     };
   }, [errorMessage, isLoading, status]);
 
