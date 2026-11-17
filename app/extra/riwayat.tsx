@@ -19,7 +19,7 @@ import {
   AttendanceRecord,
 } from "~/components/attendance-calendar/types";
 import { formatTime } from "~/components/attendance-calendar/utils";
-import { formatDateWIB } from "~/lib/utils";
+import { formatAttendanceDateLabel } from "~/lib/utils";
 import { useUniwind } from "uniwind";
 import { formatMobilePermitCategory } from "~/utils/bffMobileApi";
 
@@ -170,7 +170,7 @@ export default function Riwayat() {
         <View className="flex-row items-center justify-between">
           <View className="flex-1 mr-3">
             <Text className="text-foreground font-bold text-base">
-              {formatDateWIB(new Date(item.date))}
+              {formatAttendanceDateLabel(item.date)}
             </Text>
             <Text className="text-xs text-muted-foreground mt-0.5">
               {item.checkInTime
