@@ -18,6 +18,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.exifinterface.media.ExifInterface
+import java.io.File
+import java.util.UUID
+import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -25,9 +28,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
-import java.util.UUID
-import kotlin.coroutines.resume
 
 internal data class LocationCandidate(
     val provider: String,
@@ -48,11 +48,10 @@ internal object LocationFixPolicy {
     const val GOOD_ACCURACY_METERS = 50f
     const val MAX_LAST_KNOWN_AGE_MS = 120_000L
 
-    fun isValidCoordinates(latitude: Double, longitude: Double): Boolean =
-        latitude.isFinite() &&
-            longitude.isFinite() &&
-            latitude in -90.0..90.0 &&
-            longitude in -180.0..180.0
+    fun isValidCoordinates(latitude: Double, longitude: Double): Boolean = latitude.isFinite() &&
+        longitude.isFinite() &&
+        latitude in -90.0..90.0 &&
+        longitude in -180.0..180.0
 
     fun isImmediateFix(candidate: LocationCandidate): Boolean {
         if (candidate.isMock || !isValidCoordinates(candidate.latitude, candidate.longitude)) return false
@@ -89,67 +88,122 @@ private fun Location.toCandidate(provider: String, ageMs: Long = 0L): LocationCa
 )
 
 @SuppressLint("MissingPermission")
-private suspend fun requestProviderLocation(
-    context: Context,
-    manager: LocationManager,
-    provider: String,
-): Location? = suspendCancellableCoroutine { continuation ->
-    val cancellation = CancellationSignal()
-    continuation.invokeOnCancellation { cancellation.cancel() }
-    try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && provider == LocationManager.FUSED_PROVIDER) {
-            val request = LocationRequest.Builder(0)
-                .setQuality(LocationRequest.QUALITY_HIGH_ACCURACY)
-                .setDurationMillis(LocationFixPolicy.LIVE_TIMEOUT_MS)
-                .build()
-            manager.getCurrentLocation(
-                provider,
-                request,
-                cancellation,
-                ContextCompat.getMainExecutor(context),
-            ) { location ->
-                if (continuation.isActive) continuation.resume(location)
+private suspend fun requestProviderLocation(context: Context, manager: LocationManager, provider: String,): Location? =
+    suspendCancellableCoroutine { continuation ->
+        val cancellation = CancellationSignal()
+        continuation.invokeOnCancellation { cancellation.cancel() }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && provider == LocationManager.FUSED_PROVIDER) {
+                val request = LocationRequest.Builder(0)
+                    .setQuality(LocationRequest.QUALITY_HIGH_ACCURACY)
+                    .setDurationMillis(LocationFixPolicy.LIVE_TIMEOUT_MS)
+                    .build()
+                manager.getCurrentLocation(
+                    provider,
+                    request,
+                    cancellation,
+                    ContextCompat.getMainExecutor(context),
+                ) { location ->
+                    if (continuation.isActive) continuation.resume(location)
+                }
+            } else {
+                LocationManagerCompat.getCurrentLocation(
+                    manager,
+                    provider,
+                    cancellation,
+                    ContextCompat.getMainExecutor(context),
+                ) { location ->
+                    if (continuation.isActive) continuation.resume(location)
+                }
             }
-        } else {
-            LocationManagerCompat.getCurrentLocation(
-                manager,
-                provider,
-                cancellation,
-                ContextCompat.getMainExecutor(context),
-            ) { location ->
-                if (continuation.isActive) continuation.resume(location)
+        } catch (_: Exception) {
+            if (continuation.isActive) continuation.resume(null)
+        }
+    }
+
+@SuppressLint("MissingPermission")
+private fun findFreshLastKnownLocation(manager: LocationManager, providers: List<String>,): Location? {
+    val nowElapsedNanos = SystemClock.elapsedRealtimeNanos()
+    var bestPair: Pair<Location, LocationCandidate>? = null
+    providers.forEach { provider ->
+        val cached = runCatching { manager.getLastKnownLocation(provider) }.getOrNull() ?: return@forEach
+        val fixNanos = cached.elapsedRealtimeNanos
+        val ageMs = if (fixNanos > 0L) (nowElapsedNanos - fixNanos) / 1_000_000L else -1L
+        if (LocationFixPolicy.isFreshLastKnown(ageMs)) {
+            val candidate = cached.toCandidate(provider, ageMs)
+            if (candidate.isMock) {
+                throw Exception("Lokasi palsu terdeteksi. Nonaktifkan aplikasi mock location.")
+            }
+            if (LocationFixPolicy.isValidCoordinates(candidate.latitude, candidate.longitude)) {
+                val currentBest = bestPair?.second
+                if (currentBest == null || LocationFixPolicy.isBetter(candidate, currentBest)) {
+                    bestPair = cached to candidate
+                }
             }
         }
-    } catch (_: Exception) {
-        if (continuation.isActive) continuation.resume(null)
+    }
+    return bestPair?.first
+}
+
+private fun enabledLocationProviders(manager: LocationManager): List<String> = buildList {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        runCatching {
+            manager.hasProvider(LocationManager.FUSED_PROVIDER) &&
+                manager.isProviderEnabled(LocationManager.FUSED_PROVIDER)
+        }.getOrDefault(false)
+    ) {
+        add(LocationManager.FUSED_PROVIDER)
+    }
+    if (runCatching { manager.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrDefault(false)) {
+        add(LocationManager.GPS_PROVIDER)
+    }
+    if (runCatching { manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) }.getOrDefault(false)) {
+        add(LocationManager.NETWORK_PROVIDER)
     }
 }
 
-@SuppressLint("MissingPermission")
-private fun findFreshLastKnownLocation(
-    manager: LocationManager,
-    providers: List<String>,
-): Location? {
-    val nowElapsedNanos = SystemClock.elapsedRealtimeNanos()
+private data class LiveLocationOutcome(val location: Location?, val sawInvalidCoordinates: Boolean,)
+
+private suspend fun collectBestLiveLocation(channel: Channel<ProviderFix>, providerCount: Int,): LiveLocationOutcome {
     var bestLocation: Location? = null
     var bestCandidate: LocationCandidate? = null
-    for (provider in providers) {
-        val cached = runCatching { manager.getLastKnownLocation(provider) }.getOrNull() ?: continue
-        val fixNanos = cached.elapsedRealtimeNanos
-        if (fixNanos <= 0L) continue
-        val ageMs = (nowElapsedNanos - fixNanos) / 1_000_000L
-        if (!LocationFixPolicy.isFreshLastKnown(ageMs)) continue
-        val candidate = cached.toCandidate(provider, ageMs)
-        if (candidate.isMock) {
-            throw Exception("Lokasi palsu terdeteksi. Nonaktifkan aplikasi mock location.")
-        }
-        if (!LocationFixPolicy.isValidCoordinates(candidate.latitude, candidate.longitude)) continue
-        if (bestCandidate == null || LocationFixPolicy.isBetter(candidate, bestCandidate)) {
-            bestCandidate = candidate
-            bestLocation = cached
+    var sawInvalidCoordinates = false
+    val overallDeadline = SystemClock.elapsedRealtime() + LocationFixPolicy.LIVE_TIMEOUT_MS
+    var refinementDeadline: Long? = null
+    var remaining = providerCount
+    var done = false
+
+    while (remaining > 0 && !done) {
+        val targetDeadline = refinementDeadline?.let { minOf(overallDeadline, it) } ?: overallDeadline
+        val waitMs = targetDeadline - SystemClock.elapsedRealtime()
+        val result = if (waitMs > 0L) withTimeoutOrNull(waitMs) { channel.receive() } else null
+        if (result == null) {
+            done = true
+        } else {
+            remaining--
+            val loc = result.location
+            if (loc != null) {
+                val candidate = loc.toCandidate(result.provider)
+                if (candidate.isMock) {
+                    throw Exception("Lokasi palsu terdeteksi. Nonaktifkan aplikasi mock location.")
+                }
+                if (!LocationFixPolicy.isValidCoordinates(candidate.latitude, candidate.longitude)) {
+                    sawInvalidCoordinates = true
+                } else {
+                    if (bestCandidate == null || LocationFixPolicy.isBetter(candidate, bestCandidate)) {
+                        bestCandidate = candidate
+                        bestLocation = loc
+                    }
+                    if (LocationFixPolicy.isImmediateFix(candidate)) {
+                        done = true
+                    } else if (refinementDeadline == null) {
+                        refinementDeadline = SystemClock.elapsedRealtime() + LocationFixPolicy.REFINEMENT_WINDOW_MS
+                    }
+                }
+            }
         }
     }
-    return bestLocation
+    return LiveLocationOutcome(bestLocation, sawInvalidCoordinates)
 }
 
 suspend fun currentLocation(context: Context): Location {
@@ -157,25 +211,12 @@ suspend fun currentLocation(context: Context): Location {
         "Izinkan lokasi presisi untuk presensi."
     }
     val manager = context.getSystemService(LocationManager::class.java)
-    val providers = buildList {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            runCatching { manager.hasProvider(LocationManager.FUSED_PROVIDER) && manager.isProviderEnabled(LocationManager.FUSED_PROVIDER) }
-                .getOrDefault(false)
-        ) {
-            add(LocationManager.FUSED_PROVIDER)
-        }
-        if (runCatching { manager.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrDefault(false)) {
-            add(LocationManager.GPS_PROVIDER)
-        }
-        if (runCatching { manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) }.getOrDefault(false)) {
-            add(LocationManager.NETWORK_PROVIDER)
-        }
-    }
+    val providers = enabledLocationProviders(manager)
     check(LocationManagerCompat.isLocationEnabled(manager) && providers.isNotEmpty()) {
         "Aktifkan lokasi perangkat lalu coba lagi."
     }
 
-    val liveFix = coroutineScope {
+    return coroutineScope {
         val channel = Channel<ProviderFix>(capacity = providers.size)
         val jobs = providers.map { provider ->
             launch {
@@ -183,62 +224,21 @@ suspend fun currentLocation(context: Context): Location {
                 channel.trySend(ProviderFix(provider, location))
             }
         }
-        var bestLocation: Location? = null
-        var bestCandidate: LocationCandidate? = null
-        var sawInvalidCoordinates = false
-        val overallDeadline = SystemClock.elapsedRealtime() + LocationFixPolicy.LIVE_TIMEOUT_MS
-        var refinementDeadline: Long? = null
-        var remaining = providers.size
-
-        try {
-            while (remaining > 0) {
-                val now = SystemClock.elapsedRealtime()
-                val targetDeadline = refinementDeadline?.let { minOf(overallDeadline, it) } ?: overallDeadline
-                val waitMs = targetDeadline - now
-                if (waitMs <= 0L) break
-
-                val result = withTimeoutOrNull(waitMs) { channel.receive() } ?: break
-                remaining--
-                val loc = result.location ?: continue
-                val candidate = loc.toCandidate(result.provider)
-
-                if (candidate.isMock) {
-                    throw Exception("Lokasi palsu terdeteksi. Nonaktifkan aplikasi mock location.")
-                }
-                if (!LocationFixPolicy.isValidCoordinates(candidate.latitude, candidate.longitude)) {
-                    sawInvalidCoordinates = true
-                    continue
-                }
-                if (bestCandidate == null || LocationFixPolicy.isBetter(candidate, bestCandidate)) {
-                    bestCandidate = candidate
-                    bestLocation = loc
-                }
-                if (LocationFixPolicy.isImmediateFix(candidate)) {
-                    break
-                }
-                if (refinementDeadline == null) {
-                    refinementDeadline = SystemClock.elapsedRealtime() + LocationFixPolicy.REFINEMENT_WINDOW_MS
-                }
-            }
+        val outcome = try {
+            collectBestLiveLocation(channel, providers.size)
         } finally {
             jobs.forEach { it.cancel() }
             channel.close()
         }
 
-        if (bestLocation != null) {
-            bestLocation
-        } else {
-            val fallback = findFreshLastKnownLocation(manager, providers)
-            if (fallback != null) {
-                fallback
-            } else if (sawInvalidCoordinates) {
+        outcome.location
+            ?: findFreshLastKnownLocation(manager, providers)
+            ?: if (outcome.sawInvalidCoordinates) {
                 throw Exception("Koordinat lokasi tidak valid.")
             } else {
                 throw Exception("Lokasi belum ditemukan. Pastikan GPS/lokasi aktif lalu coba lagi di area terbuka.")
             }
-        }
     }
-    return liveFix
 }
 
 fun captureFile(context: Context): File = File(context.cacheDir, "capture-${UUID.randomUUID()}.jpg")

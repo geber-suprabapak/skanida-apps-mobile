@@ -1,5 +1,5 @@
-import java.util.Properties
 import groovy.json.JsonSlurper
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -20,7 +20,9 @@ val customAppIdSuffix = providers.gradleProperty("appIdSuffix").orNull?.takeIf {
 val releaseSigning = Properties().apply {
     rootProject.file("signing.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
-val firebaseFile = listOf(rootProject.file("app/google-services.json"), rootProject.file("certs/google-services.json")).firstOrNull { it.exists() }
+val firebaseFile = listOf(rootProject.file("app/google-services.json"), rootProject.file("certs/google-services.json")).firstOrNull {
+    it.exists()
+}
 val firebase = firebaseFile?.let { JsonSlurper().parse(it) as Map<*, *> }
 val firebaseProject = firebase?.get("project_info") as? Map<*, *>
 val firebaseClient = (firebase?.get("client") as? List<*>)?.filterIsInstance<Map<*, *>>()?.firstOrNull {
@@ -45,20 +47,34 @@ android {
         buildConfigField("String", "ASTRA_URL", quoted(clientSetting("EXPO_PUBLIC_BFF_API_URL", "https://astrayao.lunaradev.my.id")))
         buildConfigField("String", "LOGTO_URL", quoted(clientSetting("EXPO_PUBLIC_LOGTO_ENDPOINT", "https://auth.lunaradev.my.id")))
         buildConfigField("String", "LOGTO_CLIENT_ID", quoted(clientSetting("EXPO_PUBLIC_LOGTO_APP_ID", "skanida-mobile")))
-        buildConfigField("String", "LOGTO_RESOURCE", quoted(clientSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://astrayao.lunaradev.my.id")))
+        buildConfigField(
+            "String",
+            "LOGTO_RESOURCE",
+            quoted(clientSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://astrayao.lunaradev.my.id"))
+        )
         buildConfigField("String", "LOGTO_REDIRECT", quoted(clientSetting("EXPO_PUBLIC_LOGTO_REDIRECT_URI", "skanida://auth/callback")))
         buildConfigField("String", "EXPO_PROJECT_ID", quoted("a423f8e9-23fd-472b-b405-f5ef8f726bf9"))
-        buildConfigField("String", "FIREBASE_APP_ID", quoted((firebaseClient?.get("client_info") as? Map<*, *>)?.get("mobilesdk_app_id")?.toString().orEmpty()))
-        buildConfigField("String", "FIREBASE_API_KEY", quoted(((firebaseClient?.get("api_key") as? List<*>)?.firstOrNull() as? Map<*, *>)?.get("current_key")?.toString().orEmpty()))
+        buildConfigField(
+            "String",
+            "FIREBASE_APP_ID",
+            quoted((firebaseClient?.get("client_info") as? Map<*, *>)?.get("mobilesdk_app_id")?.toString().orEmpty())
+        )
+        buildConfigField(
+            "String",
+            "FIREBASE_API_KEY",
+            quoted(((firebaseClient?.get("api_key") as? List<*>)?.firstOrNull() as? Map<*, *>)?.get("current_key")?.toString().orEmpty())
+        )
         buildConfigField("String", "FIREBASE_PROJECT_ID", quoted(firebaseProject?.get("project_id")?.toString().orEmpty()))
         buildConfigField("String", "FIREBASE_SENDER_ID", quoted(firebaseProject?.get("project_number")?.toString().orEmpty()))
     }
     signingConfigs {
-        if (releaseSigning.isNotEmpty()) create("production") {
-            storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
-            storePassword = releaseSigning.getProperty("storePassword")
-            keyAlias = releaseSigning.getProperty("keyAlias")
-            keyPassword = releaseSigning.getProperty("keyPassword")
+        if (releaseSigning.isNotEmpty()) {
+            create("production") {
+                storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
         }
     }
     buildTypes {
@@ -88,14 +104,33 @@ android {
             manifestPlaceholders["appLabel"] = "Skanida Apps (Staging)"
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             buildConfigField("boolean", "ALLOW_INSECURE_HTTP", "true")
-            buildConfigField("String", "ASTRA_URL", quoted(stagingSetting("EXPO_PUBLIC_BFF_API_URL", "http://api.192.168.21.122.nip.io:8080")))
-            buildConfigField("String", "LOGTO_URL", quoted(stagingSetting("EXPO_PUBLIC_LOGTO_ENDPOINT", "http://auth.192.168.21.122.nip.io:8080")))
+            buildConfigField(
+                "String",
+                "ASTRA_URL",
+                quoted(stagingSetting("EXPO_PUBLIC_BFF_API_URL", "http://api.192.168.21.122.nip.io:8080"))
+            )
+            buildConfigField(
+                "String",
+                "LOGTO_URL",
+                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_ENDPOINT", "http://auth.192.168.21.122.nip.io:8080"))
+            )
             buildConfigField("String", "LOGTO_CLIENT_ID", quoted(stagingSetting("EXPO_PUBLIC_LOGTO_APP_ID", "ktok16dl83bmwh85jgc97")))
-            buildConfigField("String", "LOGTO_RESOURCE", quoted(stagingSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://api.skanida-staging.test")))
-            buildConfigField("String", "LOGTO_REDIRECT", quoted(stagingSetting("EXPO_PUBLIC_LOGTO_REDIRECT_URI", "skanida://auth/callback")))
+            buildConfigField(
+                "String",
+                "LOGTO_RESOURCE",
+                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://api.skanida-staging.test"))
+            )
+            buildConfigField(
+                "String",
+                "LOGTO_REDIRECT",
+                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_REDIRECT_URI", "skanida://auth/callback"))
+            )
         }
     }
-    buildFeatures { compose = true; buildConfig = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

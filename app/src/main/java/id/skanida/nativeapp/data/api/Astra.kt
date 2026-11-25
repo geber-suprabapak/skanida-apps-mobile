@@ -3,6 +3,12 @@ package id.skanida.nativeapp.data.api
 import id.skanida.nativeapp.BuildConfig
 import id.skanida.nativeapp.data.auth.Identity
 import id.skanida.nativeapp.data.model.text
+import java.io.File
+import java.io.IOException
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -15,19 +21,8 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
-import java.io.File
-import java.io.IOException
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
-class AstraError(
-    val status: Int,
-    val code: String,
-    message: String,
-    val details: JSONObject? = null,
-) : Exception(message)
+class AstraError(val status: Int, val code: String, message: String, val details: JSONObject? = null,) : Exception(message)
 
 object AstraEnvelope {
     fun decode(status: Int, version: String?, body: String): Any? {
@@ -56,7 +51,9 @@ object AstraEnvelope {
                     val datesArray = details?.optJSONArray("conflicting_dates")
                     val dates = if (datesArray != null && datesArray.length() > 0) {
                         (0 until datesArray.length()).joinToString(", ") { datesArray.optString(it) }
-                    } else "tanggal yang sudah memiliki absensi fisik"
+                    } else {
+                        "tanggal yang sudah memiliki absensi fisik"
+                    }
                     "Pengajuan ditolak karena absensi fisik sudah tercatat pada: $dates."
                 }
                 else -> error?.text("message")?.takeIf { it.isNotBlank() }
@@ -126,22 +123,16 @@ class Astra(private val identity: Identity) {
         }
     }
 
-    suspend fun get(path: String): JSONObject =
-        request(path) as? JSONObject ?: error("Respons server tidak valid.")
+    suspend fun get(path: String): JSONObject = request(path) as? JSONObject ?: error("Respons server tidak valid.")
 
-    suspend fun send(
-        path: String,
-        data: JSONObject,
-        method: String = "POST",
-        authenticated: Boolean = true,
-        timeout: Long = 30,
-    ): Any? = request(
-        path = path,
-        method = method,
-        body = data.toString().toRequestBody("application/json".toMediaType()),
-        authenticated = authenticated,
-        timeoutSeconds = timeout,
-    )
+    suspend fun send(path: String, data: JSONObject, method: String = "POST", authenticated: Boolean = true, timeout: Long = 30,): Any? =
+        request(
+            path = path,
+            method = method,
+            body = data.toString().toRequestBody("application/json".toMediaType()),
+            authenticated = authenticated,
+            timeoutSeconds = timeout,
+        )
 
     suspend fun upload(
         path: String,

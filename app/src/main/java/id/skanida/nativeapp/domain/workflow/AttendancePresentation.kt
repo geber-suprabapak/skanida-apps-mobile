@@ -19,18 +19,9 @@ data class ScheduleTimelineState(
     val isCompleted: Boolean,
 )
 
-data class MonthlyAttendanceSummary(
-    val attendedDays: Int,
-    val effectiveDays: Int,
-    val rate: Float,
-    val percent: Int,
-)
+data class MonthlyAttendanceSummary(val attendedDays: Int, val effectiveDays: Int, val rate: Float, val percent: Int,)
 
-data class NotificationChannelPrefs(
-    val checkIn: Boolean = true,
-    val checkOut: Boolean = true,
-    val permitUpdates: Boolean = true,
-)
+data class NotificationChannelPrefs(val checkIn: Boolean = true, val checkOut: Boolean = true, val permitUpdates: Boolean = true,)
 
 enum class NotificationCategory {
     CHECK_IN,
@@ -39,11 +30,7 @@ enum class NotificationCategory {
     GENERAL,
 }
 
-fun computeScheduleTimeline(
-    schedule: DashboardSchedule?,
-    attendance: DashboardAttendance?,
-    nowInstant: Instant,
-): ScheduleTimelineState {
+fun computeScheduleTimeline(schedule: DashboardSchedule?, attendance: DashboardAttendance?, nowInstant: Instant,): ScheduleTimelineState {
     if (schedule == null) {
         val done = attendance?.hasCheckedOut == true
         return ScheduleTimelineState(
@@ -146,17 +133,13 @@ fun classifyNotification(type: String?, title: String?, body: String?): Notifica
     }
 }
 
-fun shouldDeliverNotification(
-    prefs: NotificationChannelPrefs,
-    type: String?,
-    title: String?,
-    body: String?,
-): Boolean = when (classifyNotification(type, title, body)) {
-    NotificationCategory.CHECK_IN -> prefs.checkIn
-    NotificationCategory.CHECK_OUT -> prefs.checkOut
-    NotificationCategory.PERMIT -> prefs.permitUpdates
-    NotificationCategory.GENERAL -> true
-}
+fun shouldDeliverNotification(prefs: NotificationChannelPrefs, type: String?, title: String?, body: String?,): Boolean =
+    when (classifyNotification(type, title, body)) {
+        NotificationCategory.CHECK_IN -> prefs.checkIn
+        NotificationCategory.CHECK_OUT -> prefs.checkOut
+        NotificationCategory.PERMIT -> prefs.permitUpdates
+        NotificationCategory.GENERAL -> true
+    }
 
 fun initialsFromName(fullName: String?): String {
     val parts = fullName.orEmpty().trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
@@ -167,5 +150,4 @@ fun initialsFromName(fullName: String?): String {
     }
 }
 
-fun firstNameFrom(fullName: String?): String =
-    fullName.orEmpty().trim().substringBefore(" ").ifBlank { "Siswa" }
+fun firstNameFrom(fullName: String?): String = fullName.orEmpty().trim().substringBefore(" ").ifBlank { "Siswa" }

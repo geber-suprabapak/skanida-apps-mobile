@@ -208,10 +208,7 @@ private fun ConfettiOverlay(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AttendanceSuccessDialog(
-    success: PendingAttendanceSuccess,
-    onDismiss: () -> Unit,
-) {
+fun AttendanceSuccessDialog(success: PendingAttendanceSuccess, onDismiss: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val isCheckout = success.attendanceType == "check_out"
     val title = if (isCheckout) "Berhasil Presensi Pulang" else "Berhasil Presensi Masuk"

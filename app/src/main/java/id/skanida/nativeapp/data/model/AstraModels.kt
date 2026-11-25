@@ -3,19 +3,15 @@ package id.skanida.nativeapp.data.model
 import org.json.JSONArray
 import org.json.JSONObject
 
-fun JSONObject.text(key: String, fallback: String = ""): String =
-    if (isNull(key)) fallback else optString(key, fallback)
+fun JSONObject.text(key: String, fallback: String = ""): String = if (isNull(key)) fallback else optString(key, fallback)
 
-fun JSONObject.nullableText(key: String): String? =
-    if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
+fun JSONObject.nullableText(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
 
-fun JSONArray.objects(): List<JSONObject> =
-    (0 until length()).mapNotNull { optJSONObject(it) }
+fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
 
-fun json(vararg values: Pair<String, Any?>): JSONObject =
-    JSONObject().apply {
-        values.forEach { (key, value) -> put(key, value ?: JSONObject.NULL) }
-    }
+fun json(vararg values: Pair<String, Any?>): JSONObject = JSONObject().apply {
+    values.forEach { (key, value) -> put(key, value ?: JSONObject.NULL) }
+}
 
 data class UserProfile(
     val userId: String,
@@ -96,11 +92,7 @@ data class DashboardSchedule(
     }
 }
 
-data class DashboardFace(
-    val serverStatus: String,
-    val enrollmentStatus: String,
-    val message: String,
-) {
+data class DashboardFace(val serverStatus: String, val enrollmentStatus: String, val message: String,) {
     val isServerHealthy: Boolean get() = serverStatus == "healthy"
     val isEnrolled: Boolean get() = enrollmentStatus == "enrolled"
 
@@ -114,10 +106,7 @@ data class DashboardFace(
     }
 }
 
-data class DashboardPermitSummary(
-    val hasActivePermit: Boolean,
-    val activeCategory: String?,
-) {
+data class DashboardPermitSummary(val hasActivePermit: Boolean, val activeCategory: String?,) {
     companion object {
         fun fromJson(obj: JSONObject?): DashboardPermitSummary = DashboardPermitSummary(
             hasActivePermit = obj?.optBoolean("has_active_permit", false) ?: false,
@@ -184,7 +173,8 @@ data class AttendancePrecheckResult(
             val scheduleWindow = obj.optJSONObject("schedule_window")
             val lateDeadline = scheduleWindow?.nullableText("late_deadline")
             val detailStatus = obj.optJSONObject("details")?.nullableText("status")
-            val isLate = allowed && actionType == "check_in" &&
+            val isLate = allowed &&
+                actionType == "check_in" &&
                 (detailStatus.equals("Terlambat", ignoreCase = true) || isPastLateDeadline(lateDeadline))
             val message = when {
                 !allowed -> blockingReason ?: "Presensi belum dapat dilakukan."
@@ -205,11 +195,7 @@ data class AttendancePrecheckResult(
     }
 }
 
-data class AttendanceSubmitResult(
-    val attendanceType: String,
-    val statusLabel: String,
-    val processedMs: Long,
-) {
+data class AttendanceSubmitResult(val attendanceType: String, val statusLabel: String, val processedMs: Long,) {
     companion object {
         fun fromJson(obj: JSONObject): AttendanceSubmitResult = AttendanceSubmitResult(
             attendanceType = obj.text("attendance_type", "check_in"),
@@ -219,13 +205,7 @@ data class AttendanceSubmitResult(
     }
 }
 
-data class RawAttendanceRecord(
-    val id: String,
-    val date: String,
-    val status: String,
-    val actionType: String?,
-    val createdAt: String?,
-) {
+data class RawAttendanceRecord(val id: String, val date: String, val status: String, val actionType: String?, val createdAt: String?,) {
     companion object {
         fun fromJson(obj: JSONObject): RawAttendanceRecord = RawAttendanceRecord(
             id = obj.text("id"),
@@ -249,13 +229,7 @@ data class DailyAttendanceRecord(
     val approvalStatus: String? = null,
 )
 
-data class MonthlyAttendanceStats(
-    val hadir: Int,
-    val terlambat: Int,
-    val sakit: Int,
-    val izin: Int,
-    val alpha: Int,
-)
+data class MonthlyAttendanceStats(val hadir: Int, val terlambat: Int, val sakit: Int, val izin: Int, val alpha: Int,)
 
 data class PermitRecord(
     val id: String,
@@ -290,7 +264,9 @@ data class PermitRecord(
                     ?: if (status == "approved") baseDate else null,
                 durationDays = if (obj.isNull("duration_days")) {
                     if (status == "approved") 1 else null
-                } else obj.optInt("duration_days"),
+                } else {
+                    obj.optInt("duration_days")
+                },
                 approvalStatus = status,
                 attachmentUrl = obj.nullableText("attachment_url")?.trim()
                     ?.takeIf { it.startsWith("http://") || it.startsWith("https://") },
@@ -355,11 +331,7 @@ fun localizePrimaryActionReason(reasonCode: String?, rawMessage: String?): Strin
     }
 }
 
-data class EnrollmentStatusData(
-    val status: String,
-    val embeddingCount: Int,
-    val message: String,
-) {
+data class EnrollmentStatusData(val status: String, val embeddingCount: Int, val message: String,) {
     val isEnrolled: Boolean get() = status == "enrolled"
 
     companion object {
@@ -371,11 +343,7 @@ data class EnrollmentStatusData(
     }
 }
 
-data class EnrollmentSubmitResult(
-    val imagesProcessed: Int,
-    val imagesFailed: Int,
-    val totalEmbeddings: Int,
-) {
+data class EnrollmentSubmitResult(val imagesProcessed: Int, val imagesFailed: Int, val totalEmbeddings: Int,) {
     companion object {
         fun fromJson(obj: JSONObject): EnrollmentSubmitResult = EnrollmentSubmitResult(
             imagesProcessed = obj.optInt("imagesProcessed", 0),

@@ -22,6 +22,10 @@ import id.skanida.nativeapp.data.model.json
 import id.skanida.nativeapp.data.model.text
 import id.skanida.nativeapp.domain.workflow.NotificationChannelPrefs
 import id.skanida.nativeapp.domain.workflow.shouldDeliverNotification
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -34,10 +38,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 class PushController(private val app: SkanidaApplication) {
     private val lock = Mutex()
@@ -51,8 +51,10 @@ class PushController(private val app: SkanidaApplication) {
     }
 
     fun permissionGranted() = NotificationManagerCompat.from(app).areNotificationsEnabled() &&
-        (Build.VERSION.SDK_INT < 33 ||
-            ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+        (
+            Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            )
 
     fun registeredForCurrentUser() = app.identity.signedIn &&
         app.preferences.getString("push-owner", "") == app.identity.userId &&
@@ -155,11 +157,11 @@ class PushController(private val app: SkanidaApplication) {
 
     suspend fun reconcile(): Boolean {
         val stored = app.astra.get("/v1/mobile/notifications/token").text("notification_token")
-        if (!permissionGranted() && stored.isNotBlank()) clearRevokedPermission()
-        else if (permissionGranted() &&
-            !app.preferences.getBoolean("push-opt-out:${app.identity.userId}", false) &&
-            (!registeredForCurrentUser() || stored.isBlank())
-        ) {
+        val optedOut = app.preferences.getBoolean("push-opt-out:${app.identity.userId}", false)
+        val needsRegistration = !registeredForCurrentUser() || stored.isBlank()
+        if (!permissionGranted() && stored.isNotBlank()) {
+            clearRevokedPermission()
+        } else if (permissionGranted() && !optedOut && needsRegistration) {
             enable()
         }
         return enabledForCurrentUser()

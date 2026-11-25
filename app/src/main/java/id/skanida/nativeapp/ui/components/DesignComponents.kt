@@ -150,11 +150,7 @@ fun SkanidaCard(
 }
 
 @Composable
-fun GuillocheOverlay(
-    modifier: Modifier = Modifier,
-    tint: Color = Color.White.copy(alpha = 0.055f),
-    goldAccent: Color? = null,
-) {
+fun GuillocheOverlay(modifier: Modifier = Modifier, tint: Color = Color.White.copy(alpha = 0.055f), goldAccent: Color? = null,) {
     Canvas(modifier = modifier) {
         val step = 22.dp.toPx()
         var offset = -size.height
@@ -224,12 +220,7 @@ fun AttendanceArcRing(
 }
 
 @Composable
-fun StatusBadge(
-    label: String,
-    token: StatusColorToken,
-    modifier: Modifier = Modifier,
-    showDot: Boolean = false,
-) {
+fun StatusBadge(label: String, token: StatusColorToken, modifier: Modifier = Modifier, showDot: Boolean = false,) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(999.dp),
@@ -432,11 +423,7 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun FeedbackBanner(
-    message: String,
-    isError: Boolean,
-    onDismiss: () -> Unit,
-) {
+fun FeedbackBanner(message: String, isError: Boolean, onDismiss: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val token = if (isError) tokens.error else tokens.success
     Surface(
@@ -521,12 +508,7 @@ fun UserAvatar(
 }
 
 @Composable
-fun KeyValueRow(
-    label: String,
-    value: String,
-    mono: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
+fun KeyValueRow(label: String, value: String, mono: Boolean = false, modifier: Modifier = Modifier,) {
     val tokens = LocalSkanidaColors.current
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -609,7 +591,9 @@ fun SkanidaTextField(
                         )
                     }
                 }
-            } else null,
+            } else {
+                null
+            },
         )
         if (!supportingText.isNullOrBlank()) {
             Text(

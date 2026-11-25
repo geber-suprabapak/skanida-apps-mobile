@@ -62,12 +62,7 @@ private const val PASSWORD_REQUIREMENTS_HINT =
     "Minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka."
 
 @Composable
-fun WelcomeScreen(
-    busy: Boolean,
-    onLogin: () -> Unit,
-    onSignup: () -> Unit,
-    onReset: () -> Unit,
-) {
+fun WelcomeScreen(busy: Boolean, onLogin: () -> Unit, onSignup: () -> Unit, onReset: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     Column(
         modifier = Modifier
@@ -186,10 +181,7 @@ fun WelcomeScreen(
 }
 
 @Composable
-fun LifecycleScreen(
-    model: MainViewModel,
-    onLogout: () -> Unit,
-) {
+fun LifecycleScreen(model: MainViewModel, onLogout: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val isPending = model.lifecycle == "pending"
     val title = when (model.lifecycle) {

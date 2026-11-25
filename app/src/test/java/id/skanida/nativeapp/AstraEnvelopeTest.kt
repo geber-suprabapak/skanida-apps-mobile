@@ -30,12 +30,15 @@ class AstraEnvelopeTest {
 
     @Test
     fun leavePeriodRacePreservesActionableAttendanceBlock() {
+        val body = """
+            {"success":false,"error":{
+                "code":"ATTENDANCE_BLOCKED",
+                "message":"Izin sudah disetujui hingga 2026-10-15.",
+                "details":{"effective_end_date":"2026-10-15"}
+            }}
+        """.trimIndent()
         val error = assertThrows(AstraError::class.java) {
-            AstraEnvelope.decode(
-                409,
-                "v1",
-                """{"success":false,"error":{"code":"ATTENDANCE_BLOCKED","message":"Izin sudah disetujui hingga 2026-10-15.","details":{"effective_end_date":"2026-10-15"}}}""",
-            )
+            AstraEnvelope.decode(409, "v1", body)
         }
         assertEquals("ATTENDANCE_BLOCKED", error.code)
         assertEquals("Izin sudah disetujui hingga 2026-10-15.", error.message)
@@ -44,30 +47,33 @@ class AstraEnvelopeTest {
 
     @Test
     fun leaveConflictCodesProduceActionableIndonesianMessages() {
+        val pendingBody = """{"success":false,"error":{"code":"LEAVE_REQUEST_PENDING","message":"Pending"}}"""
         val pending = assertThrows(AstraError::class.java) {
-            AstraEnvelope.decode(
-                409,
-                "v1",
-                """{"success":false,"error":{"code":"LEAVE_REQUEST_PENDING","message":"Pending"}}""",
-            )
+            AstraEnvelope.decode(409, "v1", pendingBody)
         }
         assertTrue(pending.message!!.contains("menunggu persetujuan"))
 
+        val overlapBody = """
+            {"success":false,"error":{
+                "code":"LEAVE_PERIOD_OVERLAP",
+                "message":"Overlap",
+                "details":{"overlapping_start_date":"2026-10-10","overlapping_end_date":"2026-10-12"}
+            }}
+        """.trimIndent()
         val overlap = assertThrows(AstraError::class.java) {
-            AstraEnvelope.decode(
-                409,
-                "v1",
-                """{"success":false,"error":{"code":"LEAVE_PERIOD_OVERLAP","message":"Overlap","details":{"overlapping_start_date":"2026-10-10","overlapping_end_date":"2026-10-12"}}}""",
-            )
+            AstraEnvelope.decode(409, "v1", overlapBody)
         }
         assertTrue(overlap.message!!.contains("2026-10-10 sampai 2026-10-12"))
 
+        val conflictBody = """
+            {"success":false,"error":{
+                "code":"LEAVE_APPROVAL_CONFLICT",
+                "message":"Conflict",
+                "details":{"conflicting_dates":["2026-10-13"]}
+            }}
+        """.trimIndent()
         val conflict = assertThrows(AstraError::class.java) {
-            AstraEnvelope.decode(
-                409,
-                "v1",
-                """{"success":false,"error":{"code":"LEAVE_APPROVAL_CONFLICT","message":"Conflict","details":{"conflicting_dates":["2026-10-13"]}}}""",
-            )
+            AstraEnvelope.decode(409, "v1", conflictBody)
         }
         assertTrue(conflict.message!!.contains("2026-10-13"))
     }

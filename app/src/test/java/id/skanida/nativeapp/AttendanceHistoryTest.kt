@@ -4,10 +4,10 @@ import id.skanida.nativeapp.data.model.PermitRecord
 import id.skanida.nativeapp.data.model.RawAttendanceRecord
 import id.skanida.nativeapp.domain.workflow.buildMonthlyAttendanceHistory
 import id.skanida.nativeapp.domain.workflow.computeMonthlyStats
+import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.YearMonth
 
 class AttendanceHistoryTest {
     @Test

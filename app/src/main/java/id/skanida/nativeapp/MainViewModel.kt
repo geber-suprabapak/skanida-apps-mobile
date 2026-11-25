@@ -36,6 +36,11 @@ import id.skanida.nativeapp.domain.workflow.WIB
 import id.skanida.nativeapp.domain.workflow.buildMonthlyAttendanceHistory
 import id.skanida.nativeapp.domain.workflow.computeMonthlyStats
 import id.skanida.nativeapp.domain.workflow.parseTimestampToInstant
+import java.io.File
+import java.net.SocketTimeoutException
+import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,11 +49,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.File
-import java.net.SocketTimeoutException
-import java.time.Instant
-import java.time.LocalDate
-import java.time.YearMonth
 
 enum class Page {
     HOME,
@@ -80,51 +80,86 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val identity = app.identity
     val astra = app.astra
 
-    var signedIn by mutableStateOf(identity.signedIn); private set
-    var page by mutableStateOf(Page.HOME); private set
-    var busy by mutableStateOf(false); private set
-    var criticalSubmissionInFlight by mutableStateOf(false); private set
-    var refreshing by mutableStateOf(false); private set
-    var error by mutableStateOf<String?>(null); private set
-    var notice by mutableStateOf<String?>(null); private set
-    var isOnline by mutableStateOf(app.networkMonitor.isOnline.value); private set
+    var signedIn by mutableStateOf(identity.signedIn)
+        private set
+    var page by mutableStateOf(Page.HOME)
+        private set
+    var busy by mutableStateOf(false)
+        private set
+    var criticalSubmissionInFlight by mutableStateOf(false)
+        private set
+    var refreshing by mutableStateOf(false)
+        private set
+    var error by mutableStateOf<String?>(null)
+        private set
+    var notice by mutableStateOf<String?>(null)
+        private set
+    var isOnline by mutableStateOf(app.networkMonitor.isOnline.value)
+        private set
 
-    var profile by mutableStateOf<UserProfile?>(null); private set
-    var dashboard by mutableStateOf<DashboardData?>(null); private set
-    var dashboardError by mutableStateOf<String?>(null); private set
+    var profile by mutableStateOf<UserProfile?>(null)
+        private set
+    var dashboard by mutableStateOf<DashboardData?>(null)
+        private set
+    var dashboardError by mutableStateOf<String?>(null)
+        private set
 
-    var records by mutableStateOf<List<DailyAttendanceRecord>>(emptyList()); private set
-    var monthlyStats by mutableStateOf<MonthlyAttendanceStats?>(null); private set
-    var currentMonthStats by mutableStateOf<MonthlyAttendanceStats?>(null); private set
-    var historyLoading by mutableStateOf(false); private set
-    var historyError by mutableStateOf<String?>(null); private set
+    var records by mutableStateOf<List<DailyAttendanceRecord>>(emptyList())
+        private set
+    var monthlyStats by mutableStateOf<MonthlyAttendanceStats?>(null)
+        private set
+    var currentMonthStats by mutableStateOf<MonthlyAttendanceStats?>(null)
+        private set
+    var historyLoading by mutableStateOf(false)
+        private set
+    var historyError by mutableStateOf<String?>(null)
+        private set
 
-    var permits by mutableStateOf<List<PermitRecord>>(emptyList()); private set
-    var permitsLoading by mutableStateOf(false); private set
-    var permitsError by mutableStateOf<String?>(null); private set
+    var permits by mutableStateOf<List<PermitRecord>>(emptyList())
+        private set
+    var permitsLoading by mutableStateOf(false)
+        private set
+    var permitsError by mutableStateOf<String?>(null)
+        private set
 
-    var month by mutableStateOf(YearMonth.now(WIB)); private set
-    var selectedDate by mutableStateOf(LocalDate.now(WIB)); private set
+    var month by mutableStateOf(YearMonth.now(WIB))
+        private set
+    var selectedDate by mutableStateOf(LocalDate.now(WIB))
+        private set
 
-    var enrollmentStatus by mutableStateOf<EnrollmentStatusData?>(null); private set
-    var photos by mutableStateOf<List<File>>(emptyList()); private set
-    var enrollmentStep by mutableStateOf(EnrollmentStep.CAPTURE); private set
-    var enrollmentResult by mutableStateOf<EnrollmentSubmitResult?>(null); private set
-    var enrollmentError by mutableStateOf<String?>(null); private set
+    var enrollmentStatus by mutableStateOf<EnrollmentStatusData?>(null)
+        private set
+    var photos by mutableStateOf<List<File>>(emptyList())
+        private set
+    var enrollmentStep by mutableStateOf(EnrollmentStep.CAPTURE)
+        private set
+    var enrollmentResult by mutableStateOf<EnrollmentSubmitResult?>(null)
+        private set
+    var enrollmentError by mutableStateOf<String?>(null)
+        private set
 
-    var attachment by mutableStateOf<File?>(null); private set
+    var attachment by mutableStateOf<File?>(null)
+        private set
     var leaveCategory by mutableStateOf("sakit")
     var leaveDescription by mutableStateOf("")
 
-    var theme by mutableStateOf(app.preferences.getString("theme", "system") ?: "system"); private set
-    var notificationsEnabled by mutableStateOf(false); private set
-    var notificationPrefs by mutableStateOf(app.push.channelPrefs()); private set
-    var serverOffsetMs by mutableLongStateOf(0L); private set
+    var theme by mutableStateOf(app.preferences.getString("theme", "system") ?: "system")
+        private set
+    var notificationsEnabled by mutableStateOf(false)
+        private set
+    var notificationPrefs by mutableStateOf(app.push.channelPrefs())
+        private set
+    var serverOffsetMs by mutableLongStateOf(0L)
+        private set
 
-    var precheckState by mutableStateOf<PrecheckState>(PrecheckState.Idle); private set
-    var pendingAttendanceSuccess by mutableStateOf<PendingAttendanceSuccess?>(null); private set
-    var attendanceSubmitError by mutableStateOf<String?>(null); private set
-    var attendanceOutcomeUncertain by mutableStateOf(false); private set
+    var precheckState by mutableStateOf<PrecheckState>(PrecheckState.Idle)
+        private set
+    var pendingAttendanceSuccess by mutableStateOf<PendingAttendanceSuccess?>(null)
+        private set
+    var attendanceSubmitError by mutableStateOf<String?>(null)
+        private set
+    var attendanceOutcomeUncertain by mutableStateOf(false)
+        private set
 
     private val attemptTracker = AttendanceAttemptTracker()
     private val backStack = mutableListOf<Page>()
@@ -132,7 +167,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var operation: Job? = null
     private var operationSeq = 0
     private var operationCancellable = false
-    var captureGeneration by mutableIntStateOf(0); private set
+    var captureGeneration by mutableIntStateOf(0)
+        private set
 
     val lifecycle: String get() = profile?.lifecycleStatus ?: "approved"
     val approved: Boolean get() = lifecycle == "approved"
@@ -170,11 +206,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
-    private fun run(
-        asPullRefresh: Boolean = false,
-        cancellable: Boolean = false,
-        block: suspend () -> Unit,
-    ) {
+    private fun run(asPullRefresh: Boolean = false, cancellable: Boolean = false, block: suspend () -> Unit,) {
         if (busy && !cancelCancellableOperation()) return
         busy = true
         operationCancellable = cancellable
@@ -329,12 +361,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
+            } catch (failure: AstraError) {
+                dashboardError = humanizeError(failure)
+                handleSessionLossIfNeeded()
+                if (failure.status == 403) {
+                    profile = loadedProfile.copy(lifecycleStatus = "disabled")
+                }
             } catch (failure: Exception) {
                 dashboardError = humanizeError(failure)
                 handleSessionLossIfNeeded()
-                if (failure is AstraError && failure.status == 403) {
-                    profile = loadedProfile.copy(lifecycleStatus = "disabled")
-                }
             }
             if (dashboardError == null) {
                 runCatching { loadCurrentMonthSummary() }
@@ -358,21 +393,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         enrollmentStatus = EnrollmentStatusData.fromJson(astra.get("/v1/mobile/face/enrollment/status"))
     }
 
-    fun navigate(target: Page, recordBack: Boolean = true) {
-        if (criticalSubmissionInFlight || !cancelCancellableOperation()) return
-        if (identity.mustChangePassword && signedIn && target != Page.PASSWORD) {
-            page = Page.PASSWORD
-            return
-        }
+    private fun resetRouteStateForTransition(target: Page) {
         if (page in listOf(Page.ATTACHMENT, Page.AVATAR) && page != target) {
             captureGeneration++
         }
         if (page == Page.ENROLLMENT && target != Page.ENROLLMENT) {
             cleanupEnrollmentCaptures()
         }
-        if (target != Page.ATTENDANCE &&
-            (page == Page.ATTENDANCE || precheckState != PrecheckState.Idle)
-        ) {
+        if (target != Page.ATTENDANCE && (page == Page.ATTENDANCE || precheckState != PrecheckState.Idle)) {
             attemptTracker.cancelActive()
             precheckState = PrecheckState.Idle
             attendanceSubmitError = null
@@ -381,6 +409,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (page == Page.LEAVE && target != Page.ATTACHMENT) {
             removeAttachment()
         }
+    }
+
+    fun navigate(target: Page, recordBack: Boolean = true) {
+        if (criticalSubmissionInFlight || !cancelCancellableOperation()) return
+        if (identity.mustChangePassword && signedIn && target != Page.PASSWORD) {
+            page = Page.PASSWORD
+            return
+        }
+        resetRouteStateForTransition(target)
         if (target in topLevelPages) {
             backStack.clear()
         } else if (recordBack && target != page && backStack.lastOrNull() != page) {

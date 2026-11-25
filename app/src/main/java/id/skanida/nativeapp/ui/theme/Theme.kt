@@ -120,12 +120,7 @@ object SkanidaPalette {
 }
 
 @Immutable
-data class StatusColorToken(
-    val container: Color,
-    val content: Color,
-    val border: Color,
-    val dot: Color,
-)
+data class StatusColorToken(val container: Color, val content: Color, val border: Color, val dot: Color,)
 
 @Immutable
 data class SkanidaExtendedColors(
@@ -324,11 +319,7 @@ private val SkanidaShapes = Shapes(
 )
 
 @Composable
-fun SkanidaTheme(
-    themePreference: String,
-    forceDarkSystemBars: Boolean = false,
-    content: @Composable () -> Unit,
-) {
+fun SkanidaTheme(themePreference: String, forceDarkSystemBars: Boolean = false, content: @Composable () -> Unit,) {
     val isDark = themePreference == "dark" ||
         (themePreference == "system" && isSystemInDarkTheme())
     val extended = if (isDark) DarkExtendedColors else LightExtendedColors

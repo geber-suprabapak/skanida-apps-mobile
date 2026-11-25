@@ -132,11 +132,7 @@ private val pageLabels = mapOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SkanidaApp(
-    model: MainViewModel,
-    isCameraCapture: Boolean,
-    isWelcomeFullBleed: Boolean,
-) {
+fun SkanidaApp(model: MainViewModel, isCameraCapture: Boolean, isWelcomeFullBleed: Boolean,) {
     val tokens = LocalSkanidaColors.current
     val context = LocalContext.current
     val loginLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -160,10 +156,13 @@ fun SkanidaApp(
         val target = pendingPermissionTarget
         pendingPermissionTarget = null
         val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-        val locationGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val locationGranted =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val needsCamera = target in listOf(Page.ATTENDANCE, Page.ENROLLMENT, Page.ATTACHMENT, Page.AVATAR)
         val needsLocation = target == Page.ATTENDANCE
-        if (target != null && (!needsCamera || cameraGranted) && (!needsLocation || locationGranted)) {
+        val hasCamera = !needsCamera || cameraGranted
+        val hasLocation = !needsLocation || locationGranted
+        if (target != null && hasCamera && hasLocation) {
             openPermissionTarget(target)
         } else {
             val missingText = if (needsLocation) "kamera dan lokasi presisi" else "kamera"
@@ -192,8 +191,11 @@ fun SkanidaApp(
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) model.enableNotifications()
-        else model.showError("Notifikasi belum diizinkan. Kamu dapat mengaktifkannya melalui pengaturan perangkat.")
+        if (granted) {
+            model.enableNotifications()
+        } else {
+            model.showError("Notifikasi belum diizinkan. Kamu dapat mengaktifkannya melalui pengaturan perangkat.")
+        }
     }
 
     val toggleNotifications: () -> Unit = {
@@ -252,7 +254,8 @@ fun SkanidaApp(
     BackHandler(model.criticalSubmissionInFlight) { /* Keep in-flight submission visible until the server replies. */ }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (model.signedIn && !isCameraPage && !model.busy && isTopLevel) {
+        val canAutoRefresh = model.signedIn && isTopLevel && !isCameraPage
+        if (canAutoRefresh && !model.busy) {
             model.refresh()
         }
     }
@@ -289,9 +292,11 @@ fun SkanidaApp(
     }
 
     val childTitle = pageLabels[model.page] ?: ""
+    val showPrimaryChrome = model.signedIn && isTopLevel && model.approved
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 600.dp
+        val showPermitsFab = showPrimaryChrome && model.page == Page.PERMITS && canSubmitPermit
         Scaffold(
             containerColor = if (isCameraCapture) tokens.cameraBackdrop else tokens.background,
             topBar = {
@@ -348,7 +353,7 @@ fun SkanidaApp(
                 }
             },
             floatingActionButton = {
-                if (model.signedIn && model.approved && model.page == Page.PERMITS && canSubmitPermit) {
+                if (showPermitsFab) {
                     ExtendedFloatingActionButton(
                         onClick = { model.navigate(Page.LEAVE) },
                         shape = RoundedCornerShape(18.dp),
@@ -366,7 +371,7 @@ fun SkanidaApp(
                 }
             },
             bottomBar = {
-                if (model.signedIn && isTopLevel && model.approved && !wide) {
+                if (showPrimaryChrome && !wide) {
                     Surface(color = tokens.card, tonalElevation = 0.dp) {
                         Column {
                             HorizontalDivider(color = tokens.border, thickness = 1.dp)
@@ -407,7 +412,7 @@ fun SkanidaApp(
                     .fillMaxSize()
                     .imePadding(),
             ) {
-                if (model.signedIn && isTopLevel && model.approved && wide) {
+                if (showPrimaryChrome && wide) {
                     NavigationRail(containerColor = tokens.card) {
                         destinations.forEach { destination ->
                             val selected = model.page == destination.page
@@ -535,7 +540,10 @@ fun SkanidaApp(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { askLogout = false; model.logout(logoutLauncher::launch) },
+                    onClick = {
+                        askLogout = false
+                        model.logout(logoutLauncher::launch)
+                    },
                     colors = ButtonDefaults.textButtonColors(contentColor = tokens.error.content),
                 ) {
                     Text("Keluar", fontFamily = ManropeFontFamily, fontWeight = FontWeight.Bold)

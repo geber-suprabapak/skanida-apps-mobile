@@ -215,12 +215,36 @@ fun HistoryScreen(model: MainViewModel) {
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                HistoryStatTile("Hadir", stats.hadir, tokens.success.content, tokens.success.container, Modifier.weight(1f).fillMaxHeight())
-                                HistoryStatTile("Telat", stats.terlambat, tokens.warning.content, tokens.warning.container, Modifier.weight(1f).fillMaxHeight())
+                                HistoryStatTile(
+                                    "Hadir",
+                                    stats.hadir,
+                                    tokens.success.content,
+                                    tokens.success.container,
+                                    Modifier.weight(1f).fillMaxHeight()
+                                )
+                                HistoryStatTile(
+                                    "Telat",
+                                    stats.terlambat,
+                                    tokens.warning.content,
+                                    tokens.warning.container,
+                                    Modifier.weight(1f).fillMaxHeight()
+                                )
                             }
                             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                HistoryStatTile("Sakit", stats.sakit, tokens.sick.content, tokens.sick.container, Modifier.weight(1f).fillMaxHeight())
-                                HistoryStatTile("Izin", stats.izin, tokens.info.content, tokens.info.container, Modifier.weight(1f).fillMaxHeight())
+                                HistoryStatTile(
+                                    "Sakit",
+                                    stats.sakit,
+                                    tokens.sick.content,
+                                    tokens.sick.container,
+                                    Modifier.weight(1f).fillMaxHeight()
+                                )
+                                HistoryStatTile(
+                                    "Izin",
+                                    stats.izin,
+                                    tokens.info.content,
+                                    tokens.info.container,
+                                    Modifier.weight(1f).fillMaxHeight()
+                                )
                             }
                         }
                     }
@@ -296,7 +320,9 @@ fun HistoryScreen(model: MainViewModel) {
                                                 record.status == "absent" -> tokens.error.container to tokens.error.content
                                                 record.status == "sick" -> tokens.sick.container to tokens.sick.content
                                                 record.status == "leave" -> tokens.info.container to tokens.info.content
-                                                record.isLate || record.status == "late" -> tokens.warning.container to tokens.warning.content
+                                                record.isLate || record.status == "late" ->
+                                                    tokens.warning.container to
+                                                        tokens.warning.content
                                                 else -> tokens.success.container to tokens.success.content
                                             }
                                             val statusDesc = record?.let { recordStatusLabel(it) } ?: "Belum ada catatan"
@@ -311,7 +337,9 @@ fun HistoryScreen(model: MainViewModel) {
                                                     .then(
                                                         if (isToday && !isSelected) {
                                                             Modifier.border(1.5.dp, tokens.biometricBlue, RoundedCornerShape(12.dp))
-                                                        } else Modifier,
+                                                        } else {
+                                                            Modifier
+                                                        },
                                                     )
                                                     .semantics(mergeDescendants = true) {
                                                         contentDescription = dayDesc
@@ -329,7 +357,14 @@ fun HistoryScreen(model: MainViewModel) {
                                                     Text(
                                                         text = day.toString(),
                                                         fontFamily = ManropeFontFamily,
-                                                        fontWeight = if (isSelected || record != null || isToday) FontWeight.Bold else FontWeight.Medium,
+                                                        fontWeight = if (isSelected ||
+                                                            record != null ||
+                                                            isToday
+                                                        ) {
+                                                            FontWeight.Bold
+                                                        } else {
+                                                            FontWeight.Medium
+                                                        },
                                                         fontSize = 13.sp,
                                                         color = when {
                                                             isSelected -> Color.White
@@ -421,13 +456,7 @@ fun HistoryScreen(model: MainViewModel) {
 }
 
 @Composable
-private fun HistoryStatTile(
-    label: String,
-    count: Int,
-    accent: Color,
-    tint: Color,
-    modifier: Modifier = Modifier,
-) {
+private fun HistoryStatTile(label: String, count: Int, accent: Color, tint: Color, modifier: Modifier = Modifier,) {
     val tokens = LocalSkanidaColors.current
     Surface(
         modifier = modifier.semantics(mergeDescendants = true) {

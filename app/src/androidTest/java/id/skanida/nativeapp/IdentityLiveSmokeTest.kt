@@ -30,8 +30,14 @@ class IdentityLiveSmokeTest {
         // Force the real AppAuth refresh path in the test APK; no test hook ships in production.
         state.setNeedsTokenRefresh(true)
         withTimeout(45_000) {
-            assertTrue("Profile must be returned by authenticated Astra", app.astra.get("/v1/mobile/profile").text("user_id") == expectedUser)
-            assertTrue("Dashboard must include the server-owned primary action", app.astra.get("/v1/mobile/dashboard").has("primary_action"))
+            assertTrue(
+                "Profile must be returned by authenticated Astra",
+                app.astra.get("/v1/mobile/profile").text("user_id") == expectedUser
+            )
+            assertTrue(
+                "Dashboard must include the server-owned primary action",
+                app.astra.get("/v1/mobile/dashboard").has("primary_action")
+            )
             assertTrue("Permit history must use the Astra envelope", app.astra.get("/v1/mobile/permits").has("items"))
         }
         assertTrue("A real refreshed access token must replace the prior token", state.accessToken != previousToken)

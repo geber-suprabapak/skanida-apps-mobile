@@ -5,6 +5,11 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import id.skanida.nativeapp.BuildConfig
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -21,11 +26,6 @@ import net.openid.appauth.TokenResponse
 import net.openid.appauth.connectivity.ConnectionBuilder
 import net.openid.appauth.connectivity.DefaultConnectionBuilder
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 private object StagingAwareConnectionBuilder : ConnectionBuilder {
     private val timeoutMs = TimeUnit.SECONDS.toMillis(15).toInt()
@@ -68,8 +68,11 @@ class Identity(context: Context) {
                 discoveryUri,
                 { config, error ->
                     if (continuation.isActive) {
-                        if (config != null) continuation.resume(config)
-                        else continuation.resumeWithException(Exception(error?.errorDescription ?: "Layanan login tidak tersedia."))
+                        if (config != null) {
+                            continuation.resume(config)
+                        } else {
+                            continuation.resumeWithException(Exception(error?.errorDescription ?: "Layanan login tidak tersedia."))
+                        }
                     }
                 },
                 StagingAwareConnectionBuilder,
@@ -93,10 +96,16 @@ class Identity(context: Context) {
             ?: throw Exception(AuthorizationException.fromIntent(intent)?.errorDescription ?: "Login dibatalkan. Silakan coba lagi.")
         val pendingGeneration = generation
         val token = suspendCancellableCoroutine<TokenResponse> { continuation ->
-            service.performTokenRequest(response.createTokenExchangeRequest(mapOf("resource" to BuildConfig.LOGTO_RESOURCE))) { token, error ->
+            service.performTokenRequest(response.createTokenExchangeRequest(mapOf("resource" to BuildConfig.LOGTO_RESOURCE))) {
+                    token,
+                    error
+                ->
                 if (continuation.isActive) {
-                    if (token != null) continuation.resume(token)
-                    else continuation.resumeWithException(Exception(error?.errorDescription ?: "Login gagal."))
+                    if (token != null) {
+                        continuation.resume(token)
+                    } else {
+                        continuation.resumeWithException(Exception(error?.errorDescription ?: "Login gagal."))
+                    }
                 }
             }
         }
@@ -139,14 +148,19 @@ class Identity(context: Context) {
                     if (error.error in setOf("invalid_grant", "invalid_client", "unauthorized_client")) clear()
                     // Transient network failures must preserve the encrypted refresh token.
                     if (continuation.isActive) {
-                        continuation.resumeWithException(Exception(error.errorDescription ?: "Sesi belum dapat diperbarui. Periksa koneksi."))
+                        continuation.resumeWithException(
+                            Exception(error.errorDescription ?: "Sesi belum dapat diperbarui. Periksa koneksi.")
+                        )
                     }
                 } else {
                     try {
                         store.write(current.jsonSerializeString())
                         if (continuation.isActive) {
-                            if (token != null) continuation.resume(token)
-                            else continuation.resumeWithException(Exception("Sesi tidak valid. Silakan login ulang."))
+                            if (token != null) {
+                                continuation.resume(token)
+                            } else {
+                                continuation.resumeWithException(Exception("Sesi tidak valid. Silakan login ulang."))
+                            }
                         }
                     } catch (failure: Exception) {
                         if (continuation.isActive) continuation.resumeWithException(failure)

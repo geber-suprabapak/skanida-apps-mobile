@@ -40,12 +40,7 @@ import id.skanida.nativeapp.ui.theme.LocalSkanidaColors
 import id.skanida.nativeapp.ui.theme.ManropeFontFamily
 
 @Composable
-fun AttendancePrecheckDialog(
-    state: PrecheckState,
-    busy: Boolean,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+fun AttendancePrecheckDialog(state: PrecheckState, busy: Boolean, onRetry: () -> Unit, onDismiss: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val blockedState = state as? PrecheckState.Blocked
     val failedState = state as? PrecheckState.Failed

@@ -75,9 +75,9 @@ import id.skanida.nativeapp.ui.components.UserAvatar
 import id.skanida.nativeapp.ui.theme.JetBrainsMonoFontFamily
 import id.skanida.nativeapp.ui.theme.LocalSkanidaColors
 import id.skanida.nativeapp.ui.theme.ManropeFontFamily
-import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 
 private val SHORT_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", ID_LOCALE)
 
@@ -94,11 +94,7 @@ private data class PassCtaSpec(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    model: MainViewModel,
-    onStartAttendance: () -> Unit,
-    onStartEnrollment: () -> Unit,
-) {
+fun HomeScreen(model: MainViewModel, onStartAttendance: () -> Unit, onStartEnrollment: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val data = model.dashboard
     val profile = data?.profile ?: model.profile
@@ -137,8 +133,11 @@ fun HomeScreen(
         needsFaceEnrollment -> Triple("Perlu Daftar", Color(0xFFD97706), Icons.Default.Warning)
         att?.hasCheckedOut == true -> Triple("Lengkap", Color(0xFF059669), Icons.Default.CheckCircle)
         att?.todayStatus.equals("present", ignoreCase = true) ->
-            if (isLateCheckIn) Triple("Terlambat", Color(0xFFD97706), Icons.Default.Warning)
-            else Triple("Hadir", Color(0xFF10B981), Icons.Default.CheckCircle)
+            if (isLateCheckIn) {
+                Triple("Terlambat", Color(0xFFD97706), Icons.Default.Warning)
+            } else {
+                Triple("Hadir", Color(0xFF10B981), Icons.Default.CheckCircle)
+            }
         att?.todayStatus.equals("late", ignoreCase = true) -> Triple("Terlambat", Color(0xFFD97706), Icons.Default.Warning)
         att?.todayStatus.equals("leave", ignoreCase = true) ->
             if (data.permit.activeCategory.equals("sakit", ignoreCase = true)) {

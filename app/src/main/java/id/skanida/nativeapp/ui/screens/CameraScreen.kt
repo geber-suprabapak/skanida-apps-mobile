@@ -546,8 +546,18 @@ fun CameraScreen(model: MainViewModel) {
                     drawLine(color, Offset(size.width - inset, inset), Offset(size.width - inset, inset + corner), stroke)
                     drawLine(color, Offset(inset, size.height - inset), Offset(inset + corner, size.height - inset), stroke)
                     drawLine(color, Offset(inset, size.height - inset), Offset(inset, size.height - inset - corner), stroke)
-                    drawLine(color, Offset(size.width - inset, size.height - inset), Offset(size.width - inset - corner, size.height - inset), stroke)
-                    drawLine(color, Offset(size.width - inset, size.height - inset), Offset(size.width - inset, size.height - inset - corner), stroke)
+                    drawLine(
+                        color,
+                        Offset(size.width - inset, size.height - inset),
+                        Offset(size.width - inset - corner, size.height - inset),
+                        stroke
+                    )
+                    drawLine(
+                        color,
+                        Offset(size.width - inset, size.height - inset),
+                        Offset(size.width - inset, size.height - inset - corner),
+                        stroke
+                    )
                 }
             }
             if (capturing || model.busy) {

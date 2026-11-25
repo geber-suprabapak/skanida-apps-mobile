@@ -67,6 +67,16 @@ fun buildMonthlyAttendanceHistory(
         }
 
     // INV-MOBILE-007: Only explicitly approved leave requests enter the attendance calendar.
+    mergeApprovedPermits(days, permits, rangeStart, rangeEnd)
+    return days.values.sortedByDescending { it.date }
+}
+
+private fun mergeApprovedPermits(
+    days: MutableMap<String, DailyAttendanceRecord>,
+    permits: List<PermitRecord>,
+    rangeStart: LocalDate?,
+    rangeEnd: LocalDate?,
+) {
     permits
         .filter { it.approvalStatus == "approved" }
         .forEach { permit ->
@@ -97,8 +107,6 @@ fun buildMonthlyAttendanceHistory(
                 cursor = cursor.plusDays(1)
             }
         }
-
-    return days.values.sortedByDescending { it.date }
 }
 
 fun computeMonthlyStats(records: List<DailyAttendanceRecord>): MonthlyAttendanceStats {

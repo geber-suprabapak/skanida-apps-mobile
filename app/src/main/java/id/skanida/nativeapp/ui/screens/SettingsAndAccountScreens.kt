@@ -78,10 +78,7 @@ import id.skanida.nativeapp.ui.theme.ManropeFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    model: MainViewModel,
-    onLogoutClick: () -> Unit,
-) {
+fun SettingsScreen(model: MainViewModel, onLogoutClick: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val context = LocalContext.current
     val profile = model.profile
@@ -369,12 +366,7 @@ private fun SettingsGroupRow(
 }
 
 @Composable
-fun AccountScreen(
-    model: MainViewModel,
-    onPickAvatarGallery: () -> Unit,
-    onOpenAvatarCamera: () -> Unit,
-    onEnroll: () -> Unit,
-) {
+fun AccountScreen(model: MainViewModel, onPickAvatarGallery: () -> Unit, onOpenAvatarCamera: () -> Unit, onEnroll: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     var clearPhoto by remember { mutableStateOf(false) }
     val profile = model.profile
@@ -570,7 +562,10 @@ fun AccountScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { clearPhoto = false; model.clearAvatar() },
+                    onClick = {
+                        clearPhoto = false
+                        model.clearAvatar()
+                    },
                     colors = ButtonDefaults.textButtonColors(contentColor = tokens.error.content),
                 ) {
                     Text("Hapus", fontFamily = ManropeFontFamily, fontWeight = FontWeight.Bold)
@@ -589,10 +584,7 @@ fun AccountScreen(
 }
 
 @Composable
-fun NotificationsScreen(
-    model: MainViewModel,
-    onToggleMaster: () -> Unit,
-) {
+fun NotificationsScreen(model: MainViewModel, onToggleMaster: () -> Unit,) {
     val tokens = LocalSkanidaColors.current
     val context = LocalContext.current
     val prefs = model.notificationPrefs
