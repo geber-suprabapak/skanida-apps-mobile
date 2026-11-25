@@ -127,6 +127,10 @@ android {
             )
         }
     }
+    androidResources {
+        // Keep only Indonesian and English string resources to trim APK size and resource table RAM.
+        localeFilters += listOf("id", "en")
+    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -139,9 +143,31 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
-    packaging { resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1") }
+    packaging {
+        resources.excludes += setOf(
+            "META-INF/AL2.0",
+            "META-INF/LGPL2.1",
+            "META-INF/androidx/**",
+            "META-INF/*.version",
+            "DebugProbesKt.bin",
+            "kotlin/**/*.kotlin_builtins",
+        )
+    }
 }
-kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+composeCompiler {
+    if (providers.gradleProperty("enableComposeCompilerReports").orNull == "true") {
+        val reportsDir = layout.buildDirectory.dir("compose_compiler")
+        reportsDestination.set(reportsDir)
+        metricsDestination.set(reportsDir)
+    }
+}
 
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.08.00"))
@@ -153,6 +179,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
     implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.profileinstaller:profileinstaller:1.4.0")
     implementation("androidx.exifinterface:exifinterface:1.4.1")
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")

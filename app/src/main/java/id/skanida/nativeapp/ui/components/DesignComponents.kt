@@ -1,9 +1,9 @@
 package id.skanida.nativeapp.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +26,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -38,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,13 +49,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -151,28 +158,32 @@ fun SkanidaCard(
 
 @Composable
 fun GuillocheOverlay(modifier: Modifier = Modifier, tint: Color = Color.White.copy(alpha = 0.055f), goldAccent: Color? = null) {
-    Canvas(modifier = modifier) {
-        val step = 22.dp.toPx()
-        var offset = -size.height
-        while (offset < size.width + size.height) {
-            drawLine(
-                color = tint,
-                start = Offset(offset, 0f),
-                end = Offset(offset + size.height, size.height),
-                strokeWidth = 1.dp.toPx(),
-            )
-            offset += step
-        }
-        val center = Offset(size.width * 0.9f, size.height * 0.14f)
-        listOf(54.dp, 86.dp, 120.dp).forEachIndexed { index, radius ->
-            drawCircle(
-                color = if (index == 0 && goldAccent != null) goldAccent else tint,
-                radius = radius.toPx(),
-                center = center,
-                style = Stroke(width = 1.dp.toPx()),
-            )
-        }
-    }
+    Spacer(
+        modifier = modifier.drawWithCache {
+            val step = 22.dp.toPx()
+            val stroke = Stroke(width = 1.dp.toPx())
+            val linesPath = Path().apply {
+                var offset = -size.height
+                while (offset < size.width + size.height) {
+                    moveTo(offset, 0f)
+                    lineTo(offset + size.height, size.height)
+                    offset += step
+                }
+            }
+            val center = Offset(size.width * 0.9f, size.height * 0.14f)
+            val r0 = 54.dp.toPx()
+            val r1 = 86.dp.toPx()
+            val r2 = 120.dp.toPx()
+            val firstCircleColor = goldAccent ?: tint
+
+            onDrawBehind {
+                drawPath(path = linesPath, color = tint, style = stroke)
+                drawCircle(color = firstCircleColor, radius = r0, center = center, style = stroke)
+                drawCircle(color = tint, radius = r1, center = center, style = stroke)
+                drawCircle(color = tint, radius = r2, center = center, style = stroke)
+            }
+        },
+    )
 }
 
 @Composable
@@ -185,30 +196,41 @@ fun AttendanceArcRing(
     modifier: Modifier = Modifier,
 ) {
     val clamped = percent.coerceIn(0f, 1f)
-    Box(modifier.size(54.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val stroke = 6.dp.toPx()
-            val inset = stroke / 2f
-            val arcSize = Size(size.width - stroke, size.height - stroke)
-            drawArc(
-                color = trackColor,
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round),
-            )
-            drawArc(
-                color = ringColor,
-                startAngle = -90f,
-                sweepAngle = 360f * clamped,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round),
-            )
-        }
+    Box(
+        modifier = modifier
+            .size(54.dp)
+            .drawWithCache {
+                val strokeWidth = 6.dp.toPx()
+                val inset = strokeWidth / 2f
+                val topLeft = Offset(inset, inset)
+                val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+                val stroke = Stroke(strokeWidth, cap = StrokeCap.Round)
+                val sweep = 360f * clamped
+                onDrawBehind {
+                    drawArc(
+                        color = trackColor,
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = stroke,
+                    )
+                    if (sweep > 0f) {
+                        drawArc(
+                            color = ringColor,
+                            startAngle = -90f,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = stroke,
+                        )
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
         Text(
             text = labelOverride ?: "${(clamped * 100).roundToInt()}%",
             fontFamily = JetBrainsMonoFontFamily,
@@ -281,7 +303,7 @@ fun PrimaryBiometricButton(
             .heightIn(min = 54.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor ?: tokens.biometricBlue,
+            containerColor = containerColor ?: tokens.primaryButtonContainer,
             contentColor = Color.White,
             disabledContainerColor = tokens.muted,
             disabledContentColor = tokens.mutedForeground,
@@ -394,6 +416,179 @@ fun DestructiveActionButton(
 }
 
 @Composable
+fun MediaSourcePickerRow(enabled: Boolean, onPickGallery: () -> Unit, onOpenCamera: () -> Unit, modifier: Modifier = Modifier) {
+    val tokens = LocalSkanidaColors.current
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(enabled = enabled, role = Role.Button, onClick = onPickGallery),
+            shape = RoundedCornerShape(14.dp),
+            color = tokens.muted,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_photo_library),
+                    contentDescription = null,
+                    tint = tokens.foreground,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    text = "Galeri",
+                    fontFamily = ManropeFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = tokens.foreground,
+                )
+            }
+        }
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(enabled = enabled, role = Role.Button, onClick = onOpenCamera),
+            shape = RoundedCornerShape(14.dp),
+            color = tokens.cobaltTint,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_camera),
+                    contentDescription = null,
+                    tint = tokens.cobaltOnTint,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    text = "Kamera",
+                    fontFamily = ManropeFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = tokens.cobaltOnTint,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsGroupRow(
+    icon: @Composable () -> Unit,
+    title: String,
+    subtitle: String,
+    shape: RoundedCornerShape,
+    enabled: Boolean = true,
+    iconBg: Color? = null,
+    subtitleColor: Color? = null,
+    onClick: () -> Unit,
+) {
+    val tokens = LocalSkanidaColors.current
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        shape = shape,
+        color = tokens.card,
+        border = BorderStroke(1.dp, tokens.border),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(iconBg ?: tokens.muted),
+                contentAlignment = Alignment.Center,
+            ) {
+                icon()
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontFamily = ManropeFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = tokens.foreground,
+                )
+                Text(
+                    text = subtitle,
+                    fontFamily = ManropeFontFamily,
+                    fontSize = 12.sp,
+                    color = subtitleColor ?: tokens.mutedForeground,
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = tokens.mutedForeground,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+@Composable
+fun SkanidaConfirmDialog(
+    title: String,
+    message: String,
+    confirmText: String,
+    dismissText: String,
+    isDestructive: Boolean = true,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tokens = LocalSkanidaColors.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = tokens.card,
+        titleContentColor = tokens.foreground,
+        textContentColor = tokens.mutedForeground,
+        title = {
+            Text(text = title, fontFamily = ManropeFontFamily, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Text(text = message, fontFamily = ManropeFontFamily)
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = if (isDestructive) tokens.error.content else tokens.biometricBlue,
+                ),
+            ) {
+                Text(confirmText, fontFamily = ManropeFontFamily, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = tokens.foreground),
+            ) {
+                Text(dismissText, fontFamily = ManropeFontFamily, fontWeight = FontWeight.SemiBold)
+            }
+        },
+    )
+}
+
+@Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
     val tokens = LocalSkanidaColors.current
     Surface(
@@ -494,6 +689,7 @@ fun UserAvatar(
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = (size.value * 0.33f).sp,
                     color = initialsColor ?: Color.White,
+                    modifier = Modifier.clearAndSetSemantics {},
                 )
             } else {
                 Icon(
@@ -517,14 +713,14 @@ fun KeyValueRow(label: String, value: String, mono: Boolean = false, modifier: M
     ) {
         Text(
             text = label,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(0.42f),
             fontFamily = ManropeFontFamily,
             fontSize = 13.sp,
             color = tokens.mutedForeground,
         )
         Text(
             text = value.ifBlank { "—" },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(0.58f),
             fontFamily = if (mono) JetBrainsMonoFontFamily else ManropeFontFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,

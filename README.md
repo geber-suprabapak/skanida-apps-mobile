@@ -4,11 +4,11 @@ Native Android (Kotlin + Jetpack Compose) client for Skanida student workflows: 
 
 ## Runtime Architecture
 
-- **Identity & RBAC:** Logto (`net.openid:appauth` + PKCE + `offline_access` + `prompt=consent`), persisted encrypted with AES-GCM via Android Keystore (`SessionStore`).
-- **Backend-for-Frontend (BFF):** Project Astra `/v1/mobile/*` and `/v1/auth/student/*` via `Astra.kt` (`Authorization: Bearer`, `X-Request-Id`, `X-Astra-Contract-Version: v1`).
-- **UI & Design System:** Jetpack Compose + Material 3 following [`DESIGN.md`](DESIGN.md) ("The Digital Student Pass").
-- **Camera & Location:** CameraX (`camera-camera2`, `camera-lifecycle`, `camera-view`) and platform `LocationManagerCompat` with mock-location rejection.
-- **Push Notifications:** Native `FirebaseMessagingService` registering FCM tokens to Astra via Expo push HTTP without any Expo/RN/Node runtime.
+- **Identity & RBAC:** Logto (`net.openid:appauth` + PKCE + `offline_access` + `prompt=consent`), persisted encrypted with AES-GCM via Android Keystore (`SessionStore`), with cached JWT claims and fast-path token reuse.
+- **Backend-for-Frontend (BFF):** Project Astra `/v1/mobile/*` and `/v1/auth/student/*` via typed methods on `Astra.kt` (`Authorization: Bearer`, `X-Request-Id`, `X-Astra-Contract-Version: v1`) and streaming Base64 attendance upload.
+- **UI & Design System:** Jetpack Compose + Material 3 following [`DESIGN.md`](DESIGN.md) ("The Indigo-Cobalt Digital Student Pass"), with isolated 1 Hz clock updates, `drawWithCache` overlays, and `@Immutable` models for smooth performance on older low-RAM Android devices (API 24+).
+- **Camera, Media & Startup:** CameraX (`camera-camera2`, `camera-lifecycle`, `camera-view`) with bounded 1280px capture resolution, RGB_565 image downsampling, shared OkHttp/Coil pools (`SkanidaApplication`), and an ART Baseline Profile (`app/src/main/baseline-prof.txt` + `profileinstaller`).
+- **Push Notifications:** Native `FirebaseMessagingService` initialized off the main thread and registering FCM tokens to Astra via Expo push HTTP without any Expo/RN/Node runtime.
 
 ## BFF-Covered Flows
 
@@ -37,19 +37,22 @@ Native Android (Kotlin + Jetpack Compose) client for Skanida student workflows: 
 
 - `debug`: Debuggable APK allowing local HTTP endpoints.
 - `staging`: R8-minified APK configured for the `k3d-skanida-staging` sandbox (`http://api.192.168.21.122.nip.io:8080`, `http://auth.192.168.21.122.nip.io:8080`), signed with debug keys.
-- `release`: R8-minified, resource-shrunk production APK (`https://` only). Requires `signing.properties` for release signing.
+- `release`: R8-minified, resource-shrunk production APK (`https://` only, `id` + `en` locales, ART Baseline Profile). Requires `signing.properties` for release signing.
 - Pass `-PappIdSuffix=.native` to install any variant side-by-side without overwriting `com.hfzrk.skanidaappsmobile`.
 
 ## Commands
 
 ```sh
+# Format check and static analysis
+./gradlew spotlessCheck detekt
+
 # Run unit tests
 ./gradlew :app:testDebugUnitTest
 
 # Run Android lint on release variant
 ./gradlew :app:lintRelease
 
-# Build APKs
+# Build APKs (add -PenableComposeCompilerReports=true for Compose stability metrics)
 ./gradlew :app:assembleDebug
 ./gradlew :app:assembleStaging
 ./gradlew :app:assembleRelease

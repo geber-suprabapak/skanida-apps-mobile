@@ -1,5 +1,8 @@
 package id.skanida.nativeapp.domain.workflow
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class MotivationalQuote(val quote: String, val author: String)
 
 object MotivationalQuotes {

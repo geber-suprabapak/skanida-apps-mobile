@@ -1,0 +1,28 @@
+# ART Baseline Profile for cold startup and first-screen rendering on Android 7+ (API 24+).
+# Precompiles hot app entry, theme, dashboard, and transport paths ahead of time.
+HSPLid/skanida/nativeapp/SkanidaApplication;->**(**)**
+HSPLid/skanida/nativeapp/MainActivity;->**(**)**
+HSPLid/skanida/nativeapp/MainViewModel;->**(**)**
+HSPLid/skanida/nativeapp/ui/navigation/**;->**(**)**
+HSPLid/skanida/nativeapp/ui/theme/**;->**(**)**
+HSPLid/skanida/nativeapp/ui/components/**;->**(**)**
+HSPLid/skanida/nativeapp/ui/screens/HomeScreenKt;->**(**)**
+HSPLid/skanida/nativeapp/ui/screens/WelcomeAndAuthScreensKt;->**(**)**
+HSPLid/skanida/nativeapp/data/auth/**;->**(**)**
+HSPLid/skanida/nativeapp/data/api/**;->**(**)**
+HSPLid/skanida/nativeapp/data/model/**;->**(**)**
+HSPLid/skanida/nativeapp/domain/workflow/**;->**(**)**
+Lid/skanida/nativeapp/SkanidaApplication;
+Lid/skanida/nativeapp/MainActivity;
+Lid/skanida/nativeapp/MainViewModel;
+Lid/skanida/nativeapp/Page;
+Lid/skanida/nativeapp/EnrollmentStep;
+Lid/skanida/nativeapp/ui/theme/SkanidaPalette;
+Lid/skanida/nativeapp/ui/theme/SkanidaExtendedColors;
+Lid/skanida/nativeapp/ui/theme/StatusColorToken;
+Lid/skanida/nativeapp/data/auth/Identity;
+Lid/skanida/nativeapp/data/auth/SessionStore;
+Lid/skanida/nativeapp/data/api/Astra;
+Lid/skanida/nativeapp/data/api/AstraEnvelope;
+Lid/skanida/nativeapp/data/model/DashboardData;
+Lid/skanida/nativeapp/data/model/UserProfile;

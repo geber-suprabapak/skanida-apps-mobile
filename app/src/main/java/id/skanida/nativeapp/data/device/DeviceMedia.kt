@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.exifinterface.media.ExifInterface
+import java.io.BufferedOutputStream
 import java.io.File
 import java.util.UUID
 import kotlin.coroutines.resume
@@ -243,20 +244,35 @@ suspend fun currentLocation(context: Context): Location {
 
 fun captureFile(context: Context): File = File(context.cacheDir, "capture-${UUID.randomUUID()}.jpg")
 
+fun cleanupStaleCaptures(cacheDir: File) {
+    cacheDir.listFiles { _, name -> name.startsWith("capture-") }?.forEach { it.delete() }
+}
+
+private const val MAX_IMAGE_DIMENSION_PX = 1280
+private const val JPEG_QUALITY = 70
+private const val OUTPUT_BUFFER_BYTES = 16 * 1024
+
 suspend fun prepareImage(context: Context, uri: Uri, maxBytes: Long): File = withContext(Dispatchers.IO) {
     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
     check(options.outWidth > 0 && options.outHeight > 0) { "File bukan gambar yang dapat dibaca." }
-    options.inSampleSize = 1
-    while (maxOf(options.outWidth, options.outHeight) / options.inSampleSize > 2560) {
-        options.inSampleSize *= 2
+
+    // Downsample aggressively during decode and use RGB_565 (no alpha in JPEG) to halve heap usage on 2 GB devices.
+    val maxSourceDim = maxOf(options.outWidth, options.outHeight)
+    var sampleSize = 1
+    while (maxSourceDim / (sampleSize * 2) >= MAX_IMAGE_DIMENSION_PX) {
+        sampleSize *= 2
     }
+    options.inSampleSize = sampleSize
     options.inJustDecodeBounds = false
+    options.inPreferredConfig = Bitmap.Config.RGB_565
+
     val decoded = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
         ?: error("Gambar tidak dapat dibaca.")
     val orientation = context.contentResolver.openInputStream(uri)?.use {
         ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
     } ?: ExifInterface.ORIENTATION_NORMAL
+
     val matrix = Matrix().apply {
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> postRotate(90f)
@@ -274,12 +290,19 @@ suspend fun prepareImage(context: Context, uri: Uri, maxBytes: Long): File = wit
             }
         }
     }
-    val ratio = minOf(1f, 1280f / maxOf(decoded.width, decoded.height))
-    matrix.postScale(ratio, ratio)
-    val bitmap = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+    val ratio = minOf(1f, MAX_IMAGE_DIMENSION_PX.toFloat() / maxOf(decoded.width, decoded.height))
+    if (ratio < 1f) matrix.postScale(ratio, ratio)
+
+    val bitmap = if (matrix.isIdentity) {
+        decoded
+    } else {
+        Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+    }
     val file = captureFile(context)
     try {
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.JPEG, 70, it)) }
+        BufferedOutputStream(file.outputStream(), OUTPUT_BUFFER_BYTES).use { out ->
+            check(bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out))
+        }
         check(file.length() in 1..maxBytes) { "Ukuran foto terlalu besar. Ambil ulang foto." }
         file
     } catch (failure: Exception) {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -129,10 +130,10 @@ fun WelcomeScreen(busy: Boolean, onLogin: () -> Unit, onSignup: () -> Unit, onRe
                 enabled = !busy,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = tokens.biometricBlue,
+                    containerColor = tokens.primaryButtonContainer,
                     contentColor = Color.White,
                 ),
             ) {
@@ -148,7 +149,7 @@ fun WelcomeScreen(busy: Boolean, onLogin: () -> Unit, onSignup: () -> Unit, onRe
                 enabled = !busy,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .heightIn(min = 52.dp),
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, tokens.border),
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -163,19 +164,23 @@ fun WelcomeScreen(busy: Boolean, onLogin: () -> Unit, onSignup: () -> Unit, onRe
                     fontSize = 15.sp,
                 )
             }
-            Text(
-                text = "Lupa password?",
-                fontFamily = ManropeFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                color = tokens.mutedForeground,
-                textAlign = TextAlign.Center,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable(enabled = !busy, onClick = onReset)
-                    .padding(vertical = 8.dp),
-            )
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = !busy, onClick = onReset),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Lupa password?",
+                    fontFamily = ManropeFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = tokens.mutedForeground,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

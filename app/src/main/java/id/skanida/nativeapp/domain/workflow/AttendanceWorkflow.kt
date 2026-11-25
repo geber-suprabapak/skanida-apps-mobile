@@ -1,7 +1,7 @@
 package id.skanida.nativeapp.domain.workflow
 
+import androidx.compose.runtime.Immutable
 import id.skanida.nativeapp.data.model.AttendancePrecheckResult
-import id.skanida.nativeapp.data.model.AttendanceSubmitResult
 
 enum class AbsenceStatusTone {
     LOADING,
@@ -19,6 +19,7 @@ enum class AbsenceStatusIcon {
     HELP_CIRCLE,
 }
 
+@Immutable
 data class AbsenceStatusMeta(val icon: AbsenceStatusIcon, val tone: AbsenceStatusTone, val message: String)
 
 fun resolveAbsenceStatusMeta(isLoading: Boolean, errorMessage: String?, precheck: AttendancePrecheckResult?): AbsenceStatusMeta {
@@ -58,6 +59,7 @@ fun resolveAbsenceStatusMeta(isLoading: Boolean, errorMessage: String?, precheck
     )
 }
 
+@Immutable
 data class AttendanceAttempt(
     val id: String,
     val userId: String,
@@ -67,7 +69,6 @@ data class AttendanceAttempt(
     val createdAtMs: Long,
     val precheck: AttendancePrecheckResult,
     val generation: Int,
-    var state: AttemptState = AttemptState.READY,
 )
 
 enum class AttemptState {
@@ -78,6 +79,7 @@ enum class AttemptState {
     CANCELLED,
 }
 
+@Immutable
 sealed interface PrecheckState {
     data object Idle : PrecheckState
     data object Checking : PrecheckState
@@ -86,14 +88,7 @@ sealed interface PrecheckState {
     data class Failed(val message: String) : PrecheckState
 }
 
-sealed interface SubmitOutcome {
-    data class Submitted(val result: AttendanceSubmitResult) : SubmitOutcome
-    data class Blocked(val message: String) : SubmitOutcome
-    data class RetryableError(val message: String) : SubmitOutcome
-    data class Uncertain(val message: String) : SubmitOutcome
-    data class ExpiredOrCancelled(val message: String) : SubmitOutcome
-}
-
+@Immutable
 data class PendingAttendanceSuccess(
     val attendanceType: String,
     val statusLabel: String,
@@ -103,6 +98,7 @@ data class PendingAttendanceSuccess(
 
 class AttendanceAttemptTracker(private val ttlMs: Long = 600_000L, private val nowMs: () -> Long = { System.currentTimeMillis() }) {
     private var activeAttempt: AttendanceAttempt? = null
+    private var activeState: AttemptState = AttemptState.CANCELLED
     private var generationCounter = 0
 
     fun current(): AttendanceAttempt? = activeAttempt
@@ -110,7 +106,7 @@ class AttendanceAttemptTracker(private val ttlMs: Long = 600_000L, private val n
     fun createAttempt(userId: String, latitude: Double, longitude: Double, precheck: AttendancePrecheckResult): AttendanceAttempt? {
         if (userId.isBlank() || !precheck.allowed) return null
         val action = precheck.actionType ?: return null
-        if (action !in setOf("check_in", "check_out")) return null
+        if (action !in ALLOWED_ACTIONS) return null
         if (!latitude.isFinite() || !longitude.isFinite()) return null
         cancelActive()
         generationCounter++
@@ -125,19 +121,20 @@ class AttendanceAttemptTracker(private val ttlMs: Long = 600_000L, private val n
             generation = generationCounter,
         )
         activeAttempt = attempt
+        activeState = AttemptState.READY
         return attempt
     }
 
     fun validateForSubmit(currentUserId: String): Pair<AttendanceAttempt?, String?> {
         val current = activeAttempt
             ?: return null to "Sesi presensi tidak ditemukan. Mulai lagi dari beranda."
-        if (current.state == AttemptState.CANCELLED) {
+        if (activeState == AttemptState.CANCELLED) {
             return null to "Sesi presensi telah dibatalkan. Silakan periksa ulang status."
         }
-        if (current.state == AttemptState.UNCERTAIN) {
+        if (activeState == AttemptState.UNCERTAIN) {
             return null to "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
         }
-        if (current.state == AttemptState.SUBMITTED) {
+        if (activeState == AttemptState.SUBMITTED) {
             return null to "Presensi untuk sesi ini sudah berhasil dikirim."
         }
         if (current.userId != currentUserId || nowMs() - current.createdAtMs >= ttlMs) {
@@ -148,34 +145,36 @@ class AttendanceAttemptTracker(private val ttlMs: Long = 600_000L, private val n
     }
 
     fun markSubmitting(attempt: AttendanceAttempt) {
-        if (activeAttempt === attempt) attempt.state = AttemptState.SUBMITTING
+        if (activeAttempt === attempt) activeState = AttemptState.SUBMITTING
     }
 
     fun markSubmitted(attempt: AttendanceAttempt) {
         if (activeAttempt === attempt) {
-            attempt.state = AttemptState.SUBMITTED
+            activeState = AttemptState.SUBMITTED
             activeAttempt = null
         }
     }
 
     fun markRetryable(attempt: AttendanceAttempt) {
-        if (activeAttempt === attempt && attempt.state == AttemptState.SUBMITTING) {
-            attempt.state = AttemptState.READY
+        if (activeAttempt === attempt && activeState == AttemptState.SUBMITTING) {
+            activeState = AttemptState.READY
         }
     }
 
     fun markUncertain(attempt: AttendanceAttempt) {
         if (activeAttempt === attempt) {
-            attempt.state = AttemptState.UNCERTAIN
+            activeState = AttemptState.UNCERTAIN
         }
     }
 
     fun cancelActive() {
-        activeAttempt?.let {
-            if (it.state != AttemptState.SUBMITTED) {
-                it.state = AttemptState.CANCELLED
-            }
+        if (activeAttempt != null && activeState != AttemptState.SUBMITTED) {
+            activeState = AttemptState.CANCELLED
         }
         activeAttempt = null
+    }
+
+    private companion object {
+        val ALLOWED_ACTIONS = setOf("check_in", "check_out")
     }
 }

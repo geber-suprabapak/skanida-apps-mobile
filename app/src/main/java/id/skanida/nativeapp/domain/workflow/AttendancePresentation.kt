@@ -1,5 +1,6 @@
 package id.skanida.nativeapp.domain.workflow
 
+import androidx.compose.runtime.Immutable
 import id.skanida.nativeapp.data.model.DashboardAttendance
 import id.skanida.nativeapp.data.model.DashboardSchedule
 import id.skanida.nativeapp.data.model.MonthlyAttendanceStats
@@ -10,7 +11,12 @@ import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 
 private val SCHEDULE_HM_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", ID_LOCALE)
+private val PERMIT_KEYWORDS = listOf("permit", "izin", "perizinan", "cuti", "sakit", "leave")
+private val CHECKOUT_KEYWORDS = listOf("check_out", "checkout", "pulang")
+private val CHECKIN_KEYWORDS = listOf("check_in", "checkin", "masuk", "pagi")
+private val WHITESPACE_REGEX = Regex("\\s+")
 
+@Immutable
 data class ScheduleTimelineState(
     val progress: Float,
     val statusText: String,
@@ -19,8 +25,10 @@ data class ScheduleTimelineState(
     val isCompleted: Boolean,
 )
 
+@Immutable
 data class MonthlyAttendanceSummary(val attendedDays: Int, val effectiveDays: Int, val rate: Float, val percent: Int)
 
+@Immutable
 data class NotificationChannelPrefs(val checkIn: Boolean = true, val checkOut: Boolean = true, val permitUpdates: Boolean = true)
 
 enum class NotificationCategory {
@@ -123,12 +131,9 @@ fun computeMonthlyAttendanceSummary(stats: MonthlyAttendanceStats?): MonthlyAtte
 fun classifyNotification(type: String?, title: String?, body: String?): NotificationCategory {
     val combined = listOfNotNull(type, title, body).joinToString(" ").lowercase(ID_LOCALE)
     return when {
-        listOf("permit", "izin", "perizinan", "cuti", "sakit", "leave").any { it in combined } ->
-            NotificationCategory.PERMIT
-        listOf("check_out", "checkout", "pulang").any { it in combined } ->
-            NotificationCategory.CHECK_OUT
-        listOf("check_in", "checkin", "masuk", "pagi").any { it in combined } ->
-            NotificationCategory.CHECK_IN
+        PERMIT_KEYWORDS.any { it in combined } -> NotificationCategory.PERMIT
+        CHECKOUT_KEYWORDS.any { it in combined } -> NotificationCategory.CHECK_OUT
+        CHECKIN_KEYWORDS.any { it in combined } -> NotificationCategory.CHECK_IN
         else -> NotificationCategory.GENERAL
     }
 }
@@ -142,7 +147,7 @@ fun shouldDeliverNotification(prefs: NotificationChannelPrefs, type: String?, ti
     }
 
 fun initialsFromName(fullName: String?): String {
-    val parts = fullName.orEmpty().trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    val parts = fullName.orEmpty().trim().split(WHITESPACE_REGEX).filter { it.isNotEmpty() }
     return when {
         parts.isEmpty() -> "S"
         parts.size == 1 -> parts.first().take(2).uppercase(ID_LOCALE)

@@ -14,7 +14,7 @@ This repo uses a single-context domain-doc layout with root `CONTEXT.md` and `do
 
 ## Development and verification
 
-This is a native Android Kotlin + Jetpack Compose Gradle project (`settings.gradle.kts`, `app/build.gradle.kts`). Use `./gradlew :app:testDebugUnitTest` for unit tests, `./gradlew :app:lintRelease` for Android Lint, and `./gradlew :app:assembleDebug`, `./gradlew :app:assembleStaging`, or `./gradlew :app:assembleRelease` for APK builds. Use `app/build.gradle.kts` as the source of truth for dependencies and build configuration.
+This is a native Android Kotlin + Jetpack Compose Gradle project (`settings.gradle.kts`, `app/build.gradle.kts`). Run `./gradlew spotlessCheck detekt :app:testDebugUnitTest :app:lintRelease` for formatting, static analysis, unit tests, and Android Lint, and `./gradlew :app:assembleDebug`, `:app:assembleStaging`, or `:app:assembleRelease` for APK builds. Pass `-PenableComposeCompilerReports=true` to inspect Compose stability and skippability metrics in `app/build/compose_compiler/`. Use `app/build.gradle.kts` as the source of truth for dependencies and build configuration.
 
 ## Execution boundary
 
