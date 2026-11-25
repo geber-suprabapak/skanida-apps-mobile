@@ -118,11 +118,12 @@ fun HomeScreen(model: MainViewModel, onStartAttendance: () -> Unit, onStartEnrol
     val att = data?.attendance
     val checkInInstant = parseTimestampToInstant(att?.checkInTime)
     val endCheckInInstant = parseTimestampToInstant(data?.schedule?.endCheckInAt)
-    val isLateCheckIn = att != null && (
-        att.explicitCheckInStatus.equals("Terlambat", ignoreCase = true) ||
-            att.todayStatus.equals("late", ignoreCase = true) ||
-            (checkInInstant != null && endCheckInInstant != null && checkInInstant.isAfter(endCheckInInstant))
-        )
+    val lateByStatus = att?.explicitCheckInStatus.equals("Terlambat", ignoreCase = true) ||
+        att?.todayStatus.equals("late", ignoreCase = true)
+    val lateByClock = checkInInstant != null &&
+        endCheckInInstant != null &&
+        checkInInstant.isAfter(endCheckInInstant)
+    val isLateCheckIn = att != null && (lateByStatus || lateByClock)
 
     val needsFaceEnrollment = data != null && data.face.isServerHealthy && !data.face.isEnrolled
     val serverUnhealthy = data != null && !data.face.isServerHealthy
