@@ -1,0 +1,98 @@
+---
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-and-quality:
+    name: Format & Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Check formatting and static analysis
+        run: ./gradlew spotlessCheck detekt --no-daemon --console=plain
+
+      - name: Upload Detekt report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: detekt-report
+          path: build/reports/detekt/
+          if-no-files-found: ignore
+
+  test-and-lint:
+    name: Unit Tests & Android Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: format-and-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run unit tests and Android Lint
+        run: ./gradlew :app:testDebugUnitTest :app:lintRelease --no-daemon --console=plain
+
+      - name: Upload test & lint reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-test-lint-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-release.html
+          if-no-files-found: ignore
+
+  verify-build:
+    name: Verify APK Packaging
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: test-and-lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --console=plain

@@ -14,11 +14,11 @@ This repo uses a single-context domain-doc layout with root `CONTEXT.md` and `do
 
 ## Development and verification
 
-This is a pnpm-managed Expo React Native application (`pnpm-lock.yaml`). Use `pnpm test` for Jest tests, `pnpm lint` for linting, `pnpm prettier:check` for formatting checks, `pnpm exec tsc --noEmit` for TypeScript checks, and `pnpm start` or `pnpm android:staging` for local/staging runs. Use `package.json` as the source of truth for commands.
+This is a native Android Kotlin + Jetpack Compose Gradle project (`settings.gradle.kts`, `app/build.gradle.kts`). Use `./gradlew :app:testDebugUnitTest` for unit tests, `./gradlew :app:lintRelease` for Android Lint, and `./gradlew :app:assembleDebug`, `./gradlew :app:assembleStaging`, or `./gradlew :app:assembleRelease` for APK builds. Use `app/build.gradle.kts` as the source of truth for dependencies and build configuration.
 
 ## Execution boundary
 
-Logto owns mobile identity (`offline_access` + PKCE); authenticated business flows use Astra's `/v1/mobile/*` API through `utils/bff.ts` and `utils/bffMobileApi.ts`. Never commit signing keys, `.env` secrets, or local bypasses.
+Logto owns mobile identity (`offline_access` + PKCE + `prompt=consent` via AppAuth); authenticated business flows use Astra's `/v1/mobile/*` API through `app/src/main/java/id/skanida/nativeapp/data/api/Astra.kt` and `MainViewModel.kt`. Never commit signing keys, `signing.properties`, `google-services.json`, `.env` secrets, or local bypasses.
 
 <!-- repo-map:start -->
 ## Codebase semantic map

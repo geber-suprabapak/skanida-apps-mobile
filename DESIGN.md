@@ -1,214 +1,92 @@
 ---
 name: Skanida Apps Mobile
+version: 2.0.0-astrayao
 description: Digital student attendance and leave management pass for SMK Negeri 2 Magelang
 colors:
-  primary: "#0066ff"
-  primary-foreground: "#ffffff"
-  slate-dark: "#0f172a"
-  neutral-dark: "#171717"
-  background: "#ffffff"
-  foreground: "#0a0a0a"
-  card: "#ffffff"
-  card-foreground: "#0a0a0a"
-  muted: "#f5f5f5"
-  muted-foreground: "#737373"
-  border: "#e5e5e5"
-  destructive: "#ef4444"
+  primary: "#1B5BFF"
+  primary-dark: "#4C82FF"
+  primary-foreground: "#FFFFFF"
+  pass-top: "#0F2147"
+  pass-bottom: "#1A3A75"
+  pass-dock: "#0A1734"
+  gold-accent: "#E5B95C"
+  background-light: "#F2F5FA"
+  background-dark: "#070C16"
+  surface-light: "#FFFFFF"
+  surface-dark: "#0F1727"
+  muted-light: "#E8EEF7"
+  muted-dark: "#18243C"
+  border-light: "#DCE3F0"
+  border-dark: "#1F2F4C"
+  destructive: "#CC2936"
 typography:
   display:
-    fontFamily: "System"
-    fontSize: "2.25rem"
+    fontFamily: "Manrope"
+    fontSize: "36sp"
     fontWeight: 800
-    lineHeight: 1.1
-    letterSpacing: "-0.02em"
+    lineHeight: "42sp"
+    letterSpacing: "-0.8sp"
+  mono-clock:
+    fontFamily: "JetBrains Mono"
+    fontSize: "36sp"
+    fontWeight: 700
+    letterSpacing: "-1.0sp"
   headline:
-    fontFamily: "System"
-    fontSize: "1.875rem"
-    fontWeight: 600
-    lineHeight: 1.2
-    letterSpacing: "-0.01em"
+    fontFamily: "Manrope"
+    fontSize: "26sp"
+    fontWeight: 800
+    lineHeight: "32sp"
   title:
-    fontFamily: "System"
-    fontSize: "1.25rem"
-    fontWeight: 600
-    lineHeight: 1.25
+    fontFamily: "Manrope"
+    fontSize: "18sp"
+    fontWeight: 700
   body:
-    fontFamily: "System"
-    fontSize: "1rem"
+    fontFamily: "Manrope"
+    fontSize: "15sp"
     fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: "22sp"
   label:
-    fontFamily: "System"
-    fontSize: "0.75rem"
+    fontFamily: "Manrope"
+    fontSize: "12sp"
     fontWeight: 600
-    letterSpacing: "0.02em"
 rounded:
-  sm: "6px"
-  md: "8px"
-  lg: "10px"
-  xl: "12px"
-  2xl: "16px"
-  full: "9999px"
-spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.primary-foreground}"
-    rounded: "{rounded.md}"
-    height: "48px"
-  button-primary-active:
-    backgroundColor: "#0052cc"
-  button-secondary:
-    backgroundColor: "{colors.muted}"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.md}"
-    height: "48px"
-  card-base:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.card-foreground}"
-    rounded: "{rounded.xl}"
-    padding: "24px"
+  tile: "12dp"
+  control: "16dp"
+  card: "22dp"
+  card-lg: "24dp"
+  pass: "28dp"
+  full: "999dp"
 ---
 
-# Design System: Skanida Apps Mobile
+# Design System: Skanida Apps Mobile (v2.0.0-astrayao)
 
 ## Overview
 
-**Creative North Star: "The Digital Student Pass"**
+**The Indigo-Cobalt Digital Student Pass**
 
-Skanida Apps Mobile is a modern, tactile school passport designed for vocational high school students at SMK Negeri 2 Magelang. The visual language balances institutional dependability with the effortless speed required for daily morning and afternoon attendance rituals. It rejects ornate flourishes, frivolous animations, and decorative color fills in favor of a crisp, high-contrast, card-based interface that remains immediately legible under harsh morning outdoor sunlight.
-
-Every viewport prioritizes instant scanability: current time and attendance status lead the hierarchy, while secondary administrative details recede into clean, bordered surfaces. The application feels like a trusted piece of digital student equipment—functional, responsive, and direct.
-
-**Key Characteristics:**
-- **High-Contrast Clarity**: Pure white and deep neutrals guarantee immediate outdoor legibility at campus gates.
-- **Touch-Prioritized Ergonomics**: Generous tap targets (48x48 dp minimum) built for rapid, reliable single-handed operation.
-- **Biometric Focus**: Color is disciplined; Electric Blue is reserved specifically to guide students through the face verification and submission workflow.
-- **Tonal Structure**: Surfaces are defined by crisp 1px borders and subtle tonal layering rather than heavy drop shadows.
+Skanida Apps Mobile is a tactile student pass for SMK Negeri 2 Magelang built with Kotlin and Jetpack Compose. Top-level screens (`Beranda`, `Riwayat`, `Perizinan`, `Pengaturan`) omit redundant top app bars and rely on inline headers with pull-to-refresh. Daily attendance leads with a unified Indigo-Cobalt laminated pass card combining identity, live WIB chronometer, check-in/check-out punch times, and a fused biometric action dock.
 
 ## Colors
 
-The palette is anchored by a high-contrast neutral canvas, punctuated by a singular vibrant biometric accent and purposeful semantic state indicators.
-
-### Primary
-- **Electric Blue** (#0066FF): The signature interactive and verification accent. Used exclusively for camera shutters, attendance submission CTAs, face enrollment indicators, and active verification progress.
-
-### Secondary
-- **Midnight Slate** (#0F172A): Institutional authority neutral. Used for hero status summary containers, high-emphasis card headers, and dark surface framing.
-
-### Neutral
-- **Canvas White** (#FFFFFF): Primary background for cards, modals, and screen surfaces in light mode.
-- **Onyx Dark** (#0A0A0A): Core foreground text in light mode, and root canvas background in dark mode.
-- **Surface Neutral** (#171717): Primary component surface and high-contrast element background in dark mode.
-- **Soft Stone** (#F5F5F5): Muted card backgrounds, disabled control fills, and secondary button states.
-- **Muted Steel** (#737373): Secondary typography, metadata timestamps, input placeholders, and inactive icons.
-- **Hairline Border** (#E5E5E5): 1px structural dividing lines and container outlines.
-
-### Semantic Status
-- **Success Green** (#10B981): Check-in confirmed, punctuality indicator (`Hadir`), and active system health.
-- **Warning Amber** (#F59E0B): Punctuality alert (`Terlambat`), pending verification, and compensated time warning.
-- **Crimson Destructive** (#EF4444): Verification failure, rejected permit status, and out-of-bounds geofence error.
-
-### Named Rules
-**The Biometric Blue Rule.** Electric Blue (`#0066FF`) is reserved strictly for primary attendance actions, camera viewfinder indicators, face enrollment progress, and active verification state. It is never spent on decorative iconography, generic links, or background cards.
-
-**The Sunlight Legibility Rule.** Foreground text and critical status indicators must maintain a minimum contrast ratio of 4.5:1 (AAA preferred for status badges) against their immediate background surface to ensure legibility in outdoor morning sunlight.
+- **Indigo-Cobalt Pass (`#0F2147` to `#1A3A75`, dock `#0A1734`)**: Laminated credential plate for the Welcome hero, Home Student Pass, and Settings Mini ID Card, accented with fine guilloche arcs and muted gold (`#E5B95C` / `#F0C973`).
+- **Cobalt Biometric Accent (`#1B5BFF` light / `#4C82FF` dark)**: Primary CTAs, camera shutter, active calendar selection, Extended FAB, and focused inputs.
+- **Tonal Canvas (`#F2F5FA` light / `#070C16` dark)** and **Elevated Card Surface (`#FFFFFF` light / `#0F1727` dark)** separated by `1dp` hairline borders (`#DCE3F0` / `#1F2F4C`).
+- **Semantic Status Tokens**:
+  - `Hadir / Disetujui`: Emerald (`#0A8F62` / `#34D399`, solid `#10B981` on dark pass badge)
+  - `Terlambat / Menunggu`: Amber (`#C26A0A` / `#FBBF24`)
+  - `Sakit`: Violet (`#6D28D9` / `#C4B5FD`)
+  - `Izin`: Sky (`#026AA2` / `#38BDF8`)
+  - `Alpha / Ditolak / Keluar`: Crimson (`#CC2936` / `#F87171`)
 
 ## Typography
 
-**Display Font:** System San Francisco / Roboto (with system sans-serif fallback)  
-**Body Font:** System San Francisco / Roboto (with system sans-serif fallback)  
-**Label/Mono Font:** System Monospace (for time and coordinates)
+- **Primary Sans**: `Manrope` (`app/src/main/res/font/manrope_*.ttf`, weights 400–800) for headers, body copy, and buttons.
+- **Technical Monospace**: `JetBrains Mono` (`app/src/main/res/font/jetbrains_mono_*.ttf`, weights 500 and 700) for the live WIB clock, NIS badges, timestamps, durations, and numeric counters.
 
-**Character:** Clean, humanist system typography that respects native OS Dynamic Type scaling and accessibility settings, prioritizing immediate legibility over stylistic experimentation.
+## Navigation and Screen Hierarchy
 
-### Hierarchy
-- **Display** (800, 36px / 2.25rem, line-height 1.1): Large time clock, live check-in timer, and primary attendance confirmation headlines.
-- **Headline** (600, 30px / 1.875rem, line-height 1.2): Screen titles and major section headers.
-- **Title** (600, 20px / 1.25rem, line-height 1.25): Card titles, modal headers, and module group labels.
-- **Body** (400, 16px / 1.0rem, line-height 1.5): Standard student information, instructions, permit descriptions, and status paragraphs.
-- **Label** (600, 12px / 0.75rem, letter-spacing 0.02em, uppercase): Status badges, table column markers, metadata tags, and input field labels.
-
-### Named Rules
-**The One-Glance Time Rule.** The live clock and attendance status badge must render at least two typographic scale steps larger than surrounding schedule metadata, enabling students to verify their check-in eligibility in a single glance.
-
-## Layout
-
-Layout follows a mobile-first, single-column stream designed for portrait orientation on Android and iOS devices.
-
-- **Safe-Area Insets**: All interactive content strictly respects device safe-area insets, notch cutouts, Dynamic Island, and home indicator bars.
-- **Spatial Rhythm**: Base grid unit is 4px. Standard internal padding within cards is 24px (`p-6`); screen margins follow 16px (`px-4`) on mobile up to 24px (`px-6`) on compact tablets.
-- **Vertical Hierarchy**: Top app bar anchors screen identity and profile avatar, followed immediately by the Primary Status / Action card, followed by the daily schedule and secondary workflow shortcuts.
-- **Density**: Moderate-to-high density in information panels (schedule, history logs) balanced by generous breathing room around primary action controls.
-
-## Elevation & Depth
-
-Skanida Apps Mobile relies primarily on flat, tonal layering rather than heavy skeuomorphic drop shadows. Depth is communicated through contrasting background tones and clean 1px structural borders.
-
-### Shadow Vocabulary
-- **Subtle Resting** (`shadow-sm shadow-black/5`): Applied to primary buttons, interactive cards, and text inputs to separate them gently from the screen canvas.
-- **Elevated Modal** (`shadow-lg shadow-black/10`): Reserved for floating bottom sheets, confirmation dialogs, and the attendance success popup.
-
-### Named Rules
-**The Border-First Elevation Rule.** Surfaces establish elevation through 1px borders (`border border-border`) and surface contrast rather than multi-layered drop shadows. Shadows serve only as a faint tactile response to touch or modal presentation.
-
-## Shapes
-
-- **Radius Scale**:
-  - Buttons & Inputs: `rounded-md` (8px / `calc(var(--radius) - 2px)`).
-  - Cards & Module Containers: `rounded-xl` (12px) to `rounded-2xl` (16px).
-  - Badges & Chips: `rounded-md` (6px) or `rounded-full` (9999px) for pill-style indicators.
-  - Avatar & Shutter Trigger: `rounded-full` (circle).
-- **Form Language**: Friendly, rounded-rectangle geometry that balances modern software aesthetics with compact mobile framing.
-
-## Components
-
-### Buttons
-- **Shape**: Medium-rounded (`rounded-md`, 8px radius).
-- **Primary**: Full-width or solid action, Electric Blue (`#0066FF`) with white text (`#FFFFFF`), minimum height of 48px (`h-12`) for gate-speed accessibility.
-- **Hover / Active**: Opacity step down to 90% (`active:bg-primary/90`) on press.
-- **Secondary / Ghost**: Soft Stone fill (`#F5F5F5`) with dark foreground, or transparent borderless button for cancel actions.
-
-### Cards / Containers
-- **Corner Style**: 12px to 16px radius (`rounded-xl` / `rounded-2xl`).
-- **Background**: White (`#FFFFFF`) in light mode; Deep Charcoal (`#171717`) or Midnight Slate (`#0F172A`) in dark mode.
-- **Border**: 1px subtle stroke (`border border-border`).
-- **Internal Padding**: 24px (`p-6`) on dashboard cards, 16px (`p-4`) on compact history items.
-
-### Badges & Status Chips
-- **Style**: Compact padding (`px-2.5 py-1`), pill or 6px radius, bold 12px text.
-- **Variants**:
-  - `Hadir`: Success Green background tint with dark green text.
-  - `Terlambat`: Warning Amber background tint with dark amber text.
-  - `Izin / Sakit`: Slate or Indigo tint with dark slate text.
-  - `Ditolak / Gagal`: Destructive Red tint with red text.
-
-### Inputs / Fields
-- **Style**: 48px height (`h-12`), 1px border (`border-input`), smooth 8px radius (`rounded-md`), internal padding `px-4`.
-- **Focus State**: Accent ring shift (`focus:ring-2 focus:ring-ring`).
-- **Placeholder**: High-legibility muted steel (`#737373`).
-
-### Camera & Shutter Controls
-- **Viewfinder**: Full-screen or centered portrait aspect frame with white corner brackets.
-- **Shutter Action**: Prominent circular button (64x64 dp) in Electric Blue (`#0066FF`) with white interior icon, centered at bottom of viewport.
-
-## Do's and Don'ts
-
-### Do:
-- **Do** maintain a minimum 48x48 dp touch target for all tappable elements to support rapid gate check-in.
-- **Do** isolate Electric Blue (`#0066FF`) to biometric verification, camera actions, and primary attendance submit buttons.
-- **Do** display time strictly in Western Indonesia Time (WIB, UTC+7) synchronized with server time.
-- **Do** provide immediate, actionable feedback on geofence check failure (e.g., distance to campus perimeter).
-- **Do** use native platform dialogs, sheets, and system back navigation.
-
-### Don't:
-- **Don't** use Electric Blue for decorative illustrations, secondary card borders, or inactive tabs.
-- **Don't** apply heavy, multi-colored drop shadows or complex skeuomorphic gradients.
-- **Don't** trap the user or override the native Android back gesture or iOS swipe-back navigation.
-- **Don't** hide critical attendance statuses or error details behind nested submenus.
-- **Don't** use ambiguous or bureaucratic jargon; keep copy in direct, student-friendly Bahasa Indonesia.
+- **Welcome**: Full-bleed Indigo-Cobalt crest plate with white rounded school logo and `Skanida Apps` title only, followed by `Masuk dengan Akun Sekolah`, `Aktivasi Akun Siswa Baru`, and `Lupa password?`.
+- **Beranda**: Top identity strip (`Skanida Apps` + WIB greeting), unified Indigo-Cobalt Pass with live WIB clock and fused biometric CTA dock, compact 2-up Bento (`Linimasa` + current-month `Kehadiran` arc ring), and direct `Berhalangan hadir?` shortcut.
+- **Riwayat**: Header with compact month stepper (`< Bulan Tahun >` + Indonesian month-year picker dialog), asymmetric Bento summary (arc ring + 2x2 tonal stat tiles), rounded-square (`12dp`) tonal calendar tiles, selected day detail, and monthly log rows.
+- **Perizinan & Ajukan Izin**: Header with daily quota chip, calm amber-bordered active pending card with 3-step progress bar (`Diajukan`, `Ditinjau`, `Keputusan`), detail `ModalBottomSheet` with attachment image, Cobalt Extended FAB `+ Ajukan Izin`, and clean sticky-submit leave form.
+- **Pengaturan**: Mini laminated ID card with one-tap NIS clipboard copy, consolidated 2-row menu (`Kelola akun` housing biodata, avatar, face enrollment, and password change; `Pengaturan notifikasi` housing master toggle, 3 local category filters, and device permission settings), horizontal 3-way theme selector (`Sistem | Terang | Gelap`), logout action, and `Skanida Apps · v2.0.0-astrayao` version footer.

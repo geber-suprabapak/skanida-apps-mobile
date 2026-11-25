@@ -1,41 +1,33 @@
-node_modules/
-s/
-.expo/
-dist/
-npm-debug.*
+# Gradle & Android build outputs
+.gradle/
+.kotlin/
+build/
+**/build/
+local.properties
+signing.properties
+.cxx/
+
+# Secrets & environment
+.env
+.env.*
+!.env.example
+certs/*
+!certs/certificate.pem
+google-services.json
+app/google-services.json
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
-*.orig.*
-web-build/
-# expo router
-expo-env.d.ts
-# tamagui
-.tamagui/
-# firebase/supabase/vexo
-.env
-# idea
-.idea
-ios
-android
 
-app-env.d.ts
-nativewind-env.d.ts
-# macOS
+# IDE & OS
+.idea/
+*.iml
 .DS_Store
+*.orig.*
 
-# Temporary files created by Metro to check the health of the file watcher
-.metro-health-check*
-.env.local
-.env.prod-backup
-
-# Certs
-certs/private-key.pem
-certs/public-key.pem
-
-.serena
+# Tooling & artifacts
 .impeccable
-google-services.json
 artifacts/
