@@ -3,7 +3,7 @@ package id.skanida.nativeapp
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
-import android.util.Base64
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -14,20 +14,15 @@ import androidx.lifecycle.viewModelScope
 import id.skanida.nativeapp.data.api.AstraError
 import id.skanida.nativeapp.data.device.currentLocation
 import id.skanida.nativeapp.data.device.prepareImage
-import id.skanida.nativeapp.data.model.AttendancePrecheckResult
-import id.skanida.nativeapp.data.model.AttendanceSubmitResult
 import id.skanida.nativeapp.data.model.DailyAttendanceRecord
 import id.skanida.nativeapp.data.model.DashboardData
 import id.skanida.nativeapp.data.model.EnrollmentStatusData
 import id.skanida.nativeapp.data.model.EnrollmentSubmitResult
 import id.skanida.nativeapp.data.model.MonthlyAttendanceStats
 import id.skanida.nativeapp.data.model.PermitRecord
-import id.skanida.nativeapp.data.model.RawAttendanceRecord
 import id.skanida.nativeapp.data.model.UserProfile
-import id.skanida.nativeapp.data.model.json
-import id.skanida.nativeapp.data.model.objects
-import id.skanida.nativeapp.data.model.text
 import id.skanida.nativeapp.domain.workflow.AttendanceAttemptTracker
+import id.skanida.nativeapp.domain.workflow.InputValidation
 import id.skanida.nativeapp.domain.workflow.MotivationalQuotes
 import id.skanida.nativeapp.domain.workflow.NotificationChannelPrefs
 import id.skanida.nativeapp.domain.workflow.PendingAttendanceSuccess
@@ -35,8 +30,10 @@ import id.skanida.nativeapp.domain.workflow.PrecheckState
 import id.skanida.nativeapp.domain.workflow.WIB
 import id.skanida.nativeapp.domain.workflow.buildMonthlyAttendanceHistory
 import id.skanida.nativeapp.domain.workflow.computeMonthlyStats
+import id.skanida.nativeapp.domain.workflow.formatDateKeyWib
 import id.skanida.nativeapp.domain.workflow.parseTimestampToInstant
 import java.io.File
+import java.io.IOException
 import java.net.SocketTimeoutException
 import java.time.Instant
 import java.time.LocalDate
@@ -45,10 +42,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 enum class Page {
     HOME,
@@ -75,12 +73,15 @@ enum class EnrollmentStep {
     UNKNOWN_OUTCOME,
 }
 
+@Stable
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     val app = application as SkanidaApplication
     val identity = app.identity
     val astra = app.astra
 
-    var signedIn by mutableStateOf(identity.signedIn)
+    var sessionReady by mutableStateOf(false)
+        private set
+    var signedIn by mutableStateOf(false)
         private set
     var page by mutableStateOf(Page.HOME)
         private set
@@ -140,6 +141,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var attachment by mutableStateOf<File?>(null)
         private set
+    var attachmentSizeBytes by mutableLongStateOf(0L)
+        private set
     var leaveCategory by mutableStateOf("sakit")
     var leaveDescription by mutableStateOf("")
 
@@ -165,6 +168,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val backStack = mutableListOf<Page>()
     private val topLevelPages = setOf(Page.HOME, Page.HISTORY, Page.PERMITS, Page.SETTINGS)
     private var operation: Job? = null
+    private var backgroundSyncJob: Job? = null
     private var operationSeq = 0
     private var operationCancellable = false
     var captureGeneration by mutableIntStateOf(0)
@@ -176,8 +180,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val today: LocalDate get() = syncedNow.atZone(WIB).toLocalDate()
 
     init {
-        // No capture survives process death; biometric images are temporary.
-        application.cacheDir.listFiles()?.filter { it.name.startsWith("capture-") }?.forEach { it.delete() }
+        viewModelScope.launch {
+            val initiallySignedIn = withContext(Dispatchers.IO) {
+                identity.warmUp()
+                identity.signedIn
+            }
+            signedIn = initiallySignedIn
+            sessionReady = true
+            if (initiallySignedIn) refresh()
+        }
 
         viewModelScope.launch {
             app.networkMonitor.isOnline
@@ -190,8 +201,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
         }
+    }
 
-        if (signedIn) refresh()
+    private fun deleteFilesAsync(files: List<File>) {
+        if (files.isEmpty()) return
+        app.scope.launch(Dispatchers.IO) {
+            files.forEach { it.delete() }
+        }
     }
 
     private fun cancelCancellableOperation(): Boolean {
@@ -239,12 +255,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun humanizeError(failure: Exception): String = when (failure) {
         is SocketTimeoutException -> "Permintaan melebihi batas waktu. Silakan coba lagi."
-        is java.io.IOException -> "Server tidak dapat dihubungi. Periksa koneksi lalu coba lagi."
+        is IOException -> "Server tidak dapat dihubungi. Periksa koneksi lalu coba lagi."
         else -> failure.message ?: "Terjadi kesalahan. Silakan coba lagi."
     }
 
     private fun handleSessionLossIfNeeded() {
         if (!identity.signedIn) {
+            backgroundSyncJob?.cancel()
             signedIn = false
             app.push.localLogout()
             cleanupCaptures()
@@ -308,6 +325,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout(start: (Intent) -> Unit) = run {
+        backgroundSyncJob?.cancel()
         // Unregister before clearing identity so another user never inherits this device token.
         if (app.push.registeredForCurrentUser()) {
             try {
@@ -319,7 +337,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         val intent = identity.logoutIntent()
-        identity.clear()
+        withContext(Dispatchers.IO) { identity.clear() }
         app.push.localLogout()
         cleanupCaptures()
         clearAccountData()
@@ -343,58 +361,80 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun loadProfileAndDashboard() {
-        val loadedProfile = UserProfile.fromJson(astra.get("/v1/mobile/profile"))
-        profile = loadedProfile
-        if (identity.mustChangePassword) {
-            page = Page.PASSWORD
-            return
-        }
-        if (loadedProfile.isApproved) {
-            try {
-                val loadedDashboard = DashboardData.fromJson(astra.get("/v1/mobile/dashboard"))
-                dashboard = loadedDashboard
-                dashboardError = null
-                loadedDashboard.serverTimeNow?.let { serverNow ->
-                    parseTimestampToInstant(serverNow)?.let { instant ->
-                        serverOffsetMs = instant.toEpochMilli() - System.currentTimeMillis()
+        val loadedProfile = coroutineScope {
+            val profileDeferred = async { astra.getProfile() }
+            val dashboardDeferred = async {
+                runCatching { astra.getDashboard() }
+            }
+
+            val resolvedProfile = profileDeferred.await()
+            profile = resolvedProfile
+            if (identity.mustChangePassword) {
+                dashboardDeferred.cancel()
+                page = Page.PASSWORD
+                return@coroutineScope null
+            }
+            if (!resolvedProfile.isApproved) {
+                dashboardDeferred.cancel()
+                return@coroutineScope resolvedProfile
+            }
+
+            dashboardDeferred.await()
+                .onSuccess { loadedDashboard ->
+                    dashboard = loadedDashboard
+                    dashboardError = null
+                    loadedDashboard.serverTimeNow?.let { serverNow ->
+                        parseTimestampToInstant(serverNow)?.let { instant ->
+                            serverOffsetMs = instant.toEpochMilli() - System.currentTimeMillis()
+                        }
                     }
                 }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: AstraError) {
-                dashboardError = humanizeError(failure)
-                handleSessionLossIfNeeded()
-                if (failure.status == 403) {
-                    profile = loadedProfile.copy(lifecycleStatus = "disabled")
-                }
-            } catch (failure: Exception) {
-                dashboardError = humanizeError(failure)
-                handleSessionLossIfNeeded()
-            }
-            if (dashboardError == null) {
-                runCatching { loadCurrentMonthSummary() }
-                    .onFailure {
-                        if (it is CancellationException) throw it
-                        handleSessionLossIfNeeded()
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    dashboardError = humanizeError(failure as? Exception ?: Exception(failure))
+                    handleSessionLossIfNeeded()
+                    if (failure is AstraError && failure.status == 403) {
+                        profile = resolvedProfile.copy(lifecycleStatus = "disabled")
                     }
+                }
+            resolvedProfile
+        } ?: return
+
+        // Run secondary monthly summary and push reconciliation concurrently without blocking the Home pass render.
+        backgroundSyncJob?.cancel()
+        backgroundSyncJob = viewModelScope.launch {
+            coroutineScope {
+                if (loadedProfile.isApproved && dashboardError == null) {
+                    launch {
+                        runCatching { loadCurrentMonthSummary() }
+                            .onFailure {
+                                if (it is CancellationException) throw it
+                                handleSessionLossIfNeeded()
+                            }
+                    }
+                }
+                launch {
+                    notificationsEnabled = try {
+                        app.push.reconcile()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        app.push.enabledForCurrentUser()
+                    }
+                }
             }
-        }
-        notificationsEnabled = try {
-            app.push.reconcile()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            app.push.enabledForCurrentUser()
         }
     }
 
-    private suspend fun loadAccountDetails() {
-        profile = UserProfile.fromJson(astra.get("/v1/mobile/profile"))
-        enrollmentStatus = EnrollmentStatusData.fromJson(astra.get("/v1/mobile/face/enrollment/status"))
+    private suspend fun loadAccountDetails() = coroutineScope {
+        val profileDeferred = async { astra.getProfile() }
+        val statusDeferred = async { astra.getEnrollmentStatus() }
+        profile = profileDeferred.await()
+        enrollmentStatus = statusDeferred.await()
     }
 
     private fun resetRouteStateForTransition(target: Page) {
-        if (page in listOf(Page.ATTACHMENT, Page.AVATAR) && page != target) {
+        if (page in CAPTURE_ONLY_PAGES && page != target) {
             captureGeneration++
         }
         if (page == Page.ENROLLMENT && target != Page.ENROLLMENT) {
@@ -470,20 +510,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         historyLoading = true
         historyError = null
         try {
-            val start = month.atDay(1)
-            val end = month.atEndOfMonth()
-            val attendanceRaw = astra.get(
-                "/v1/mobile/attendance?startDate=$start&endDate=$end&start_date=$start&end_date=$end",
-            ).optJSONArray("items")?.objects().orEmpty().map(RawAttendanceRecord::fromJson)
-            val loadedPermits = astra.get("/v1/mobile/permits")
-                .optJSONArray("items")?.objects().orEmpty().map(PermitRecord::fromJson)
+            val targetMonth = month
+            val (attendanceRaw, loadedPermits) = coroutineScope {
+                val attendanceDeferred = async { astra.getMonthlyAttendance(targetMonth) }
+                val permitsDeferred = async { astra.getPermits() }
+                attendanceDeferred.await() to permitsDeferred.await()
+            }
             if (operationSeq != mySeq) return
             permits = loadedPermits
-            val merged = buildMonthlyAttendanceHistory(attendanceRaw, loadedPermits, month)
+            val merged = buildMonthlyAttendanceHistory(attendanceRaw, loadedPermits, targetMonth)
             records = merged
             val computed = computeMonthlyStats(merged)
             monthlyStats = computed
-            if (month == YearMonth.from(today)) {
+            if (targetMonth == YearMonth.from(today)) {
                 currentMonthStats = computed
             }
         } catch (cancelled: CancellationException) {
@@ -502,18 +541,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun loadCurrentMonthSummary() {
         val currentMonth = YearMonth.from(today)
-        val start = currentMonth.atDay(1)
-        val end = currentMonth.atEndOfMonth()
-        val attendanceRaw = astra.get(
-            "/v1/mobile/attendance?startDate=$start&endDate=$end&start_date=$start&end_date=$end",
-        ).optJSONArray("items")?.objects().orEmpty().map(RawAttendanceRecord::fromJson)
-        val loadedPermits = astra.get("/v1/mobile/permits")
-            .optJSONArray("items")?.objects().orEmpty().map(PermitRecord::fromJson)
+        val (attendanceRaw, loadedPermits) = coroutineScope {
+            val attendanceDeferred = async { astra.getMonthlyAttendance(currentMonth) }
+            val permitsDeferred = async { astra.getPermits() }
+            attendanceDeferred.await() to permitsDeferred.await()
+        }
         val merged = buildMonthlyAttendanceHistory(attendanceRaw, loadedPermits, currentMonth)
-        currentMonthStats = computeMonthlyStats(merged)
+        val computed = computeMonthlyStats(merged)
+        currentMonthStats = computed
         if (month == currentMonth && records.isEmpty()) {
             records = merged
-            monthlyStats = currentMonthStats
+            monthlyStats = computed
         }
     }
 
@@ -522,8 +560,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         permitsLoading = true
         permitsError = null
         try {
-            val loadedPermits = astra.get("/v1/mobile/permits")
-                .optJSONArray("items")?.objects().orEmpty().map(PermitRecord::fromJson)
+            val loadedPermits = astra.getPermits()
             if (operationSeq != mySeq) return
             permits = loadedPermits
         } catch (cancelled: CancellationException) {
@@ -541,54 +578,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun signup(nis: String, email: String, password: String, confirm: String) = run {
-        check(nis.matches(Regex("[0-9]+"))) { "NIS harus berupa angka." }
-        check(android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) { "Email tidak valid." }
-        check(
-            password.length >= 8 &&
-                password.any { it.isUpperCase() } &&
-                password.any { it.isLowerCase() } &&
-                password.any { it.isDigit() },
-        ) { "Password minimal 8 karakter, dengan huruf besar, huruf kecil, dan angka." }
-        check(password == confirm) { "Konfirmasi password tidak cocok." }
-        astra.send(
-            "/v1/auth/student/signup",
-            json("nis" to nis.trim(), "email" to email.trim(), "password" to password),
-            authenticated = false,
-        )
+        InputValidation.validateSignup(nis, email, password, confirm)
+        astra.signup(nis = nis.trim(), email = email.trim(), password = password)
         page = Page.HOME
         notice = "Pendaftaran berhasil dikirim dan menunggu persetujuan sekolah."
     }
 
     fun resetPassword(nis: String, code: String, password: String, confirm: String) = run {
-        check(nis.isNotBlank() && code.isNotBlank()) { "NIS dan kode pemulihan wajib diisi." }
-        check(password.length >= 8) { "Password minimal 8 karakter." }
-        check(password == confirm) { "Konfirmasi password tidak cocok." }
-        astra.send(
-            "/v1/auth/student/reset-password",
-            json("nis" to nis.trim(), "code" to code.trim(), "new_password" to password),
-            authenticated = false,
-        )
+        InputValidation.validatePasswordReset(nis, code, password, confirm)
+        astra.resetPassword(nis = nis.trim(), code = code.trim(), newPassword = password)
         page = Page.HOME
         notice = "Password berhasil diperbarui. Silakan login kembali."
     }
 
     fun changePassword(current: String, password: String, confirm: String) = run {
-        check(current.isNotBlank() && password.length >= 8) {
-            "Isi password saat ini dan password baru minimal 8 karakter."
-        }
-        check(
-            password.any { it.isUpperCase() } &&
-                password.any { it.isLowerCase() } &&
-                password.any { it.isDigit() },
-        ) { "Password harus mengandung huruf besar, huruf kecil, dan angka." }
-        check(current != password) { "Password baru harus berbeda dari password lama." }
-        check(password == confirm) { "Konfirmasi password tidak cocok." }
-        astra.send(
-            "/v1/mobile/profile/password",
-            json("current_password" to current, "new_password" to password),
-            "PATCH",
-        )
-        identity.clear()
+        InputValidation.validatePasswordChange(current, password, confirm)
+        astra.changePassword(currentPassword = current, newPassword = password)
+        backgroundSyncJob?.cancel()
+        withContext(Dispatchers.IO) { identity.clear() }
         app.push.localLogout()
         signedIn = false
         cleanupCaptures()
@@ -598,59 +605,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importImage(uri: Uri, avatar: Boolean) = run {
-        val file = prepareImage(app, uri, if (avatar) 5L * 1024 * 1024 else 10L * 1024 * 1024)
+        val file = prepareImage(app, uri, if (avatar) MAX_AVATAR_BYTES else MAX_ATTACHMENT_BYTES)
         if (avatar) {
             try {
                 uploadAvatar(file)
             } finally {
-                file.delete()
+                deleteFilesAsync(listOf(file))
             }
         } else {
-            attachment?.delete()
+            val fileSize = withContext(Dispatchers.IO) { file.length() }
+            attachment?.let { deleteFilesAsync(listOf(it)) }
             attachment = file
+            attachmentSizeBytes = fileSize
         }
     }
 
     private suspend fun uploadAvatar(file: File) {
-        astra.upload("/v1/mobile/profile/avatar", files = listOf("file" to file), method = "PATCH", timeout = 45)
-        profile = UserProfile.fromJson(astra.get("/v1/mobile/profile"))
+        astra.uploadAvatar(file)
+        profile = astra.getProfile()
         notice = "Foto profil diperbarui."
     }
 
     fun clearAvatar() = run {
-        astra.send("/v1/mobile/profile/avatar", json("clear" to true), "PATCH")
-        profile = UserProfile.fromJson(astra.get("/v1/mobile/profile"))
+        astra.clearAvatar()
+        profile = astra.getProfile()
         notice = "Foto profil dihapus."
     }
 
     fun removeAttachment() {
-        attachment?.delete()
+        val previous = attachment
         attachment = null
+        attachmentSizeBytes = 0L
+        if (previous != null) deleteFilesAsync(listOf(previous))
     }
 
     fun submitLeave() = run {
         criticalSubmissionInFlight = true
         try {
             val description = leaveDescription.trim()
-            check(description.length in 10..500) { "Keterangan harus 10–500 karakter." }
             val photo = attachment ?: error("Lampirkan foto bukti izin terlebih dahulu.")
             loadPermits()
             val todayStr = today.toString()
-            val forToday = permits.filter { it.date.startsWith(todayStr) }
-            check(forToday.none { it.approvalStatus == "pending" }) {
-                "Pengajuan hari ini masih menunggu persetujuan."
-            }
-            check(forToday.none { it.approvalStatus == "approved" }) {
-                "Izin hari ini sudah disetujui."
-            }
-            check(forToday.size < 3) {
-                "Batas maksimal 3 pengajuan per hari telah tercapai."
-            }
-            astra.upload(
-                "/v1/mobile/permits",
-                fields = mapOf("category" to leaveCategory, "description" to description, "date" to todayStr),
-                files = listOf("attachment" to photo),
-                timeout = 45,
+            val forToday = permits.filter { formatDateKeyWib(it.date) == todayStr }
+            InputValidation.validateLeaveEligibility(description, forToday)
+            astra.submitPermit(
+                category = leaveCategory,
+                description = description,
+                date = todayStr,
+                attachment = photo,
             )
             removeAttachment()
             leaveDescription = ""
@@ -698,15 +700,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 check(approved) { "Akun belum disetujui untuk melakukan presensi." }
                 val location = currentLocation(app)
-                val response = astra.send(
-                    "/v1/mobile/attendance/precheck",
-                    json("latitude" to location.latitude, "longitude" to location.longitude),
-                ) as JSONObject
-                if (operationSeq != seq) return@launch
-                val precheck = AttendancePrecheckResult.fromJson(response) { lateDeadlineRaw ->
+                val precheck = astra.precheckAttendance(location.latitude, location.longitude) { lateDeadlineRaw ->
                     val deadline = parseTimestampToInstant(lateDeadlineRaw)
                     deadline != null && syncedNow.isAfter(deadline)
                 }
+                if (operationSeq != seq) return@launch
                 if (!precheck.allowed) {
                     attemptTracker.cancelActive()
                     precheckState = PrecheckState.Blocked(precheck.message, precheck)
@@ -767,43 +765,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun undoLastEnrollmentPhoto() {
         if (busy || photos.isEmpty() || enrollmentStep != EnrollmentStep.CAPTURE) return
         val last = photos.last()
-        last.delete()
         photos = photos.dropLast(1)
+        deleteFilesAsync(listOf(last))
     }
 
-    private suspend fun checkEnrollmentReadiness() {
-        val health = astra.request("/v1/mobile/health", authenticated = false) as JSONObject
-        check(health.text("status") == "healthy") { "Server verifikasi belum siap. Silakan coba lagi." }
-        enrollmentStatus = EnrollmentStatusData.fromJson(astra.get("/v1/mobile/face/enrollment/status"))
+    private suspend fun checkEnrollmentReadiness() = coroutineScope {
+        val healthDeferred = async { astra.requireHealthyService() }
+        val statusDeferred = async { astra.getEnrollmentStatus() }
+        healthDeferred.await()
+        enrollmentStatus = statusDeferred.await()
     }
 
     fun captured(raw: File, ownerGeneration: Int, purpose: Page) {
         if (busy || ownerGeneration != captureGeneration || purpose != page) {
-            raw.delete()
+            deleteFilesAsync(listOf(raw))
             return
         }
         run {
-            val max = if (purpose == Page.ENROLLMENT) 2L * 1024 * 1024 else 5L * 1024 * 1024
+            val max = if (purpose == Page.ENROLLMENT) MAX_ENROLLMENT_PHOTO_BYTES else MAX_AVATAR_BYTES
             val file = try {
                 prepareImage(app, Uri.fromFile(raw), max)
             } finally {
-                raw.delete()
+                deleteFilesAsync(listOf(raw))
             }
             when (purpose) {
                 Page.ENROLLMENT -> {
-                    if (photos.size >= 10) {
-                        file.delete()
+                    if (photos.size >= REQUIRED_ENROLLMENT_PHOTOS) {
+                        deleteFilesAsync(listOf(file))
                     } else {
                         val updated = photos + file
                         photos = updated
-                        if (updated.size == 10) {
+                        if (updated.size == REQUIRED_ENROLLMENT_PHOTOS) {
                             enrollmentStep = EnrollmentStep.CONFIRM
                         }
                     }
                 }
                 Page.ATTACHMENT -> {
-                    attachment?.delete()
+                    val fileSize = withContext(Dispatchers.IO) { file.length() }
+                    attachment?.let { deleteFilesAsync(listOf(it)) }
                     attachment = file
+                    attachmentSizeBytes = fileSize
                     if (backStack.lastOrNull() == Page.LEAVE) backStack.removeAt(backStack.lastIndex)
                     page = Page.LEAVE
                 }
@@ -813,13 +814,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (backStack.lastOrNull() == Page.ACCOUNT) backStack.removeAt(backStack.lastIndex)
                         page = Page.ACCOUNT
                     } finally {
-                        file.delete()
+                        deleteFilesAsync(listOf(file))
                     }
                 }
-                Page.ATTENDANCE -> {
-                    submitAttendancePhoto(file)
-                }
-                else -> file.delete()
+                Page.ATTENDANCE -> submitAttendancePhoto(file)
+                else -> deleteFilesAsync(listOf(file))
             }
         }
     }
@@ -827,7 +826,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun submitAttendancePhoto(file: File) {
         val (attempt, validationError) = attemptTracker.validateForSubmit(identity.userId)
         if (attempt == null) {
-            file.delete()
+            deleteFilesAsync(listOf(file))
             attendanceSubmitError = validationError ?: "Sesi presensi tidak valid."
             attendanceOutcomeUncertain = false
             return
@@ -838,20 +837,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         attendanceSubmitError = null
         attendanceOutcomeUncertain = false
         try {
-            val encoded = withContext(Dispatchers.IO) {
-                Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
-            }
-            val rawResult = astra.send(
-                "/v1/mobile/attendance/submit",
-                json(
-                    "action_type" to attempt.actionType,
-                    "image_base64" to encoded,
-                    "latitude" to attempt.latitude,
-                    "longitude" to attempt.longitude,
-                ),
-                timeout = 45,
-            ) as JSONObject
-            val result = AttendanceSubmitResult.fromJson(rawResult)
+            val result = astra.submitAttendancePhoto(
+                actionType = attempt.actionType,
+                imageFile = file,
+                latitude = attempt.latitude,
+                longitude = attempt.longitude,
+            )
             attemptTracker.markSubmitted(attempt)
             pendingAttendanceSuccess = PendingAttendanceSuccess(
                 attendanceType = result.attendanceType,
@@ -880,41 +871,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 else -> {
                     attemptTracker.markUncertain(attempt)
                     attendanceOutcomeUncertain = true
-                    attendanceSubmitError = "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
+                    attendanceSubmitError = UNCERTAIN_ATTENDANCE_MSG
                 }
             }
         } catch (_: TimeoutCancellationException) {
             attemptTracker.markUncertain(attempt)
             attendanceOutcomeUncertain = true
-            attendanceSubmitError = "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
+            attendanceSubmitError = UNCERTAIN_ATTENDANCE_MSG
         } catch (_: Exception) {
             attemptTracker.markUncertain(attempt)
             attendanceOutcomeUncertain = true
-            attendanceSubmitError = "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
+            attendanceSubmitError = UNCERTAIN_ATTENDANCE_MSG
             handleSessionLossIfNeeded()
         } finally {
             criticalSubmissionInFlight = false
-            file.delete()
+            deleteFilesAsync(listOf(file))
         }
     }
 
     fun retakeEnrollment() {
-        photos.forEach { it.delete() }
-        photos = emptyList()
-        enrollmentResult = null
-        enrollmentError = null
-        enrollmentStep = EnrollmentStep.CAPTURE
+        cleanupEnrollmentCaptures()
     }
 
     fun submitEnrollment() {
         if (criticalSubmissionInFlight || !cancelCancellableOperation()) return
         val currentPhotos = photos
-        if (currentPhotos.size != 10) {
+        if (currentPhotos.size != REQUIRED_ENROLLMENT_PHOTOS) {
             showError("Ambil tepat 10 foto wajah.")
-            return
-        }
-        if (!currentPhotos.all { it.exists() && it.length() in 1..(2L * 1024 * 1024) }) {
-            showError("Ada foto tidak valid. Ambil ulang foto.")
             return
         }
         busy = true
@@ -926,16 +909,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         operation = viewModelScope.launch {
             var postStarted = false
             try {
+                val allValid = withContext(Dispatchers.IO) {
+                    currentPhotos.all { it.exists() && it.length() in 1..MAX_ENROLLMENT_PHOTO_BYTES }
+                }
+                check(allValid) { "Ada foto tidak valid. Ambil ulang foto." }
                 // INV-MOBILE-005: Recheck service readiness before multipart upload.
                 checkEnrollmentReadiness()
                 enrollmentStep = EnrollmentStep.UPLOADING
                 postStarted = true
-                val raw = astra.upload(
-                    "/v1/mobile/face/enrollment",
-                    files = currentPhotos.map { "files" to it },
-                    timeout = 60,
-                ) as JSONObject
-                enrollmentResult = EnrollmentSubmitResult.fromJson(raw)
+                enrollmentResult = astra.uploadFaceEnrollment(currentPhotos)
                 enrollmentStep = EnrollmentStep.SUCCESS
                 cleanupEnrollmentCapturesOnlyFiles()
                 loadProfileAndDashboard()
@@ -967,7 +949,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkEnrollmentStatusAfterUnknown() = run(cancellable = true) {
-        enrollmentStatus = EnrollmentStatusData.fromJson(astra.get("/v1/mobile/face/enrollment/status"))
+        enrollmentStatus = astra.getEnrollmentStatus()
         if (enrollmentStatus?.isEnrolled == true) {
             loadProfileAndDashboard()
         }
@@ -991,8 +973,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun cleanupEnrollmentCapturesOnlyFiles() {
-        photos.forEach { it.delete() }
+        val stale = photos
         photos = emptyList()
+        deleteFilesAsync(stale)
     }
 
     private fun cleanupEnrollmentCaptures() {
@@ -1029,7 +1012,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        backgroundSyncJob?.cancel()
         cleanupCaptures()
         super.onCleared()
+    }
+
+    private companion object {
+        const val REQUIRED_ENROLLMENT_PHOTOS = 10
+        const val MAX_ENROLLMENT_PHOTO_BYTES = 2L * 1024 * 1024
+        const val MAX_AVATAR_BYTES = 5L * 1024 * 1024
+        const val MAX_ATTACHMENT_BYTES = 10L * 1024 * 1024
+        const val UNCERTAIN_ATTENDANCE_MSG =
+            "Presensi belum dapat dipastikan. Periksa riwayat presensi sebelum mencoba lagi."
+        val CAPTURE_ONLY_PAGES = setOf(Page.ATTACHMENT, Page.AVATAR)
     }
 }

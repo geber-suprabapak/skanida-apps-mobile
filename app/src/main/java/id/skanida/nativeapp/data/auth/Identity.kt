@@ -10,9 +10,11 @@ import java.net.URL
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
@@ -42,24 +44,82 @@ private object StagingAwareConnectionBuilder : ConnectionBuilder {
     }
 }
 
+internal object JwtClaimsParser {
+    private val TRUTHY_FLAGS = setOf("true", "1", "yes")
+
+    fun parsePayload(jwt: String?): JSONObject {
+        if (jwt.isNullOrBlank()) return JSONObject()
+        val firstDot = jwt.indexOf('.')
+        if (firstDot < 0) return JSONObject()
+        val secondDot = jwt.indexOf('.', firstDot + 1)
+        if (secondDot <= firstDot + 1) return JSONObject()
+        val payloadPart = jwt.substring(firstDot + 1, secondDot)
+        return runCatching {
+            val decoded = Base64.decode(payloadPart, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+            JSONObject(String(decoded, Charsets.UTF_8))
+        }.getOrDefault(JSONObject())
+    }
+
+    fun isMustChangePassword(claims: JSONObject): Boolean =
+        claims.opt("must_change_password")?.toString()?.lowercase() in TRUTHY_FLAGS
+}
+
 class Identity(context: Context) {
-    private val store = SessionStore(context)
+    private val appContext = context.applicationContext
+    private val store = SessionStore(appContext)
     private val appAuthConfig = AppAuthConfiguration.Builder()
         .setConnectionBuilder(StagingAwareConnectionBuilder)
         .build()
-    private val service = AuthorizationService(context, appAuthConfig)
-    private var state = store.read()?.let { runCatching { AuthState.jsonDeserialize(it) }.getOrNull() } ?: AuthState()
+    private val service by lazy { AuthorizationService(appContext, appAuthConfig) }
+    private val stateLock = Any()
     private val refreshLock = Mutex()
+
+    @Volatile
+    private var stateLoaded = false
+
+    @Volatile
+    private var state: AuthState = AuthState()
+
+    @Volatile
     private var generation = 0
 
-    val signedIn get() = state.isAuthorized
+    @Volatile
+    private var cachedClaimsToken: String? = null
+
+    @Volatile
+    private var cachedClaims: JSONObject = JSONObject()
+
+    // Safe to call from a background thread during Application.onCreate so Keystore I/O overlaps Activity launch.
+    fun warmUp() {
+        ensureLoaded()
+    }
+
+    private fun ensureLoaded(): AuthState {
+        if (stateLoaded) return state
+        synchronized(stateLock) {
+            if (!stateLoaded) {
+                state = store.read()?.let { runCatching { AuthState.jsonDeserialize(it) }.getOrNull() } ?: AuthState()
+                stateLoaded = true
+            }
+            return state
+        }
+    }
+
+    val signedIn: Boolean get() = ensureLoaded().isAuthorized
+
     val claims: JSONObject
-        get() = runCatching {
-            val token = state.idToken ?: state.accessToken ?: ""
-            JSONObject(String(Base64.decode(token.split('.')[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)))
-        }.getOrDefault(JSONObject())
-    val userId get() = claims.optString("sub")
-    val mustChangePassword get() = claims.opt("must_change_password")?.toString() in listOf("true", "1", "yes")
+        get() {
+            val current = ensureLoaded()
+            val token = current.idToken ?: current.accessToken ?: ""
+            if (token == cachedClaimsToken) return cachedClaims
+            val parsed = JwtClaimsParser.parsePayload(token)
+            cachedClaimsToken = token
+            cachedClaims = parsed
+            return parsed
+        }
+
+    val userId: String get() = claims.optString("sub")
+    val mustChangePassword: Boolean get() = JwtClaimsParser.isMustChangePassword(claims)
 
     suspend fun loginIntent(): Intent {
         val discoveryUri = Uri.parse("${BuildConfig.LOGTO_URL.trimEnd('/')}/oidc/.well-known/openid-configuration")
@@ -78,6 +138,7 @@ class Identity(context: Context) {
                 StagingAwareConnectionBuilder,
             )
         }
+        // INV-MOBILE-009: Preserve PKCE, offline_access, and prompt=consent so Logto issues refresh tokens.
         val request = AuthorizationRequest.Builder(
             config,
             BuildConfig.LOGTO_CLIENT_ID,
@@ -92,6 +153,7 @@ class Identity(context: Context) {
     }
 
     suspend fun completeLogin(intent: Intent) {
+        ensureLoaded()
         val response = AuthorizationResponse.fromIntent(intent)
             ?: throw Exception(AuthorizationException.fromIntent(intent)?.errorDescription ?: "Login dibatalkan. Silakan coba lagi.")
         val pendingGeneration = generation
@@ -112,78 +174,118 @@ class Identity(context: Context) {
         check(pendingGeneration == generation) { "Login dibatalkan." }
         val next = AuthState(response, token, null)
         check(next.isAuthorized) { "Identity provider tidak mengembalikan sesi." }
-        state = next
+        synchronized(stateLock) {
+            state = next
+            stateLoaded = true
+            cachedClaimsToken = null
+        }
         val roles = claims.optJSONArray("roles")
-        if (roles == null || (0 until roles.length()).none { roles.optString(it) in listOf("student", "siswa") }) {
+        if (roles == null || (0 until roles.length()).none { roles.optString(it) in ALLOWED_ROLES }) {
             clear()
             error("Akun ini tidak memiliki akses siswa. Hubungi administrator.")
         }
         try {
-            store.write(state.jsonSerializeString())
+            val serialized = next.jsonSerializeString()
+            withContext(Dispatchers.IO) { store.write(serialized) }
         } catch (failure: Exception) {
             clear()
             throw failure
         }
     }
 
-    suspend fun accessToken(): String = refreshLock.withLock {
-        check(signedIn) { "Sesi tidak valid. Silakan login ulang." }
-        if (state.refreshToken.isNullOrBlank()) {
-            val token = state.accessToken
-            if (token == null || (state.accessTokenExpirationTime ?: 0L) <= System.currentTimeMillis()) {
-                clear()
-                error("Sesi telah berakhir. Silakan login ulang.")
-            }
-            return@withLock token
+    suspend fun accessToken(): String {
+        val snapshot = ensureLoaded()
+        check(snapshot.isAuthorized) { "Sesi tidak valid. Silakan login ulang." }
+        val fastToken = snapshot.accessToken
+        val fastExpiry = snapshot.accessTokenExpirationTime ?: 0L
+        // Fast path avoids Keystore AES-GCM write + SharedPreferences.commit() on every API call.
+        if (!fastToken.isNullOrBlank() && fastExpiry > System.currentTimeMillis() + TOKEN_EXPIRY_BUFFER_MS) {
+            return fastToken
         }
-        val current = state
-        val expectedGeneration = generation
-        suspendCancellableCoroutine { continuation ->
-            current.performActionWithFreshTokens(service, mapOf("resource" to BuildConfig.LOGTO_RESOURCE)) { token, _, error ->
-                if (expectedGeneration != generation) {
-                    if (continuation.isActive) continuation.resumeWithException(Exception("Sesi telah berakhir."))
-                    return@performActionWithFreshTokens
+
+        return refreshLock.withLock {
+            val current = ensureLoaded()
+            check(current.isAuthorized) { "Sesi tidak valid. Silakan login ulang." }
+            val currentToken = current.accessToken
+            val currentExpiry = current.accessTokenExpirationTime ?: 0L
+            if (!currentToken.isNullOrBlank() && currentExpiry > System.currentTimeMillis() + TOKEN_EXPIRY_BUFFER_MS) {
+                return@withLock currentToken
+            }
+            if (current.refreshToken.isNullOrBlank()) {
+                if (currentToken == null || currentExpiry <= System.currentTimeMillis()) {
+                    clear()
+                    error("Sesi telah berakhir. Silakan login ulang.")
                 }
-                if (error != null) {
-                    if (error.error in setOf("invalid_grant", "invalid_client", "unauthorized_client")) clear()
-                    // Transient network failures must preserve the encrypted refresh token.
-                    if (continuation.isActive) {
-                        continuation.resumeWithException(
-                            Exception(error.errorDescription ?: "Sesi belum dapat diperbarui. Periksa koneksi."),
-                        )
+                return@withLock currentToken
+            }
+
+            val previousAccess = current.accessToken
+            val previousRefresh = current.refreshToken
+            val previousExpiry = current.accessTokenExpirationTime
+            val expectedGeneration = generation
+
+            val freshToken = suspendCancellableCoroutine<String> { continuation ->
+                current.performActionWithFreshTokens(service, mapOf("resource" to BuildConfig.LOGTO_RESOURCE)) { token, _, error ->
+                    if (expectedGeneration != generation) {
+                        if (continuation.isActive) continuation.resumeWithException(Exception("Sesi telah berakhir."))
+                        return@performActionWithFreshTokens
                     }
-                } else {
-                    try {
-                        store.write(current.jsonSerializeString())
+                    if (error != null) {
+                        if (error.error in TERMINAL_REFRESH_ERRORS) clear()
+                        // INV-MOBILE-006: Transient network failures must preserve the encrypted refresh token.
                         if (continuation.isActive) {
-                            if (token != null) {
-                                continuation.resume(token)
-                            } else {
-                                continuation.resumeWithException(Exception("Sesi tidak valid. Silakan login ulang."))
-                            }
+                            continuation.resumeWithException(
+                                Exception(error.errorDescription ?: "Sesi belum dapat diperbarui. Periksa koneksi."),
+                            )
                         }
-                    } catch (failure: Exception) {
-                        if (continuation.isActive) continuation.resumeWithException(failure)
+                    } else if (token != null) {
+                        if (continuation.isActive) continuation.resume(token)
+                    } else {
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(Exception("Sesi tidak valid. Silakan login ulang."))
+                        }
                     }
                 }
             }
+
+            val tokenRotated = current.accessToken != previousAccess ||
+                current.refreshToken != previousRefresh ||
+                current.accessTokenExpirationTime != previousExpiry
+            if (tokenRotated && expectedGeneration == generation) {
+                cachedClaimsToken = null
+                val serialized = current.jsonSerializeString()
+                withContext(Dispatchers.IO) { store.write(serialized) }
+            }
+            freshToken
         }
     }
 
     fun logoutIntent(): Intent? {
-        val config = state.authorizationServiceConfiguration ?: return null
+        val current = ensureLoaded()
+        val config = current.authorizationServiceConfiguration ?: return null
         if (config.endSessionEndpoint == null) return null
         return service.getEndSessionRequestIntent(
             EndSessionRequest.Builder(config)
-                .setIdTokenHint(state.idToken)
+                .setIdTokenHint(current.idToken)
                 .setPostLogoutRedirectUri(Uri.parse(BuildConfig.LOGTO_REDIRECT))
                 .build(),
         )
     }
 
     fun clear() {
-        generation++
-        state = AuthState()
+        synchronized(stateLock) {
+            generation++
+            state = AuthState()
+            stateLoaded = true
+            cachedClaimsToken = null
+            cachedClaims = JSONObject()
+        }
         store.clear()
+    }
+
+    private companion object {
+        const val TOKEN_EXPIRY_BUFFER_MS = 60_000L
+        val ALLOWED_ROLES = setOf("student", "siswa")
+        val TERMINAL_REFRESH_ERRORS = setOf("invalid_grant", "invalid_client", "unauthorized_client")
     }
 }

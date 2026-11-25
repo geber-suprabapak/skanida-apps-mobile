@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,11 +70,24 @@ import id.skanida.nativeapp.ui.components.statusTokenFor
 import id.skanida.nativeapp.ui.theme.JetBrainsMonoFontFamily
 import id.skanida.nativeapp.ui.theme.LocalSkanidaColors
 import id.skanida.nativeapp.ui.theme.ManropeFontFamily
+import java.time.LocalDate
 import java.time.YearMonth
 
 private val INDONESIAN_MONTHS_SHORT = listOf(
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+)
+private val WEEKDAY_LABELS = listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
+
+@Immutable
+private data class CalendarDayCell(
+    val dayNumber: Int,
+    val date: LocalDate,
+    val isToday: Boolean,
+    val isFuture: Boolean,
+    val isSunday: Boolean,
+    val record: DailyAttendanceRecord?,
+    val accessibilityLabel: String,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,17 +96,23 @@ fun HistoryScreen(model: MainViewModel) {
     val tokens = LocalSkanidaColors.current
     var pickMonth by remember { mutableStateOf(false) }
 
-    val selectedDayRecords = remember(model.records, model.selectedDate) {
-        model.records.filter { it.date == model.selectedDate.toString() }
+    val today = remember(model.serverOffsetMs, model.month) { model.today }
+    val selectedDateStr = remember(model.selectedDate) { model.selectedDate.toString() }
+    val selectedDayRecords = remember(model.records, selectedDateStr) {
+        model.records.filter { it.date == selectedDateStr }
     }
-    val otherMonthRecords = remember(model.records, model.selectedDate) {
-        model.records.filter { it.date != model.selectedDate.toString() }
+    val otherMonthRecords = remember(model.records, selectedDateStr) {
+        model.records.filter { it.date != selectedDateStr }
     }
     val summary = remember(model.monthlyStats) {
         computeMonthlyAttendanceSummary(model.monthlyStats)
     }
+    val calendarWeeks = remember(model.month, model.records, today) {
+        buildCalendarWeeks(model.month, model.records, today)
+    }
     val compactMonthLabel = "${INDONESIAN_MONTHS_SHORT[model.month.monthValue - 1]} ${model.month.year}"
-    val canNextMonth = !model.busy && model.month < YearMonth.from(model.today)
+    val maxMonth = remember(today) { YearMonth.from(today) }
+    val canNextMonth = !model.busy && model.month < maxMonth
 
     PullToRefreshBox(
         isRefreshing = model.refreshing,
@@ -121,12 +141,12 @@ fun HistoryScreen(model: MainViewModel) {
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 2.dp),
                         ) {
                             IconButton(
                                 onClick = { model.changeMonth(-1) },
                                 enabled = !model.busy,
-                                modifier = Modifier.size(36.dp),
+                                modifier = Modifier.size(44.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
@@ -134,26 +154,31 @@ fun HistoryScreen(model: MainViewModel) {
                                     tint = tokens.foreground,
                                 )
                             }
-                            Text(
-                                text = compactMonthLabel,
-                                fontFamily = ManropeFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = tokens.foreground,
+                            Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .heightIn(min = 44.dp)
+                                    .clip(RoundedCornerShape(10.dp))
                                     .clickable(enabled = !model.busy, role = Role.Button) { pickMonth = true }
-                                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                            )
+                                    .padding(horizontal = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = compactMonthLabel,
+                                    fontFamily = ManropeFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = tokens.foreground,
+                                )
+                            }
                             IconButton(
                                 onClick = { model.changeMonth(1) },
                                 enabled = canNextMonth,
-                                modifier = Modifier.size(36.dp),
+                                modifier = Modifier.size(44.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     contentDescription = "Bulan berikutnya",
-                                    tint = if (canNextMonth) tokens.foreground else tokens.mutedForeground.copy(alpha = 0.35f),
+                                    tint = if (canNextMonth) tokens.foreground else tokens.mutedForeground.copy(alpha = 0.4f),
                                 )
                             }
                         }
@@ -163,6 +188,7 @@ fun HistoryScreen(model: MainViewModel) {
 
             model.monthlyStats?.let { stats ->
                 item(key = "stats") {
+                    val hasData = summary.effectiveDays > 0
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -183,14 +209,15 @@ fun HistoryScreen(model: MainViewModel) {
                                 verticalArrangement = Arrangement.Center,
                             ) {
                                 AttendanceArcRing(
-                                    percent = summary.rate,
+                                    percent = if (hasData) summary.rate else 0f,
                                     ringColor = tokens.success.content,
                                     trackColor = tokens.muted,
                                     textColor = tokens.foreground,
+                                    labelOverride = if (hasData) "${summary.percent}%" else "—",
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    text = "${summary.percent}% Aktif",
+                                    text = if (hasData) "${summary.percent}% Aktif" else "Belum ada",
                                     fontFamily = ManropeFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
@@ -254,7 +281,7 @@ fun HistoryScreen(model: MainViewModel) {
             item(key = "calendar") {
                 SkanidaCard(padding = PaddingValues(14.dp), spacedBy = 6.dp) {
                     Row(Modifier.fillMaxWidth()) {
-                        listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab").forEach { dayName ->
+                        WEEKDAY_LABELS.forEach { dayName ->
                             Text(
                                 text = dayName,
                                 modifier = Modifier.weight(1f),
@@ -300,89 +327,18 @@ fun HistoryScreen(model: MainViewModel) {
                             }
                         }
                         else -> {
-                            val recordMap = remember(model.records) { model.records.associateBy { it.date } }
-                            val offset = model.month.atDay(1).dayOfWeek.value % 7
-                            val totalDays = model.month.lengthOfMonth()
-                            val rows = (offset + totalDays + 6) / 7
-                            for (row in 0 until rows) {
+                            calendarWeeks.forEach { week ->
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    for (col in 0..6) {
-                                        val day = row * 7 + col - offset + 1
-                                        if (day in 1..totalDays) {
-                                            val date = model.month.atDay(day)
-                                            val isSelected = model.selectedDate == date
-                                            val isToday = date == model.today
-                                            val isFuture = date.isAfter(model.today)
-                                            val record = recordMap[date.toString()]
-                                            val (fill, dot) = when {
-                                                isSelected -> tokens.biometricBlue to if (record != null) Color.White else Color.Transparent
-                                                record == null -> Color.Transparent to Color.Transparent
-                                                record.status == "absent" -> tokens.error.container to tokens.error.content
-                                                record.status == "sick" -> tokens.sick.container to tokens.sick.content
-                                                record.status == "leave" -> tokens.info.container to tokens.info.content
-                                                record.isLate || record.status == "late" ->
-                                                    tokens.warning.container to
-                                                        tokens.warning.content
-                                                else -> tokens.success.container to tokens.success.content
-                                            }
-                                            val statusDesc = record?.let { recordStatusLabel(it) } ?: "Belum ada catatan"
-                                            val dayDesc = "${formatHeaderDateWib(date)}, $statusDesc"
-
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .height(44.dp)
-                                                    .clip(RoundedCornerShape(12.dp))
-                                                    .background(fill)
-                                                    .then(
-                                                        if (isToday && !isSelected) {
-                                                            Modifier.border(1.5.dp, tokens.biometricBlue, RoundedCornerShape(12.dp))
-                                                        } else {
-                                                            Modifier
-                                                        },
-                                                    )
-                                                    .semantics(mergeDescendants = true) {
-                                                        contentDescription = dayDesc
-                                                        selected = isSelected
-                                                    }
-                                                    .clickable(enabled = !isFuture, role = Role.Button) {
-                                                        model.selectDate(date)
-                                                    },
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Column(
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                                                ) {
-                                                    Text(
-                                                        text = day.toString(),
-                                                        fontFamily = ManropeFontFamily,
-                                                        fontWeight = if (isSelected ||
-                                                            record != null ||
-                                                            isToday
-                                                        ) {
-                                                            FontWeight.Bold
-                                                        } else {
-                                                            FontWeight.Medium
-                                                        },
-                                                        fontSize = 13.sp,
-                                                        color = when {
-                                                            isSelected -> Color.White
-                                                            isFuture -> tokens.mutedForeground.copy(alpha = 0.35f)
-                                                            col == 0 -> tokens.error.content
-                                                            else -> tokens.foreground
-                                                        },
-                                                    )
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(5.dp)
-                                                            .clip(CircleShape)
-                                                            .background(dot),
-                                                    )
-                                                }
-                                            }
+                                    week.forEach { cell ->
+                                        if (cell != null) {
+                                            CalendarDayTile(
+                                                cell = cell,
+                                                isSelected = model.selectedDate == cell.date,
+                                                onSelect = { model.selectDate(cell.date) },
+                                                modifier = Modifier.weight(1f),
+                                            )
                                         } else {
-                                            Spacer(Modifier.weight(1f).height(44.dp))
+                                            Spacer(Modifier.weight(1f).height(46.dp))
                                         }
                                     }
                                 }
@@ -445,13 +401,104 @@ fun HistoryScreen(model: MainViewModel) {
     if (pickMonth) {
         IndonesianMonthYearPickerDialog(
             currentMonth = model.month,
-            maxMonth = YearMonth.from(model.today),
+            maxMonth = maxMonth,
             onDismiss = { pickMonth = false },
             onSelect = { selectedMonth ->
                 model.selectMonth(selectedMonth)
                 pickMonth = false
             },
         )
+    }
+}
+
+private fun buildCalendarWeeks(
+    month: YearMonth,
+    records: List<DailyAttendanceRecord>,
+    today: LocalDate,
+): List<List<CalendarDayCell?>> {
+    val recordMap = records.associateBy { it.date }
+    val offset = month.atDay(1).dayOfWeek.value % 7
+    val totalDays = month.lengthOfMonth()
+    val rows = (offset + totalDays + 6) / 7
+    return List(rows) { row ->
+        List(7) { col ->
+            val day = row * 7 + col - offset + 1
+            if (day in 1..totalDays) {
+                val date = month.atDay(day)
+                val record = recordMap[date.toString()]
+                val statusDesc = record?.let { recordStatusLabel(it) } ?: "Belum ada catatan"
+                CalendarDayCell(
+                    dayNumber = day,
+                    date = date,
+                    isToday = date == today,
+                    isFuture = date.isAfter(today),
+                    isSunday = col == 0,
+                    record = record,
+                    accessibilityLabel = "${formatHeaderDateWib(date)}, $statusDesc",
+                )
+            } else {
+                null
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarDayTile(cell: CalendarDayCell, isSelected: Boolean, onSelect: () -> Unit, modifier: Modifier = Modifier) {
+    val tokens = LocalSkanidaColors.current
+    val record = cell.record
+    val (fill, dot) = when {
+        isSelected -> tokens.primaryButtonContainer to if (record != null) Color.White else Color.Transparent
+        record == null -> Color.Transparent to Color.Transparent
+        record.status == "absent" -> tokens.error.container to tokens.error.content
+        record.status == "sick" -> tokens.sick.container to tokens.sick.content
+        record.status == "leave" -> tokens.info.container to tokens.info.content
+        record.isLate || record.status == "late" -> tokens.warning.container to tokens.warning.content
+        else -> tokens.success.container to tokens.success.content
+    }
+
+    Box(
+        modifier = modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(fill)
+            .then(
+                if (cell.isToday && !isSelected) {
+                    Modifier.border(1.5.dp, tokens.biometricBlue, RoundedCornerShape(12.dp))
+                } else {
+                    Modifier
+                },
+            )
+            .semantics(mergeDescendants = true) {
+                contentDescription = cell.accessibilityLabel
+                selected = isSelected
+            }
+            .clickable(enabled = !cell.isFuture, role = Role.Button, onClick = onSelect),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = cell.dayNumber.toString(),
+                fontFamily = ManropeFontFamily,
+                fontWeight = if (isSelected || record != null || cell.isToday) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 13.sp,
+                color = when {
+                    isSelected -> Color.White
+                    cell.isFuture -> tokens.mutedForeground.copy(alpha = 0.48f)
+                    cell.isSunday -> tokens.error.content
+                    else -> tokens.foreground
+                },
+            )
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(dot),
+            )
+        }
     }
 }
 
@@ -630,11 +677,11 @@ private fun IndonesianMonthYearPickerDialog(
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .heightIn(min = 46.dp)
+                                    .heightIn(min = 48.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .clickable(enabled = !disabled, role = Role.Button) { onSelect(ym) },
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (isChosen) tokens.biometricBlue else tokens.muted,
+                                color = if (isChosen) tokens.primaryButtonContainer else tokens.muted,
                                 border = if (isChosen) null else BorderStroke(1.dp, tokens.border),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -645,7 +692,7 @@ private fun IndonesianMonthYearPickerDialog(
                                         fontSize = 13.sp,
                                         color = when {
                                             isChosen -> Color.White
-                                            disabled -> tokens.mutedForeground.copy(alpha = 0.4f)
+                                            disabled -> tokens.mutedForeground.copy(alpha = 0.48f)
                                             else -> tokens.foreground
                                         },
                                     )
@@ -681,17 +728,19 @@ private fun AttendanceRecordRow(item: DailyAttendanceRecord) {
     val tokens = LocalSkanidaColors.current
     val badgeLabel = recordStatusLabel(item)
     val badgeToken = statusTokenFor(if (item.isLate && item.status == "present") "late" else item.status)
-    val subtitle = when {
-        !item.checkInTime.isNullOrBlank() || !item.checkOutTime.isNullOrBlank() ->
-            buildString {
-                append("Masuk: ${formatTimeWib(item.checkInTime)}")
-                if (!item.checkOutTime.isNullOrBlank()) {
-                    append(" • Pulang: ${formatTimeWib(item.checkOutTime)}")
+    val subtitle = remember(item) {
+        when {
+            !item.checkInTime.isNullOrBlank() || !item.checkOutTime.isNullOrBlank() ->
+                buildString {
+                    append("Masuk: ${formatTimeWib(item.checkInTime)}")
+                    if (!item.checkOutTime.isNullOrBlank()) {
+                        append(" • Pulang: ${formatTimeWib(item.checkOutTime)}")
+                    }
+                    append(" WIB")
                 }
-                append(" WIB")
-            }
-        item.status == "absent" -> "Tidak hadir"
-        else -> item.description?.takeIf { it.isNotBlank() } ?: "Pengajuan izin tercatat"
+            item.status == "absent" -> "Tidak hadir"
+            else -> item.description?.takeIf { it.isNotBlank() } ?: "Pengajuan izin tercatat"
+        }
     }
 
     Row(

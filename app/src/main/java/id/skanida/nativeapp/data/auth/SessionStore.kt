@@ -13,9 +13,13 @@ import javax.crypto.spec.GCMParameterSpec
 class SessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("identity", Context.MODE_PRIVATE)
 
+    @Volatile
+    private var cachedKey: SecretKey? = null
+
     private fun key(): SecretKey {
+        cachedKey?.let { return it }
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        return store.getKey("skanida-session", null) as? SecretKey ?: KeyGenerator
+        val resolved = store.getKey("skanida-session", null) as? SecretKey ?: KeyGenerator
             .getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
                 init(
                     KeyGenParameterSpec.Builder(
@@ -27,6 +31,8 @@ class SessionStore(context: Context) {
                         .build(),
                 )
             }.generateKey()
+        cachedKey = resolved
+        return resolved
     }
 
     @Synchronized
@@ -34,10 +40,15 @@ class SessionStore(context: Context) {
         val raw = prefs.getString("session", null) ?: return null
         return try {
             val bytes = Base64.decode(raw, Base64.NO_WRAP)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
-            String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8)
+            if (bytes.size <= GCM_IV_LENGTH_BYTES) {
+                clear()
+                return null
+            }
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(GCM_TAG_LENGTH_BITS, bytes, 0, GCM_IV_LENGTH_BYTES))
+            String(cipher.doFinal(bytes, GCM_IV_LENGTH_BYTES, bytes.size - GCM_IV_LENGTH_BYTES), Charsets.UTF_8)
         } catch (_: Exception) {
+            cachedKey = null
             clear()
             null
         }
@@ -45,9 +56,10 @@ class SessionStore(context: Context) {
 
     @Synchronized
     fun write(value: String) {
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key())
-        val encoded = Base64.encodeToString(cipher.iv + cipher.doFinal(value.toByteArray()), Base64.NO_WRAP)
+        val encrypted = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
+        val encoded = Base64.encodeToString(cipher.iv + encrypted, Base64.NO_WRAP)
         check(prefs.edit().putString("session", encoded).commit()) {
             "Sesi tidak dapat disimpan. Coba login kembali."
         }
@@ -56,5 +68,11 @@ class SessionStore(context: Context) {
     @Synchronized
     fun clear() {
         prefs.edit().remove("session").commit()
+    }
+
+    private companion object {
+        const val TRANSFORMATION = "AES/GCM/NoPadding"
+        const val GCM_IV_LENGTH_BYTES = 12
+        const val GCM_TAG_LENGTH_BITS = 128
     }
 }

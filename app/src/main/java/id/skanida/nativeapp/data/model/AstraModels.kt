@@ -1,5 +1,6 @@
 package id.skanida.nativeapp.data.model
 
+import androidx.compose.runtime.Immutable
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -13,6 +14,7 @@ fun json(vararg values: Pair<String, Any?>): JSONObject = JSONObject().apply {
     values.forEach { (key, value) -> put(key, value ?: JSONObject.NULL) }
 }
 
+@Immutable
 data class UserProfile(
     val userId: String,
     val fullName: String,
@@ -47,6 +49,7 @@ data class UserProfile(
     }
 }
 
+@Immutable
 data class DashboardAttendance(
     val todayStatus: String,
     val hasCheckedIn: Boolean,
@@ -69,6 +72,7 @@ data class DashboardAttendance(
     }
 }
 
+@Immutable
 data class DashboardSchedule(
     val dayKey: String,
     val startCheckInAt: String?,
@@ -92,6 +96,7 @@ data class DashboardSchedule(
     }
 }
 
+@Immutable
 data class DashboardFace(val serverStatus: String, val enrollmentStatus: String, val message: String) {
     val isServerHealthy: Boolean get() = serverStatus == "healthy"
     val isEnrolled: Boolean get() = enrollmentStatus == "enrolled"
@@ -106,6 +111,7 @@ data class DashboardFace(val serverStatus: String, val enrollmentStatus: String,
     }
 }
 
+@Immutable
 data class DashboardPermitSummary(val hasActivePermit: Boolean, val activeCategory: String?) {
     companion object {
         fun fromJson(obj: JSONObject?): DashboardPermitSummary = DashboardPermitSummary(
@@ -115,6 +121,7 @@ data class DashboardPermitSummary(val hasActivePermit: Boolean, val activeCatego
     }
 }
 
+@Immutable
 data class DashboardPrimaryAction(
     val allowed: Boolean,
     val type: String?,
@@ -133,6 +140,7 @@ data class DashboardPrimaryAction(
     }
 }
 
+@Immutable
 data class DashboardData(
     val profile: UserProfile,
     val attendance: DashboardAttendance,
@@ -155,6 +163,7 @@ data class DashboardData(
     }
 }
 
+@Immutable
 data class AttendancePrecheckResult(
     val allowed: Boolean,
     val actionType: String?,
@@ -195,6 +204,7 @@ data class AttendancePrecheckResult(
     }
 }
 
+@Immutable
 data class AttendanceSubmitResult(val attendanceType: String, val statusLabel: String, val processedMs: Long) {
     companion object {
         fun fromJson(obj: JSONObject): AttendanceSubmitResult = AttendanceSubmitResult(
@@ -205,6 +215,7 @@ data class AttendanceSubmitResult(val attendanceType: String, val statusLabel: S
     }
 }
 
+@Immutable
 data class RawAttendanceRecord(val id: String, val date: String, val status: String, val actionType: String?, val createdAt: String?) {
     companion object {
         fun fromJson(obj: JSONObject): RawAttendanceRecord = RawAttendanceRecord(
@@ -217,10 +228,11 @@ data class RawAttendanceRecord(val id: String, val date: String, val status: Str
     }
 }
 
+@Immutable
 data class DailyAttendanceRecord(
     val id: String,
     val date: String,
-    val status: String, // "present", "late", "sick", "leave", "absent"
+    val status: String,
     val checkInTime: String? = null,
     val checkOutTime: String? = null,
     val isLate: Boolean = false,
@@ -229,8 +241,10 @@ data class DailyAttendanceRecord(
     val approvalStatus: String? = null,
 )
 
+@Immutable
 data class MonthlyAttendanceStats(val hadir: Int, val terlambat: Int, val sakit: Int, val izin: Int, val alpha: Int)
 
+@Immutable
 data class PermitRecord(
     val id: String,
     val category: String,
@@ -331,6 +345,7 @@ fun localizePrimaryActionReason(reasonCode: String?, rawMessage: String?): Strin
     }
 }
 
+@Immutable
 data class EnrollmentStatusData(val status: String, val embeddingCount: Int, val message: String) {
     val isEnrolled: Boolean get() = status == "enrolled"
 
@@ -343,6 +358,7 @@ data class EnrollmentStatusData(val status: String, val embeddingCount: Int, val
     }
 }
 
+@Immutable
 data class EnrollmentSubmitResult(val imagesProcessed: Int, val imagesFailed: Int, val totalEmbeddings: Int) {
     companion object {
         fun fromJson(obj: JSONObject): EnrollmentSubmitResult = EnrollmentSubmitResult(

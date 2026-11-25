@@ -40,6 +40,7 @@ val JetBrainsMonoFontFamily = FontFamily(
 object SkanidaPalette {
     val CobaltLight = Color(0xFF1B5BFF)
     val CobaltDark = Color(0xFF4C82FF)
+    val CobaltButtonDark = Color(0xFF2B64F5)
     val CobaltTintLight = Color(0xFFE7F0FF)
     val CobaltTintDark = Color(0xFF192D56)
     val CobaltOnTintLight = Color(0xFF1447CC)
@@ -54,6 +55,14 @@ object SkanidaPalette {
     val PassBottomDark = Color(0xFF1D3B75)
     val PassDockDark = Color(0xFF0B1833)
     val PassSubtleDark = Color(0xFFAEC4EC)
+
+    // WCAG AA >= 4.5:1 solid badge fills for white text on the Indigo-Cobalt pass under sunlight.
+    val PassBadgeCobalt = Color(0xFF1D4ED8)
+    val PassBadgeSuccess = Color(0xFF047857)
+    val PassBadgeWarning = Color(0xFFB45309)
+    val PassBadgeSick = Color(0xFF6D28D9)
+    val PassBadgeInfo = Color(0xFF0369A1)
+    val PassBadgeError = Color(0xFFB91C1C)
 
     val GoldLight = Color(0xFFE5B95C)
     val GoldTintLight = Color(0x26E5B95C)
@@ -87,7 +96,7 @@ object SkanidaPalette {
     val SuccessBorderDark = Color(0xFF065F46)
 
     val WarningDot = Color(0xFFD97706)
-    val WarningLight = Color(0xFFC26A0A)
+    val WarningLight = Color(0xFFB45309)
     val WarningTintLight = Color(0xFFFFF2DF)
     val WarningBorderLight = Color(0xFFFCD9A8)
     val WarningDark = Color(0xFFFBBF24)
@@ -139,6 +148,7 @@ data class SkanidaExtendedColors(
     val gold: Color,
     val goldTint: Color,
     val biometricBlue: Color,
+    val primaryButtonContainer: Color,
     val cobaltTint: Color,
     val cobaltOnTint: Color,
     val cameraBackdrop: Color,
@@ -165,6 +175,7 @@ private val LightExtendedColors = SkanidaExtendedColors(
     gold = SkanidaPalette.GoldLight,
     goldTint = SkanidaPalette.GoldTintLight,
     biometricBlue = SkanidaPalette.CobaltLight,
+    primaryButtonContainer = SkanidaPalette.CobaltLight,
     cobaltTint = SkanidaPalette.CobaltTintLight,
     cobaltOnTint = SkanidaPalette.CobaltOnTintLight,
     cameraBackdrop = SkanidaPalette.CameraBackdrop,
@@ -216,6 +227,7 @@ private val DarkExtendedColors = SkanidaExtendedColors(
     gold = SkanidaPalette.GoldDark,
     goldTint = SkanidaPalette.GoldTintDark,
     biometricBlue = SkanidaPalette.CobaltDark,
+    primaryButtonContainer = SkanidaPalette.CobaltButtonDark,
     cobaltTint = SkanidaPalette.CobaltTintDark,
     cobaltOnTint = SkanidaPalette.CobaltOnTintDark,
     cameraBackdrop = SkanidaPalette.CameraBackdrop,
@@ -249,6 +261,52 @@ private val DarkExtendedColors = SkanidaExtendedColors(
         border = SkanidaPalette.ErrorBorderDark,
         dot = SkanidaPalette.ErrorDark,
     ),
+)
+
+private val LightMaterialColorScheme = lightColorScheme(
+    primary = LightExtendedColors.primaryButtonContainer,
+    onPrimary = Color.White,
+    primaryContainer = LightExtendedColors.cobaltTint,
+    onPrimaryContainer = LightExtendedColors.cobaltOnTint,
+    secondary = LightExtendedColors.muted,
+    onSecondary = LightExtendedColors.foreground,
+    secondaryContainer = LightExtendedColors.cobaltTint,
+    onSecondaryContainer = LightExtendedColors.cobaltOnTint,
+    background = LightExtendedColors.background,
+    onBackground = LightExtendedColors.foreground,
+    surface = LightExtendedColors.card,
+    onSurface = LightExtendedColors.foreground,
+    surfaceVariant = LightExtendedColors.muted,
+    onSurfaceVariant = LightExtendedColors.mutedForeground,
+    outline = Color(0xFF64748B),
+    outlineVariant = LightExtendedColors.border,
+    error = LightExtendedColors.error.dot,
+    onError = Color.White,
+    errorContainer = LightExtendedColors.error.container,
+    onErrorContainer = LightExtendedColors.error.content,
+)
+
+private val DarkMaterialColorScheme = darkColorScheme(
+    primary = DarkExtendedColors.primaryButtonContainer,
+    onPrimary = Color.White,
+    primaryContainer = DarkExtendedColors.cobaltTint,
+    onPrimaryContainer = DarkExtendedColors.cobaltOnTint,
+    secondary = DarkExtendedColors.muted,
+    onSecondary = DarkExtendedColors.foreground,
+    secondaryContainer = DarkExtendedColors.cobaltTint,
+    onSecondaryContainer = DarkExtendedColors.cobaltOnTint,
+    background = DarkExtendedColors.background,
+    onBackground = DarkExtendedColors.foreground,
+    surface = DarkExtendedColors.card,
+    onSurface = DarkExtendedColors.foreground,
+    surfaceVariant = DarkExtendedColors.muted,
+    onSurfaceVariant = DarkExtendedColors.mutedForeground,
+    outline = Color(0xFF64748B),
+    outlineVariant = DarkExtendedColors.border,
+    error = DarkExtendedColors.error.dot,
+    onError = Color.White,
+    errorContainer = DarkExtendedColors.error.container,
+    onErrorContainer = DarkExtendedColors.error.content,
 )
 
 val LocalSkanidaColors = staticCompositionLocalOf { LightExtendedColors }
@@ -323,6 +381,7 @@ fun SkanidaTheme(themePreference: String, forceDarkSystemBars: Boolean = false, 
     val isDark = themePreference == "dark" ||
         (themePreference == "system" && isSystemInDarkTheme())
     val extended = if (isDark) DarkExtendedColors else LightExtendedColors
+    val colorScheme = if (isDark) DarkMaterialColorScheme else LightMaterialColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -333,54 +392,6 @@ fun SkanidaTheme(themePreference: String, forceDarkSystemBars: Boolean = false, 
             controller.isAppearanceLightStatusBars = !useDarkBars
             controller.isAppearanceLightNavigationBars = !useDarkBars
         }
-    }
-
-    val colorScheme = if (isDark) {
-        darkColorScheme(
-            primary = extended.biometricBlue,
-            onPrimary = Color.White,
-            primaryContainer = extended.cobaltTint,
-            onPrimaryContainer = extended.cobaltOnTint,
-            secondary = extended.muted,
-            onSecondary = extended.foreground,
-            secondaryContainer = extended.cobaltTint,
-            onSecondaryContainer = extended.cobaltOnTint,
-            background = extended.background,
-            onBackground = extended.foreground,
-            surface = extended.card,
-            onSurface = extended.foreground,
-            surfaceVariant = extended.muted,
-            onSurfaceVariant = extended.mutedForeground,
-            outline = Color(0xFF64748B),
-            outlineVariant = extended.border,
-            error = extended.error.dot,
-            onError = Color.White,
-            errorContainer = extended.error.container,
-            onErrorContainer = extended.error.content,
-        )
-    } else {
-        lightColorScheme(
-            primary = extended.biometricBlue,
-            onPrimary = Color.White,
-            primaryContainer = extended.cobaltTint,
-            onPrimaryContainer = extended.cobaltOnTint,
-            secondary = extended.muted,
-            onSecondary = extended.foreground,
-            secondaryContainer = extended.cobaltTint,
-            onSecondaryContainer = extended.cobaltOnTint,
-            background = extended.background,
-            onBackground = extended.foreground,
-            surface = extended.card,
-            onSurface = extended.foreground,
-            surfaceVariant = extended.muted,
-            onSurfaceVariant = extended.mutedForeground,
-            outline = Color(0xFF64748B),
-            outlineVariant = extended.border,
-            error = extended.error.dot,
-            onError = Color.White,
-            errorContainer = extended.error.container,
-            onErrorContainer = extended.error.content,
-        )
     }
 
     CompositionLocalProvider(LocalSkanidaColors provides extended) {

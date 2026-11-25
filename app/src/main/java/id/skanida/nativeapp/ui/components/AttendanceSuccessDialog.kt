@@ -1,5 +1,6 @@
 package id.skanida.nativeapp.ui.components
 
+import android.app.ActivityManager
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -26,10 +27,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,14 +57,14 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 private val CONFETTI_COLORS = listOf(
-    Color(0xFF1B5BFF), // Cobalt
-    Color(0xFF10B981), // Emerald
-    Color(0xFFF59E0B), // Amber Gold
-    Color(0xFFF43F5E), // Coral Rose
-    Color(0xFF8B5CF6), // Violet
-    Color(0xFF06B6D4), // Cyan
-    Color(0xFFF0C973), // Soft Gold
-    Color(0xFF34D399), // Mint
+    Color(0xFF1B5BFF),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFFF43F5E),
+    Color(0xFF8B5CF6),
+    Color(0xFF06B6D4),
+    Color(0xFFF0C973),
+    Color(0xFF34D399),
 )
 
 private data class ConfettiParticle(
@@ -88,9 +87,11 @@ private data class ConfettiParticle(
     val color: Color,
 )
 
-private fun buildConfettiParticles(): List<ConfettiParticle> {
+private fun buildConfettiParticles(lowRam: Boolean): List<ConfettiParticle> {
     val rng = Random(System.nanoTime())
-    val burst = List(36) {
+    val burstCount = if (lowRam) 16 else 36
+    val showerCount = if (lowRam) 8 else 22
+    val burst = List(burstCount) {
         val angle = Math.toRadians(rng.nextDouble(-155.0, -25.0))
         val speed = rng.nextDouble(0.32, 0.78)
         val isCircle = rng.nextFloat() < 0.25f
@@ -115,7 +116,7 @@ private fun buildConfettiParticles(): List<ConfettiParticle> {
             color = CONFETTI_COLORS[rng.nextInt(CONFETTI_COLORS.size)],
         )
     }
-    val shower = List(22) {
+    val shower = List(showerCount) {
         val isCircle = rng.nextFloat() < 0.25f
         val w = rng.nextFloat() * 6f + 6f
         ConfettiParticle(
@@ -142,32 +143,27 @@ private fun buildConfettiParticles(): List<ConfettiParticle> {
 }
 
 @Composable
-private fun ConfettiOverlay(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val animationsEnabled = remember(context) {
-        runCatching {
-            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
-        }.getOrDefault(true)
-    }
+private fun ConfettiOverlay(animationsEnabled: Boolean, lowRam: Boolean, modifier: Modifier = Modifier) {
     if (!animationsEnabled) return
 
-    val particles = remember { buildConfettiParticles() }
+    val particles = remember(lowRam) { buildConfettiParticles(lowRam) }
     val maxTime = remember(particles) { particles.maxOf { it.delaySeconds + it.durationSeconds } }
-    var elapsedSeconds by remember { mutableFloatStateOf(0f) }
+    // Keep elapsedSeconds in a state object read ONLY inside Canvas draw lambda to avoid 60 fps recomposition.
+    val elapsedState = remember(particles) { mutableFloatStateOf(0f) }
 
     LaunchedEffect(particles) {
         var startNanos = -1L
-        while (elapsedSeconds < maxTime) {
+        while (elapsedState.floatValue < maxTime) {
             withFrameNanos { frameNanos ->
                 if (startNanos < 0L) startNanos = frameNanos
-                elapsedSeconds = (frameNanos - startNanos) / 1_000_000_000f
+                elapsedState.floatValue = (frameNanos - startNanos) / 1_000_000_000f
             }
         }
     }
 
-    if (elapsedSeconds >= maxTime) return
-
     Canvas(modifier = modifier) {
+        val elapsedSeconds = elapsedState.floatValue
+        if (elapsedSeconds >= maxTime) return@Canvas
         val w = size.width
         val h = size.height
         val cornerPx = 2.dp.toPx()
@@ -210,30 +206,46 @@ private fun ConfettiOverlay(modifier: Modifier = Modifier) {
 @Composable
 fun AttendanceSuccessDialog(success: PendingAttendanceSuccess, onDismiss: () -> Unit) {
     val tokens = LocalSkanidaColors.current
+    val context = LocalContext.current
+    val animationsEnabled = remember(context) {
+        runCatching {
+            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+        }.getOrDefault(true)
+    }
+    val lowRam = remember(context) {
+        context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+    }
+
     val isCheckout = success.attendanceType == "check_out"
     val title = if (isCheckout) "Berhasil Presensi Pulang" else "Berhasil Presensi Masuk"
 
-    val processingText = when {
-        success.processingTimeMs <= 0L -> ""
-        success.processingTimeMs < 1000L -> "Diproses dalam ${success.processingTimeMs} ms"
-        success.processingTimeMs < 10_000L ->
-            String.format(ID_LOCALE, "Diproses dalam %.1f dtk", success.processingTimeMs / 1000.0)
-        else -> "Diproses dalam ${(success.processingTimeMs / 1000.0).toInt()} dtk"
+    val processingText = remember(success.processingTimeMs) {
+        when {
+            success.processingTimeMs <= 0L -> ""
+            success.processingTimeMs < 1000L -> "Diproses dalam ${success.processingTimeMs} ms"
+            success.processingTimeMs < 10_000L ->
+                String.format(ID_LOCALE, "Diproses dalam %.1f dtk", success.processingTimeMs / 1000.0)
+            else -> "Diproses dalam ${(success.processingTimeMs / 1000.0).toInt()} dtk"
+        }
     }
 
-    val cardScale = remember { Animatable(0.88f) }
-    val badgeScale = remember { Animatable(0.4f) }
-    LaunchedEffect(success) {
-        cardScale.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        )
+    val cardScale = remember(animationsEnabled) { Animatable(if (animationsEnabled) 0.88f else 1f) }
+    val badgeScale = remember(animationsEnabled) { Animatable(if (animationsEnabled) 0.4f else 1f) }
+    LaunchedEffect(success, animationsEnabled) {
+        if (animationsEnabled) {
+            cardScale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+            )
+        }
     }
-    LaunchedEffect(success) {
-        badgeScale.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
-        )
+    LaunchedEffect(success, animationsEnabled) {
+        if (animationsEnabled) {
+            badgeScale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+            )
+        }
     }
 
     Dialog(
@@ -337,7 +349,11 @@ fun AttendanceSuccessDialog(success: PendingAttendanceSuccess, onDismiss: () -> 
                 }
             }
 
-            ConfettiOverlay(modifier = Modifier.fillMaxSize())
+            ConfettiOverlay(
+                animationsEnabled = animationsEnabled,
+                lowRam = lowRam,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

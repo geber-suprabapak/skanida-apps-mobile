@@ -34,7 +34,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -78,6 +77,7 @@ class PushController(private val app: SkanidaApplication) {
 
     suspend fun enable() = lock.withLock {
         check(permissionGranted()) { "Izinkan notifikasi melalui pengaturan perangkat." }
+        withContext(Dispatchers.IO) { app.ensureFirebaseInitialized() }
         check(FirebaseApp.getApps(app).isNotEmpty()) { "Konfigurasi Firebase belum tersedia pada build ini." }
         val user = app.identity.userId
         check(user.isNotBlank()) { "Login terlebih dahulu." }
@@ -111,7 +111,9 @@ class PushController(private val app: SkanidaApplication) {
                 "deviceToken" to deviceToken,
                 "projectId" to BuildConfig.EXPO_PROJECT_ID,
             )
-            val client = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+            val client = app.astra.httpClient.newBuilder()
+                .callTimeout(30, TimeUnit.SECONDS)
+                .build()
             client.newCall(
                 Request.Builder()
                     .url("https://exp.host/--/api/v2/push/getExpoPushToken")
@@ -125,7 +127,7 @@ class PushController(private val app: SkanidaApplication) {
             }
         }
         check(user == app.identity.userId) { "Akun berubah. Coba lagi." }
-        app.astra.send("/v1/mobile/notifications/token", json("token" to token), "PATCH")
+        app.astra.setNotificationToken(token)
         app.preferences.edit()
             .putBoolean("push:$user", true)
             .putBoolean("push-opt-out:$user", false)
@@ -141,7 +143,7 @@ class PushController(private val app: SkanidaApplication) {
 
     suspend fun disable() = lock.withLock {
         val user = app.identity.userId
-        app.astra.send("/v1/mobile/notifications/token", json("token" to null), "PATCH")
+        app.astra.setNotificationToken(null)
         app.preferences.edit()
             .putBoolean("push:$user", false)
             .putBoolean("push-opt-out:$user", true)
@@ -151,12 +153,12 @@ class PushController(private val app: SkanidaApplication) {
 
     suspend fun clearRevokedPermission() {
         // Keep the user's app opt-in so restoring OS permission can be reconciled.
-        app.astra.send("/v1/mobile/notifications/token", json("token" to null), "PATCH")
+        app.astra.setNotificationToken(null)
         app.preferences.edit().putBoolean("push:${app.identity.userId}", false).apply()
     }
 
     suspend fun reconcile(): Boolean {
-        val stored = app.astra.get("/v1/mobile/notifications/token").text("notification_token")
+        val stored = app.astra.getNotificationToken()
         val optedOut = app.preferences.getBoolean("push-opt-out:${app.identity.userId}", false)
         val needsRegistration = !registeredForCurrentUser() || stored.isBlank()
         if (!permissionGranted() && stored.isNotBlank()) {

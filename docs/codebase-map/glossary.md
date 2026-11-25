@@ -2,18 +2,18 @@
 
 ## Attendance Workflow
 
-**Meaning:** Two-phase student flow that prepares an eligible attendance attempt via `AbsenceReportScreen`, captures a face image with CameraX, and completes the submission.
+**Meaning:** Two-phase student flow that prepares an eligible attendance attempt (surfacing blocks via `AttendancePrecheckDialog` in `AbsenceReportScreen.kt`), captures a face image with CameraX (`CameraScreen.kt`), and completes the streaming submission.
 **Evidence:** `CONTEXT.md`, `app/src/main/java/id/skanida/nativeapp/domain/workflow/AttendanceWorkflow.kt`.
 
 ## BFF transport
 
-**Meaning:** Shared Astra request layer (`Astra.kt`) that attaches Logto bearer token, `X-Request-Id`, `X-Astra-Contract-Version: v1`, timeout, and envelope error normalization.
+**Meaning:** Shared Astra request layer (`Astra.kt`) that attaches Logto bearer token, `X-Request-Id`, `X-Astra-Contract-Version: v1`, timeout, streaming Base64 attendance upload, and envelope error normalization.
 **Evidence:** `app/src/main/java/id/skanida/nativeapp/data/api/Astra.kt`.
 
 ## Face Enrollment
 
 **Meaning:** Registering 10 student face JPEG photos through Astra (`POST /v1/mobile/face/enrollment`) for verification availability.
-**Evidence:** `README.md`, `app/src/main/java/id/skanida/nativeapp/ui/screens/CameraScreen.kt`.
+**Evidence:** `README.md`, `app/src/main/java/id/skanida/nativeapp/ui/screens/CameraScreen.kt`, `app/src/main/java/id/skanida/nativeapp/ui/screens/EnrollmentFlowScreens.kt`.
 
 ## Face Verification Readiness
 
@@ -25,4 +25,4 @@
 
 **Aliases:** permit, perizinan.
 **Meaning:** Student request to skip attendance with category, description (10–500 chars), and photo attachment.
-**Evidence:** `CONTEXT.md`, `app/src/main/java/id/skanida/nativeapp/ui/screens/PermitsAndLeaveScreens.kt`.
+**Evidence:** `CONTEXT.md`, `app/src/main/java/id/skanida/nativeapp/ui/screens/PermitsScreen.kt`, `app/src/main/java/id/skanida/nativeapp/ui/screens/LeaveScreen.kt`, `app/src/main/java/id/skanida/nativeapp/domain/workflow/InputValidation.kt`.
