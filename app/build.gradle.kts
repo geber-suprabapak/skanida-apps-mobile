@@ -88,6 +88,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Ship universal ARM (64-bit + 32-bit); keep debug unfiltered for x86_64 emulators.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
             if (customAppIdSuffix != null) applicationIdSuffix = customAppIdSuffix
             manifestPlaceholders["appLabel"] = "Skanida Apps"
             manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -149,8 +153,17 @@ android {
             "META-INF/LGPL2.1",
             "META-INF/androidx/**",
             "META-INF/*.version",
+            "META-INF/com/android/build/gradle/app-metadata.properties",
+            "META-INF/version-control-info.textproto",
             "DebugProbesKt.bin",
+            "kotlin/*.kotlin_builtins",
             "kotlin/**/*.kotlin_builtins",
+            "kotlin-tooling-metadata.json",
+            "**/*.proto",
+            "firebase-*.properties",
+            "play-services-*.properties",
+            // Astra uses Bearer tokens (CookieJar.NO_COOKIES); public suffix table is unused.
+            "okhttp3/internal/publicsuffix/*",
         )
     }
 }
