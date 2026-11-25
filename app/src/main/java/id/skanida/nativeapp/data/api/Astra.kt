@@ -22,7 +22,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 
-class AstraError(val status: Int, val code: String, message: String, val details: JSONObject? = null,) : Exception(message)
+class AstraError(val status: Int, val code: String, message: String, val details: JSONObject? = null) : Exception(message)
 
 object AstraEnvelope {
     fun decode(status: Int, version: String?, body: String): Any? {
@@ -125,7 +125,7 @@ class Astra(private val identity: Identity) {
 
     suspend fun get(path: String): JSONObject = request(path) as? JSONObject ?: error("Respons server tidak valid.")
 
-    suspend fun send(path: String, data: JSONObject, method: String = "POST", authenticated: Boolean = true, timeout: Long = 30,): Any? =
+    suspend fun send(path: String, data: JSONObject, method: String = "POST", authenticated: Boolean = true, timeout: Long = 30): Any? =
         request(
             path = path,
             method = method,

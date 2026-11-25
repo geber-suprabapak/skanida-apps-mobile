@@ -94,7 +94,7 @@ private data class PassCtaSpec(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(model: MainViewModel, onStartAttendance: () -> Unit, onStartEnrollment: () -> Unit,) {
+fun HomeScreen(model: MainViewModel, onStartAttendance: () -> Unit, onStartEnrollment: () -> Unit) {
     val tokens = LocalSkanidaColors.current
     val data = model.dashboard
     val profile = data?.profile ?: model.profile

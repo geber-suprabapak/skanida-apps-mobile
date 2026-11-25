@@ -274,7 +274,7 @@ fun PermitsScreen(model: MainViewModel) {
 }
 
 @Composable
-private fun PendingPermitCard(permit: PermitRecord, onClick: () -> Unit,) {
+private fun PendingPermitCard(permit: PermitRecord, onClick: () -> Unit) {
     val tokens = LocalSkanidaColors.current
     val rangeText = formatPermitRange(permit)
     val durationLabel = permit.durationDays?.let { " · $it hr" }.orEmpty()
@@ -398,7 +398,7 @@ private fun PermitProgressStep(label: String, done: Boolean, active: Boolean) {
 }
 
 @Composable
-private fun PermitHistoryCard(permit: PermitRecord, onClick: () -> Unit,) {
+private fun PermitHistoryCard(permit: PermitRecord, onClick: () -> Unit) {
     val tokens = LocalSkanidaColors.current
     val isSakit = permit.category.equals("sakit", ignoreCase = true)
     val statusLabel = when (permit.approvalStatus) {
@@ -469,7 +469,7 @@ private fun PermitHistoryCard(permit: PermitRecord, onClick: () -> Unit,) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PermitDetailSheet(permit: PermitRecord, onDismiss: () -> Unit,) {
+private fun PermitDetailSheet(permit: PermitRecord, onDismiss: () -> Unit) {
     val tokens = LocalSkanidaColors.current
     val statusLabel = when (permit.approvalStatus) {
         "approved" -> "Disetujui"
@@ -603,7 +603,7 @@ private fun formatPermitRange(permit: PermitRecord): String {
 }
 
 @Composable
-fun LeaveScreen(model: MainViewModel, onPickGallery: () -> Unit, onOpenCamera: () -> Unit,) {
+fun LeaveScreen(model: MainViewModel, onPickGallery: () -> Unit, onOpenCamera: () -> Unit) {
     val tokens = LocalSkanidaColors.current
     val trimmedLength = model.leaveDescription.trim().length
     val noteOk = trimmedLength in 10..500

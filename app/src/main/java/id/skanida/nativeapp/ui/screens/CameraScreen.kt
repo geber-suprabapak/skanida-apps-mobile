@@ -550,13 +550,13 @@ fun CameraScreen(model: MainViewModel) {
                         color,
                         Offset(size.width - inset, size.height - inset),
                         Offset(size.width - inset - corner, size.height - inset),
-                        stroke
+                        stroke,
                     )
                     drawLine(
                         color,
                         Offset(size.width - inset, size.height - inset),
                         Offset(size.width - inset, size.height - inset - corner),
-                        stroke
+                        stroke,
                     )
                 }
             }

@@ -220,14 +220,14 @@ fun HistoryScreen(model: MainViewModel) {
                                     stats.hadir,
                                     tokens.success.content,
                                     tokens.success.container,
-                                    Modifier.weight(1f).fillMaxHeight()
+                                    Modifier.weight(1f).fillMaxHeight(),
                                 )
                                 HistoryStatTile(
                                     "Telat",
                                     stats.terlambat,
                                     tokens.warning.content,
                                     tokens.warning.container,
-                                    Modifier.weight(1f).fillMaxHeight()
+                                    Modifier.weight(1f).fillMaxHeight(),
                                 )
                             }
                             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -236,14 +236,14 @@ fun HistoryScreen(model: MainViewModel) {
                                     stats.sakit,
                                     tokens.sick.content,
                                     tokens.sick.container,
-                                    Modifier.weight(1f).fillMaxHeight()
+                                    Modifier.weight(1f).fillMaxHeight(),
                                 )
                                 HistoryStatTile(
                                     "Izin",
                                     stats.izin,
                                     tokens.info.content,
                                     tokens.info.container,
-                                    Modifier.weight(1f).fillMaxHeight()
+                                    Modifier.weight(1f).fillMaxHeight(),
                                 )
                             }
                         }
@@ -456,7 +456,7 @@ fun HistoryScreen(model: MainViewModel) {
 }
 
 @Composable
-private fun HistoryStatTile(label: String, count: Int, accent: Color, tint: Color, modifier: Modifier = Modifier,) {
+private fun HistoryStatTile(label: String, count: Int, accent: Color, tint: Color, modifier: Modifier = Modifier) {
     val tokens = LocalSkanidaColors.current
     Surface(
         modifier = modifier.semantics(mergeDescendants = true) {

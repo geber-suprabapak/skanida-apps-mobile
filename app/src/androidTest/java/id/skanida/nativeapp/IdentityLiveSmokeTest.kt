@@ -32,11 +32,11 @@ class IdentityLiveSmokeTest {
         withTimeout(45_000) {
             assertTrue(
                 "Profile must be returned by authenticated Astra",
-                app.astra.get("/v1/mobile/profile").text("user_id") == expectedUser
+                app.astra.get("/v1/mobile/profile").text("user_id") == expectedUser,
             )
             assertTrue(
                 "Dashboard must include the server-owned primary action",
-                app.astra.get("/v1/mobile/dashboard").has("primary_action")
+                app.astra.get("/v1/mobile/dashboard").has("primary_action"),
             )
             assertTrue("Permit history must use the Astra envelope", app.astra.get("/v1/mobile/permits").has("items"))
         }

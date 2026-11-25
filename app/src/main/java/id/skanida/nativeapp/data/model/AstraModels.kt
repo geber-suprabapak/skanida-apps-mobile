@@ -92,7 +92,7 @@ data class DashboardSchedule(
     }
 }
 
-data class DashboardFace(val serverStatus: String, val enrollmentStatus: String, val message: String,) {
+data class DashboardFace(val serverStatus: String, val enrollmentStatus: String, val message: String) {
     val isServerHealthy: Boolean get() = serverStatus == "healthy"
     val isEnrolled: Boolean get() = enrollmentStatus == "enrolled"
 
@@ -106,7 +106,7 @@ data class DashboardFace(val serverStatus: String, val enrollmentStatus: String,
     }
 }
 
-data class DashboardPermitSummary(val hasActivePermit: Boolean, val activeCategory: String?,) {
+data class DashboardPermitSummary(val hasActivePermit: Boolean, val activeCategory: String?) {
     companion object {
         fun fromJson(obj: JSONObject?): DashboardPermitSummary = DashboardPermitSummary(
             hasActivePermit = obj?.optBoolean("has_active_permit", false) ?: false,
@@ -195,7 +195,7 @@ data class AttendancePrecheckResult(
     }
 }
 
-data class AttendanceSubmitResult(val attendanceType: String, val statusLabel: String, val processedMs: Long,) {
+data class AttendanceSubmitResult(val attendanceType: String, val statusLabel: String, val processedMs: Long) {
     companion object {
         fun fromJson(obj: JSONObject): AttendanceSubmitResult = AttendanceSubmitResult(
             attendanceType = obj.text("attendance_type", "check_in"),
@@ -205,7 +205,7 @@ data class AttendanceSubmitResult(val attendanceType: String, val statusLabel: S
     }
 }
 
-data class RawAttendanceRecord(val id: String, val date: String, val status: String, val actionType: String?, val createdAt: String?,) {
+data class RawAttendanceRecord(val id: String, val date: String, val status: String, val actionType: String?, val createdAt: String?) {
     companion object {
         fun fromJson(obj: JSONObject): RawAttendanceRecord = RawAttendanceRecord(
             id = obj.text("id"),
@@ -229,7 +229,7 @@ data class DailyAttendanceRecord(
     val approvalStatus: String? = null,
 )
 
-data class MonthlyAttendanceStats(val hadir: Int, val terlambat: Int, val sakit: Int, val izin: Int, val alpha: Int,)
+data class MonthlyAttendanceStats(val hadir: Int, val terlambat: Int, val sakit: Int, val izin: Int, val alpha: Int)
 
 data class PermitRecord(
     val id: String,
@@ -331,7 +331,7 @@ fun localizePrimaryActionReason(reasonCode: String?, rawMessage: String?): Strin
     }
 }
 
-data class EnrollmentStatusData(val status: String, val embeddingCount: Int, val message: String,) {
+data class EnrollmentStatusData(val status: String, val embeddingCount: Int, val message: String) {
     val isEnrolled: Boolean get() = status == "enrolled"
 
     companion object {
@@ -343,7 +343,7 @@ data class EnrollmentStatusData(val status: String, val embeddingCount: Int, val
     }
 }
 
-data class EnrollmentSubmitResult(val imagesProcessed: Int, val imagesFailed: Int, val totalEmbeddings: Int,) {
+data class EnrollmentSubmitResult(val imagesProcessed: Int, val imagesFailed: Int, val totalEmbeddings: Int) {
     companion object {
         fun fromJson(obj: JSONObject): EnrollmentSubmitResult = EnrollmentSubmitResult(
             imagesProcessed = obj.optInt("imagesProcessed", 0),

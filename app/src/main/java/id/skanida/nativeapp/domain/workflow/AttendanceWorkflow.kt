@@ -19,9 +19,9 @@ enum class AbsenceStatusIcon {
     HELP_CIRCLE,
 }
 
-data class AbsenceStatusMeta(val icon: AbsenceStatusIcon, val tone: AbsenceStatusTone, val message: String,)
+data class AbsenceStatusMeta(val icon: AbsenceStatusIcon, val tone: AbsenceStatusTone, val message: String)
 
-fun resolveAbsenceStatusMeta(isLoading: Boolean, errorMessage: String?, precheck: AttendancePrecheckResult?,): AbsenceStatusMeta {
+fun resolveAbsenceStatusMeta(isLoading: Boolean, errorMessage: String?, precheck: AttendancePrecheckResult?): AbsenceStatusMeta {
     if (isLoading) {
         return AbsenceStatusMeta(
             icon = AbsenceStatusIcon.LOADER,
@@ -101,13 +101,13 @@ data class PendingAttendanceSuccess(
     val quote: MotivationalQuote,
 )
 
-class AttendanceAttemptTracker(private val ttlMs: Long = 600_000L, private val nowMs: () -> Long = { System.currentTimeMillis() },) {
+class AttendanceAttemptTracker(private val ttlMs: Long = 600_000L, private val nowMs: () -> Long = { System.currentTimeMillis() }) {
     private var activeAttempt: AttendanceAttempt? = null
     private var generationCounter = 0
 
     fun current(): AttendanceAttempt? = activeAttempt
 
-    fun createAttempt(userId: String, latitude: Double, longitude: Double, precheck: AttendancePrecheckResult,): AttendanceAttempt? {
+    fun createAttempt(userId: String, latitude: Double, longitude: Double, precheck: AttendancePrecheckResult): AttendanceAttempt? {
         if (userId.isBlank() || !precheck.allowed) return null
         val action = precheck.actionType ?: return null
         if (action !in setOf("check_in", "check_out")) return null

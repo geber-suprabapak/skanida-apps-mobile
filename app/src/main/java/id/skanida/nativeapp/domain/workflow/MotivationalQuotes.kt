@@ -1,6 +1,6 @@
 package id.skanida.nativeapp.domain.workflow
 
-data class MotivationalQuote(val quote: String, val author: String,)
+data class MotivationalQuote(val quote: String, val author: String)
 
 object MotivationalQuotes {
     val items: List<MotivationalQuote> = listOf(

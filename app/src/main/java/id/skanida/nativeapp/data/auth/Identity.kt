@@ -98,7 +98,7 @@ class Identity(context: Context) {
         val token = suspendCancellableCoroutine<TokenResponse> { continuation ->
             service.performTokenRequest(response.createTokenExchangeRequest(mapOf("resource" to BuildConfig.LOGTO_RESOURCE))) {
                     token,
-                    error
+                    error,
                 ->
                 if (continuation.isActive) {
                     if (token != null) {
@@ -149,7 +149,7 @@ class Identity(context: Context) {
                     // Transient network failures must preserve the encrypted refresh token.
                     if (continuation.isActive) {
                         continuation.resumeWithException(
-                            Exception(error.errorDescription ?: "Sesi belum dapat diperbarui. Periksa koneksi.")
+                            Exception(error.errorDescription ?: "Sesi belum dapat diperbarui. Periksa koneksi."),
                         )
                     }
                 } else {

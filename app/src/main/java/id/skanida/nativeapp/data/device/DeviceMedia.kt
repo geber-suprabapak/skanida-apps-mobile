@@ -88,7 +88,7 @@ private fun Location.toCandidate(provider: String, ageMs: Long = 0L): LocationCa
 )
 
 @SuppressLint("MissingPermission")
-private suspend fun requestProviderLocation(context: Context, manager: LocationManager, provider: String,): Location? =
+private suspend fun requestProviderLocation(context: Context, manager: LocationManager, provider: String): Location? =
     suspendCancellableCoroutine { continuation ->
         val cancellation = CancellationSignal()
         continuation.invokeOnCancellation { cancellation.cancel() }
@@ -122,7 +122,7 @@ private suspend fun requestProviderLocation(context: Context, manager: LocationM
     }
 
 @SuppressLint("MissingPermission")
-private fun findFreshLastKnownLocation(manager: LocationManager, providers: List<String>,): Location? {
+private fun findFreshLastKnownLocation(manager: LocationManager, providers: List<String>): Location? {
     val nowElapsedNanos = SystemClock.elapsedRealtimeNanos()
     var bestPair: Pair<Location, LocationCandidate>? = null
     providers.forEach { provider ->
@@ -162,9 +162,9 @@ private fun enabledLocationProviders(manager: LocationManager): List<String> = b
     }
 }
 
-private data class LiveLocationOutcome(val location: Location?, val sawInvalidCoordinates: Boolean,)
+private data class LiveLocationOutcome(val location: Location?, val sawInvalidCoordinates: Boolean)
 
-private suspend fun collectBestLiveLocation(channel: Channel<ProviderFix>, providerCount: Int,): LiveLocationOutcome {
+private suspend fun collectBestLiveLocation(channel: Channel<ProviderFix>, providerCount: Int): LiveLocationOutcome {
     var bestLocation: Location? = null
     var bestCandidate: LocationCandidate? = null
     var sawInvalidCoordinates = false

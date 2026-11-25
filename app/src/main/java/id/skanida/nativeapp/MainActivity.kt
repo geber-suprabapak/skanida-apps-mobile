@@ -132,7 +132,7 @@ private val pageLabels = mapOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SkanidaApp(model: MainViewModel, isCameraCapture: Boolean, isWelcomeFullBleed: Boolean,) {
+fun SkanidaApp(model: MainViewModel, isCameraCapture: Boolean, isWelcomeFullBleed: Boolean) {
     val tokens = LocalSkanidaColors.current
     val context = LocalContext.current
     val loginLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {

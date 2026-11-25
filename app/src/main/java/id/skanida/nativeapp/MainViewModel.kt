@@ -206,7 +206,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
-    private fun run(asPullRefresh: Boolean = false, cancellable: Boolean = false, block: suspend () -> Unit,) {
+    private fun run(asPullRefresh: Boolean = false, cancellable: Boolean = false, block: suspend () -> Unit) {
         if (busy && !cancelCancellableOperation()) return
         busy = true
         operationCancellable = cancellable

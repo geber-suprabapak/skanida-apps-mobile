@@ -50,19 +50,19 @@ android {
         buildConfigField(
             "String",
             "LOGTO_RESOURCE",
-            quoted(clientSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://astrayao.lunaradev.my.id"))
+            quoted(clientSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://astrayao.lunaradev.my.id")),
         )
         buildConfigField("String", "LOGTO_REDIRECT", quoted(clientSetting("EXPO_PUBLIC_LOGTO_REDIRECT_URI", "skanida://auth/callback")))
         buildConfigField("String", "EXPO_PROJECT_ID", quoted("a423f8e9-23fd-472b-b405-f5ef8f726bf9"))
         buildConfigField(
             "String",
             "FIREBASE_APP_ID",
-            quoted((firebaseClient?.get("client_info") as? Map<*, *>)?.get("mobilesdk_app_id")?.toString().orEmpty())
+            quoted((firebaseClient?.get("client_info") as? Map<*, *>)?.get("mobilesdk_app_id")?.toString().orEmpty()),
         )
         buildConfigField(
             "String",
             "FIREBASE_API_KEY",
-            quoted(((firebaseClient?.get("api_key") as? List<*>)?.firstOrNull() as? Map<*, *>)?.get("current_key")?.toString().orEmpty())
+            quoted(((firebaseClient?.get("api_key") as? List<*>)?.firstOrNull() as? Map<*, *>)?.get("current_key")?.toString().orEmpty()),
         )
         buildConfigField("String", "FIREBASE_PROJECT_ID", quoted(firebaseProject?.get("project_id")?.toString().orEmpty()))
         buildConfigField("String", "FIREBASE_SENDER_ID", quoted(firebaseProject?.get("project_number")?.toString().orEmpty()))
@@ -107,23 +107,23 @@ android {
             buildConfigField(
                 "String",
                 "ASTRA_URL",
-                quoted(stagingSetting("EXPO_PUBLIC_BFF_API_URL", "http://api.192.168.21.122.nip.io:8080"))
+                quoted(stagingSetting("EXPO_PUBLIC_BFF_API_URL", "http://api.192.168.21.122.nip.io:8080")),
             )
             buildConfigField(
                 "String",
                 "LOGTO_URL",
-                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_ENDPOINT", "http://auth.192.168.21.122.nip.io:8080"))
+                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_ENDPOINT", "http://auth.192.168.21.122.nip.io:8080")),
             )
             buildConfigField("String", "LOGTO_CLIENT_ID", quoted(stagingSetting("EXPO_PUBLIC_LOGTO_APP_ID", "ktok16dl83bmwh85jgc97")))
             buildConfigField(
                 "String",
                 "LOGTO_RESOURCE",
-                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://api.skanida-staging.test"))
+                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_RESOURCE", "https://api.skanida-staging.test")),
             )
             buildConfigField(
                 "String",
                 "LOGTO_REDIRECT",
-                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_REDIRECT_URI", "skanida://auth/callback"))
+                quoted(stagingSetting("EXPO_PUBLIC_LOGTO_REDIRECT_URI", "skanida://auth/callback")),
             )
         }
     }
