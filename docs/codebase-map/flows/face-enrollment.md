@@ -1,12 +1,10 @@
 # Face Enrollment
 
-1. The enrollment screen checks face-service runtime readiness and requests front-camera permission.
-2. The student captures ten temporary JPEG images; an individual image over the client size limit is rejected before confirmation.
-3. Before upload, the screen rechecks runtime readiness and prepares the ten images as multipart form data.
-4. `submitEnrollment` sends the request through the shared contract-versioned Astra BFF transport.
-5. A known success presents Astra's processed/failed/embedding summary. Cancellation or an error after starting the POST presents an unknown outcome, with no upload-retry action. A status-read button reports the current enrollment state without treating it as proof that the canceled request completed; a not-enrolled read may race an in-flight request. Failed status reads can be retried without resending photos.
-6. Temporary captures are cleaned after settlement or unmount. Pre-upload readiness errors retain the capture retry path; canceling the client does not promise server rollback.
+1. `MainViewModel.startEnrollment` checks camera permission, queries `GET /v1/mobile/health` and `GET /v1/mobile/face/enrollment/status`, and opens `CameraScreen` in `EnrollmentStep.CAPTURE`.
+2. The student captures ten temporary JPEG images (`<= 2 MiB` each); an individual oversized capture is rejected before confirmation (`INV-MOBILE-005`).
+3. After the 10th capture, `EnrollmentStep.CONFIRM` displays a 10-photo thumbnail preview for student confirmation before upload.
+4. Before starting multipart POST (`POST /v1/mobile/face/enrollment`), `MainViewModel.submitEnrollment` rechecks service readiness (`GET /v1/mobile/health`) and sends the ten JPEG files under field `files`.
+5. A known success presents `EnrollmentStep.SUCCESS` with `imagesProcessed`, `imagesFailed`, and `totalEmbeddings`. Cancellation or an error after starting the POST enters `EnrollmentStep.UNKNOWN_OUTCOME` with a `"Cek Status Pendaftaran"` action without blindly re-uploading the photos.
+6. Temporary captures are cleaned up after settlement, retake, navigation away, or `ViewModel.onCleared`.
 
-Missing permission, unavailable runtime, insufficient images, oversized capture, or Astra failure prevents a success state. Retry and cancellation paths also remove temporary captures on a best-effort basis.
-
-**Evidence:** `app/profile/enroll.tsx`, `utils/enrollment.ts`, `utils/faceApiRuntime.ts`, `utils/bffMobileApi.ts`, `README.md`.
+**Evidence:** `MainViewModel.kt`, `ui/screens/CameraScreen.kt`, `data/api/Astra.kt`, `data/device/DeviceMedia.kt`.

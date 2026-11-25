@@ -12,104 +12,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # S01 release gate: every dispatch must verify the exact revision with
-  # frozen dependencies, lint, type-check, and the unit suite before any APK
-  # is built or uploaded. The build job depends on this job, so a manually
-  # dispatched run cannot bypass verification.
   verify:
-    name: Verify (lint, types, tests)
+    name: Verify (unit tests & Android lint)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
 
     outputs:
       verified_sha: ${{ steps.record_sha.outputs.verified_sha }}
 
     env:
-      NODE_OPTIONS: --max-old-space-size=8192
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "11.21.0"
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24.19.0"
-
-      - name: Install dependencies (frozen lockfile)
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type-check
-        run: pnpm exec tsc --noEmit
-
-      - name: Unit tests
-        run: pnpm exec jest --runInBand
-
-      - name: Record verified revision
-        id: record_sha
-        run: |
-          VERIFIED_SHA=$(git rev-parse HEAD)
-          echo "verified_sha=$VERIFIED_SHA" >> "$GITHUB_OUTPUT"
-          {
-            echo "## Android APK release gate"
-            echo ""
-            echo "Verify PASS (frozen install, pnpm lint, tsc --noEmit, jest --runInBand)"
-            echo ""
-            echo "| Field | Value |"
-            echo "|---|---|"
-            echo "| Verified source revision | \`$VERIFIED_SHA\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  build:
-    name: Build Android APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    needs: verify
-
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-      EAS_LOCAL_BUILD_ARTIFACTS_DIR: ./artifacts
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
-      NODE_OPTIONS: --max-old-space-size=8192
 
     steps:
-      - name: Check required secrets
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "Missing EXPO_TOKEN. Add it in GitHub repository secrets."
-            exit 1
-          fi
-          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "Missing GOOGLE_SERVICES_JSON_BASE64. Add it in GitHub repository secrets."
-            exit 1
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v5
-
-      - name: Assert built revision matches verified revision
-        run: |
-          BUILD_SHA=$(git rev-parse HEAD)
-          echo "Built revision: $BUILD_SHA"
-          echo "Verified revision: ${{ needs.verify.outputs.verified_sha }}"
-          test "$BUILD_SHA" = "${{ needs.verify.outputs.verified_sha }}" || {
-            echo "Refusing to build: checked-out revision differs from the verified revision."
-            exit 1
-          }
-
-      - name: Restore google-services.json
-        run: |
-          mkdir -p certs
-          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > certs/google-services.json
-          test -s certs/google-services.json
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -123,46 +39,80 @@ jobs:
           path: |
             ${{ env.GRADLE_USER_HOME }}/caches
             ${{ env.GRADLE_USER_HOME }}/wrapper
-            android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', 'gradle.properties', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "11.21.0"
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24.19.0"
+      - name: Run unit tests and Android lint
+        run: ./gradlew :app:testDebugUnitTest :app:lintRelease --no-daemon --console=plain
 
-      - name: Configure Harin runner caches
+      - name: Record verified revision
+        id: record_sha
         run: |
-          rm -rf "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" "$RUNNER_TEMP/eas-local-build"
-          mkdir -p "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" "$RUNNER_TEMP/eas-local-build"
-          mkdir -p "$GRADLE_USER_HOME" "$HOME/.local/share/pnpm/store"
-          pnpm config set store-dir "$HOME/.local/share/pnpm/store"
+          VERIFIED_SHA=$(git rev-parse HEAD)
+          echo "verified_sha=$VERIFIED_SHA" >> "$GITHUB_OUTPUT"
           {
-            echo "EAS_LOCAL_BUILD_WORKINGDIR=$RUNNER_TEMP/eas-local-build"
-          } >> "$GITHUB_ENV"
-          echo "Runner: ${{ runner.name }} (${{ runner.os }}/${{ runner.arch }})"
-          nproc
-          free -h
-          df -h "$HOME" "$GITHUB_WORKSPACE"
+            echo "## Android APK release gate"
+            echo ""
+            echo "Verify PASS (./gradlew :app:testDebugUnitTest :app:lintRelease)"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Verified source revision | \`$VERIFIED_SHA\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: verify
+
+    env:
+      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Assert built revision matches verified revision
+        run: |
+          BUILD_SHA=$(git rev-parse HEAD)
+          echo "Built revision: $BUILD_SHA"
+          echo "Verified revision: ${{ needs.verify.outputs.verified_sha }}"
+          test "$BUILD_SHA" = "${{ needs.verify.outputs.verified_sha }}" || {
+            echo "Refusing to build: checked-out revision differs from the verified revision."
+            exit 1
+          }
+
+      - name: Restore google-services.json if provided
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            mkdir -p certs
+            printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > certs/google-services.json
+            test -s certs/google-services.json
+          else
+            echo "GOOGLE_SERVICES_JSON_BASE64 not set; building without embedded Firebase config."
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
-          eas-version: latest
-          packager: pnpm
-          token: ${{ secrets.EXPO_TOKEN }}
+          distribution: temurin
+          java-version: "17"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', 'gradle.properties', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      - name: Build APK
-        run: eas build --local --platform android --profile production-ci --non-interactive
+      - name: Build release and staging APKs
+        run: ./gradlew :app:assembleRelease :app:assembleStaging --no-daemon --console=plain
 
       - name: Record source SHA and APK SHA-256 in run summary
         run: |
@@ -171,12 +121,10 @@ jobs:
           while IFS= read -r apk; do
             apk_count=$((apk_count + 1))
             APK_SHA=$(sha256sum "$apk" | awk '{print $1}')
-            {
-              echo "| APK \`${apk#*/}\` | SHA-256 \`$APK_SHA\` |"
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "| APK \`$apk\` | SHA-256 \`$APK_SHA\` |" >> "$GITHUB_STEP_SUMMARY"
             echo "APK: $apk"
             echo "SHA-256: $APK_SHA"
-          done < <(find "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" -type f -name '*.apk' | sort)
+          done < <(find app/build/outputs/apk -type f -name '*.apk' | sort)
           if [ "$apk_count" -eq 0 ]; then
             echo "No APK produced; refusing to record a checksum."
             exit 1
@@ -186,10 +134,10 @@ jobs:
             echo "| Artifact retention | 90 days (GitHub Actions artifact \`skanida-apps-android-apk\`) |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: skanida-apps-android-apk
-          path: ${{ env.EAS_LOCAL_BUILD_ARTIFACTS_DIR }}/**/*.apk
+          path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 90
